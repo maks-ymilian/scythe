@@ -21,7 +21,7 @@ struct Node
 typedef struct
 {
     Node** buckets;
-    size_t elementCount, bucketCount, length;
+    size_t elementCount, bucketCount, bucketsCap;
     size_t sizeOfValueType;
 } Map;
 

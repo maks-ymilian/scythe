@@ -11,7 +11,7 @@
 static Map AllocateMapSize(const size_t sizeOfValueType, const int count)
 {
     Map map;
-    map.length = count;
+    map.bucketsCap = count;
     map.bucketCount = 0;
     map.elementCount = 0;
     map.sizeOfValueType = sizeOfValueType;
@@ -27,7 +27,7 @@ Map AllocateMap(const size_t sizeOfValueType)
 
 void FreeMap(const Map* map)
 {
-    for (int i = 0; i < map->length; ++i)
+    for (int i = 0; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         while (true)
@@ -61,7 +61,7 @@ static size_t Hash(const char* string)
 static size_t GetIndex(const Map* map, const char* string)
 {
     const size_t hash = Hash(string);
-    return hash % map->length;
+    return hash % map->bucketsCap;
 }
 
 void AddNode(Map* map, Node* node)
@@ -74,7 +74,7 @@ void AddNode(Map* map, Node* node)
     if (get == NULL)
     {
         map->bucketCount++;
-        assert(map->bucketCount <= map->length);
+        assert(map->bucketCount <= map->bucketsCap);
 
         assert(map->buckets[index] == NULL);
         map->buckets[index] = node;
@@ -90,9 +90,9 @@ void AddNode(Map* map, Node* node)
 
 static void Expand(Map* map)
 {
-    Map newMap = AllocateMapSize(map->sizeOfValueType, map->length * 2);
+    Map newMap = AllocateMapSize(map->sizeOfValueType, map->bucketsCap * 2);
 
-    for (int i = 0; i < map->length; ++i)
+    for (int i = 0; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         while (true)
@@ -130,7 +130,7 @@ void* MapGet(const Map* map, const char* key)
 
 static Node* NextBucket(const Map* map, const size_t currentIndex)
 {
-    for (int i = currentIndex; i < map->length; ++i)
+    for (int i = currentIndex; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         if (node != NULL)
@@ -154,7 +154,7 @@ bool MapNext(const Map* map, Node** current)
     if (next == NULL)
     {
         const size_t index = currentNode->bucket + 1;
-        if (index >= map->length)
+        if (index >= map->bucketsCap)
             return false;
 
         next = NextBucket(map, index);
@@ -188,7 +188,7 @@ void MapAdd(Map* map, const char* key, const void* value)
     assert(map != NULL);
     assert(MapGet(map, key) == NULL);
 
-    const float filled = (float)map->elementCount / map->length;
+    const float filled = (float)map->elementCount / map->bucketsCap;
     if (filled > LOAD_FACTOR)
         Expand(map);
 

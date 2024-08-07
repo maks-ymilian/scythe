@@ -4,30 +4,55 @@
 #include <stdlib.h>
 
 #include "SyntaxTreePrinter.h"
+#include "data-structures/Map.h"
 
-static Result GenerateAssignment(ExprPtr* out)
+static Map types;
+
+typedef uint32_t Type;
+
+typedef struct
+{
+    Type type;
+} SymbolAttributes;
+
+static Map symbolTable;
+
+static void AddType(const char* name)
+{
+    const Type type = types.elementCount;
+    MapAdd(&types, name, &type);
+}
+
+static void AddSymbol(const char* name, const Type type)
+{
+    SymbolAttributes attributes;
+    attributes.type = type;
+    MapAdd(&symbolTable, name, &attributes);
+}
+
+static Result GenerateAssignment(ExprPtr* in)
 {
 }
 
-static Result GenerateExpression(ExprPtr* out)
+static Result GenerateExpression(ExprPtr* in)
 {
 }
 
-static Result GenerateExpressionStatement(ExpressionStmt* out)
+static Result GenerateExpressionStatement(ExpressionStmt* in)
 {
 }
 
-static Result GenerateVariableDeclaration(VarDeclStmt* out)
+static Result GenerateVariableDeclaration(VarDeclStmt* in)
 {
 }
 
-static Result GenerateStatement(const StmtPtr* out);
+static Result GenerateStatement(const StmtPtr* in);
 
-static Result GenerateBlockStatement(const BlockStmt* out)
+static Result GenerateBlockStatement(const BlockStmt* in)
 {
-    for (int i = 0; i < out->statements.length; ++i)
+    for (int i = 0; i < in->statements.length; ++i)
     {
-        const StmtPtr* stmt = out->statements.array[i];
+        const StmtPtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
         GenerateStatement(stmt);
     }
@@ -35,31 +60,31 @@ static Result GenerateBlockStatement(const BlockStmt* out)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateSectionStatement(SectionStmt* out)
+static Result GenerateSectionStatement(const SectionStmt* in)
 {
-    return GenerateBlockStatement(out->block.ptr);
+    return GenerateBlockStatement(in->block.ptr);
 }
 
-static Result GenerateStatement(const StmtPtr* out)
+static Result GenerateStatement(const StmtPtr* in)
 {
-    switch (out->type)
+    switch (in->type)
     {
         case ExpressionStatement:
-            return GenerateExpressionStatement(out->ptr);
+            return GenerateExpressionStatement(in->ptr);
         case Section:
-            return GenerateSectionStatement(out->ptr);
+            return GenerateSectionStatement(in->ptr);
         case VariableDeclaration:
-            return GenerateVariableDeclaration(out->ptr);
+            return GenerateVariableDeclaration(in->ptr);
         default:
             assert(0);
     }
 }
 
-Result GenerateProgram(const Program* out)
+Result GenerateProgram(const Program* in)
 {
-    for (int i = 0; i < out->statements.length; ++i)
+    for (int i = 0; i < in->statements.length; ++i)
     {
-        const StmtPtr* stmt = out->statements.array[i];
+        const StmtPtr* stmt = in->statements.array[i];
         assert(stmt->type != ProgramRoot);
         GenerateStatement(stmt);
     }
@@ -69,12 +94,18 @@ Result GenerateProgram(const Program* out)
 
 Result GenerateCode(Program* syntaxTree)
 {
+    symbolTable = AllocateMap(sizeof(SymbolAttributes));
+    types = AllocateMap(sizeof(Type));
+    AddType("int");
+
     const StmtPtr stmt = {syntaxTree, ProgramRoot};
     PrintSyntaxTree(&stmt);
 
     GenerateProgram(syntaxTree);
 
     FreeSyntaxTree(stmt);
+    FreeMap(&types);
+    FreeMap(&symbolTable);
 
     return SUCCESS_RESULT;
 }
