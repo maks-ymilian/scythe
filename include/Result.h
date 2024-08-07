@@ -4,7 +4,6 @@
 #include "Token.h"
 
 #define SUCCESS_RESULT (Result){true, false, NULL, 0}
-#define UNSUCCESSFUL_RESULT (Result){false, false, NULL, 0}
 #define ERROR_RESULT(message, lineNumber) (Result){false, true, message, lineNumber}
 
 typedef struct

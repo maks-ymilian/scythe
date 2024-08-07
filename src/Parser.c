@@ -8,6 +8,7 @@
 
 #define SET_LINE_NUMBER lineNumber = ((Token*)tokens.array[pointer])->lineNumber;
 
+#define NOT_FOUND_RESULT (Result){false, false, NULL, 0}
 #define ERROR_RESULT_LINE(message) ERROR_RESULT(message, lineNumber);
 #define ERROR_RESULT_LINE_TOKEN(message, tokenType) (Result){false, true, message, lineNumber, tokenType};
 #define UNSUCCESSFUL_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
@@ -51,19 +52,19 @@ static Result functionName(ExprPtr* out)\
 static Array tokens;
 static long pointer;
 
-static Token* CurrentToken()
+static Token* CurrentToken(const int offset)
 {
-    if (pointer >= tokens.length)
+    if (pointer + offset >= tokens.length)
         return NULL;
 
-    return tokens.array[pointer];
+    return tokens.array[pointer + offset];
 }
 
 static void Consume() { pointer++; }
 
 static Token* Match(const TokenType* types, const int length)
 {
-    Token* current = CurrentToken();
+    Token* current = CurrentToken(0);
     if (current == NULL)
         return NULL;
 
@@ -81,6 +82,25 @@ static Token* Match(const TokenType* types, const int length)
 
 static Token* MatchOne(const TokenType type) { return Match((TokenType[]){type}, 1); }
 
+static Token* Peek(const TokenType* types, const int length, const int offset)
+{
+    Token* current = CurrentToken(offset);
+    if (current == NULL)
+        return NULL;
+
+    for (int i = 0; i < length; ++i)
+    {
+        if (current->type != types[i])
+            continue;
+
+        return current;
+    }
+
+    return NULL;
+}
+
+static Token* PeekOne(const TokenType type, const int offset) { return Peek((TokenType[]){type}, 1, offset); }
+
 static Result ParseExpression(ExprPtr* out);
 
 static Result ParsePrimary(ExprPtr* out)
@@ -89,7 +109,7 @@ static Result ParsePrimary(ExprPtr* out)
 
     const Token* token = Match((TokenType[]){NumberLiteral, StringLiteral, Identifier, LeftBracket}, 4);
     if (token == NULL)
-        return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"%t\"", CurrentToken()->type);
+        return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"%t\"", CurrentToken(0)->type);
 
     switch (token->type)
     {
@@ -229,7 +249,7 @@ static Result ParseBlockStatement(StmtPtr* out)
 
     const Token* openingBrace = MatchOne(LeftCurlyBracket);
     if (openingBrace == NULL)
-        return UNSUCCESSFUL_RESULT;
+        return NOT_FOUND_RESULT;
 
     Array statements = AllocateArray(1, sizeof(StmtPtr));
     Result exitResult = {0, 0, NULL};
@@ -270,7 +290,7 @@ static Result ParseSectionStatement(StmtPtr* out)
 
     const Token* at = MatchOne(At);
     if (at == NULL)
-        return UNSUCCESSFUL_RESULT;
+        return NOT_FOUND_RESULT;
 
     const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
     if (sectionType == NULL)
@@ -278,7 +298,7 @@ static Result ParseSectionStatement(StmtPtr* out)
 
     StmtPtr block;
     PARSE_AND_HANDLE_ERROR(ParseBlockStatement(&block),
-        return ERROR_RESULT_LINE("Expected block after section statement"));
+                           return ERROR_RESULT_LINE("Expected block after section statement"));
     assert(block.type == BlockStatement);
 
     SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, block});
@@ -290,13 +310,23 @@ static Result ParseVariableDeclaration(StmtPtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* type = Match((TokenType[]){Int}, 1);
-    if (type == NULL)
-        return UNSUCCESSFUL_RESULT;
+    const Token* type = PeekOne(Identifier, 0);
+    if (type != NULL)
+    {
+        if (PeekOne(Identifier, 1) == NULL)
+            return NOT_FOUND_RESULT;
+    }
+    else
+    {
+        type = Peek((TokenType[]){Int}, 1, 0);
+        if (type == NULL)
+            return NOT_FOUND_RESULT;
+    }
+    Consume();
 
     SET_LINE_NUMBER
-    const Token* identifier = MatchOne(Identifier);
-    if (identifier == NULL)
+    const Token* name = MatchOne(Identifier);
+    if (name == NULL)
         return ERROR_RESULT_LINE("Expected identifier after type");
 
     ExprPtr initializer = {NULL, NoExpression};
@@ -311,7 +341,7 @@ static Result ParseVariableDeclaration(StmtPtr* out)
     if (semicolon == NULL)
         return ERROR_RESULT_LINE("Expected \";\"");
 
-    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt){*type, *identifier, initializer});
+    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt){*type, *name, initializer});
     *out = (StmtPtr){varDecl, VariableDeclaration};
     return SUCCESS_RESULT;
 }
