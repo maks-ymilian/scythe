@@ -5,7 +5,7 @@
 #include "Scanner.h"
 #include "Parser.h"
 #include "data-structures/Array.h"
-#include "Analyzer.h"
+#include "CodeGenerator.h"
 
 #define HANDLE_ERROR(func, message)\
 {\
@@ -26,7 +26,7 @@ static void Compile(const char* source)
     StmtPtr syntaxTree;
     HANDLE_ERROR(Parse(&tokens, &syntaxTree), "Parse error");
 
-    HANDLE_ERROR(Analyze(syntaxTree.ptr), "Analyzer error");
+    HANDLE_ERROR(GenerateCode(syntaxTree.ptr), "Code generation error");
 }
 
 int main(void)

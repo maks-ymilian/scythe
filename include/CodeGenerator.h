@@ -3,4 +3,4 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result Analyze(Program* syntaxTree);
+Result GenerateCode(Program* syntaxTree);

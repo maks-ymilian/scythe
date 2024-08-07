@@ -13,7 +13,7 @@ set(SOURCES
         "src/SyntaxTree.c"
         "src/data-structures/Array.c"
         "src/Result.c"
-        "src/Analyzer.c"
+        "src/CodeGenerator.c"
         "src/data-structures/Map.c"
 )
 
