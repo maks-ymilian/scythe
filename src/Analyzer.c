@@ -17,27 +17,33 @@ static Result AnalyzeExpressionStatement(ExpressionStmt* out)
 {
 }
 
-static Result AnalyzeSectionStatement(SectionStmt* out)
-{
-}
-
 static Result AnalyzeVariableDeclaration(VarDeclStmt* out)
 {
 }
 
-static Result AnalyzeStatement(StmtPtr* out)
+static Result AnalyzeStatement(const StmtPtr* out);
+static Result AnalyzeSectionStatement(SectionStmt* out)
+{
+    for (int i = 0; i < out->statements.length; ++i)
+    {
+        const StmtPtr* stmt = out->statements.array[i];
+        if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
+        AnalyzeStatement(stmt);
+    }
+
+    return SUCCESS_RESULT;
+}
+
+static Result AnalyzeStatement(const StmtPtr* out)
 {
     switch (out->type)
     {
         case ExpressionStatement:
-            AnalyzeExpressionStatement(out->ptr);
-            break;
+            return AnalyzeExpressionStatement(out->ptr);
         case Section:
-            AnalyzeSectionStatement(out->ptr);
-            break;
+            return AnalyzeSectionStatement(out->ptr);
         case VariableDeclaration:
-            AnalyzeVariableDeclaration(out->ptr);
-            break;
+            return AnalyzeVariableDeclaration(out->ptr);
         default:
             assert(0);
     }
@@ -47,10 +53,8 @@ Result AnalyzeProgram(const Program* out)
 {
     for (int i = 0; i < out->statements.length; ++i)
     {
-        StmtPtr* stmt = out->statements.array[i];
-
+        const StmtPtr* stmt = out->statements.array[i];
         assert(stmt->type != ProgramRoot);
-
         AnalyzeStatement(stmt);
     }
 
