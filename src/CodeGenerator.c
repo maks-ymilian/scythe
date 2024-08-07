@@ -10,12 +10,18 @@
 
 #define ALLOC_FORMAT_STRING(formatLiteral, insert)\
 const char* formatString;\
-{const size_t insertLength = strlen(insert) + 1;\
-const size_t formatLength = sizeof(formatLiteral);\
-char* str = malloc(insertLength + formatLength);\
-snprintf(str, insertLength, formatLiteral, insert);\
+{const size_t insertLength = strlen(insert);\
+const size_t formatLength = sizeof(formatLiteral) - 3;\
+const size_t bufferLength = insertLength + formatLength + 1;\
+char* str = malloc(bufferLength);\
+snprintf(str, bufferLength, formatLiteral, insert);\
 formatString = str;}
 static Map types;
+
+#define GENERATE_AND_HANDLE_ERROR(function)\
+{const Result result = function;\
+if (result.hasError)\
+    return result;}
 
 typedef uint32_t Type;
 
@@ -39,19 +45,70 @@ static void AddSymbol(const char* name, const Type type)
     MapAdd(&symbolTable, name, &attributes);
 }
 
-static Result GenerateAssignment(ExprPtr* in)
+static Result GenerateLiteralExpression(const LiteralExpr* in)
 {
+    const Token literal = in->value;
+    switch (literal.type)
+    {
+        case NumberLiteral:
+            return SUCCESS_RESULT;
+        case StringLiteral:
+            return SUCCESS_RESULT;
+        case Identifier:
+        {
+            const char* name = literal.text;
+            SymbolAttributes* symbol = MapGet(&symbolTable, name);
+            if (symbol == NULL)
+            {
+                ALLOC_FORMAT_STRING("Unknown identifier \"%s\"", name);
+                return ERROR_RESULT(formatString, literal.lineNumber);
+            }
+            return SUCCESS_RESULT;
+        }
+        default:
+            assert(0);
+    }
+    return SUCCESS_RESULT;
 }
 
-static Result GenerateExpression(ExprPtr* in)
+static Result GenerateExpression(const ExprPtr* in);
+
+static Result GenerateUnaryExpression(const UnaryExpr* in)
 {
+    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->expression));
+    return SUCCESS_RESULT;
 }
 
-static Result GenerateExpressionStatement(ExpressionStmt* in)
+static Result GenerateBinaryExpression(const BinaryExpr* in)
 {
+    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->left));
+    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->right));
+    return SUCCESS_RESULT;
 }
 
-static Result GenerateVariableDeclaration(VarDeclStmt* in)
+static Result GenerateExpression(const ExprPtr* in)
+{
+    switch (in->type)
+    {
+        case NoExpression:
+            return SUCCESS_RESULT;
+        case BinaryExpression:
+            return GenerateBinaryExpression(in->ptr);
+        case UnaryExpression:
+            return GenerateUnaryExpression(in->ptr);
+        case LiteralExpression:
+            return GenerateLiteralExpression(in->ptr);
+        default:
+            assert(0);
+    }
+}
+
+static Result GenerateExpressionStatement(const ExpressionStmt* in)
+{
+    return GenerateExpression(&in->expr);
+}
+
+static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     const Token typeToken = in->type;
     Type type;
@@ -95,7 +152,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     {
         const StmtPtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
-        GenerateStatement(stmt);
+        GENERATE_AND_HANDLE_ERROR(GenerateStatement(stmt));
     }
 
     return SUCCESS_RESULT;
@@ -127,7 +184,7 @@ Result GenerateProgram(const Program* in)
     {
         const StmtPtr* stmt = in->statements.array[i];
         assert(stmt->type != ProgramRoot);
-        GenerateStatement(stmt);
+        GENERATE_AND_HANDLE_ERROR(GenerateStatement(stmt));
     }
 
     return SUCCESS_RESULT;
@@ -142,7 +199,7 @@ Result GenerateCode(Program* syntaxTree)
     const StmtPtr stmt = {syntaxTree, ProgramRoot};
     PrintSyntaxTree(&stmt);
 
-    GenerateProgram(syntaxTree);
+    GENERATE_AND_HANDLE_ERROR(GenerateProgram(syntaxTree));
 
     FreeSyntaxTree(stmt);
     FreeMap(&types);
