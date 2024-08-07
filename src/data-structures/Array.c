@@ -5,10 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-Array AllocateArray(const size_t count, const size_t sizeOfType)
+#define START_SIZE 16
+
+Array AllocateArray(const size_t sizeOfType)
 {
-    assert(count > 0);
     assert(sizeOfType > 0);
+
+    const size_t count = START_SIZE;
+
     Array array;
     array.array = malloc(count * sizeof(void*));
     array.length = 0;

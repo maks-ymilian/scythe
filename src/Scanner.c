@@ -167,7 +167,7 @@ static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol
 
 Result Scan(const char* const sourceCode, Array* outTokens)
 {
-    tokens = AllocateArray(1, sizeof(Token));
+    tokens = AllocateArray(sizeof(Token));
 
     source = sourceCode;
     pointer = -1;

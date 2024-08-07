@@ -26,7 +26,7 @@ void PrintError(const Result result)
 {
 	assert(result.errorMessage != NULL);
 
-	Array output = AllocateArray(1, sizeof(char));
+	Array output = AllocateArray(sizeof(char));
 
 	size_t i = 0;
 	while (1)

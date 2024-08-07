@@ -169,12 +169,12 @@ static Result ParseAssignment(ExprPtr* out)
     PARSE_AND_HANDLE_ERROR(ParseEquality(&left),
                            return result);
 
-    Array exprArray = AllocateArray(1, sizeof(ExprPtr));
+    Array exprArray = AllocateArray(sizeof(ExprPtr));
     ArrayAdd(&exprArray, &left);
 
     const TokenType validOperators[5] = {Equals, PlusEquals, MinusEquals, AsteriskEquals, SlashEquals};
     const Token* operator = Match(validOperators, 5);
-    Array operatorArray = AllocateArray(1, sizeof(Token));
+    Array operatorArray = AllocateArray(sizeof(Token));
     while (operator != NULL)
     {
         ArrayAdd(&operatorArray, operator);
@@ -251,7 +251,7 @@ static Result ParseBlockStatement(StmtPtr* out)
     if (openingBrace == NULL)
         return NOT_FOUND_RESULT;
 
-    Array statements = AllocateArray(1, sizeof(StmtPtr));
+    Array statements = AllocateArray(sizeof(StmtPtr));
     Result exitResult = {0, 0, NULL};
     while (true)
     {
@@ -366,7 +366,7 @@ static Result ParseProgram(StmtPtr* out)
 {
     long SET_LINE_NUMBER
 
-    Array stmtArray = AllocateArray(1, sizeof(StmtPtr));
+    Array stmtArray = AllocateArray(sizeof(StmtPtr));
 
     while (true)
     {
