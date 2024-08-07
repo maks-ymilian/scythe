@@ -22,7 +22,8 @@ static Result AnalyzeVariableDeclaration(VarDeclStmt* out)
 }
 
 static Result AnalyzeStatement(const StmtPtr* out);
-static Result AnalyzeSectionStatement(SectionStmt* out)
+
+static Result AnalyzeBlockStatement(const BlockStmt* out)
 {
     for (int i = 0; i < out->statements.length; ++i)
     {
@@ -32,6 +33,11 @@ static Result AnalyzeSectionStatement(SectionStmt* out)
     }
 
     return SUCCESS_RESULT;
+}
+
+static Result AnalyzeSectionStatement(SectionStmt* out)
+{
+    return AnalyzeBlockStatement(out->block.ptr);
 }
 
 static Result AnalyzeStatement(const StmtPtr* out)

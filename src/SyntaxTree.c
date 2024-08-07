@@ -39,6 +39,12 @@ LiteralExpr* AllocLiteral(const LiteralExpr expr)
     return new;
 }
 
+BlockStmt* AllocBlockStmt(const BlockStmt stmt)
+{
+    ALLOCATE(BlockStmt, stmt);
+    return new;
+}
+
 SectionStmt* AllocSectionStmt(const SectionStmt stmt)
 {
     ALLOCATE(SectionStmt, stmt);
@@ -115,7 +121,7 @@ static void FreeStmt(const StmtPtr stmt)
             DEBUG_PRINT("Freeing SectionStmt\n");
             const SectionStmt* sectionStmt = stmt.ptr;
             FreeToken(&sectionStmt->type);
-            FreeArray(&sectionStmt->statements);
+            FreeStmt(sectionStmt->block);
             free(stmt.ptr);
             return;
         }
@@ -143,6 +149,12 @@ static void FreeStmt(const StmtPtr stmt)
             const Program* program = stmt.ptr;
             FreeArray(&program->statements);
             free(stmt.ptr);
+            return;
+        }
+        case BlockStatement:
+        {
+            const BlockStmt* blockStmt = stmt.ptr;
+            FreeArray(&blockStmt->statements);
             return;
         }
         default: assert(0);

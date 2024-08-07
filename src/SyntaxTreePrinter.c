@@ -67,8 +67,7 @@ static void PrintStmt(const StmtPtr stmt)
         {
             const SectionStmt* sectionStmt = stmt.ptr;
             printf("%s\n", GetTokenTypeString(sectionStmt->type.type));
-            for (int i = 0; i < sectionStmt->statements.length; ++i)
-                PrintSyntaxTree(sectionStmt->statements.array[i]);
+            PrintStmt(sectionStmt->block);
             return;
         }
         case ExpressionStatement:
@@ -89,6 +88,13 @@ static void PrintStmt(const StmtPtr stmt)
                 PrintExpr(varDeclStmt->initializer);
             }
             else printf("\n");
+            return;
+        }
+        case BlockStatement:
+        {
+            const BlockStmt* blockStmt = stmt.ptr;
+            for (int i = 0; i < blockStmt->statements.length; ++i)
+                PrintSyntaxTree(blockStmt->statements.array[i]);
             return;
         }
         default: assert(0);

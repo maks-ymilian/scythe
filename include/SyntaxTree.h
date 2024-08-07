@@ -48,6 +48,7 @@ LiteralExpr* AllocLiteral(LiteralExpr expr);
 typedef enum
 {
     Section,
+    BlockStatement,
     ExpressionStatement,
     VariableDeclaration,
     ProgramRoot,
@@ -62,8 +63,16 @@ typedef struct
 
 typedef struct
 {
-    Token type;
     Array statements;
+} BlockStmt;
+
+BlockStmt* AllocBlockStmt(BlockStmt stmt);
+
+
+typedef struct
+{
+    Token type;
+    StmtPtr block;
 } SectionStmt;
 
 SectionStmt* AllocSectionStmt(SectionStmt stmt);
@@ -90,7 +99,7 @@ VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
 typedef struct
 {
     Array statements;
-}Program;
+} Program;
 
 Program* AllocProgram(Program program);
 

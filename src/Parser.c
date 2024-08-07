@@ -223,22 +223,13 @@ static Result ParseExpressionStatement(StmtPtr* out)
 
 static Result ParseStatement(StmtPtr* out);
 
-static Result ParseSectionStatement(StmtPtr* out)
+static Result ParseBlockStatement(StmtPtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* at = MatchOne(At);
-    if (at == NULL)
-        return UNSUCCESSFUL_RESULT;
-
-    const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
-    if (sectionType == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected section type after \"%t\"", At);
-
-    SET_LINE_NUMBER
     const Token* openingBrace = MatchOne(LeftCurlyBracket);
     if (openingBrace == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"%t\"", LeftCurlyBracket);
+        return UNSUCCESSFUL_RESULT;
 
     Array statements = AllocateArray(1, sizeof(StmtPtr));
     Result exitResult = {0, 0, NULL};
@@ -256,9 +247,6 @@ static Result ParseSectionStatement(StmtPtr* out)
             break;
         }
 
-        if (stmt.type == Section)
-            return ERROR_RESULT_LINE("Nested sections are not allowed");
-
         ArrayAdd(&statements, &stmt);
     }
 
@@ -271,7 +259,29 @@ static Result ParseSectionStatement(StmtPtr* out)
         assert(0);
     }
 
-    SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, statements});
+    BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
+    *out = (StmtPtr){block, BlockStatement};
+    return SUCCESS_RESULT;
+}
+
+static Result ParseSectionStatement(StmtPtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* at = MatchOne(At);
+    if (at == NULL)
+        return UNSUCCESSFUL_RESULT;
+
+    const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
+    if (sectionType == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected section type after \"%t\"", At);
+
+    StmtPtr block;
+    PARSE_AND_HANDLE_ERROR(ParseBlockStatement(&block),
+        return ERROR_RESULT_LINE("Expected block after section statement"));
+    assert(block.type == BlockStatement);
+
+    SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, block});
     *out = (StmtPtr){section, Section};
     return SUCCESS_RESULT;
 }
