@@ -1,11 +1,20 @@
 #include "CodeGenerator.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "SyntaxTreePrinter.h"
 #include "data-structures/Map.h"
 
+#define ALLOC_FORMAT_STRING(formatLiteral, insert)\
+const char* formatString;\
+{const size_t insertLength = strlen(insert) + 1;\
+const size_t formatLength = sizeof(formatLiteral);\
+char* str = malloc(insertLength + formatLength);\
+snprintf(str, insertLength, formatLiteral, insert);\
+formatString = str;}
 static Map types;
 
 typedef uint32_t Type;
@@ -44,6 +53,38 @@ static Result GenerateExpressionStatement(ExpressionStmt* in)
 
 static Result GenerateVariableDeclaration(VarDeclStmt* in)
 {
+    const Token typeToken = in->type;
+    Type type;
+    if (typeToken.type == Identifier)
+    {
+        const char* typeName = typeToken.text;
+        const Type* get = MapGet(&types, typeName);
+        if (get == NULL)
+        {
+            ALLOC_FORMAT_STRING("Unknown type \"%s\"", typeName);
+            return ERROR_RESULT(formatString, typeToken.lineNumber);
+        }
+        type = *get;
+    }
+    else
+    {
+        switch (typeToken.type)
+        {
+            case Int:
+                break;
+            default: assert(0);
+        }
+
+        const char* typeName = GetTokenTypeString(typeToken.type);
+        const Type* get = MapGet(&types, typeName);
+        assert(get != NULL);
+        type = *get;
+    }
+
+    assert(in->identifier.type == Identifier);
+    AddSymbol(in->identifier.text, type);
+
+    return SUCCESS_RESULT;
 }
 
 static Result GenerateStatement(const StmtPtr* in);
