@@ -10,7 +10,7 @@ typedef struct MemoryStream
 {
     uint8_t* buffer;
     size_t position, capacity;
-}MemoryStream;
+} MemoryStream;
 
 MemoryStream* AllocateMemoryStream()
 {
@@ -21,10 +21,18 @@ MemoryStream* AllocateMemoryStream()
     return stream;
 }
 
-void FreeMemoryStream(MemoryStream* stream)
+uint8_t* FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
 {
-    free(stream->buffer);
+    uint8_t* buffer = stream->buffer;
     free(stream);
+
+    if (freeBuffer)
+    {
+        free(buffer);
+        return NULL;
+    }
+
+    return buffer;
 }
 
 static void Reallocate(MemoryStream* stream)
