@@ -393,7 +393,6 @@ static Result ParseProgram(StmtPtr* out)
 Result Parse(const Array* tokenArray, StmtPtr* outSyntaxTree)
 {
     tokens = *tokenArray;
-    PrintTokenArray(&tokens);
 
     StmtPtr program = {NULL};
 
