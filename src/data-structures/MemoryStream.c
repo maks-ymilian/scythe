@@ -53,6 +53,11 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
     stream->position += length;
 }
 
+void StreamWriteByte(MemoryStream* stream, const uint8_t data)
+{
+    StreamWrite(stream, &data, 1);
+}
+
 uint8_t* StreamGetBuffer(const MemoryStream* stream)
 {
     return stream->buffer;
