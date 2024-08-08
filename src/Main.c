@@ -26,7 +26,14 @@ static void Compile(const char* source)
     StmtPtr syntaxTree;
     HANDLE_ERROR(Parse(&tokens, &syntaxTree), "Parse error");
 
-    HANDLE_ERROR(GenerateCode(syntaxTree.ptr), "Code generation error");
+    uint8_t* outputCode = NULL;
+    size_t outputCodeLength = 0;
+    HANDLE_ERROR(GenerateCode(syntaxTree.ptr, &outputCode, &outputCodeLength), "Code generation error");
+    assert(outputCode != NULL);
+
+    printf("Output code:\n%.*s", (int)outputCodeLength, (char*)outputCode);
+
+    free(outputCode);
 }
 
 int main(void)
@@ -35,8 +42,8 @@ int main(void)
 
     if (file == NULL)
     {
-    	perror("Failed to open file: ");
-    	return 1;
+        perror("Failed to open file: ");
+        return 1;
     }
 
     fseek(file, 0, SEEK_END);
@@ -45,16 +52,16 @@ int main(void)
 
     if (fileSize == -1L)
     {
-    	perror("ftell failed: ");
-    	return 1;
+        perror("ftell failed: ");
+        return 1;
     }
 
     char* buffer = malloc(fileSize + 1);
 
     if (buffer == NULL)
     {
-    	perror("malloc failed: ");
-    	return 1;
+        perror("malloc failed: ");
+        return 1;
     }
 
     fread(buffer, (size_t)fileSize, 1, file);

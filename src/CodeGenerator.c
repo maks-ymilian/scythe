@@ -7,6 +7,7 @@
 
 #include "SyntaxTreePrinter.h"
 #include "data-structures/Map.h"
+#include "data-structures/MemoryStream.h"
 
 #define ALLOC_FORMAT_STRING(formatLiteral, insert)\
 const char* formatString;\
@@ -23,6 +24,8 @@ static Map types;
 if (result.hasError)\
     return result;}
 
+#define WRTIE_STRING_LITERAL(text) WriteText(text, sizeof(text) - 1)
+
 typedef uint32_t Type;
 
 typedef struct
@@ -31,6 +34,8 @@ typedef struct
 } SymbolAttributes;
 
 static Map symbolTable;
+
+static MemoryStream* outputText;
 
 static void AddType(const char* name)
 {
@@ -45,6 +50,11 @@ static void AddSymbol(const char* name, const Type type)
     MapAdd(&symbolTable, name, &attributes);
 }
 
+static void WriteText(const char* text, const size_t length)
+{
+    StreamWrite(outputText, text, length);
+}
+
 static Result GenerateLiteralExpression(const LiteralExpr* in)
 {
     const Token literal = in->value;
@@ -57,7 +67,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
         case Identifier:
         {
             const char* name = literal.text;
-            SymbolAttributes* symbol = MapGet(&symbolTable, name);
+            const SymbolAttributes* symbol = MapGet(&symbolTable, name);
             if (symbol == NULL)
             {
                 ALLOC_FORMAT_STRING("Unknown identifier \"%s\"", name);
@@ -68,7 +78,6 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
         default:
             assert(0);
     }
-    return SUCCESS_RESULT;
 }
 
 static Result GenerateExpression(const ExprPtr* in);
@@ -190,8 +199,9 @@ Result GenerateProgram(const Program* in)
     return SUCCESS_RESULT;
 }
 
-Result GenerateCode(Program* syntaxTree)
+Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 {
+    outputText = AllocateMemoryStream();
     symbolTable = AllocateMap(sizeof(SymbolAttributes));
     types = AllocateMap(sizeof(Type));
     AddType("int");
@@ -204,6 +214,10 @@ Result GenerateCode(Program* syntaxTree)
     FreeSyntaxTree(stmt);
     FreeMap(&types);
     FreeMap(&symbolTable);
+
+    const Buffer outputBuffer = FreeMemoryStream(outputText, false);
+    *outputCode = outputBuffer.buffer;
+    *length = outputBuffer.length;
 
     return SUCCESS_RESULT;
 }
