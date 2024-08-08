@@ -19,7 +19,7 @@ snprintf(str, bufferLength, formatLiteral, insert);\
 formatString = str;}
 static Map types;
 
-#define GENERATE_AND_HANDLE_ERROR(function)\
+#define HANDLE_ERROR(function)\
 {const Result result = function;\
 if (result.hasError)\
     return result;}
@@ -94,7 +94,7 @@ static Result GenerateExpression(const ExprPtr* in);
 
 static Result GenerateUnaryExpression(const UnaryExpr* in)
 {
-    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->expression));
+    HANDLE_ERROR(GenerateExpression(&in->expression));
     return SUCCESS_RESULT;
 }
 
@@ -102,7 +102,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in)
 {
     WRITE_STRING_LITERAL("(");
 
-    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->left));
+    HANDLE_ERROR(GenerateExpression(&in->left));
 
     if (in->operator.type != Plus &&
         in->operator.type != Minus &&
@@ -125,7 +125,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in)
         assert(0);
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
-    GENERATE_AND_HANDLE_ERROR(GenerateExpression(&in->right));
+    HANDLE_ERROR(GenerateExpression(&in->right));
 
     WRITE_STRING_LITERAL(")");
     return SUCCESS_RESULT;
@@ -203,7 +203,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     {
         const StmtPtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
-        GENERATE_AND_HANDLE_ERROR(GenerateStatement(stmt));
+        HANDLE_ERROR(GenerateStatement(stmt));
     }
     WRITE_STRING_LITERAL(")");
 
@@ -247,7 +247,7 @@ Result GenerateProgram(const Program* in)
     {
         const StmtPtr* stmt = in->statements.array[i];
         assert(stmt->type != ProgramRoot);
-        GENERATE_AND_HANDLE_ERROR(GenerateStatement(stmt));
+        HANDLE_ERROR(GenerateStatement(stmt));
     }
 
     return SUCCESS_RESULT;
@@ -275,6 +275,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
         return result;
     }
 
+    WRITE_STRING_LITERAL("\n");
     const Buffer outputBuffer = FreeMemoryStream(outputText, false);
     *outputCode = outputBuffer.buffer;
     *length = outputBuffer.length;

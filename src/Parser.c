@@ -13,7 +13,7 @@
 #define ERROR_RESULT_LINE_TOKEN(message, tokenType) (Result){false, true, message, lineNumber, tokenType};
 #define UNSUCCESSFUL_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
 
-#define PARSE_AND_HANDLE_ERROR(parseFunction, unsuccessfulCode)\
+#define HANDLE_ERROR(parseFunction, unsuccessfulCode)\
 const Result result = parseFunction;\
 if (result.hasError)\
     return result;\
@@ -27,7 +27,7 @@ static Result functionName(ExprPtr* out)\
     long SET_LINE_NUMBER\
 \
     ExprPtr left;\
-    PARSE_AND_HANDLE_ERROR(nextFunction(&left),\
+    HANDLE_ERROR(nextFunction(&left),\
         return result;);\
 \
     const TokenType validOperators[length] = {operators};\
@@ -36,7 +36,7 @@ static Result functionName(ExprPtr* out)\
     {\
         ExprPtr right;\
         SET_LINE_NUMBER\
-        PARSE_AND_HANDLE_ERROR(nextFunction(&right),\
+        HANDLE_ERROR(nextFunction(&right),\
             return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"%t\"", operator->type);)\
 \
         BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});\
@@ -115,7 +115,7 @@ static Result ParsePrimary(ExprPtr* out)
     {
         case LeftBracket:
         {
-            PARSE_AND_HANDLE_ERROR(ParseExpression(out),
+            HANDLE_ERROR(ParseExpression(out),
                                    return ERROR_RESULT_LINE("Expected expression"));
 
             const Token* closingBracket = MatchOne(RightBracket);
@@ -166,7 +166,7 @@ static Result ParseAssignment(ExprPtr* out)
     long SET_LINE_NUMBER
 
     ExprPtr left;
-    PARSE_AND_HANDLE_ERROR(ParseEquality(&left),
+    HANDLE_ERROR(ParseEquality(&left),
                            return result);
 
     Array exprArray = AllocateArray(sizeof(ExprPtr));
@@ -181,7 +181,7 @@ static Result ParseAssignment(ExprPtr* out)
 
         ExprPtr right;
         SET_LINE_NUMBER
-        PARSE_AND_HANDLE_ERROR(ParseEquality(&right),
+        HANDLE_ERROR(ParseEquality(&right),
                                return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"%t\"", operator->type));
 
         ArrayAdd(&exprArray, &right);
@@ -220,7 +220,7 @@ static Result ParseExpressionStatement(StmtPtr* out)
 
     ExprPtr expr;
     bool noExpression = false;
-    PARSE_AND_HANDLE_ERROR(ParseExpression(&expr),
+    HANDLE_ERROR(ParseExpression(&expr),
                            {
                            expr.ptr = NULL;
                            expr.type = NoExpression;
@@ -258,7 +258,7 @@ static Result ParseBlockStatement(StmtPtr* out)
         StmtPtr stmt;
         SET_LINE_NUMBER
         bool noStatement = false;
-        PARSE_AND_HANDLE_ERROR(ParseStatement(&stmt),
+        HANDLE_ERROR(ParseStatement(&stmt),
                                noStatement = true);
         if (noStatement)
         {
@@ -297,7 +297,7 @@ static Result ParseSectionStatement(StmtPtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected section type after \"%t\"", At);
 
     StmtPtr block;
-    PARSE_AND_HANDLE_ERROR(ParseBlockStatement(&block),
+    HANDLE_ERROR(ParseBlockStatement(&block),
                            return ERROR_RESULT_LINE("Expected block after section statement"));
     assert(block.type == BlockStatement);
 
@@ -333,7 +333,7 @@ static Result ParseVariableDeclaration(StmtPtr* out)
     const Token* equals = MatchOne(Equals);
     if (equals != NULL)
     {
-        PARSE_AND_HANDLE_ERROR(ParseExpression(&initializer),
+        HANDLE_ERROR(ParseExpression(&initializer),
                                return ERROR_RESULT_LINE("Expected expression"))
     }
 
@@ -376,7 +376,7 @@ static Result ParseProgram(StmtPtr* out)
 
         StmtPtr stmt;
         SET_LINE_NUMBER
-        PARSE_AND_HANDLE_ERROR(ParseStatement(&stmt),
+        HANDLE_ERROR(ParseStatement(&stmt),
                                return ERROR_RESULT_LINE("Expected statement"))
 
         if (stmt.type != Section)
