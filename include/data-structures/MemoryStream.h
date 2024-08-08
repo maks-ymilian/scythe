@@ -6,9 +6,15 @@
 
 typedef struct MemoryStream MemoryStream;
 
+typedef struct
+{
+    uint8_t* buffer;
+    size_t length;
+}Buffer;
+
 MemoryStream* AllocateMemoryStream();
-uint8_t* FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
+Buffer FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
 void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
-uint8_t* StreamGetBuffer(const MemoryStream* stream);
+Buffer StreamGetBuffer(const MemoryStream* stream);

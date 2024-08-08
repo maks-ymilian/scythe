@@ -21,15 +21,20 @@ MemoryStream* AllocateMemoryStream()
     return stream;
 }
 
-uint8_t* FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
+Buffer StreamGetBuffer(const MemoryStream* stream)
 {
-    uint8_t* buffer = stream->buffer;
+    return (Buffer){stream->buffer, stream->position};
+}
+
+Buffer FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
+{
+    const Buffer buffer = StreamGetBuffer(stream);
     free(stream);
 
     if (freeBuffer)
     {
-        free(buffer);
-        return NULL;
+        free(buffer.buffer);
+        return (Buffer){NULL, 0};
     }
 
     return buffer;
@@ -56,9 +61,4 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)
 {
     StreamWrite(stream, &data, 1);
-}
-
-uint8_t* StreamGetBuffer(const MemoryStream* stream)
-{
-    return stream->buffer;
 }
