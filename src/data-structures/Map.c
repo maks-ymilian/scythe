@@ -183,10 +183,12 @@ static Node* AllocateNode(const Map* map, const char* key, const void* value)
     return node;
 }
 
-void MapAdd(Map* map, const char* key, const void* value)
+bool MapAdd(Map* map, const char* key, const void* value)
 {
     assert(map != NULL);
-    assert(MapGet(map, key) == NULL);
+
+    if (MapGet(map, key) != NULL)
+        return false;
 
     const float filled = (float)map->elementCount / map->bucketsCap;
     if (filled > LOAD_FACTOR)
@@ -194,6 +196,8 @@ void MapAdd(Map* map, const char* key, const void* value)
 
     Node* node = AllocateNode(map, key, value);
     AddNode(map, node);
+
+    return true;
 }
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
