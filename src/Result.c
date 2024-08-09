@@ -15,7 +15,7 @@ void PrintError(const Result result)
 	size_t i = 0;
 	while (1)
 	{
-		if (result.errorMessage[i] == '%' &&
+		if (result.errorMessage[i] == '#' &&
 			result.errorMessage[i + 1] == 't')
 		{
 			i += 2;

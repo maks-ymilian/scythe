@@ -37,7 +37,7 @@ static Result functionName(ExprPtr* out)\
         ExprPtr right;\
         SET_LINE_NUMBER\
         HANDLE_ERROR(nextFunction(&right),\
-            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"%t\"", operator->type);)\
+            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)\
 \
         BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});\
         left = (ExprPtr){binary, BinaryExpression};\
@@ -109,7 +109,7 @@ static Result ParsePrimary(ExprPtr* out)
 
     const Token* token = Match((TokenType[]){NumberLiteral, StringLiteral, Identifier, LeftBracket}, 4);
     if (token == NULL)
-        return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"%t\"", CurrentToken(0)->type);
+        return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
     switch (token->type)
     {
@@ -120,7 +120,7 @@ static Result ParsePrimary(ExprPtr* out)
 
             const Token* closingBracket = MatchOne(RightBracket);
             if (closingBracket == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected \"%t\"", RightBracket);
+                return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
 
             return result;
         }
@@ -148,7 +148,7 @@ static Result ParseUnary(ExprPtr* out)
     ExprPtr expr;
     SET_LINE_NUMBER
     if (!ParseUnary(&expr).success)
-        return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"%t\"", operator->type);
+        return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
     unary->expression = expr;
 
     *out = (ExprPtr){unary, UnaryExpression};
@@ -182,7 +182,7 @@ static Result ParseAssignment(ExprPtr* out)
         ExprPtr right;
         SET_LINE_NUMBER
         HANDLE_ERROR(ParseEquality(&right),
-                               return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"%t\"", operator->type));
+                               return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type));
 
         ArrayAdd(&exprArray, &right);
 
@@ -233,7 +233,7 @@ static Result ParseExpressionStatement(StmtPtr* out)
     {
         if (noExpression)
             return expressionResult;
-        return ERROR_RESULT_LINE_TOKEN("Expected \"%t\"", Semicolon)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
     }
 
     const ExpressionStmt* expressionStmt = AllocExpressionStmt((ExpressionStmt){expr});
@@ -294,7 +294,7 @@ static Result ParseSectionStatement(StmtPtr* out)
 
     const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
     if (sectionType == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected section type after \"%t\"", At);
+        return ERROR_RESULT_LINE_TOKEN("Expected section type after \"#t\"", At);
 
     StmtPtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
