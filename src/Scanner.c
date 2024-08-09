@@ -134,7 +134,7 @@ static void ScanNumberLiteral()
     {
         const char character = Advance();
 
-        if (!isdigit(character))
+        if (!isalnum(character) && character != '.')
         {
             pointer--;
             break;
