@@ -17,4 +17,5 @@ Buffer FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
 void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
-Buffer StreamGetBuffer(const MemoryStream* stream);
+Buffer StreamRead(MemoryStream* stream, size_t length);
+Buffer StreamReadRest(MemoryStream* stream);

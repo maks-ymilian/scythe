@@ -9,7 +9,7 @@
 typedef struct MemoryStream
 {
     uint8_t* buffer;
-    size_t position, capacity;
+    size_t writePos, readPos, capacity;
 } MemoryStream;
 
 MemoryStream* AllocateMemoryStream()
@@ -17,18 +17,31 @@ MemoryStream* AllocateMemoryStream()
     MemoryStream* stream = malloc(sizeof(MemoryStream));
     stream->buffer = malloc(START_SIZE * sizeof(uint8_t));
     stream->capacity = START_SIZE;
-    stream->position = 0;
+    stream->writePos = 0;
+    stream->readPos = 0;
     return stream;
 }
 
-Buffer StreamGetBuffer(const MemoryStream* stream)
+Buffer StreamRead(MemoryStream* stream, const size_t length)
 {
-    return (Buffer){stream->buffer, stream->position};
+    const size_t bytesLeft = stream->writePos - stream->readPos;
+    const size_t minLength = length < bytesLeft ? length : bytesLeft;
+
+    assert(minLength != 0);
+
+    const Buffer buffer = (Buffer){&stream->buffer[stream->readPos], minLength};
+    stream->readPos += minLength;
+    return buffer;
+}
+
+Buffer StreamReadRest(MemoryStream* stream)
+{
+    return StreamRead(stream, stream->writePos - stream->readPos);
 }
 
 Buffer FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
 {
-    const Buffer buffer = StreamGetBuffer(stream);
+    const Buffer buffer = StreamReadRest(stream);
     free(stream);
 
     if (freeBuffer)
@@ -51,11 +64,11 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
     assert(buffer != NULL);
     assert(length > 0);
 
-    if (stream->position + length >= stream->capacity)
+    if (stream->writePos + length >= stream->capacity)
         Reallocate(stream);
 
-    memcpy(stream->buffer + stream->position, buffer, length);
-    stream->position += length;
+    memcpy(stream->buffer + stream->writePos, buffer, length);
+    stream->writePos += length;
 }
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)
