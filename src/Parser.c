@@ -10,7 +10,7 @@
 
 #define NOT_FOUND_RESULT (Result){false, false, NULL, 0}
 #define ERROR_RESULT_LINE(message) ERROR_RESULT(message, lineNumber);
-#define ERROR_RESULT_LINE_TOKEN(message, tokenType) (Result){false, true, message, lineNumber, tokenType};
+#define ERROR_RESULT_LINE_TOKEN(message, tokenType) ERROR_RESULT_TOKEN(message, lineNumber, tokenType)
 #define UNSUCCESSFUL_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
 
 #define HANDLE_ERROR(parseFunction, unsuccessfulCode)\
