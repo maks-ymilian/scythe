@@ -34,7 +34,17 @@ if ((fromType == type1 || toType == type1) && (fromType == type2 || toType == ty
 
 #define MAX_INT_IN_DOUBLE 9007199254740992
 
-typedef uint32_t Type;
+typedef enum
+{
+    Primitive, Struct, Enum
+} MetaType;
+
+typedef struct
+{
+    MetaType metaType;
+    uint32_t id;
+} Type;
+
 static Map types;
 static Array typeNames;
 
@@ -47,9 +57,12 @@ static Map symbolTable;
 
 static MemoryStream* outputText;
 
-static bool AddType(const char* name)
+static bool AddType(const char* name, const MetaType metaType)
 {
-    const Type type = types.elementCount;
+    Type type;
+    type.id = types.elementCount;
+    type.metaType = metaType;
+
     const bool success = MapAdd(&types, name, &type);
     if (!success)
         return false;
@@ -70,7 +83,7 @@ static Type GetKnownType(const char* name)
 
 static const char* GetTypeName(const Type type)
 {
-    return *(char**)typeNames.array[type];
+    return *(char**)typeNames.array[type.id];
 }
 
 static bool AddSymbol(const char* name, const Type type)
@@ -103,10 +116,16 @@ static void InitMaps()
     types = AllocateMap(sizeof(Type));
     typeNames = AllocateArray(sizeof(char*));
 
-    bool success = AddType("int");
+    bool success = AddType("int", Primitive);
     assert(success);
 
-    success = AddType("string");
+    success = AddType("float", Primitive);
+    assert(success);
+
+    success = AddType("string", Primitive);
+    assert(success);
+
+    success = AddType("bool", Primitive);
     assert(success);
 }
 
@@ -190,7 +209,8 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     }
     else
     {
-        const int ret = sscanf(text + startIndex, "%f", 0);
+        float _;
+        const int ret = sscanf(text + startIndex, "%f", &_);
         if (ret == 0)
             return ERROR_RESULT("Invalid float literal", token.lineNumber);
 
@@ -202,83 +222,7 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     return SUCCESS_RESULT;
 }
 
-static Result EvaluateType(const ExprPtr expr, Type* outType)
-{
-    switch (expr.type)
-    {
-        case BinaryExpression:
-        {
-            const BinaryExpr* binary = expr.ptr;
-
-            Type leftType;
-            HANDLE_ERROR(EvaluateType(binary->left, &leftType));
-            Type rightType;
-            HANDLE_ERROR(EvaluateType(binary->right, &rightType));
-
-            switch (binary->operator.type)
-            {
-                case Equals:
-                case PlusEquals:
-                case MinusEquals:
-                case SlashEquals:
-                case AsteriskEquals:
-                    // assignment
-                {
-                    return SUCCESS_RESULT;
-                }
-
-                case Plus:
-                case Minus:
-                case Slash:
-                case Asterisk:
-                    // arithmetic
-                {
-                    return SUCCESS_RESULT;
-                }
-
-                case AmpersandAmpersand:
-                case PipePipe:
-                case EqualsEquals:
-                case ExclamationEquals:
-                case LeftAngleBracket:
-                case RightAngleBracket:
-                case LeftAngleEquals:
-                case RightAngleEquals:
-                    // comparison
-                {
-                    return SUCCESS_RESULT;
-                }
-
-                default: assert(0);
-            }
-        }
-        case UnaryExpression:
-        {
-            return SUCCESS_RESULT;
-        }
-        case LiteralExpression:
-        {
-            const LiteralExpr* literal = expr.ptr;
-            switch (literal->value.type)
-            {
-                case NumberLiteral:
-                    *outType = GetKnownType("int");
-                    return SUCCESS_RESULT;
-                case StringLiteral:
-                    *outType = GetKnownType("string");
-                    return SUCCESS_RESULT;
-                case Identifier:
-                    *outType = GetKnownSymbol(literal->value.text).type;
-                    return SUCCESS_RESULT;
-                default: assert(0);
-            }
-        }
-        case NoExpression: assert(0);
-        default: assert(0);
-    }
-}
-
-static Result GenerateLiteralExpression(const LiteralExpr* in)
+static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
     switch (literal.type)
@@ -288,6 +232,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
             char number[strlen(literal.text) + 1];
             bool integer;
             HANDLE_ERROR(EvaluateNumberLiteral(literal, &integer, number));
+            *outType = integer ? GetKnownType("int") : GetKnownType("float");
 
             WRITE_TEXT(number);
             return SUCCESS_RESULT;
@@ -297,6 +242,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
             WRITE_STRING_LITERAL("\"");
             WRITE_TEXT(literal.text);
             WRITE_STRING_LITERAL("\"");
+            *outType = GetKnownType("string");
             return SUCCESS_RESULT;
         }
         case Identifier:
@@ -308,6 +254,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
                 ALLOC_FORMAT_STRING("Unknown identifier \"%s\"", name);
                 return ERROR_RESULT(formatString, literal.lineNumber);
             }
+            *outType = symbol->type;
             WRITE_TEXT(name);
             return SUCCESS_RESULT;
         }
@@ -316,51 +263,117 @@ static Result GenerateLiteralExpression(const LiteralExpr* in)
     }
 }
 
-static Result GenerateExpression(const ExprPtr* in);
+static Result UnaryOperatorErrorResult(const Token operator, const Type type)
+{
+    ALLOC_FORMAT_STRING("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type));
+    return ERROR_RESULT_TOKEN(formatString, operator.lineNumber, operator.type);
+}
 
-static Result GenerateUnaryExpression(const UnaryExpr* in)
+static Result GenerateExpression(const ExprPtr* in, Type* outType);
+
+static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 {
     WRITE_STRING_LITERAL("(");
 
-    if (in->operator.type != Exclamation &&
-        in->operator.type != Minus &&
-        in->operator.type != Plus)
-        assert(0);
-
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
-    HANDLE_ERROR(GenerateExpression(&in->expression));
+    Type type;
+    HANDLE_ERROR(GenerateExpression(&in->expression, &type));
+
+    switch (in->operator.type)
+    {
+        case Exclamation:
+            if (type.id != GetKnownType("bool").id)
+                return UnaryOperatorErrorResult(in->operator, type);
+            break;
+        case Minus:
+            if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
+                return UnaryOperatorErrorResult(in->operator, type);
+            break;
+        case Plus:
+            if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
+                return UnaryOperatorErrorResult(in->operator, type);
+            break;
+        default:
+            assert(0);
+    }
+
+    *outType = type;
 
     WRITE_STRING_LITERAL(")");
     return SUCCESS_RESULT;
 }
 
-static Result GenerateBinaryExpression(const BinaryExpr* in)
+static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_STRING_LITERAL("(");
 
-    HANDLE_ERROR(GenerateExpression(&in->left));
+    Type leftType;
+    HANDLE_ERROR(GenerateExpression(&in->left, &leftType));
 
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
-    HANDLE_ERROR(GenerateExpression(&in->right));
+    Type rightType;
+    HANDLE_ERROR(GenerateExpression(&in->right, &rightType));
+
+    switch (in->operator.type)
+    {
+        case Equals:
+            // assignment
+        {
+            break;
+        }
+
+        case PlusEquals:
+        case MinusEquals:
+        case SlashEquals:
+        case AsteriskEquals:
+            // arithmetic assignment
+        {
+            break;
+        }
+
+        case Plus:
+        case Minus:
+        case Slash:
+        case Asterisk:
+            // arithmetic
+        {
+            break;
+        }
+
+        case AmpersandAmpersand:
+        case PipePipe:
+        case EqualsEquals:
+        case ExclamationEquals:
+        case LeftAngleBracket:
+        case RightAngleBracket:
+        case LeftAngleEquals:
+        case RightAngleEquals:
+            // comparison
+        {
+            break;
+        }
+
+        default: assert(0);
+    }
 
     WRITE_STRING_LITERAL(")");
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExpression(const ExprPtr* in)
+static Result GenerateExpression(const ExprPtr* in, Type* outType)
 {
     switch (in->type)
     {
         case NoExpression:
             return SUCCESS_RESULT;
         case BinaryExpression:
-            return GenerateBinaryExpression(in->ptr);
+            return GenerateBinaryExpression(in->ptr, outType);
         case UnaryExpression:
-            return GenerateUnaryExpression(in->ptr);
+            return GenerateUnaryExpression(in->ptr, outType);
         case LiteralExpression:
-            return GenerateLiteralExpression(in->ptr);
+            return GenerateLiteralExpression(in->ptr, outType);
         default:
             assert(0);
     }
@@ -368,7 +381,8 @@ static Result GenerateExpression(const ExprPtr* in)
 
 static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {
-    const Result result = GenerateExpression(&in->expr);
+    Type type;
+    const Result result = GenerateExpression(&in->expr, &type);
     WRITE_STRING_LITERAL(";");
     return result;
 }
@@ -408,7 +422,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         WRITE_STRING_LITERAL("0");
     else
     {
-        HANDLE_ERROR(GenerateExpression(&in->initializer));
+        Type initializerType;
+        HANDLE_ERROR(GenerateExpression(&in->initializer, &initializerType));
 
         // Type initializerType;
         // HANDLE_ERROR(EvaluateType(in->initializer, &initializerType));
