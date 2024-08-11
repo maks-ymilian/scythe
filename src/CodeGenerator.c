@@ -11,15 +11,6 @@
 #include "data-structures/Map.h"
 #include "data-structures/MemoryStream.h"
 
-#define ALLOC_FORMAT_STRING(formatLiteral, insert)\
-const char* formatString;\
-{const size_t insertLength = strlen(insert);\
-const size_t formatLength = sizeof(formatLiteral) - 3;\
-const size_t bufferLength = insertLength + formatLength + 1;\
-char* str = malloc(bufferLength);\
-snprintf(str, bufferLength, formatLiteral, insert);\
-formatString = str;}
-
 #define HANDLE_ERROR(function)\
 {const Result result = function;\
 if (result.hasError)\
@@ -139,6 +130,26 @@ static bool IsDigitBase(const char c, const int base)
     assert(0);
 }
 
+static char* AllocateString(const char* format, const char* insert)
+{
+    const size_t insertLength = strlen(insert);
+    const size_t formatLength = strlen(format) - 2;
+    const size_t bufferLength = insertLength + formatLength + 1;
+    char* str = malloc(bufferLength);
+    snprintf(str, bufferLength, format, insert);
+    return str;
+}
+
+static char* AllocateString2(const char* format, const char* insert1, const char* insert2)
+{
+    const size_t insertLength = strlen(insert1) + strlen(insert2);
+    const size_t formatLength = strlen(format) - 2;
+    const size_t bufferLength = insertLength + formatLength + 1;
+    char* str = malloc(bufferLength);
+    snprintf(str, bufferLength, format, insert1, insert2);
+    return str;
+}
+
 static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* out)
 {
     assert(token.type == NumberLiteral);
@@ -187,8 +198,7 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
             else
             {
                 const char insert[2] = {text[i], '\0'};
-                ALLOC_FORMAT_STRING("Unexpected digit in number literal \"%s\"", insert);
-                return ERROR_RESULT(formatString, token.lineNumber);
+                return ERROR_RESULT(AllocateString("Unexpected digit in number literal \"%s\"", insert), token.lineNumber);
             }
         }
 
@@ -246,10 +256,8 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
             const char* name = literal.text;
             const SymbolAttributes* symbol = MapGet(&symbolTable, name);
             if (symbol == NULL)
-            {
-                ALLOC_FORMAT_STRING("Unknown identifier \"%s\"", name);
-                return ERROR_RESULT(formatString, literal.lineNumber);
-            }
+                return ERROR_RESULT(AllocateString("Unknown identifier \"%s\"", name), literal.lineNumber);
+
             *outType = symbol->type;
             WRITE_TEXT(name);
             return SUCCESS_RESULT;
@@ -261,8 +269,8 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 
 static Result UnaryOperatorErrorResult(const Token operator, const Type type)
 {
-    ALLOC_FORMAT_STRING("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type));
-    return ERROR_RESULT_TOKEN(formatString, operator.lineNumber, operator.type);
+    return ERROR_RESULT_TOKEN(AllocateString("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type)),
+                              operator.lineNumber, operator.type);
 }
 
 static Result GenerateExpression(const ExprPtr* in, Type* outType);
@@ -324,29 +332,41 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         HANDLE_ERROR(GenerateExpression(&in->right, &rightType)),
         right, rightLength);
 
-    printf("LEft: \"%.*s\"\n", (int)leftLength, left);
-    printf("OPERatOR: \"%.*s\"\n", (int)operatorLength, operator);
-    printf("RIGHT: \"%.*s\"\n\n", (int)rightLength, right);
-
     StreamRewind(outputText, leftLength + operatorLength + rightLength);
-    StreamWrite(outputText, left, leftLength);
-    StreamWrite(outputText, operator, operatorLength);
-    StreamWrite(outputText, right, rightLength);
 
     switch (in->operator.type)
     {
         case Equals:
-            // assignment
-        {
-            break;
-        }
-
         case PlusEquals:
         case MinusEquals:
         case SlashEquals:
         case AsteriskEquals:
-            // arithmetic assignment
+            // assignment
         {
+            bool isLvalue = false;
+            if (in->left.type == LiteralExpression)
+            {
+                const LiteralExpr* literal = in->left.ptr;
+                if (literal->value.type == Identifier)
+                    isLvalue = true;
+            }
+
+            if (!isLvalue)
+                return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
+
+            if (leftType.id != rightType.id)
+            {
+                const char* message = AllocateString2(
+                    "Cannot assign value of type \"%s\" to variable of type \"%s\"",
+                    GetTypeName(rightType), GetTypeName(leftType));
+                return ERROR_RESULT(message, in->operator.lineNumber);
+            }
+
+            *outType = leftType;
+
+            if (in->operator.type == Equals)
+                break;
+
             break;
         }
 
@@ -356,6 +376,23 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         case Asterisk:
             // arithmetic
         {
+            const Type intType = GetKnownType("int");
+            const Type floatType = GetKnownType("float");
+            if ((leftType.id != intType.id &&
+                 leftType.id != floatType.id) ||
+                (rightType.id != intType.id &&
+                 rightType.id != floatType.id))
+            {
+                const char* message = AllocateString2("Operator \"#t\" can only be used on %s and %s types",
+                                                      GetTypeName(intType), GetTypeName(floatType));
+                return ERROR_RESULT_TOKEN(message, in->operator.lineNumber, in->operator.type);
+            }
+
+            if (leftType.id == floatType.id || rightType.id == floatType.id)
+                *outType = floatType;
+            else
+                *outType = intType;
+
             break;
         }
 
@@ -369,11 +406,16 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         case RightAngleEquals:
             // comparison
         {
+            *outType = GetKnownType("bool");
             break;
         }
 
         default: assert(0);
     }
+
+    StreamWrite(outputText, left, leftLength);
+    StreamWrite(outputText, operator, operatorLength);
+    StreamWrite(outputText, right, rightLength);
 
     WRITE_LITERAL(")");
     return SUCCESS_RESULT;
@@ -414,8 +456,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         const Type* get = MapGet(&types, typeName);
         if (get == NULL)
         {
-            ALLOC_FORMAT_STRING("Unknown type \"%s\"", typeName);
-            return ERROR_RESULT(formatString, typeToken.lineNumber);
+            return ERROR_RESULT(AllocateString("Unknown type \"%s\"", typeName), typeToken.lineNumber);
         }
         type = *get;
     }
@@ -449,8 +490,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
     if (!AddSymbol(in->identifier.text, type))
     {
-        ALLOC_FORMAT_STRING("\"%s\" is already defined", in->identifier.text);
-        return ERROR_RESULT(formatString, in->identifier.lineNumber);
+        return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text),
+                            in->identifier.lineNumber);
     }
 
     WRITE_LITERAL(";");
