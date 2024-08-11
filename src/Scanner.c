@@ -145,6 +145,9 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     ADD_KEYWORD(Slider);
 
     ADD_KEYWORD(Int);
+    ADD_KEYWORD(Float);
+    ADD_KEYWORD(String);
+    ADD_KEYWORD(Bool);
 
     tokens = AllocateArray(sizeof(Token));
 

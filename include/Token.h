@@ -4,20 +4,24 @@
 
 typedef enum
 {
+    // 1 character
     LeftBracket, RightBracket, LeftCurlyBracket, RightCurlyBracket, LeftSquareBracket, RightSquareBracket,
     Dot, Comma, Semicolon, Plus, Minus, Asterisk, Slash, Exclamation, Equals,
     LeftAngleBracket, RightAngleBracket, Ampersand, Pipe, At,
 
+    // 2 characters
     EqualsEquals, ExclamationEquals, LeftAngleEquals, RightAngleEquals, AmpersandAmpersand, PipePipe,
     PlusPlus, MinusMinus, PlusEquals, MinusEquals, AsteriskEquals, SlashEquals,
 
+    // literals
     NumberLiteral, StringLiteral,
-
     Identifier,
 
+    // keywords
     Init, Slider, Block, Sample, Serialize, GFX,
-    Int,
+    Int, Float, String, Bool,
 
+    //end of file
     EndOfFile,
 } TokenType;
 

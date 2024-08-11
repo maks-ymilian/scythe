@@ -52,7 +52,12 @@ const char* GetTokenTypeString(const TokenType tokenType)
         case Block: return "block";
         case GFX: return "gfx";
         case Slider: return "slider";
+
         case Int: return "int";
+        case Float: return "float";
+        case String: return "string";
+        case Bool: return "bool";
+
         case EndOfFile: return "EndOfFile";
 
         default: assert(0);
