@@ -6,12 +6,18 @@
 #include <string.h>
 #include <assert.h>
 
+#include "data-structures/Map.h"
+
+#define ADD_KEYWORD(tokenType) {const TokenType t = tokenType; MapAdd(&keywords, GetTokenTypeString(tokenType), &t);};
+
 static const char* source;
 static long pointer;
 static long currentTokenStart;
 static long currentLine;
 
 static Array tokens;
+
+static Map keywords;
 
 static char Advance()
 {
@@ -29,7 +35,7 @@ static bool IsAtEnd()
     return source[pointer + 1] == 0;
 }
 
-static const char* GetString(const long start, const long end)
+static const char* AllocateSubstring(const long start, const long end)
 {
     int length = (end + 1) - start;
     length += 1;
@@ -40,53 +46,15 @@ static const char* GetString(const long start, const long end)
     return text;
 }
 
-static const char* GetCurrentLexemeString()
+static const char* AllocateCurrentLexeme()
 {
-    return GetString(currentTokenStart, pointer);
+    return AllocateSubstring(currentTokenStart, pointer);
 }
 
 static void AddNewToken(const TokenType type, const char* text)
 {
     const Token token = (Token){type, currentLine, text};
     ArrayAdd(&tokens, &token);
-}
-
-typedef struct
-{
-    const char* text;
-    TokenType tokenType;
-} KeywordToTokenType;
-
-#define KEYWORD_COUNT 7
-static const KeywordToTokenType keywordToTokenType[KEYWORD_COUNT] =
-{
-    {"init", Init},
-    {"slider", Slider},
-    {"block", Block},
-    {"sample", Sample},
-    {"serialize", Serialize},
-    {"gfx", GFX},
-    {"int", Int},
-};
-
-static bool TryGetKeyword(TokenType* outTokenType)
-{
-    const char* text = GetCurrentLexemeString();
-
-    bool success = false;
-
-    for (size_t i = 0; i < KEYWORD_COUNT; i++)
-    {
-        if (!strcmp(text, keywordToTokenType[i].text))
-        {
-            *outTokenType = keywordToTokenType[i].tokenType;
-            success = true;
-        }
-    }
-
-    free((void*)text);
-
-    return success;
 }
 
 static void ScanWord()
@@ -104,11 +72,12 @@ static void ScanWord()
         }
     }
 
-    TokenType tokenType;
-    if (TryGetKeyword(&tokenType))
-        AddNewToken(tokenType, NULL);
+    const char* lexeme = AllocateCurrentLexeme();
+    const TokenType* tokenType = MapGet(&keywords, lexeme);
+    if (tokenType != NULL)
+        AddNewToken(*tokenType, NULL);
     else
-        AddNewToken(Identifier, GetCurrentLexemeString());
+        AddNewToken(Identifier, lexeme);
 }
 
 static void ScanStringLiteral()
@@ -123,7 +92,7 @@ static void ScanStringLiteral()
     }
     const long end = pointer - 1;
 
-    AddNewToken(StringLiteral, GetString(start, end));
+    AddNewToken(StringLiteral, AllocateSubstring(start, end));
 }
 
 static void ScanNumberLiteral()
@@ -141,7 +110,7 @@ static void ScanNumberLiteral()
         }
     }
 
-    AddNewToken(NumberLiteral, GetCurrentLexemeString());
+    AddNewToken(NumberLiteral, AllocateCurrentLexeme());
 }
 
 typedef struct
@@ -167,6 +136,16 @@ static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol
 
 Result Scan(const char* const sourceCode, Array* outTokens)
 {
+    keywords = AllocateMap(sizeof(TokenType));
+    ADD_KEYWORD(Init);
+    ADD_KEYWORD(Sample);
+    ADD_KEYWORD(Block);
+    ADD_KEYWORD(Serialize);
+    ADD_KEYWORD(GFX);
+    ADD_KEYWORD(Slider);
+
+    ADD_KEYWORD(Int);
+
     tokens = AllocateArray(sizeof(Token));
 
     source = sourceCode;
@@ -281,6 +260,8 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     AddNewToken(EndOfFile, NULL);
 
     *outTokens = tokens;
+
+    FreeMap(&keywords);
 
     return SUCCESS_RESULT;
 }
