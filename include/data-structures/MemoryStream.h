@@ -19,7 +19,7 @@ size_t StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
 
 Buffer StreamRead(MemoryStream* stream, size_t length);
-Buffer StreamReadRest(MemoryStream* stream);
+Buffer StreamRewindRead(MemoryStream* stream, size_t offset);
 
 void StreamRewind(MemoryStream* stream, size_t offset);
 

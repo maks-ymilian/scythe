@@ -25,14 +25,15 @@ formatString = str;}
 if (result.hasError)\
     return result;}
 
-#define WRITE_STRING_LITERAL(text) WriteText(text, sizeof(text) - 1)
-#define WRITE_TEXT(text) { const char* str = text; WriteText(str, strlen(str));}
+#define WRITE_LITERAL(text) StreamWrite(outputText, text, sizeof(text) - 1)
+#define WRITE_TEXT(text) StreamWrite(outputText, text, strlen(text));
 
-#define CHECK_TYPE_COMBO(type1, type2, result)\
-if ((fromType == type1 || toType == type1) && (fromType == type2 || toType == type2))\
-    return result;
-
-#define MAX_INT_IN_DOUBLE 9007199254740992
+#define GET_WRITTEN_CHARS(code, chars, charsLength)\
+{const size_t pos = StreamGetPosition(outputText);\
+code;\
+const size_t length = StreamGetPosition(outputText) - pos;\
+chars = (char*)StreamRewindRead(outputText, length).buffer;\
+charsLength = length;}
 
 typedef enum
 {
@@ -100,7 +101,7 @@ static SymbolAttributes GetKnownSymbol(const char* name)
     return *symbol;
 }
 
-static void FreeMaps()
+static void FreeTables()
 {
     FreeMap(&types);
     FreeMap(&symbolTable);
@@ -110,7 +111,7 @@ static void FreeMaps()
     FreeArray(&typeNames);
 }
 
-static void InitMaps()
+static void InitTables()
 {
     symbolTable = AllocateMap(sizeof(SymbolAttributes));
     types = AllocateMap(sizeof(Type));
@@ -127,11 +128,6 @@ static void InitMaps()
 
     success = AddType("bool", Primitive);
     assert(success);
-}
-
-static void WriteText(const char* text, const size_t length)
-{
-    StreamWrite(outputText, text, length);
 }
 
 static bool IsDigitBase(const char c, const int base)
@@ -239,9 +235,9 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         }
         case StringLiteral:
         {
-            WRITE_STRING_LITERAL("\"");
+            WRITE_LITERAL("\"");
             WRITE_TEXT(literal.text);
-            WRITE_STRING_LITERAL("\"");
+            WRITE_LITERAL("\"");
             *outType = GetKnownType("string");
             return SUCCESS_RESULT;
         }
@@ -273,7 +269,7 @@ static Result GenerateExpression(const ExprPtr* in, Type* outType);
 
 static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 {
-    WRITE_STRING_LITERAL("(");
+    WRITE_LITERAL("(");
 
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
@@ -300,21 +296,42 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
     *outType = type;
 
-    WRITE_STRING_LITERAL(")");
+    WRITE_LITERAL(")");
     return SUCCESS_RESULT;
 }
 
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
-    WRITE_STRING_LITERAL("(");
+    WRITE_LITERAL("(");
 
+    const char* left;
+    size_t leftLength;
     Type leftType;
-    HANDLE_ERROR(GenerateExpression(&in->left, &leftType));
+    GET_WRITTEN_CHARS(
+        HANDLE_ERROR(GenerateExpression(&in->left, &leftType)),
+        left, leftLength);
 
-    WRITE_TEXT(GetTokenTypeString(in->operator.type));
+    const char* operator;
+    size_t operatorLength;
+    GET_WRITTEN_CHARS(
+        WRITE_TEXT(GetTokenTypeString(in->operator.type)),
+        operator, operatorLength);
 
+    const char* right;
+    size_t rightLength;
     Type rightType;
-    HANDLE_ERROR(GenerateExpression(&in->right, &rightType));
+    GET_WRITTEN_CHARS(
+        HANDLE_ERROR(GenerateExpression(&in->right, &rightType)),
+        right, rightLength);
+
+    printf("LEft: \"%.*s\"\n", (int)leftLength, left);
+    printf("OPERatOR: \"%.*s\"\n", (int)operatorLength, operator);
+    printf("RIGHT: \"%.*s\"\n\n", (int)rightLength, right);
+
+    StreamRewind(outputText, leftLength + operatorLength + rightLength);
+    StreamWrite(outputText, left, leftLength);
+    StreamWrite(outputText, operator, operatorLength);
+    StreamWrite(outputText, right, rightLength);
 
     switch (in->operator.type)
     {
@@ -358,7 +375,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         default: assert(0);
     }
 
-    WRITE_STRING_LITERAL(")");
+    WRITE_LITERAL(")");
     return SUCCESS_RESULT;
 }
 
@@ -383,7 +400,7 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {
     Type type;
     const Result result = GenerateExpression(&in->expr, &type);
-    WRITE_STRING_LITERAL(";");
+    WRITE_LITERAL(";");
     return result;
 }
 
@@ -416,10 +433,10 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     assert(in->identifier.type == Identifier);
 
     WRITE_TEXT(in->identifier.text);
-    WRITE_STRING_LITERAL("=");
+    WRITE_LITERAL("=");
 
     if (in->initializer.type == NoExpression)
-        WRITE_STRING_LITERAL("0");
+        WRITE_LITERAL("0");
     else
     {
         Type initializerType;
@@ -436,7 +453,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         return ERROR_RESULT(formatString, in->identifier.lineNumber);
     }
 
-    WRITE_STRING_LITERAL(";");
+    WRITE_LITERAL(";");
 
     return SUCCESS_RESULT;
 }
@@ -445,14 +462,14 @@ static Result GenerateStatement(const StmtPtr* in);
 
 static Result GenerateBlockStatement(const BlockStmt* in)
 {
-    WRITE_STRING_LITERAL("(");
+    WRITE_LITERAL("(");
     for (int i = 0; i < in->statements.length; ++i)
     {
         const StmtPtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
-    WRITE_STRING_LITERAL(")");
+    WRITE_LITERAL(")");
 
     return SUCCESS_RESULT;
 }
@@ -467,9 +484,9 @@ static Result GenerateSectionStatement(const SectionStmt* in)
         in->type.type != GFX)
         assert(0);
 
-    WRITE_STRING_LITERAL("\n@");
+    WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
-    WRITE_STRING_LITERAL("\n");
+    WRITE_LITERAL("\n");
     return GenerateBlockStatement(in->block.ptr);
 }
 
@@ -502,7 +519,7 @@ Result GenerateProgram(const Program* in)
 
 Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 {
-    InitMaps();
+    InitTables();
 
     outputText = AllocateMemoryStream();
 
@@ -512,7 +529,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
     const Result result = GenerateProgram(syntaxTree);
 
     FreeSyntaxTree(stmt);
-    FreeMaps();
+    FreeTables();
 
     if (result.hasError)
     {
@@ -520,8 +537,10 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
         return result;
     }
 
-    WRITE_STRING_LITERAL("\n");
-    const Buffer outputBuffer = FreeMemoryStream(outputText, false);
+    WRITE_LITERAL("\n");
+
+    const Buffer outputBuffer = StreamRewindRead(outputText, 0);
+    FreeMemoryStream(outputText, false);
     *outputCode = outputBuffer.buffer;
     *length = outputBuffer.length;
 
