@@ -75,7 +75,8 @@ size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length
 
     memcpy(stream->buffer + stream->position, buffer, length);
     stream->position += length;
-    stream->length += length;
+    if (stream->position > stream->length)
+        stream->length = stream->position;
 
     return length;
 }
