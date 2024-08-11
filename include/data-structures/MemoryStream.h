@@ -15,7 +15,10 @@ typedef struct
 MemoryStream* AllocateMemoryStream();
 Buffer FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
-void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
+size_t StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
+
 Buffer StreamRead(MemoryStream* stream, size_t length);
 Buffer StreamReadRest(MemoryStream* stream);
+
+void StreamRewind(MemoryStream* stream, size_t offset);

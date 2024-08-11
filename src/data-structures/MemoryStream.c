@@ -39,6 +39,16 @@ Buffer StreamReadRest(MemoryStream* stream)
     return StreamRead(stream, stream->writePos - stream->readPos);
 }
 
+void StreamRewind(MemoryStream* stream, size_t offset)
+{
+    if (offset > stream->writePos)
+        offset = stream->writePos;
+
+    stream->writePos -= offset;
+    if (stream->readPos > stream->writePos)
+        stream->readPos = stream->writePos;
+}
+
 Buffer FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
 {
     const Buffer buffer = StreamReadRest(stream);
@@ -59,7 +69,7 @@ static void Reallocate(MemoryStream* stream)
     stream->buffer = realloc(stream->buffer, stream->capacity);
 }
 
-void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
+size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 {
     assert(buffer != NULL);
     assert(length > 0);
@@ -69,6 +79,8 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 
     memcpy(stream->buffer + stream->writePos, buffer, length);
     stream->writePos += length;
+
+    return length;
 }
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)
