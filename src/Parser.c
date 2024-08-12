@@ -318,7 +318,7 @@ static Result ParseVariableDeclaration(StmtPtr* out)
     }
     else
     {
-        type = Peek((TokenType[]){Int}, 1, 0);
+        type = Peek((TokenType[]){Int, Float, String, Bool}, 4, 0);
         if (type == NULL)
             return NOT_FOUND_RESULT;
     }

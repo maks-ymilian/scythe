@@ -308,6 +308,19 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
+static Result CheckAssignmentCompatibility(const Type left, const Type right, const int lineNumber)
+{
+    if (left.id != right.id)
+    {
+        const char* message = AllocateString2(
+            "Cannot assign value of type \"%s\" to variable of type \"%s\"",
+            GetTypeName(right), GetTypeName(left));
+        return ERROR_RESULT(message, lineNumber);
+    }
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_LITERAL("(");
@@ -354,13 +367,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             if (!isLvalue)
                 return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
 
-            if (leftType.id != rightType.id)
-            {
-                const char* message = AllocateString2(
-                    "Cannot assign value of type \"%s\" to variable of type \"%s\"",
-                    GetTypeName(rightType), GetTypeName(leftType));
-                return ERROR_RESULT(message, in->operator.lineNumber);
-            }
+            HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType, in->operator.lineNumber));
 
             *outType = leftType;
 
@@ -462,8 +469,16 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     }
     else
     {
-        if (typeToken.type != Int)
-            assert(0);
+        switch (typeToken.type)
+        {
+            case Int:
+            case Float:
+            case String:
+            case Bool:
+                break;
+
+            default: assert(0);
+        }
 
         const char* typeName = GetTokenTypeString(typeToken.type);
         const Type* get = MapGet(&types, typeName);
@@ -482,10 +497,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     {
         Type initializerType;
         HANDLE_ERROR(GenerateExpression(&in->initializer, &initializerType));
-
-        // Type initializerType;
-        // HANDLE_ERROR(EvaluateType(in->initializer, &initializerType));
-        // HANDLE_ERROR(CheckTypeCompatibility(initializerType, type, typeToken.lineNumber));
+        HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->type.lineNumber));
     }
 
     if (!AddSymbol(in->identifier.text, type))
