@@ -19,12 +19,14 @@ if (result.hasError)\
 #define WRITE_LITERAL(text) StreamWrite(outputText, text, sizeof(text) - 1)
 #define WRITE_TEXT(text) StreamWrite(outputText, text, strlen(text));
 
-#define GET_WRITTEN_CHARS(code, chars, charsLength)\
-{const size_t pos = StreamGetPosition(outputText);\
+#define GET_WRITTEN_CHARS(code, arrayName, charsLength)\
+const size_t  arrayName##_pos = StreamGetPosition(outputText);\
 code;\
-const size_t length = StreamGetPosition(outputText) - pos;\
-chars = (char*)StreamRewindRead(outputText, length).buffer;\
-charsLength = length;}
+const size_t  arrayName##_length = StreamGetPosition(outputText) -  arrayName##_pos;\
+char* arrayName##_chars = (char*)StreamRewindRead(outputText,  arrayName##_length).buffer;\
+charsLength = arrayName##_length;\
+char arrayName[charsLength];\
+memcpy(arrayName,  arrayName##_chars, charsLength)
 
 typedef enum
 {
@@ -329,20 +331,17 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_LITERAL("(");
 
-    const char* left;
     size_t leftLength;
     Type leftType;
     GET_WRITTEN_CHARS(
         HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true)),
         left, leftLength);
 
-    const char* operator;
     size_t operatorLength;
     GET_WRITTEN_CHARS(
         WRITE_TEXT(GetTokenTypeString(in->operator.type)),
         operator, operatorLength);
 
-    const char* right;
     size_t rightLength;
     Type rightType;
     GET_WRITTEN_CHARS(
@@ -380,8 +379,28 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             if (in->operator.type == Equals)
                 break;
 
+            TokenType arithmeticOperator;
+            switch (in->operator.type)
+            {
+                case PlusEquals:
+                    arithmeticOperator = Plus;
+                    break;
+                case MinusEquals:
+                    arithmeticOperator = Minus;
+                    break;
+                case AsteriskEquals:
+                    arithmeticOperator = Asterisk;
+                    break;
+                case SlashEquals:
+                    arithmeticOperator = Slash;
+                    break;
+                default: assert(0);
+            }
+
             StreamWrite(outputText, left, leftLength);
-            StreamWrite(outputText, operator, operatorLength);
+            WRITE_TEXT(GetTokenTypeString(Equals));
+            StreamWrite(outputText, left, leftLength);
+            WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
             StreamWrite(outputText, right, rightLength);
 
             textWritten = true;
