@@ -33,6 +33,20 @@ static void Compile(const char* source)
 
     printf("Output code:\n%.*s", (int)outputCodeLength, (char*)outputCode);
 
+    const char* path = "D:/Program Files/REAPER (x64)/Effects/jjjjjjjjjjjjjjjj/test.jsfx";
+    FILE* file = fopen(path, "wb");
+    if (file == NULL)
+    {
+        perror("Failed to open/create file: ");
+        exit(1);
+    }
+    const size_t bytesWritten = fwrite(outputCode, sizeof(uint8_t), outputCodeLength, file);
+    if (bytesWritten < outputCodeLength)
+    {
+        printf("An error occurred when writing to file %s\nBytes written: %llu\nTotal bytes: %llu", path, bytesWritten, outputCodeLength);
+        exit(1);
+    }
+
     free(outputCode);
 }
 
