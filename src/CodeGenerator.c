@@ -377,7 +377,19 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             *outType = leftType;
 
             if (in->operator.type == Equals)
+            {
+                if (leftType.id == GetKnownType("int").id)
+                {
+                    StreamWrite(outputText, left, leftLength);
+                    StreamWrite(outputText, operator, operatorLength);
+                    WRITE_LITERAL("((");
+                    StreamWrite(outputText, right, rightLength);
+                    WRITE_LITERAL(")|0)");
+                    textWritten = true;
+                }
+
                 break;
+            }
 
             TokenType arithmeticOperator;
             switch (in->operator.type)
@@ -399,9 +411,14 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
             StreamWrite(outputText, left, leftLength);
             WRITE_TEXT(GetTokenTypeString(Equals));
+            WRITE_LITERAL("((");
             StreamWrite(outputText, left, leftLength);
             WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
             StreamWrite(outputText, right, rightLength);
+            WRITE_LITERAL(")");
+            if (leftType.id == GetKnownType("int").id)
+                WRITE_LITERAL("|0");
+            WRITE_LITERAL(")");
 
             textWritten = true;
         }
