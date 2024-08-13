@@ -14,6 +14,8 @@ if (result.hasError)\
 {\
 	printf(message": ");\
 	PrintError(result);\
+	printf("Press ENTER to continue...\n");\
+	getchar();\
 	exit(1);\
 }else assert(result.success);\
 }
