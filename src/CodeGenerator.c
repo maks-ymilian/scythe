@@ -273,7 +273,7 @@ static Result UnaryOperatorErrorResult(const Token operator, const Type type)
                               operator.lineNumber, operator.type);
 }
 
-static Result GenerateExpression(const ExprPtr* in, Type* outType);
+static Result GenerateExpression(const ExprPtr* in, Type* outType, const bool expectingExpression);
 
 static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 {
@@ -282,7 +282,7 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
     Type type;
-    HANDLE_ERROR(GenerateExpression(&in->expression, &type));
+    HANDLE_ERROR(GenerateExpression(&in->expression, &type, true));
 
     switch (in->operator.type)
     {
@@ -310,15 +310,19 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
 static Result CheckAssignmentCompatibility(const Type left, const Type right, const int lineNumber)
 {
-    if (left.id != right.id)
-    {
-        const char* message = AllocateString2(
-            "Cannot assign value of type \"%s\" to variable of type \"%s\"",
-            GetTypeName(right), GetTypeName(left));
-        return ERROR_RESULT(message, lineNumber);
-    }
+    if (left.id == right.id)
+        return SUCCESS_RESULT;
 
-    return SUCCESS_RESULT;
+    const Type intType = GetKnownType("int");
+    const Type floatType = GetKnownType("float");
+    if ((left.id == intType.id || left.id == floatType.id) &&
+        (right.id == intType.id || right.id == floatType.id))
+        return SUCCESS_RESULT;
+
+    const char* message = AllocateString2(
+        "Cannot assign value of type \"%s\" to variable of type \"%s\"",
+        GetTypeName(right), GetTypeName(left));
+    return ERROR_RESULT(message, lineNumber);
 }
 
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
@@ -329,7 +333,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     size_t leftLength;
     Type leftType;
     GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->left, &leftType)),
+        HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true)),
         left, leftLength);
 
     const char* operator;
@@ -342,10 +346,12 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     size_t rightLength;
     Type rightType;
     GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->right, &rightType)),
+        HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true)),
         right, rightLength);
 
     StreamRewind(outputText, leftLength + operatorLength + rightLength);
+
+    bool textWritten = false;
 
     switch (in->operator.type)
     {
@@ -374,7 +380,11 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             if (in->operator.type == Equals)
                 break;
 
-            break;
+            StreamWrite(outputText, left, leftLength);
+            StreamWrite(outputText, operator, operatorLength);
+            StreamWrite(outputText, right, rightLength);
+
+            textWritten = true;
         }
 
         case Plus:
@@ -420,19 +430,24 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         default: assert(0);
     }
 
-    StreamWrite(outputText, left, leftLength);
-    StreamWrite(outputText, operator, operatorLength);
-    StreamWrite(outputText, right, rightLength);
+    if (!textWritten)
+    {
+        StreamWrite(outputText, left, leftLength);
+        StreamWrite(outputText, operator, operatorLength);
+        StreamWrite(outputText, right, rightLength);
+    }
 
     WRITE_LITERAL(")");
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExpression(const ExprPtr* in, Type* outType)
+static Result GenerateExpression(const ExprPtr* in, Type* outType, const bool expectingExpression)
 {
     switch (in->type)
     {
         case NoExpression:
+            if (expectingExpression)
+                assert(0);
             return SUCCESS_RESULT;
         case BinaryExpression:
             return GenerateBinaryExpression(in->ptr, outType);
@@ -448,7 +463,7 @@ static Result GenerateExpression(const ExprPtr* in, Type* outType)
 static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {
     Type type;
-    const Result result = GenerateExpression(&in->expr, &type);
+    const Result result = GenerateExpression(&in->expr, &type, false);
     WRITE_LITERAL(";");
     return result;
 }
@@ -488,25 +503,27 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
     assert(in->identifier.type == Identifier);
 
-    WRITE_TEXT(in->identifier.text);
-    WRITE_LITERAL("=");
-
-    if (in->initializer.type == NoExpression)
-        WRITE_LITERAL("0");
-    else
-    {
-        Type initializerType;
-        HANDLE_ERROR(GenerateExpression(&in->initializer, &initializerType));
-        HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->type.lineNumber));
-    }
-
     if (!AddSymbol(in->identifier.text, type))
-    {
-        return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text),
-                            in->identifier.lineNumber);
-    }
+        return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text), in->identifier.lineNumber);
 
-    WRITE_LITERAL(";");
+    ExprPtr initializer;
+    LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
+    if (in->initializer.type == NoExpression)
+    {
+        if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
+            initializer = (ExprPtr){&zero, LiteralExpression};
+        else
+            return ERROR_RESULT(AllocateString("Variable of type \"%s\" must be initialized", GetTypeName(type)),
+                                in->identifier.lineNumber);
+    }
+    else
+        initializer = in->initializer;
+
+    LiteralExpr literal = {in->identifier};
+    const Token equals = {Equals, in->identifier.lineNumber, NULL};
+    BinaryExpr binary = {(ExprPtr){&literal, LiteralExpression}, equals, initializer};
+    const ExpressionStmt stmt = {(ExprPtr){&binary, BinaryExpression}};
+    HANDLE_ERROR(GenerateExpressionStatement(&stmt));
 
     return SUCCESS_RESULT;
 }
