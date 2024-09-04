@@ -609,6 +609,8 @@ static Result GenerateStatement(const StmtPtr* in)
             return GenerateSectionStatement(in->ptr);
         case VariableDeclaration:
             return GenerateVariableDeclaration(in->ptr);
+        case BlockStatement:
+            return GenerateBlockStatement(in->ptr);
         default:
             assert(0);
     }

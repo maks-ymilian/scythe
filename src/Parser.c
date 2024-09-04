@@ -358,6 +358,10 @@ static Result ParseStatement(StmtPtr* out)
     if (result.success || result.hasError)
         return result;
 
+    result = ParseBlockStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
     result = ParseExpressionStatement(out);
     return result;
 }
