@@ -248,7 +248,8 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         case StringLiteral:
         {
             WRITE_LITERAL("\"");
-            WRITE_TEXT(literal.text);
+            if (literal.text[0] != '\0')
+                WRITE_TEXT(literal.text);
             WRITE_LITERAL("\"");
             *outType = GetKnownType("string");
             return SUCCESS_RESULT;
