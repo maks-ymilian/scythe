@@ -122,6 +122,8 @@ static void FreeTables()
     for (int i = 0; i < typeNames.length; ++i)
         free(*(char**)typeNames.array[i]);
     FreeArray(&typeNames);
+
+    FreeArray(&symbolsAddedThisScope);
 }
 
 static void InitTables()
