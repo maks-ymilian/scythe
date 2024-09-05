@@ -599,7 +599,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
-    WRITE_LITERAL(")");
+    WRITE_LITERAL(");");
 
     ClearSymbolsAddedInThisScope();
 
