@@ -289,6 +289,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
                 return ERROR_RESULT(AllocateString("Unknown identifier \"%s\"", name), literal.lineNumber);
 
             *outType = symbol->type;
+            WRITE_LITERAL("var_");
             WRITE_TEXT(name);
             return SUCCESS_RESULT;
         }
