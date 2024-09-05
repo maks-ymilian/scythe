@@ -530,7 +530,7 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {
     Type type;
     const Result result = GenerateExpression(&in->expr, &type, false);
-    WRITE_LITERAL(";");
+    WRITE_LITERAL(";\n");
     return result;
 }
 
@@ -598,14 +598,14 @@ static Result GenerateStatement(const StmtPtr* in);
 
 static Result GenerateBlockStatement(const BlockStmt* in)
 {
-    WRITE_LITERAL("(");
+    WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
     {
         const StmtPtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", ((SectionStmt*)stmt->ptr)->type.lineNumber);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
-    WRITE_LITERAL(");");
+    WRITE_LITERAL(");\n");
 
     ClearSymbolsAddedInThisScope();
 
