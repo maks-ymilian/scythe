@@ -51,6 +51,8 @@ static Map symbolTable;
 
 static MemoryStream* outputText;
 
+static Array symbolsAddedThisScope;
+
 static bool AddType(const char* name, const MetaType metaType)
 {
     Type type;
@@ -80,11 +82,29 @@ static const char* GetTypeName(const Type type)
     return *(char**)typeNames.array[type.id];
 }
 
+static void ClearSymbolsAddedInThisScope()
+{
+    for (size_t i = 0; i < symbolsAddedThisScope.length; ++i)
+    {
+        char* name = *(char**)symbolsAddedThisScope.array[i];
+        assert(MapRemove(&symbolTable, name));
+        free(name);
+    }
+    ArrayClear(&symbolsAddedThisScope);
+}
+
 static bool AddSymbol(const char* name, const Type type)
 {
     SymbolAttributes attributes;
     attributes.type = type;
-    return MapAdd(&symbolTable, name, &attributes);
+    const bool success = MapAdd(&symbolTable, name, &attributes);
+
+    const int nameLength = strlen(name);
+    char* nameCopy = malloc(nameLength + 1);
+    memcpy(nameCopy, name, nameLength + 1);
+    ArrayAdd(&symbolsAddedThisScope, &nameCopy);
+
+    return success;
 }
 
 static SymbolAttributes GetKnownSymbol(const char* name)
@@ -109,6 +129,7 @@ static void InitTables()
     symbolTable = AllocateMap(sizeof(SymbolAttributes));
     types = AllocateMap(sizeof(Type));
     typeNames = AllocateArray(sizeof(char*));
+    symbolsAddedThisScope = AllocateArray(sizeof(char*));
 
     bool success = AddType("int", Primitive);
     assert(success);
@@ -579,6 +600,8 @@ static Result GenerateBlockStatement(const BlockStmt* in)
         HANDLE_ERROR(GenerateStatement(stmt));
     }
     WRITE_LITERAL(")");
+
+    ClearSymbolsAddedInThisScope();
 
     return SUCCESS_RESULT;
 }
