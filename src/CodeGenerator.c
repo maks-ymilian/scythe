@@ -53,6 +53,8 @@ static MemoryStream* outputText;
 
 static Array symbolsAddedThisScope;
 
+static Map includedSections;
+
 static bool AddType(const char* name, const MetaType metaType)
 {
     Type type;
@@ -124,6 +126,7 @@ static void FreeTables()
     FreeArray(&typeNames);
 
     FreeArray(&symbolsAddedThisScope);
+    FreeMap(&includedSections);
 }
 
 static void InitTables()
@@ -132,6 +135,7 @@ static void InitTables()
     types = AllocateMap(sizeof(Type));
     typeNames = AllocateArray(sizeof(char*));
     symbolsAddedThisScope = AllocateArray(sizeof(char*));
+    includedSections = AllocateMap(0);
 
     bool success = AddType("int", Primitive);
     assert(success);
@@ -598,7 +602,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     for (int i = 0; i < in->statements.length; ++i)
     {
         const StmtPtr* stmt = in->statements.array[i];
-        if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", 69420);
+        if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", ((SectionStmt*)stmt->ptr)->type.lineNumber);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
     WRITE_LITERAL(");");
@@ -617,6 +621,9 @@ static Result GenerateSectionStatement(const SectionStmt* in)
         in->type.type != Serialize &&
         in->type.type != GFX)
         assert(0);
+
+    if (!MapAdd(&includedSections, GetTokenTypeString(in->type.type), NULL))
+        return ERROR_RESULT("Duplicate sections are not allowed", in->type.lineNumber);
 
     WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
