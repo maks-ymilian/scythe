@@ -228,5 +228,7 @@ bool MapRemove(Map* map, const char* key)
     free(node->value);
     free(node);
 
+    map->elementCount--;
+
     return true;
 }
