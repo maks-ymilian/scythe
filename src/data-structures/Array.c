@@ -53,8 +53,14 @@ void FreeArray(const Array* array)
 {
     assert(array->array != NULL);
     for (int i = 0; i < array->length; ++i)
-    {
         free(array->array[i]);
-    }
     free(array->array);
+}
+
+void ArrayClear(Array* array)
+{
+    assert(array->array != NULL);
+    for (int i = 0; i < array->length; ++i)
+        free(array->array[i]);
+    array->length = 0;
 }
