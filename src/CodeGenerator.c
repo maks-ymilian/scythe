@@ -520,7 +520,7 @@ static Result GenerateExpression(const NodePtr* in, Type* outType, const bool ex
 {
     switch (in->type)
     {
-        case NoExpression:
+        case NullNode:
             if (expectingExpression)
                 assert(0);
             return SUCCESS_RESULT;
@@ -591,7 +591,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
-    if (in->initializer.type == NoExpression)
+    if (in->initializer.type == NullNode)
     {
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
             initializer = (NodePtr){&zero, LiteralExpression};

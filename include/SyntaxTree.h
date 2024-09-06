@@ -5,7 +5,7 @@
 
 typedef enum
 {
-    NoExpression,
+    NullNode,
     BinaryExpression,
     UnaryExpression,
     LiteralExpression,

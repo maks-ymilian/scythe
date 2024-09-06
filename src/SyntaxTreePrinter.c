@@ -9,7 +9,7 @@ static void PrintLiteralExpr(const LiteralExpr* expr);
 
 static void PrintExpr(const NodePtr expr)
 {
-    if (expr.type == NoExpression)
+    if (expr.type == NullNode)
         return;
 
     assert(expr.ptr != NULL);
@@ -82,7 +82,7 @@ static void PrintStmt(const NodePtr stmt)
                    GetTokenTypeString(varDeclStmt->type.type),
                    varDeclStmt->identifier.text);
 
-            if (varDeclStmt->initializer.type != NoExpression)
+            if (varDeclStmt->initializer.type != NullNode)
             {
                 printf(" = ");
                 PrintExpr(varDeclStmt->initializer);

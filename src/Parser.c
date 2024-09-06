@@ -276,7 +276,7 @@ static Result ParseExpressionStatement(NodePtr* out)
     HANDLE_ERROR(ParseExpression(&expr),
                  {
                  expr.ptr = NULL;
-                 expr.type = NoExpression;
+                 expr.type = NullNode;
                  noExpression = true;
                  });
     const Result expressionResult = result;
@@ -390,7 +390,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     if (name == NULL)
         return ERROR_RESULT_LINE("Expected identifier after type");
 
-    NodePtr initializer = {NULL, NoExpression};
+    NodePtr initializer = {NULL, NullNode};
     const Token* equals = MatchOne(Equals);
     if (equals != NULL)
     {
@@ -439,7 +439,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected code block after function declaration"));
 
-    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, AllocateArray(sizeof(NodePtr)), block});
+    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, params, block});
     *out = (NodePtr){funcDecl, FunctionDeclaration};
 
     return SUCCESS_RESULT;
