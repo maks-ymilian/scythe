@@ -136,6 +136,35 @@ static Result ParsePrimary(ExprPtr* out)
     }
 }
 
+static Result ParseCommaSeparatedList(Array* outArray)
+{
+    long SET_LINE_NUMBER;
+
+    *outArray = AllocateArray(sizeof(ExprPtr));
+
+    ExprPtr firstExpr;
+    bool found = true;
+    HANDLE_ERROR(ParseExpression(&firstExpr), found = false);
+    if (found)
+    {
+        ArrayAdd(outArray, &firstExpr);
+        while (true)
+        {
+            SET_LINE_NUMBER;
+            if (MatchOne(Comma) == NULL)
+                break;
+
+            ExprPtr expr;
+            HANDLE_ERROR(ParseExpression(&expr),
+                         return ERROR_RESULT_LINE_TOKEN("Expected expression after \"#t\"", Comma))
+
+            ArrayAdd(outArray, &expr);
+        }
+    }
+
+    return SUCCESS_RESULT;
+}
+
 static Result ParseFunctionCall(ExprPtr* out)
 {
     long SET_LINE_NUMBER
@@ -147,28 +176,9 @@ static Result ParseFunctionCall(ExprPtr* out)
     assert(identifier != NULL);
     assert(MatchOne(LeftBracket) != NULL);
 
-    Array params = AllocateArray(sizeof(ExprPtr));
-
-    ExprPtr firstExpr;
-    bool found = true;
-    HANDLE_ERROR(ParseExpression(&firstExpr), found = false);
-    if (found)
-    {
-        ArrayAdd(&params, &firstExpr);
-        while (true)
-        {
-            SET_LINE_NUMBER;
-            if (MatchOne(Comma) == NULL)
-                break;
-
-            ExprPtr expr;
-            HANDLE_ERROR(ParseExpression(&expr),
-                         return ERROR_RESULT_LINE_TOKEN("Expected expression after \"#t\"", Comma))
-
-            ArrayAdd(&params, &expr);
-        }
-    }
-
+    Array params;
+    HANDLE_ERROR(ParseCommaSeparatedList(&params), assert(0));
+s
     SET_LINE_NUMBER;
     if (MatchOne(RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
@@ -345,39 +355,6 @@ static Token* MatchType()
     return type;
 }
 
-static Result ParseFunctionDeclaration(StmtPtr* out)
-{
-    long SET_LINE_NUMBER
-
-    if (PeekOne(Identifier, 1) == NULL || PeekOne(LeftBracket, 2) == NULL)
-        return NOT_FOUND_RESULT;
-
-    const Token* type = MatchType();
-    assert(type != NULL);
-
-    const Token* identifier = MatchOne(Identifier);
-    assert(identifier != NULL);
-
-    SET_LINE_NUMBER;
-    if (MatchOne(LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
-
-    Array parameters = AllocateArray(sizeof(VarDeclStmt));
-
-    SET_LINE_NUMBER;
-    if (MatchOne(RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
-
-    StmtPtr block;
-    HANDLE_ERROR(ParseBlockStatement(&block),
-        return ERROR_RESULT_LINE("Expected code block after function declaration"));
-
-    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, parameters, block});
-    *out = (StmtPtr){funcDecl, FunctionDeclaration};
-
-    return SUCCESS_RESULT;
-}
-
 static Result ParseSectionStatement(StmtPtr* out)
 {
     long SET_LINE_NUMBER
@@ -400,7 +377,7 @@ static Result ParseSectionStatement(StmtPtr* out)
     return SUCCESS_RESULT;
 }
 
-static Result ParseVariableDeclaration(StmtPtr* out)
+static Result ParseVariableDeclaration(StmtPtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
@@ -421,12 +398,50 @@ static Result ParseVariableDeclaration(StmtPtr* out)
                      return ERROR_RESULT_LINE("Expected expression"))
     }
 
-    const Token* semicolon = MatchOne(Semicolon);
-    if (semicolon == NULL)
-        return ERROR_RESULT_LINE("Expected \";\"");
+    if (expectSemicolon)
+    {
+        const Token* semicolon = MatchOne(Semicolon);
+        if (semicolon == NULL)
+            return ERROR_RESULT_LINE("Expected \";\"");
+    }
 
     VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt){*type, *name, initializer});
     *out = (StmtPtr){varDecl, VariableDeclaration};
+    return SUCCESS_RESULT;
+}
+
+static Result ParseFunctionDeclaration(StmtPtr* out)
+{
+    long SET_LINE_NUMBER
+
+    if (PeekOne(Identifier, 1) == NULL || PeekOne(LeftBracket, 2) == NULL)
+        return NOT_FOUND_RESULT;
+
+    const Token* type = MatchType();
+    assert(type != NULL);
+
+    const Token* identifier = MatchOne(Identifier);
+    assert(identifier != NULL);
+
+    SET_LINE_NUMBER;
+    if (MatchOne(LeftBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
+
+    Array params; {
+        HANDLE_ERROR(ParseCommaSeparatedList(&params), assert(0));
+    }
+
+    SET_LINE_NUMBER;
+    if (MatchOne(RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+
+    StmtPtr block;
+    HANDLE_ERROR(ParseBlockStatement(&block),
+                 return ERROR_RESULT_LINE("Expected code block after function declaration"));
+
+    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, AllocateArray(sizeof(StmtPtr)), block});
+    *out = (StmtPtr){funcDecl, FunctionDeclaration};
+
     return SUCCESS_RESULT;
 }
 
@@ -438,7 +453,7 @@ static Result ParseStatement(StmtPtr* out)
     if (result.success || result.hasError)
         return result;
 
-    result = ParseVariableDeclaration(out);
+    result = ParseVariableDeclaration(out, true);
     if (result.success || result.hasError)
         return result;
 

@@ -211,7 +211,7 @@ static void FreeStmt(const StmtPtr stmt)
             const FuncDeclStmt* funcDeclStmt = stmt.ptr;
 
             for (int i = 0; i < funcDeclStmt->parameters.length; ++i)
-                FreeStmt((StmtPtr){(VarDeclStmt*)funcDeclStmt->parameters.array[i], VariableDeclaration});
+                FreeStmt(*(StmtPtr*)funcDeclStmt->parameters.array[i]);
             FreeArray(&funcDeclStmt->parameters);
 
             free(stmt.ptr);
