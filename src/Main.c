@@ -25,7 +25,7 @@ static void Compile(const char* source)
     Array tokens;
     HANDLE_ERROR(Scan(source, &tokens), "Scan error");
 
-    StmtPtr syntaxTree;
+    NodePtr syntaxTree;
     HANDLE_ERROR(Parse(&tokens, &syntaxTree), "Parse error");
 
     uint8_t* outputCode = NULL;

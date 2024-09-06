@@ -2,4 +2,4 @@
 
 #include "SyntaxTree.h"
 
-void PrintSyntaxTree(const StmtPtr* root);
+void PrintSyntaxTree(const NodePtr* root);

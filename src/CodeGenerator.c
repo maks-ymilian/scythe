@@ -312,7 +312,7 @@ static Result UnaryOperatorErrorResult(const Token operator, const Type type)
                               operator.lineNumber, operator.type);
 }
 
-static Result GenerateExpression(const ExprPtr* in, Type* outType, const bool expectingExpression);
+static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
 
 static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 {
@@ -516,7 +516,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExpression(const ExprPtr* in, Type* outType, const bool expectingExpression)
+static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression)
 {
     switch (in->type)
     {
@@ -589,12 +589,12 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     if (!AddSymbol(in->identifier.text, type))
         return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text), in->identifier.lineNumber);
 
-    ExprPtr initializer;
+    NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
     if (in->initializer.type == NoExpression)
     {
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
-            initializer = (ExprPtr){&zero, LiteralExpression};
+            initializer = (NodePtr){&zero, LiteralExpression};
         else
             return ERROR_RESULT(AllocateString("Variable of type \"%s\" must be initialized", GetTypeName(type)),
                                 in->identifier.lineNumber);
@@ -604,21 +604,21 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
     LiteralExpr literal = {in->identifier};
     const Token equals = {Equals, in->identifier.lineNumber, NULL};
-    BinaryExpr binary = {(ExprPtr){&literal, LiteralExpression}, equals, initializer};
-    const ExpressionStmt stmt = {(ExprPtr){&binary, BinaryExpression}};
+    BinaryExpr binary = {(NodePtr){&literal, LiteralExpression}, equals, initializer};
+    const ExpressionStmt stmt = {(NodePtr){&binary, BinaryExpression}};
     HANDLE_ERROR(GenerateExpressionStatement(&stmt));
 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStatement(const StmtPtr* in);
+static Result GenerateStatement(const NodePtr* in);
 
 static Result GenerateBlockStatement(const BlockStmt* in)
 {
     WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
     {
-        const StmtPtr* stmt = in->statements.array[i];
+        const NodePtr* stmt = in->statements.array[i];
         if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", ((SectionStmt*)stmt->ptr)->type.lineNumber);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
@@ -648,7 +648,7 @@ static Result GenerateSectionStatement(const SectionStmt* in)
     return GenerateBlockStatement(in->block.ptr);
 }
 
-static Result GenerateStatement(const StmtPtr* in)
+static Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
@@ -671,7 +671,7 @@ Result GenerateProgram(const Program* in)
 {
     for (int i = 0; i < in->statements.length; ++i)
     {
-        const StmtPtr* stmt = in->statements.array[i];
+        const NodePtr* stmt = in->statements.array[i];
         assert(stmt->type != ProgramRoot);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
@@ -685,7 +685,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 
     outputText = AllocateMemoryStream();
 
-    const StmtPtr stmt = {syntaxTree, ProgramRoot};
+    const NodePtr stmt = {syntaxTree, ProgramRoot};
     // PrintSyntaxTree(&stmt);
 
     const Result result = GenerateProgram(syntaxTree);

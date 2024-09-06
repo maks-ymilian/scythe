@@ -7,7 +7,7 @@ static void PrintBinaryExpr(const BinaryExpr* expr);
 static void PrintUnaryExpr(const UnaryExpr* expr);
 static void PrintLiteralExpr(const LiteralExpr* expr);
 
-static void PrintExpr(const ExprPtr expr)
+static void PrintExpr(const NodePtr expr)
 {
     if (expr.type == NoExpression)
         return;
@@ -50,7 +50,7 @@ static void PrintLiteralExpr(const LiteralExpr* expr)
     printf("%s", expr->value.text);
 }
 
-static void PrintStmt(const StmtPtr stmt)
+static void PrintStmt(const NodePtr stmt)
 {
     assert(stmt.ptr != NULL);
 
@@ -60,7 +60,7 @@ static void PrintStmt(const StmtPtr stmt)
         {
             const Program* program = stmt.ptr;
             for (int i = 0; i < program->statements.length; ++i)
-                PrintStmt(*(StmtPtr*)program->statements.array[i]);
+                PrintStmt(*(NodePtr*)program->statements.array[i]);
             return;
         }
         case Section:
@@ -101,7 +101,7 @@ static void PrintStmt(const StmtPtr stmt)
     }
 }
 
-void PrintSyntaxTree(const StmtPtr* root)
+void PrintSyntaxTree(const NodePtr* root)
 {
     PrintStmt(*root);
     printf("\n");

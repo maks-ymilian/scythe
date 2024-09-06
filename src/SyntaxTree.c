@@ -87,7 +87,7 @@ Program* AllocProgram(const Program program)
     return new;
 }
 
-static void FreeExpr(const ExprPtr expr)
+static void FreeExpr(const NodePtr expr)
 {
     switch (expr.type)
     {
@@ -131,7 +131,7 @@ static void FreeExpr(const ExprPtr expr)
 
             FreeToken(&funcCall->identifier);
             for (int i = 0; i < funcCall->parameters.length; ++i)
-                FreeExpr(*(ExprPtr*)funcCall->parameters.array[i]);
+                FreeExpr(*(NodePtr*)funcCall->parameters.array[i]);
             FreeArray(&funcCall->parameters);
 
             free(expr.ptr)
@@ -142,7 +142,7 @@ static void FreeExpr(const ExprPtr expr)
     }
 }
 
-static void FreeStmt(const StmtPtr stmt)
+static void FreeStmt(const NodePtr stmt)
 {
     assert(stmt.ptr != NULL);
 
@@ -187,7 +187,7 @@ static void FreeStmt(const StmtPtr stmt)
             const Program* program = stmt.ptr;
 
             for (int i = 0; i < program->statements.length; ++i)
-                FreeStmt(*(StmtPtr*)program->statements.array[i]);
+                FreeStmt(*(NodePtr*)program->statements.array[i]);
             FreeArray(&program->statements);
 
             free(stmt.ptr);
@@ -199,7 +199,7 @@ static void FreeStmt(const StmtPtr stmt)
             const BlockStmt* blockStmt = stmt.ptr;
 
             for (int i = 0; i < blockStmt->statements.length; ++i)
-                FreeStmt(*(StmtPtr*)blockStmt->statements.array[i]);
+                FreeStmt(*(NodePtr*)blockStmt->statements.array[i]);
             FreeArray(&blockStmt->statements);
 
             free(stmt.ptr);
@@ -211,7 +211,7 @@ static void FreeStmt(const StmtPtr stmt)
             const FuncDeclStmt* funcDeclStmt = stmt.ptr;
 
             for (int i = 0; i < funcDeclStmt->parameters.length; ++i)
-                FreeStmt(*(StmtPtr*)funcDeclStmt->parameters.array[i]);
+                FreeStmt(*(NodePtr*)funcDeclStmt->parameters.array[i]);
             FreeArray(&funcDeclStmt->parameters);
 
             free(stmt.ptr);
@@ -221,7 +221,7 @@ static void FreeStmt(const StmtPtr stmt)
     }
 }
 
-void FreeSyntaxTree(const StmtPtr root)
+void FreeSyntaxTree(const NodePtr root)
 {
     FreeStmt(root);
 }

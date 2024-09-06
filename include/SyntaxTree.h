@@ -10,20 +10,27 @@ typedef enum
     UnaryExpression,
     LiteralExpression,
     FunctionCallExpression,
-} ExprType;
+
+    Section,
+    BlockStatement,
+    ExpressionStatement,
+    VariableDeclaration,
+    FunctionDeclaration,
+    ProgramRoot,
+} NodeType;
 
 typedef struct
 {
     void* ptr;
-    ExprType type;
-} ExprPtr;
+    NodeType type;
+} NodePtr;
 
 
 typedef struct
 {
-    ExprPtr left;
+    NodePtr left;
     Token operator;
-    ExprPtr right;
+    NodePtr right;
 } BinaryExpr;
 
 BinaryExpr* AllocBinary(BinaryExpr expr);
@@ -32,7 +39,7 @@ BinaryExpr* AllocBinary(BinaryExpr expr);
 typedef struct
 {
     Token operator;
-    ExprPtr expression;
+    NodePtr expression;
 } UnaryExpr;
 
 UnaryExpr* AllocUnary(UnaryExpr expr);
@@ -55,23 +62,6 @@ typedef struct
 LiteralExpr* AllocLiteral(LiteralExpr expr);
 
 
-typedef enum
-{
-    Section,
-    BlockStatement,
-    ExpressionStatement,
-    VariableDeclaration,
-    FunctionDeclaration,
-    ProgramRoot,
-} StmtType;
-
-typedef struct
-{
-    void* ptr;
-    StmtType type;
-} StmtPtr;
-
-
 typedef struct
 {
     Array statements;
@@ -83,7 +73,7 @@ BlockStmt* AllocBlockStmt(BlockStmt stmt);
 typedef struct
 {
     Token type;
-    StmtPtr block;
+    NodePtr block;
 } SectionStmt;
 
 SectionStmt* AllocSectionStmt(SectionStmt stmt);
@@ -91,7 +81,7 @@ SectionStmt* AllocSectionStmt(SectionStmt stmt);
 
 typedef struct
 {
-    ExprPtr expr;
+    NodePtr expr;
 } ExpressionStmt;
 
 ExpressionStmt* AllocExpressionStmt(ExpressionStmt stmt);
@@ -101,7 +91,7 @@ typedef struct
 {
     Token type;
     Token identifier;
-    ExprPtr initializer;
+    NodePtr initializer;
 } VarDeclStmt;
 
 VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
@@ -112,7 +102,7 @@ typedef struct
     Token type;
     Token identifier;
     Array parameters;
-    StmtPtr block;
+    NodePtr block;
 } FuncDeclStmt;
 
 FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);
@@ -126,4 +116,4 @@ typedef struct
 Program* AllocProgram(Program program);
 
 
-void FreeSyntaxTree(StmtPtr root);
+void FreeSyntaxTree(NodePtr root);

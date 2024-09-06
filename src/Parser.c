@@ -22,11 +22,11 @@ if (!result.success)\
 
 #define COMMA ,
 #define DEF_LEFT_BINARY_PRODUCTION(functionName, nextFunction, operators, length)\
-static Result functionName(ExprPtr* out)\
+static Result functionName(NodePtr* out)\
 {\
     long SET_LINE_NUMBER\
 \
-    ExprPtr left;\
+    NodePtr left;\
     HANDLE_ERROR(nextFunction(&left),\
         return result;);\
 \
@@ -34,13 +34,13 @@ static Result functionName(ExprPtr* out)\
     const Token* operator = Match(validOperators, length);\
     while (operator != NULL)\
     {\
-        ExprPtr right;\
+        NodePtr right;\
         SET_LINE_NUMBER\
         HANDLE_ERROR(nextFunction(&right),\
             return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)\
 \
         BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});\
-        left = (ExprPtr){binary, BinaryExpression};\
+        left = (NodePtr){binary, BinaryExpression};\
 \
         operator = Match(validOperators, length);\
     }\
@@ -101,9 +101,9 @@ static Token* Peek(const TokenType* types, const int length, const int offset)
 
 static Token* PeekOne(const TokenType type, const int offset) { return Peek((TokenType[]){type}, 1, offset); }
 
-static Result ParseExpression(ExprPtr* out);
+static Result ParseExpression(NodePtr* out);
 
-static Result ParsePrimary(ExprPtr* out)
+static Result ParsePrimary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -129,7 +129,7 @@ static Result ParsePrimary(ExprPtr* out)
         case Identifier:
         {
             LiteralExpr* literal = AllocLiteral((LiteralExpr){*token});
-            *out = (ExprPtr){literal, LiteralExpression};
+            *out = (NodePtr){literal, LiteralExpression};
             return SUCCESS_RESULT;
         }
         default: assert(0);
@@ -140,9 +140,9 @@ static Result ParseCommaSeparatedList(Array* outArray)
 {
     long SET_LINE_NUMBER;
 
-    *outArray = AllocateArray(sizeof(ExprPtr));
+    *outArray = AllocateArray(sizeof(NodePtr));
 
-    ExprPtr firstExpr;
+    NodePtr firstExpr;
     bool found = true;
     HANDLE_ERROR(ParseExpression(&firstExpr), found = false);
     if (found)
@@ -154,7 +154,7 @@ static Result ParseCommaSeparatedList(Array* outArray)
             if (MatchOne(Comma) == NULL)
                 break;
 
-            ExprPtr expr;
+            NodePtr expr;
             HANDLE_ERROR(ParseExpression(&expr),
                          return ERROR_RESULT_LINE_TOKEN("Expected expression after \"#t\"", Comma))
 
@@ -165,7 +165,7 @@ static Result ParseCommaSeparatedList(Array* outArray)
     return SUCCESS_RESULT;
 }
 
-static Result ParseFunctionCall(ExprPtr* out)
+static Result ParseFunctionCall(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -178,18 +178,18 @@ static Result ParseFunctionCall(ExprPtr* out)
 
     Array params;
     HANDLE_ERROR(ParseCommaSeparatedList(&params), assert(0));
-s
+
     SET_LINE_NUMBER;
     if (MatchOne(RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
 
     FuncCallExpr* func = AllocFuncCall((FuncCallExpr){*identifier, params});
-    *out = (ExprPtr){func, FunctionCallExpression};
+    *out = (NodePtr){func, FunctionCallExpression};
 
     return SUCCESS_RESULT;
 }
 
-static Result ParseUnary(ExprPtr* out)
+static Result ParseUnary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -198,13 +198,13 @@ static Result ParseUnary(ExprPtr* out)
         return ParseFunctionCall(out);
 
     UnaryExpr* unary = AllocUnary((UnaryExpr){*operator});
-    ExprPtr expr;
+    NodePtr expr;
     SET_LINE_NUMBER
     if (!ParseUnary(&expr).success)
         return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
     unary->expression = expr;
 
-    *out = (ExprPtr){unary, UnaryExpression};
+    *out = (NodePtr){unary, UnaryExpression};
     return SUCCESS_RESULT;
 }
 
@@ -214,15 +214,15 @@ DEF_LEFT_BINARY_PRODUCTION(ParseComparison, ParseTerm,
                            RightAngleBracket COMMA RightAngleEquals COMMA LeftAngleBracket COMMA LeftAngleEquals, 4)
 DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseComparison, EqualsEquals COMMA ExclamationEquals, 2)
 
-static Result ParseAssignment(ExprPtr* out)
+static Result ParseAssignment(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    ExprPtr left;
+    NodePtr left;
     HANDLE_ERROR(ParseEquality(&left),
                  return result);
 
-    Array exprArray = AllocateArray(sizeof(ExprPtr));
+    Array exprArray = AllocateArray(sizeof(NodePtr));
     ArrayAdd(&exprArray, &left);
 
     const TokenType validOperators[5] = {Equals, PlusEquals, MinusEquals, AsteriskEquals, SlashEquals};
@@ -232,7 +232,7 @@ static Result ParseAssignment(ExprPtr* out)
     {
         ArrayAdd(&operatorArray, operator);
 
-        ExprPtr right;
+        NodePtr right;
         SET_LINE_NUMBER
         HANDLE_ERROR(ParseEquality(&right),
                      return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type));
@@ -242,15 +242,15 @@ static Result ParseAssignment(ExprPtr* out)
         operator = Match(validOperators, 5);
     }
 
-    ExprPtr* expr1 = exprArray.array[exprArray.length - 1];
+    NodePtr* expr1 = exprArray.array[exprArray.length - 1];
 
     for (int i = exprArray.length - 2; i >= 0; --i)
     {
         operator = operatorArray.array[i];
-        const ExprPtr* expr2 = exprArray.array[i];
+        const NodePtr* expr2 = exprArray.array[i];
 
         BinaryExpr* binaryExpr = AllocBinary((BinaryExpr){*expr2, *operator, *expr1});
-        *expr1 = (ExprPtr){binaryExpr, BinaryExpression};
+        *expr1 = (NodePtr){binaryExpr, BinaryExpression};
     }
 
     *out = *expr1;
@@ -260,18 +260,18 @@ static Result ParseAssignment(ExprPtr* out)
     return SUCCESS_RESULT;
 }
 
-static Result ParseExpression(ExprPtr* out)
+static Result ParseExpression(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     return ParseAssignment(out);
 }
 
-static Result ParseExpressionStatement(StmtPtr* out)
+static Result ParseExpressionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    ExprPtr expr;
+    NodePtr expr;
     bool noExpression = false;
     HANDLE_ERROR(ParseExpression(&expr),
                  {
@@ -290,13 +290,13 @@ static Result ParseExpressionStatement(StmtPtr* out)
     }
 
     const ExpressionStmt* expressionStmt = AllocExpressionStmt((ExpressionStmt){expr});
-    *out = (StmtPtr){(void*)expressionStmt, ExpressionStatement};
+    *out = (NodePtr){(void*)expressionStmt, ExpressionStatement};
     return SUCCESS_RESULT;
 }
 
-static Result ParseStatement(StmtPtr* out);
+static Result ParseStatement(NodePtr* out);
 
-static Result ParseBlockStatement(StmtPtr* out)
+static Result ParseBlockStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -304,11 +304,11 @@ static Result ParseBlockStatement(StmtPtr* out)
     if (openingBrace == NULL)
         return NOT_FOUND_RESULT;
 
-    Array statements = AllocateArray(sizeof(StmtPtr));
+    Array statements = AllocateArray(sizeof(NodePtr));
     Result exitResult = {0, 0, NULL};
     while (true)
     {
-        StmtPtr stmt;
+        NodePtr stmt;
         SET_LINE_NUMBER
         bool noStatement = false;
         HANDLE_ERROR(ParseStatement(&stmt),
@@ -333,7 +333,7 @@ static Result ParseBlockStatement(StmtPtr* out)
     }
 
     BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
-    *out = (StmtPtr){block, BlockStatement};
+    *out = (NodePtr){block, BlockStatement};
     return SUCCESS_RESULT;
 }
 
@@ -355,7 +355,7 @@ static Token* MatchType()
     return type;
 }
 
-static Result ParseSectionStatement(StmtPtr* out)
+static Result ParseSectionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -367,17 +367,17 @@ static Result ParseSectionStatement(StmtPtr* out)
     if (sectionType == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected section type after \"#t\"", At);
 
-    StmtPtr block;
+    NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected block after section statement"));
     assert(block.type == BlockStatement);
 
     SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, block});
-    *out = (StmtPtr){section, Section};
+    *out = (NodePtr){section, Section};
     return SUCCESS_RESULT;
 }
 
-static Result ParseVariableDeclaration(StmtPtr* out, const bool expectSemicolon)
+static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
@@ -390,7 +390,7 @@ static Result ParseVariableDeclaration(StmtPtr* out, const bool expectSemicolon)
     if (name == NULL)
         return ERROR_RESULT_LINE("Expected identifier after type");
 
-    ExprPtr initializer = {NULL, NoExpression};
+    NodePtr initializer = {NULL, NoExpression};
     const Token* equals = MatchOne(Equals);
     if (equals != NULL)
     {
@@ -406,11 +406,11 @@ static Result ParseVariableDeclaration(StmtPtr* out, const bool expectSemicolon)
     }
 
     VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt){*type, *name, initializer});
-    *out = (StmtPtr){varDecl, VariableDeclaration};
+    *out = (NodePtr){varDecl, VariableDeclaration};
     return SUCCESS_RESULT;
 }
 
-static Result ParseFunctionDeclaration(StmtPtr* out)
+static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -435,17 +435,17 @@ static Result ParseFunctionDeclaration(StmtPtr* out)
     if (MatchOne(RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
 
-    StmtPtr block;
+    NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected code block after function declaration"));
 
-    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, AllocateArray(sizeof(StmtPtr)), block});
-    *out = (StmtPtr){funcDecl, FunctionDeclaration};
+    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, AllocateArray(sizeof(NodePtr)), block});
+    *out = (NodePtr){funcDecl, FunctionDeclaration};
 
     return SUCCESS_RESULT;
 }
 
-static Result ParseStatement(StmtPtr* out)
+static Result ParseStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
@@ -469,11 +469,11 @@ static Result ParseStatement(StmtPtr* out)
     return result;
 }
 
-static Result ParseProgram(StmtPtr* out)
+static Result ParseProgram(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    Array stmtArray = AllocateArray(sizeof(StmtPtr));
+    Array stmtArray = AllocateArray(sizeof(NodePtr));
 
     while (true)
     {
@@ -481,7 +481,7 @@ static Result ParseProgram(StmtPtr* out)
         if (end != NULL)
             break;
 
-        StmtPtr stmt;
+        NodePtr stmt;
         SET_LINE_NUMBER
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement"))
@@ -493,15 +493,15 @@ static Result ParseProgram(StmtPtr* out)
     }
 
     Program* program = AllocProgram((Program){stmtArray});
-    *out = (StmtPtr){program, ProgramRoot};
+    *out = (NodePtr){program, ProgramRoot};
     return SUCCESS_RESULT;
 }
 
-Result Parse(const Array* tokenArray, StmtPtr* outSyntaxTree)
+Result Parse(const Array* tokenArray, NodePtr* outSyntaxTree)
 {
     tokens = *tokenArray;
 
-    StmtPtr program = {NULL};
+    NodePtr program = {NULL};
 
     const Result result = ParseProgram(&program);
     FreeTokenArray(&tokens);
