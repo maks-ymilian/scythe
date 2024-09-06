@@ -91,14 +91,15 @@ static void FreeNode(const NodePtr node)
 {
     switch (node.type)
     {
+        // expressions
         case NullNode: return;
         case BinaryExpression:
         {
-            const BinaryExpr* binary = node.ptr;
+            const BinaryExpr* ptr = node.ptr;
 
-            FreeNode(binary->left);
-            FreeToken(&binary->operator);
-            FreeNode(binary->right);
+            FreeNode(ptr->left);
+            FreeToken(&ptr->operator);
+            FreeNode(ptr->right);
 
             free(node.ptr)
             DEBUG_PRINT("Freeing BinaryExpr\n");
@@ -106,10 +107,10 @@ static void FreeNode(const NodePtr node)
         }
         case UnaryExpression:
         {
-            const UnaryExpr* unary = node.ptr;
+            const UnaryExpr* ptr = node.ptr;
 
-            FreeNode(unary->expression);
-            FreeToken(&unary->operator);
+            FreeNode(ptr->expression);
+            FreeToken(&ptr->operator);
 
             free(node.ptr)
             DEBUG_PRINT("Freeing UnaryExpr\n");
@@ -117,9 +118,9 @@ static void FreeNode(const NodePtr node)
         }
         case LiteralExpression:
         {
-            const LiteralExpr* literal = node.ptr;
+            const LiteralExpr* ptr = node.ptr;
 
-            FreeToken(&literal->value);
+            FreeToken(&ptr->value);
 
             free(node.ptr)
             DEBUG_PRINT("Freeing LiteralExpr\n");
@@ -127,12 +128,12 @@ static void FreeNode(const NodePtr node)
         }
         case FunctionCallExpression:
         {
-            const FuncCallExpr* funcCall = node.ptr;
+            const FuncCallExpr* ptr = node.ptr;
 
-            FreeToken(&funcCall->identifier);
-            for (int i = 0; i < funcCall->parameters.length; ++i)
-                FreeNode(*(NodePtr*)funcCall->parameters.array[i]);
-            FreeArray(&funcCall->parameters);
+            FreeToken(&ptr->identifier);
+            for (int i = 0; i < ptr->parameters.length; ++i)
+                FreeNode(*(NodePtr*)ptr->parameters.array[i]);
+            FreeArray(&ptr->parameters);
 
             free(node.ptr)
             DEBUG_PRINT("Freeing FunctionCallExpression\n");
@@ -143,10 +144,10 @@ static void FreeNode(const NodePtr node)
         case Section:
         {
             DEBUG_PRINT("Freeing SectionStmt\n");
-            const SectionStmt* sectionStmt = node.ptr;
+            const SectionStmt* ptr = node.ptr;
 
-            FreeToken(&sectionStmt->type);
-            FreeNode(sectionStmt->block);
+            FreeToken(&ptr->type);
+            FreeNode(ptr->block);
 
             free(node.ptr);
             return;
@@ -154,9 +155,9 @@ static void FreeNode(const NodePtr node)
         case ExpressionStatement:
         {
             DEBUG_PRINT("Freeing ExpressionStmt\n")
-            const ExpressionStmt* expressionStmt = node.ptr;
+            const ExpressionStmt* ptr = node.ptr;
 
-            FreeNode(expressionStmt->expr);
+            FreeNode(ptr->expr);
 
             free(node.ptr);
             return;
@@ -164,11 +165,11 @@ static void FreeNode(const NodePtr node)
         case VariableDeclaration:
         {
             DEBUG_PRINT("Freeing VarDeclStmt\n");
-            const VarDeclStmt* varDeclStmt = node.ptr;
+            const VarDeclStmt* ptr = node.ptr;
 
-            FreeToken(&varDeclStmt->identifier);
-            FreeToken(&varDeclStmt->type);
-            FreeNode(varDeclStmt->initializer);
+            FreeToken(&ptr->identifier);
+            FreeToken(&ptr->type);
+            FreeNode(ptr->initializer);
 
             free(node.ptr);
             return;
@@ -176,11 +177,11 @@ static void FreeNode(const NodePtr node)
         case ProgramRoot:
         {
             DEBUG_PRINT("Freeing ProgramRoot\n");
-            const Program* program = node.ptr;
+            const Program* ptr = node.ptr;
 
-            for (int i = 0; i < program->statements.length; ++i)
-                FreeNode(*(NodePtr*)program->statements.array[i]);
-            FreeArray(&program->statements);
+            for (int i = 0; i < ptr->statements.length; ++i)
+                FreeNode(*(NodePtr*)ptr->statements.array[i]);
+            FreeArray(&ptr->statements);
 
             free(node.ptr);
             return;
@@ -188,11 +189,11 @@ static void FreeNode(const NodePtr node)
         case BlockStatement:
         {
             DEBUG_PRINT("Freeing BlockStatement\n");
-            const BlockStmt* blockStmt = node.ptr;
+            const BlockStmt* ptr = node.ptr;
 
-            for (int i = 0; i < blockStmt->statements.length; ++i)
-                FreeNode(*(NodePtr*)blockStmt->statements.array[i]);
-            FreeArray(&blockStmt->statements);
+            for (int i = 0; i < ptr->statements.length; ++i)
+                FreeNode(*(NodePtr*)ptr->statements.array[i]);
+            FreeArray(&ptr->statements);
 
             free(node.ptr);
             return;
@@ -200,11 +201,11 @@ static void FreeNode(const NodePtr node)
         case FunctionDeclaration:
         {
             DEBUG_PRINT("Freeing FunctionDeclaration\n");
-            const FuncDeclStmt* funcDeclStmt = node.ptr;
+            const FuncDeclStmt* ptr = node.ptr;
 
-            for (int i = 0; i < funcDeclStmt->parameters.length; ++i)
-                FreeNode(*(NodePtr*)funcDeclStmt->parameters.array[i]);
-            FreeArray(&funcDeclStmt->parameters);
+            for (int i = 0; i < ptr->parameters.length; ++i)
+                FreeNode(*(NodePtr*)ptr->parameters.array[i]);
+            FreeArray(&ptr->parameters);
 
             free(node.ptr);
             return;
