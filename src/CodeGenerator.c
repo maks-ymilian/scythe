@@ -81,6 +81,7 @@ static Type GetKnownType(const char* name)
 
 static const char* GetTypeName(const Type type)
 {
+    assert(type.id < typeNames.length);
     return *(char**)typeNames.array[type.id];
 }
 
@@ -296,6 +297,13 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         default:
             assert(0);
     }
+}
+
+static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
+{
+    WRITE_LITERAL("function call");
+    *outType = GetKnownType("int");
+    return SUCCESS_RESULT;
 }
 
 static Result UnaryOperatorErrorResult(const Token operator, const Type type)
@@ -522,6 +530,8 @@ static Result GenerateExpression(const ExprPtr* in, Type* outType, const bool ex
             return GenerateUnaryExpression(in->ptr, outType);
         case LiteralExpression:
             return GenerateLiteralExpression(in->ptr, outType);
+        case FunctionCallExpression:
+            return GenerateFunctionCallExpression(in->ptr, outType);
         default:
             assert(0);
     }
@@ -533,6 +543,12 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     const Result result = GenerateExpression(&in->expr, &type, false);
     WRITE_LITERAL(";\n");
     return result;
+}
+
+static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
+{
+    WRITE_TEXT("function declaration");
+    return SUCCESS_RESULT;
 }
 
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
@@ -644,6 +660,8 @@ static Result GenerateStatement(const StmtPtr* in)
             return GenerateVariableDeclaration(in->ptr);
         case BlockStatement:
             return GenerateBlockStatement(in->ptr);
+        case FunctionDeclaration:
+            return GenerateFunctionDeclaration(in->ptr);
         default:
             assert(0);
     }

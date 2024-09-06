@@ -32,6 +32,13 @@ UnaryExpr* AllocUnary(const UnaryExpr expr)
     return new;
 }
 
+FuncCallExpr* AllocFuncCall(const FuncCallExpr expr)
+{
+    ALLOCATE(FuncCallExpr, expr);
+    new->identifier = CopyToken(expr.identifier);
+    return new;
+}
+
 LiteralExpr* AllocLiteral(const LiteralExpr expr)
 {
     ALLOCATE(LiteralExpr, expr);
@@ -66,6 +73,14 @@ VarDeclStmt* AllocVarDeclStmt(const VarDeclStmt stmt)
     return new;
 }
 
+FuncDeclStmt* AllocFuncDeclStmt(const FuncDeclStmt stmt)
+{
+    ALLOCATE(FuncDeclStmt, stmt);
+    new->identifier = CopyToken(stmt.identifier);
+    new->type = CopyToken(stmt.type);
+    return new;
+}
+
 Program* AllocProgram(const Program program)
 {
     ALLOCATE(Program, program);
@@ -74,36 +89,53 @@ Program* AllocProgram(const Program program)
 
 static void FreeExpr(const ExprPtr expr)
 {
-    assert(expr.ptr != NULL);
-
     switch (expr.type)
     {
         case NoExpression: return;
         case BinaryExpression:
         {
             const BinaryExpr* binary = expr.ptr;
+
             FreeExpr(binary->left);
             FreeToken(&binary->operator);
             FreeExpr(binary->right);
-            free((void*)binary);
+
+            free(expr.ptr)
             DEBUG_PRINT("Freeing BinaryExpr\n");
             return;
         }
         case UnaryExpression:
         {
             const UnaryExpr* unary = expr.ptr;
+
             FreeExpr(unary->expression);
             FreeToken(&unary->operator);
-            free((void*)unary);
+
+            free(expr.ptr)
             DEBUG_PRINT("Freeing UnaryExpr\n");
             return;
         }
         case LiteralExpression:
         {
             const LiteralExpr* literal = expr.ptr;
+
             FreeToken(&literal->value);
-            free((void*)literal);
+
+            free(expr.ptr)
             DEBUG_PRINT("Freeing LiteralExpr\n");
+            return;
+        }
+        case FunctionCallExpression:
+        {
+            const FuncCallExpr* funcCall = expr.ptr;
+
+            FreeToken(&funcCall->identifier);
+            for (int i = 0; i < funcCall->parameters.length; ++i)
+                FreeExpr(*(ExprPtr*)funcCall->parameters.array[i]);
+            FreeArray(&funcCall->parameters);
+
+            free(expr.ptr)
+            DEBUG_PRINT("Freeing FunctionCallExpression\n");
             return;
         }
         default: assert(0);
@@ -120,8 +152,10 @@ static void FreeStmt(const StmtPtr stmt)
         {
             DEBUG_PRINT("Freeing SectionStmt\n");
             const SectionStmt* sectionStmt = stmt.ptr;
+
             FreeToken(&sectionStmt->type);
             FreeStmt(sectionStmt->block);
+
             free(stmt.ptr);
             return;
         }
@@ -129,7 +163,9 @@ static void FreeStmt(const StmtPtr stmt)
         {
             DEBUG_PRINT("Freeing ExpressionStmt\n")
             const ExpressionStmt* expressionStmt = stmt.ptr;
+
             FreeExpr(expressionStmt->expr);
+
             free(stmt.ptr);
             return;
         }
@@ -137,9 +173,11 @@ static void FreeStmt(const StmtPtr stmt)
         {
             DEBUG_PRINT("Freeing VarDeclStmt\n");
             const VarDeclStmt* varDeclStmt = stmt.ptr;
+
             FreeToken(&varDeclStmt->identifier);
             FreeToken(&varDeclStmt->type);
             FreeExpr(varDeclStmt->initializer);
+
             free(stmt.ptr);
             return;
         }
@@ -147,14 +185,36 @@ static void FreeStmt(const StmtPtr stmt)
         {
             DEBUG_PRINT("Freeing ProgramRoot\n");
             const Program* program = stmt.ptr;
+
+            for (int i = 0; i < program->statements.length; ++i)
+                FreeStmt(*(StmtPtr*)program->statements.array[i]);
             FreeArray(&program->statements);
+
             free(stmt.ptr);
             return;
         }
         case BlockStatement:
         {
+            DEBUG_PRINT("Freeing BlockStatement\n");
             const BlockStmt* blockStmt = stmt.ptr;
+
+            for (int i = 0; i < blockStmt->statements.length; ++i)
+                FreeStmt(*(StmtPtr*)blockStmt->statements.array[i]);
             FreeArray(&blockStmt->statements);
+
+            free(stmt.ptr);
+            return;
+        }
+        case FunctionDeclaration:
+        {
+            DEBUG_PRINT("Freeing FunctionDeclaration\n");
+            const FuncDeclStmt* funcDeclStmt = stmt.ptr;
+
+            for (int i = 0; i < funcDeclStmt->parameters.length; ++i)
+                FreeStmt((StmtPtr){(VarDeclStmt*)funcDeclStmt->parameters.array[i], VariableDeclaration});
+            FreeArray(&funcDeclStmt->parameters);
+
+            free(stmt.ptr);
             return;
         }
         default: assert(0);

@@ -9,6 +9,7 @@ typedef enum
     BinaryExpression,
     UnaryExpression,
     LiteralExpression,
+    FunctionCallExpression,
 } ExprType;
 
 typedef struct
@@ -39,6 +40,15 @@ UnaryExpr* AllocUnary(UnaryExpr expr);
 
 typedef struct
 {
+    Token identifier;
+    Array parameters;
+} FuncCallExpr;
+
+FuncCallExpr* AllocFuncCall(FuncCallExpr expr);
+
+
+typedef struct
+{
     Token value;
 } LiteralExpr;
 
@@ -51,6 +61,7 @@ typedef enum
     BlockStatement,
     ExpressionStatement,
     VariableDeclaration,
+    FunctionDeclaration,
     ProgramRoot,
 } StmtType;
 
@@ -94,6 +105,17 @@ typedef struct
 } VarDeclStmt;
 
 VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
+
+
+typedef struct
+{
+    Token type;
+    Token identifier;
+    Array parameters;
+    StmtPtr block;
+} FuncDeclStmt;
+
+FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);
 
 
 typedef struct
