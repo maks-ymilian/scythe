@@ -136,29 +136,31 @@ static Result ParsePrimary(NodePtr* out)
     }
 }
 
-static Result ParseCommaSeparatedList(Array* outArray)
+typedef Result (*ParseFunction)(NodePtr*);
+
+static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function)
 {
     long SET_LINE_NUMBER;
 
     *outArray = AllocateArray(sizeof(NodePtr));
 
-    NodePtr firstExpr;
+    NodePtr firstNode;
     bool found = true;
-    HANDLE_ERROR(ParseExpression(&firstExpr), found = false);
+    HANDLE_ERROR(function(&firstNode), found = false);
     if (found)
     {
-        ArrayAdd(outArray, &firstExpr);
+        ArrayAdd(outArray, &firstNode);
         while (true)
         {
             SET_LINE_NUMBER;
             if (MatchOne(Comma) == NULL)
                 break;
 
-            NodePtr expr;
-            HANDLE_ERROR(ParseExpression(&expr),
-                         return ERROR_RESULT_LINE_TOKEN("Expected expression after \"#t\"", Comma))
+            NodePtr node;
+            HANDLE_ERROR(function(&node),
+                         return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Comma))
 
-            ArrayAdd(outArray, &expr);
+            ArrayAdd(outArray, &node);
         }
     }
 
@@ -177,7 +179,7 @@ static Result ParseFunctionCall(NodePtr* out)
     assert(MatchOne(LeftBracket) != NULL);
 
     Array params;
-    HANDLE_ERROR(ParseCommaSeparatedList(&params), assert(0));
+    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression), assert(0));
 
     SET_LINE_NUMBER;
     if (MatchOne(RightBracket) == NULL)
@@ -410,6 +412,11 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     return SUCCESS_RESULT;
 }
 
+static Result ParseVarDeclNoSemicolon(NodePtr* out)
+{
+    return ParseVariableDeclaration(out, false);
+}
+
 static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
@@ -428,7 +435,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
 
     Array params; {
-        HANDLE_ERROR(ParseCommaSeparatedList(&params), assert(0));
+        HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon), assert(0));
     }
 
     SET_LINE_NUMBER;
