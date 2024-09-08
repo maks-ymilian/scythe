@@ -96,19 +96,40 @@ static void ClearSymbolsAddedInThisScope()
     ArrayClear(&symbolsAddedThisScope);
 }
 
-static bool AddSymbol(const char* name, const Type type, const SymbolType symbolType)
+static char* AllocateString(const char* format, const char* insert)
+{
+    const size_t insertLength = strlen(insert);
+    const size_t formatLength = strlen(format) - 2;
+    const size_t bufferLength = insertLength + formatLength + 1;
+    char* str = malloc(bufferLength);
+    snprintf(str, bufferLength, format, insert);
+    return str;
+}
+
+static char* AllocateString2(const char* format, const char* insert1, const char* insert2)
+{
+    const size_t insertLength = strlen(insert1) + strlen(insert2);
+    const size_t formatLength = strlen(format) - 2;
+    const size_t bufferLength = insertLength + formatLength + 1;
+    char* str = malloc(bufferLength);
+    snprintf(str, bufferLength, format, insert1, insert2);
+    return str;
+}
+
+static Result AddSymbol(const char* name, const Type type, const SymbolType symbolType, const int errorLineNumber)
 {
     SymbolAttributes attributes;
     attributes.type = type;
     attributes.symbolType = symbolType;
-    const bool success = MapAdd(&symbolTable, name, &attributes);
+    if (!MapAdd(&symbolTable, name, &attributes))
+        return ERROR_RESULT(AllocateString("\"%s\" is already defined", name), errorLineNumber);
 
     const int nameLength = strlen(name);
     char* nameCopy = malloc(nameLength + 1);
     memcpy(nameCopy, name, nameLength + 1);
     ArrayAdd(&symbolsAddedThisScope, &nameCopy);
 
-    return success;
+    return SUCCESS_RESULT;
 }
 
 static SymbolAttributes GetKnownSymbol(const char* name)
@@ -159,26 +180,6 @@ static bool IsDigitBase(const char c, const int base)
     if (base == 2) return c == '0' || c == '1';
     if (base == 8) return c >= '0' && c <= '7';
     assert(0);
-}
-
-static char* AllocateString(const char* format, const char* insert)
-{
-    const size_t insertLength = strlen(insert);
-    const size_t formatLength = strlen(format) - 2;
-    const size_t bufferLength = insertLength + formatLength + 1;
-    char* str = malloc(bufferLength);
-    snprintf(str, bufferLength, format, insert);
-    return str;
-}
-
-static char* AllocateString2(const char* format, const char* insert1, const char* insert2)
-{
-    const size_t insertLength = strlen(insert1) + strlen(insert2);
-    const size_t formatLength = strlen(format) - 2;
-    const size_t bufferLength = insertLength + formatLength + 1;
-    char* str = malloc(bufferLength);
-    snprintf(str, bufferLength, format, insert1, insert2);
-    return str;
 }
 
 static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* out)
@@ -546,10 +547,8 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in)
+static Result GetTypeFromToken(const Token typeToken, Type* outType)
 {
-    const Token typeToken = in->type;
-    Type type;
     if (typeToken.type == Identifier)
     {
         const char* typeName = typeToken.text;
@@ -558,7 +557,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         {
             return ERROR_RESULT(AllocateString("Unknown type \"%s\"", typeName), typeToken.lineNumber);
         }
-        type = *get;
+        *outType = *get;
     }
     else
     {
@@ -576,13 +575,19 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         const char* typeName = GetTokenTypeString(typeToken.type);
         const Type* get = MapGet(&types, typeName);
         assert(get != NULL);
-        type = *get;
+        *outType = *get;
     }
 
-    assert(in->identifier.type == Identifier);
+    return SUCCESS_RESULT;
+}
 
-    if (!AddSymbol(in->identifier.text, type, VariableSymbol))
-        return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text), in->identifier.lineNumber);
+static Result GenerateVariableDeclaration(const VarDeclStmt* in)
+{
+    Type type;
+    HANDLE_ERROR(GetTypeFromToken(in->type, &type));
+
+    assert(in->identifier.type == Identifier);
+    HANDLE_ERROR(AddSymbol(in->identifier.text, type, VariableSymbol, in->identifier.lineNumber));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -608,6 +613,12 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
+    Type returnType;
+    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType));
+
+    assert(in->identifier.type == Identifier);
+    HANDLE_ERROR(AddSymbol(in->identifier.text, returnType, FunctionSymbol, in->identifier.lineNumber));
+
     WRITE_LITERAL("function declaration(");
     for (int i = 0; i < in->parameters.length; ++i)
     {
