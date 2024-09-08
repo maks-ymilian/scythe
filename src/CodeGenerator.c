@@ -39,12 +39,20 @@ typedef struct
 static Map types;
 static Array typeNames;
 
+typedef struct
+{
+    Type type;
+    char* name;
+    NodePtr defaultValue;
+} FunctionParameter;
+
 typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
 
 typedef struct
 {
     Type type;
     SymbolType symbolType;
+    Array parameterList;
 } SymbolAttributes;
 
 static Map symbolTable;
@@ -116,11 +124,14 @@ static char* AllocateString2(const char* format, const char* insert1, const char
     return str;
 }
 
-static Result AddSymbol(const char* name, const Type type, const SymbolType symbolType, const int errorLineNumber)
+static Result AddSymbol(const char* name, const Type type, const int errorLineNumber, const SymbolType symbolType, const Array* funcParams)
 {
     SymbolAttributes attributes;
     attributes.type = type;
     attributes.symbolType = symbolType;
+    if (funcParams != NULL)
+        attributes.parameterList = *funcParams;
+
     if (!MapAdd(&symbolTable, name, &attributes))
         return ERROR_RESULT(AllocateString("\"%s\" is already defined", name), errorLineNumber);
 
@@ -130,6 +141,16 @@ static Result AddSymbol(const char* name, const Type type, const SymbolType symb
     ArrayAdd(&symbolsAddedThisScope, &nameCopy);
 
     return SUCCESS_RESULT;
+}
+
+static Result RegisterVariable(const char* name, const Type type, const int errorLineNumber)
+{
+    return AddSymbol(name, type, errorLineNumber, VariableSymbol, NULL);
+}
+
+static Result RegisterFunction(const char* name, const Type returnType, const int errorLineNumber, const Array* funcParams)
+{
+    return AddSymbol(name, returnType, errorLineNumber, FunctionSymbol, funcParams);
 }
 
 static SymbolAttributes GetKnownSymbol(const char* name)
@@ -142,6 +163,13 @@ static SymbolAttributes GetKnownSymbol(const char* name)
 static void FreeTables()
 {
     FreeMap(&types);
+
+    for (MAP_ITERATE(i, &symbolTable))
+    {
+        const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
+        if (symbol.symbolType == FunctionSymbol)
+            FreeArray(&symbol.parameterList);
+    }
     FreeMap(&symbolTable);
 
     for (int i = 0; i < typeNames.length; ++i)
@@ -587,7 +615,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     HANDLE_ERROR(GetTypeFromToken(in->type, &type));
 
     assert(in->identifier.type == Identifier);
-    HANDLE_ERROR(AddSymbol(in->identifier.text, type, VariableSymbol, in->identifier.lineNumber));
+    HANDLE_ERROR(RegisterVariable(in->identifier.text, type, in->identifier.lineNumber));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -617,14 +645,22 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType));
 
     assert(in->identifier.type == Identifier);
-    HANDLE_ERROR(AddSymbol(in->identifier.text, returnType, FunctionSymbol, in->identifier.lineNumber));
-
-    WRITE_LITERAL("function declaration(");
+    Array params = AllocateArray(sizeof(FunctionParameter));
     for (int i = 0; i < in->parameters.length; ++i)
     {
         const NodePtr* node = in->parameters.array[i];
         assert(node->type == VariableDeclaration);
+
+        const VarDeclStmt* varDecl = node->ptr;
+        FunctionParameter param;
+        param.name = varDecl->identifier.text;
+        param.defaultValue = varDecl->initializer;
+        HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
+        ArrayAdd(&params, &param);
     }
+    HANDLE_ERROR(RegisterFunction(in->identifier.text, returnType, in->identifier.lineNumber, &params));
+
+    WRITE_LITERAL("function declaration(");
     WRITE_LITERAL(")\n");
     return SUCCESS_RESULT;
 }
