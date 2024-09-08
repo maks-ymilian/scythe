@@ -148,6 +148,8 @@ bool MapNext(const Map* map, Node** current)
 {
     if (current == NULL)
         return false;
+    if (*current == NULL)
+        return false;
 
     const Node* currentNode = *current;
     Node* next = currentNode->next;
