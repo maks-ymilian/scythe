@@ -53,7 +53,7 @@ static const char* AllocateCurrentLexeme()
 
 static void AddNewToken(const TokenType type, const char* text)
 {
-    const Token token = (Token){type, currentLine, text};
+    const Token token = (Token){type, currentLine, (char*)text};
     ArrayAdd(&tokens, &token);
 }
 

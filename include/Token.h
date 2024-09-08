@@ -29,7 +29,7 @@ typedef struct
 {
     TokenType type;
     long lineNumber;
-    const char* text;
+    char* text;
 } Token;
 
 const char* GetTokenTypeString(TokenType tokenType);
