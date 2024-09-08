@@ -28,10 +28,7 @@ charsLength = arrayName##_length;\
 char arrayName[charsLength];\
 memcpy(arrayName,  arrayName##_chars, charsLength)
 
-typedef enum
-{
-    Primitive, Struct, Enum
-} MetaType;
+typedef enum { PrimitiveType, StructType, EnumType } MetaType;
 
 typedef struct
 {
@@ -42,9 +39,12 @@ typedef struct
 static Map types;
 static Array typeNames;
 
+typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
+
 typedef struct
 {
     Type type;
+    SymbolType symbolType;
 } SymbolAttributes;
 
 static Map symbolTable;
@@ -96,10 +96,11 @@ static void ClearSymbolsAddedInThisScope()
     ArrayClear(&symbolsAddedThisScope);
 }
 
-static bool AddSymbol(const char* name, const Type type)
+static bool AddSymbol(const char* name, const Type type, const SymbolType symbolType)
 {
     SymbolAttributes attributes;
     attributes.type = type;
+    attributes.symbolType = symbolType;
     const bool success = MapAdd(&symbolTable, name, &attributes);
 
     const int nameLength = strlen(name);
@@ -138,16 +139,16 @@ static void InitTables()
     symbolsAddedThisScope = AllocateArray(sizeof(char*));
     includedSections = AllocateMap(0);
 
-    bool success = AddType("int", Primitive);
+    bool success = AddType("int", PrimitiveType);
     assert(success);
 
-    success = AddType("float", Primitive);
+    success = AddType("float", PrimitiveType);
     assert(success);
 
-    success = AddType("string", Primitive);
+    success = AddType("string", PrimitiveType);
     assert(success);
 
-    success = AddType("bool", Primitive);
+    success = AddType("bool", PrimitiveType);
     assert(success);
 }
 
@@ -545,12 +546,6 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
-{
-    WRITE_TEXT("function declaration");
-    return SUCCESS_RESULT;
-}
-
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     const Token typeToken = in->type;
@@ -586,7 +581,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
     assert(in->identifier.type == Identifier);
 
-    if (!AddSymbol(in->identifier.text, type))
+    if (!AddSymbol(in->identifier.text, type, VariableSymbol))
         return ERROR_RESULT(AllocateString("\"%s\" is already defined", in->identifier.text), in->identifier.lineNumber);
 
     NodePtr initializer;
@@ -608,6 +603,18 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     const ExpressionStmt stmt = {(NodePtr){&binary, BinaryExpression}};
     HANDLE_ERROR(GenerateExpressionStatement(&stmt));
 
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
+{
+    WRITE_LITERAL("function declaration(");
+    for (int i = 0; i < in->parameters.length; ++i)
+    {
+        const NodePtr* node = in->parameters.array[i];
+        assert(node->type == VariableDeclaration);
+    }
+    WRITE_LITERAL(")\n");
     return SUCCESS_RESULT;
 }
 
