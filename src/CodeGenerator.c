@@ -143,14 +143,14 @@ static Result AddSymbol(const char* name, const Type type, const int errorLineNu
     return SUCCESS_RESULT;
 }
 
-static Result RegisterVariable(const char* name, const Type type, const int errorLineNumber)
+static Result RegisterVariable(const Token identifier, const Type type)
 {
-    return AddSymbol(name, type, errorLineNumber, VariableSymbol, NULL);
+    return AddSymbol(identifier.text, type, identifier.lineNumber, VariableSymbol, NULL);
 }
 
-static Result RegisterFunction(const char* name, const Type returnType, const int errorLineNumber, const Array* funcParams)
+static Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
 {
-    return AddSymbol(name, returnType, errorLineNumber, FunctionSymbol, funcParams);
+    return AddSymbol(identifier.text, returnType, identifier.lineNumber, FunctionSymbol, funcParams);
 }
 
 static SymbolAttributes GetKnownSymbol(const char* name)
@@ -288,6 +288,15 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     return SUCCESS_RESULT;
 }
 
+static Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
+{
+    SymbolAttributes* symbol = MapGet(&symbolTable, identifier.text);
+    if (symbol == NULL)
+        return ERROR_RESULT(AllocateString("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
+    *outSymbol = symbol;
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
@@ -314,14 +323,14 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         }
         case Identifier:
         {
-            const char* name = literal.text;
-            const SymbolAttributes* symbol = MapGet(&symbolTable, name);
-            if (symbol == NULL)
-                return ERROR_RESULT(AllocateString("Unknown identifier \"%s\"", name), literal.lineNumber);
+            SymbolAttributes* symbol;
+            HANDLE_ERROR(GetSymbol(literal, &symbol));
+            if (symbol->symbolType != VariableSymbol)
+                return ERROR_RESULT("Identifier must be the name of a variable", literal.lineNumber);
 
             *outType = symbol->type;
             WRITE_LITERAL("var_");
-            WRITE_TEXT(name);
+            WRITE_TEXT(literal.text);
             return SUCCESS_RESULT;
         }
         default:
@@ -331,8 +340,13 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
+    SymbolAttributes* symbol;
+    HANDLE_ERROR(GetSymbol(in->identifier, &symbol));
+    if (symbol->symbolType != FunctionSymbol)
+        return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
+
     WRITE_LITERAL("function call");
-    *outType = GetKnownType("int");
+    *outType = symbol->type;
     return SUCCESS_RESULT;
 }
 
@@ -615,7 +629,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     HANDLE_ERROR(GetTypeFromToken(in->type, &type));
 
     assert(in->identifier.type == Identifier);
-    HANDLE_ERROR(RegisterVariable(in->identifier.text, type, in->identifier.lineNumber));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -658,7 +672,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
         ArrayAdd(&params, &param);
     }
-    HANDLE_ERROR(RegisterFunction(in->identifier.text, returnType, in->identifier.lineNumber, &params));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
     WRITE_LITERAL("function declaration(");
     WRITE_LITERAL(")\n");
