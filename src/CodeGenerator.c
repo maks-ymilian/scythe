@@ -428,13 +428,10 @@ static int Max(const int a, const int b)
 
 static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
 
-static Result TestExpressionAssignment(const Type type, const NodePtr* expr, const int lineNumber)
+static Result fuck(const Type type, const NodePtr* expr, const long lineNumber)
 {
     Type exprType;
-    const size_t beforePos = StreamGetPosition(outputText);
     HANDLE_ERROR(GenerateExpression(expr, &exprType, true));
-    StreamSetPosition(outputText, beforePos);
-
     HANDLE_ERROR(CheckAssignmentCompatibility(type, exprType,
         "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", lineNumber));
 
@@ -447,6 +444,9 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     HANDLE_ERROR(GetSymbol(in->identifier, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
+
+    WRITE_TEXT(in->identifier.text);
+    WRITE_LITERAL("(");
 
     for (int i = 0; i < Max(symbol->parameterList.length, in->parameters.length); ++i)
     {
@@ -463,17 +463,26 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
                                     symbol->parameterList.length, in->parameters.length), in->identifier.lineNumber);
 
+        const NodePtr* writeExpr;
         if (callExpr != NULL)
+            writeExpr = callExpr;
+        else
+            writeExpr = &funcParam->defaultValue;
+
+        HANDLE_ERROR(fuck(funcParam->type, writeExpr, in->identifier.lineNumber));
+        if (i != symbol->parameterList.length - 1)
+            WRITE_LITERAL(",");
+
+        if (callExpr != NULL && funcParam->defaultValue.ptr != NULL) // if default wasnt used, then check it for errors
         {
-            HANDLE_ERROR(TestExpressionAssignment(funcParam->type, callExpr, in->identifier.lineNumber));
-        }
-        if (funcParam != NULL && funcParam->defaultValue.ptr != NULL)
-        {
-            HANDLE_ERROR(TestExpressionAssignment(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
+            const size_t beforePos = StreamGetPosition(outputText);
+            HANDLE_ERROR(fuck(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
+            StreamSetPosition(outputText, beforePos);
         }
     }
 
-    WRITE_LITERAL("function call");
+    WRITE_LITERAL(")");
+
     *outType = symbol->type;
     return SUCCESS_RESULT;
 }
