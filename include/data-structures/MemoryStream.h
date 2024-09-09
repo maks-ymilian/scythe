@@ -24,3 +24,4 @@ Buffer StreamRewindRead(MemoryStream* stream, size_t offset);
 void StreamRewind(MemoryStream* stream, size_t offset);
 
 size_t StreamGetPosition(const MemoryStream* stream);
+void StreamSetPosition(MemoryStream* stream, size_t position);

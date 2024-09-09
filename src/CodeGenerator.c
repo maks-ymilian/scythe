@@ -44,6 +44,7 @@ typedef struct
     Type type;
     char* name;
     NodePtr defaultValue;
+    long lineNumber;
 } FunctionParameter;
 
 typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
@@ -104,7 +105,7 @@ static void ClearSymbolsAddedInThisScope()
     ArrayClear(&symbolsAddedThisScope);
 }
 
-static char* AllocateString(const char* format, const char* insert)
+static char* AllocateString1Str(const char* format, const char* insert)
 {
     const size_t insertLength = strlen(insert);
     const size_t formatLength = strlen(format) - 2;
@@ -114,10 +115,40 @@ static char* AllocateString(const char* format, const char* insert)
     return str;
 }
 
-static char* AllocateString2(const char* format, const char* insert1, const char* insert2)
+static char* AllocateString2Str(const char* format, const char* insert1, const char* insert2)
 {
     const size_t insertLength = strlen(insert1) + strlen(insert2);
-    const size_t formatLength = strlen(format) - 2;
+    const size_t formatLength = strlen(format) - 4;
+    const size_t bufferLength = insertLength + formatLength + 1;
+    char* str = malloc(bufferLength);
+    snprintf(str, bufferLength, format, insert1, insert2);
+    return str;
+}
+
+static int IntCharCount(int number)
+{
+    int minusSign = 0;
+    if (number < 0)
+    {
+        number = abs(number);
+        minusSign = 1;
+    }
+    if (number < 10) return 1 + minusSign;
+    if (number < 100) return 2 + minusSign;
+    if (number < 1000) return 3 + minusSign;
+    if (number < 10000) return 4 + minusSign;
+    if (number < 100000) return 5 + minusSign;
+    if (number < 1000000) return 6 + minusSign;
+    if (number < 10000000) return 7 + minusSign;
+    if (number < 100000000) return 8 + minusSign;
+    if (number < 1000000000) return 9 + minusSign;
+    return 10 + minusSign;
+}
+
+static char* AllocateString2Int(const char* format, const int insert1, const int insert2)
+{
+    const size_t insertLength = IntCharCount(insert1) + IntCharCount(insert2);
+    const size_t formatLength = strlen(format) - 4;
     const size_t bufferLength = insertLength + formatLength + 1;
     char* str = malloc(bufferLength);
     snprintf(str, bufferLength, format, insert1, insert2);
@@ -133,7 +164,7 @@ static Result AddSymbol(const char* name, const Type type, const int errorLineNu
         attributes.parameterList = *funcParams;
 
     if (!MapAdd(&symbolTable, name, &attributes))
-        return ERROR_RESULT(AllocateString("\"%s\" is already defined", name), errorLineNumber);
+        return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
 
     const int nameLength = strlen(name);
     char* nameCopy = malloc(nameLength + 1);
@@ -258,7 +289,7 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
             else
             {
                 const char insert[2] = {text[i], '\0'};
-                return ERROR_RESULT(AllocateString("Unexpected digit in number literal \"%s\"", insert), token.lineNumber);
+                return ERROR_RESULT(AllocateString1Str("Unexpected digit in number literal \"%s\"", insert), token.lineNumber);
             }
         }
 
@@ -292,7 +323,7 @@ static Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
 {
     SymbolAttributes* symbol = MapGet(&symbolTable, identifier.text);
     if (symbol == NULL)
-        return ERROR_RESULT(AllocateString("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
+        return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
     *outSymbol = symbol;
     return SUCCESS_RESULT;
 }
@@ -338,12 +369,110 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     }
 }
 
+static Result CheckAssignmentCompatibility(const Type left, const Type right, const char* errorMessage, const long lineNumber)
+{
+    if (left.id == right.id)
+        return SUCCESS_RESULT;
+
+    const Type intType = GetKnownType("int");
+    const Type floatType = GetKnownType("float");
+    if ((left.id == intType.id || left.id == floatType.id) &&
+        (right.id == intType.id || right.id == floatType.id))
+        return SUCCESS_RESULT;
+
+    const char* message = AllocateString2Str(
+        errorMessage,
+        GetTypeName(right), GetTypeName(left));
+    return ERROR_RESULT(message, lineNumber);
+}
+
+static Result GetTypeFromToken(const Token typeToken, Type* outType)
+{
+    if (typeToken.type == Identifier)
+    {
+        const char* typeName = typeToken.text;
+        const Type* get = MapGet(&types, typeName);
+        if (get == NULL)
+        {
+            return ERROR_RESULT(AllocateString1Str("Unknown type \"%s\"", typeName), typeToken.lineNumber);
+        }
+        *outType = *get;
+    }
+    else
+    {
+        switch (typeToken.type)
+        {
+            case Int:
+            case Float:
+            case String:
+            case Bool:
+                break;
+
+            default: assert(0);
+        }
+
+        const char* typeName = GetTokenTypeString(typeToken.type);
+        const Type* get = MapGet(&types, typeName);
+        assert(get != NULL);
+        *outType = *get;
+    }
+
+    return SUCCESS_RESULT;
+}
+
+static int Max(const int a, const int b)
+{
+    if (a > b) return a;
+    return b;
+};
+
+static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
+
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
     SymbolAttributes* symbol;
     HANDLE_ERROR(GetSymbol(in->identifier, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
+
+    for (int i = 0; i < Max(symbol->parameterList.length, in->parameters.length); ++i)
+    {
+        const FunctionParameter* funcParam = NULL;
+        if (i < symbol->parameterList.length)
+            funcParam = symbol->parameterList.array[i];
+
+        const NodePtr* callExpr = NULL;
+        if (i < in->parameters.length)
+            callExpr = (NodePtr*)in->parameters.array[i];
+
+        if (funcParam == NULL && callExpr != NULL ||
+            funcParam != NULL && funcParam->defaultValue.ptr == NULL && callExpr == NULL)
+            return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
+                                    symbol->parameterList.length, in->parameters.length), in->identifier.lineNumber);
+
+        const NodePtr* currentParamExpr;
+        long currentParamLineNumber;
+        if (callExpr != NULL)
+        {
+            currentParamExpr = callExpr;
+            currentParamLineNumber = in->identifier.lineNumber;
+        }
+        else if (funcParam != NULL && funcParam->defaultValue.ptr != NULL)
+        {
+            currentParamExpr = &funcParam->defaultValue;
+            currentParamLineNumber = funcParam->lineNumber;
+        }
+        else
+            assert(0);
+
+        Type callType;
+        const size_t beforePos = StreamGetPosition(outputText);
+        HANDLE_ERROR(GenerateExpression(currentParamExpr, &callType, true));
+        StreamSetPosition(outputText, beforePos);
+
+        HANDLE_ERROR(CheckAssignmentCompatibility(funcParam->type, callType,
+            "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", currentParamLineNumber));
+    }
 
     WRITE_LITERAL("function call");
     *outType = symbol->type;
@@ -352,11 +481,9 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 
 static Result UnaryOperatorErrorResult(const Token operator, const Type type)
 {
-    return ERROR_RESULT_TOKEN(AllocateString("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type)),
+    return ERROR_RESULT_TOKEN(AllocateString1Str("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type)),
                               operator.lineNumber, operator.type);
 }
-
-static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
 
 static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 {
@@ -389,23 +516,6 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
     WRITE_LITERAL(")");
     return SUCCESS_RESULT;
-}
-
-static Result CheckAssignmentCompatibility(const Type left, const Type right, const int lineNumber)
-{
-    if (left.id == right.id)
-        return SUCCESS_RESULT;
-
-    const Type intType = GetKnownType("int");
-    const Type floatType = GetKnownType("float");
-    if ((left.id == intType.id || left.id == floatType.id) &&
-        (right.id == intType.id || right.id == floatType.id))
-        return SUCCESS_RESULT;
-
-    const char* message = AllocateString2(
-        "Cannot assign value of type \"%s\" to variable of type \"%s\"",
-        GetTypeName(right), GetTypeName(left));
-    return ERROR_RESULT(message, lineNumber);
 }
 
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
@@ -453,7 +563,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             if (!isLvalue)
                 return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
 
-            HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType, in->operator.lineNumber));
+            HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType,
+                "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->operator.lineNumber));
 
             *outType = leftType;
 
@@ -519,8 +630,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 (rightType.id != intType.id &&
                  rightType.id != floatType.id))
             {
-                const char* message = AllocateString2("Operator \"#t\" can only be used on %s and %s types",
-                                                      GetTypeName(intType), GetTypeName(floatType));
+                const char* message = AllocateString2Str("Operator \"#t\" can only be used on %s and %s types",
+                                                         GetTypeName(intType), GetTypeName(floatType));
                 return ERROR_RESULT_TOKEN(message, in->operator.lineNumber, in->operator.type);
             }
 
@@ -589,40 +700,6 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static Result GetTypeFromToken(const Token typeToken, Type* outType)
-{
-    if (typeToken.type == Identifier)
-    {
-        const char* typeName = typeToken.text;
-        const Type* get = MapGet(&types, typeName);
-        if (get == NULL)
-        {
-            return ERROR_RESULT(AllocateString("Unknown type \"%s\"", typeName), typeToken.lineNumber);
-        }
-        *outType = *get;
-    }
-    else
-    {
-        switch (typeToken.type)
-        {
-            case Int:
-            case Float:
-            case String:
-            case Bool:
-                break;
-
-            default: assert(0);
-        }
-
-        const char* typeName = GetTokenTypeString(typeToken.type);
-        const Type* get = MapGet(&types, typeName);
-        assert(get != NULL);
-        *outType = *get;
-    }
-
-    return SUCCESS_RESULT;
-}
-
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     Type type;
@@ -638,7 +715,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
             initializer = (NodePtr){&zero, LiteralExpression};
         else
-            return ERROR_RESULT(AllocateString("Variable of type \"%s\" must be initialized", GetTypeName(type)),
+            return ERROR_RESULT(AllocateString1Str("Variable of type \"%s\" must be initialized", GetTypeName(type)),
                                 in->identifier.lineNumber);
     }
     else
@@ -660,15 +737,23 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     assert(in->identifier.type == Identifier);
     Array params = AllocateArray(sizeof(FunctionParameter));
+    bool hasOptionalParams = false;
     for (int i = 0; i < in->parameters.length; ++i)
     {
         const NodePtr* node = in->parameters.array[i];
         assert(node->type == VariableDeclaration);
 
         const VarDeclStmt* varDecl = node->ptr;
+
+        if (varDecl->initializer.ptr != NULL)
+            hasOptionalParams = true;
+        else if (hasOptionalParams == true)
+            return ERROR_RESULT("Optional parameters must be at end of parameter list", in->identifier.lineNumber);
+
         FunctionParameter param;
         param.name = varDecl->identifier.text;
         param.defaultValue = varDecl->initializer;
+        param.lineNumber = varDecl->identifier.lineNumber;
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
         ArrayAdd(&params, &param);
     }
