@@ -428,7 +428,7 @@ static int Max(const int a, const int b)
 
 static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
 
-static Result fuck(const Type type, const NodePtr* expr, const long lineNumber)
+static Result GenerateFunctionParameter(const Type type, const NodePtr* expr, const long lineNumber)
 {
     Type exprType;
     HANDLE_ERROR(GenerateExpression(expr, &exprType, true));
@@ -469,14 +469,14 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         else
             writeExpr = &funcParam->defaultValue;
 
-        HANDLE_ERROR(fuck(funcParam->type, writeExpr, in->identifier.lineNumber));
+        HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
         if (i != symbol->parameterList.length - 1)
             WRITE_LITERAL(",");
 
         if (callExpr != NULL && funcParam->defaultValue.ptr != NULL) // if default wasnt used, then check it for errors
         {
             const size_t beforePos = StreamGetPosition(outputText);
-            HANDLE_ERROR(fuck(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
+            HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
             StreamSetPosition(outputText, beforePos);
         }
     }
