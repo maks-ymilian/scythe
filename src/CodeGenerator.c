@@ -428,6 +428,19 @@ static int Max(const int a, const int b)
 
 static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
 
+static Result TestExpressionAssignment(const Type type, const NodePtr* expr, const int lineNumber)
+{
+    Type exprType;
+    const size_t beforePos = StreamGetPosition(outputText);
+    HANDLE_ERROR(GenerateExpression(expr, &exprType, true));
+    StreamSetPosition(outputText, beforePos);
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(type, exprType,
+        "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", lineNumber));
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
     SymbolAttributes* symbol;
@@ -450,28 +463,14 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
                                     symbol->parameterList.length, in->parameters.length), in->identifier.lineNumber);
 
-        const NodePtr* currentParamExpr;
-        long currentParamLineNumber;
         if (callExpr != NULL)
         {
-            currentParamExpr = callExpr;
-            currentParamLineNumber = in->identifier.lineNumber;
+            HANDLE_ERROR(TestExpressionAssignment(funcParam->type, callExpr, in->identifier.lineNumber));
         }
-        else if (funcParam != NULL && funcParam->defaultValue.ptr != NULL)
+        if (funcParam != NULL && funcParam->defaultValue.ptr != NULL)
         {
-            currentParamExpr = &funcParam->defaultValue;
-            currentParamLineNumber = funcParam->lineNumber;
+            HANDLE_ERROR(TestExpressionAssignment(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
         }
-        else
-            assert(0);
-
-        Type callType;
-        const size_t beforePos = StreamGetPosition(outputText);
-        HANDLE_ERROR(GenerateExpression(currentParamExpr, &callType, true));
-        StreamSetPosition(outputText, beforePos);
-
-        HANDLE_ERROR(CheckAssignmentCompatibility(funcParam->type, callType,
-            "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", currentParamLineNumber));
     }
 
     WRITE_LITERAL("function call");
