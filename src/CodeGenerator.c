@@ -252,7 +252,10 @@ static void InitResources()
     typeNames = AllocateArray(sizeof(char*));
     includedSections = AllocateMap(0);
 
-    bool success = AddType("int", PrimitiveType);
+    bool success = AddType("void", PrimitiveType);
+    assert(success);
+
+    success = AddType("int", PrimitiveType);
     assert(success);
 
     success = AddType("float", PrimitiveType);
@@ -432,7 +435,7 @@ static Result CheckAssignmentCompatibility(const Type left, const Type right, co
     return ERROR_RESULT(message, lineNumber);
 }
 
-static Result GetTypeFromToken(const Token typeToken, Type* outType)
+static Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVoid)
 {
     if (typeToken.type == Identifier)
     {
@@ -448,6 +451,9 @@ static Result GetTypeFromToken(const Token typeToken, Type* outType)
     {
         switch (typeToken.type)
         {
+            case Void:
+                if (!allowVoid)
+                    return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Void);
             case Int:
             case Float:
             case String:
@@ -751,7 +757,7 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     Type type;
-    HANDLE_ERROR(GetTypeFromToken(in->type, &type));
+    HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
     assert(in->identifier.type == Identifier);
     HANDLE_ERROR(RegisterVariable(in->identifier, type));
@@ -786,7 +792,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     PushScope();
 
     Type returnType;
-    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType));
+    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
 
     assert(in->identifier.type == Identifier);
 
@@ -812,7 +818,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         FunctionParameter param;
         param.name = varDecl->identifier.text;
         param.defaultValue = varDecl->initializer;
-        HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
+        HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type, false));
         ArrayAdd(&params, &param);
 
         WRITE_LITERAL("var_");

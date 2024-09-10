@@ -339,21 +339,23 @@ static Result ParseBlockStatement(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
-static Token* MatchType()
+static Token* PeekType(const int offset)
 {
-    Token* type = PeekOne(Identifier, 0);
-    if (type != NULL)
+    Token* type = PeekOne(Identifier, offset);
+    if (type == NULL)
     {
-        if (PeekOne(Identifier, 1) == NULL)
-            return NULL;
-    }
-    else
-    {
-        type = Peek((TokenType[]){Int, Float, String, Bool}, 4, 0);
+        type = Peek((TokenType[]){Void, Int, Float, String, Bool}, 5, offset);
         if (type == NULL)
             return NULL;
     }
-    Consume();
+    return type;
+}
+
+static Token* MatchType()
+{
+    Token* type = PeekType(0);
+    if (type != NULL)
+        Consume();
     return type;
 }
 
@@ -379,14 +381,14 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
-    const Token* type = MatchType();
-    if (type == NULL)
+    const Token* type = PeekType(0);
+    const Token* name = PeekOne(Identifier, 1);
+
+    if (!(name && type))
         return NOT_FOUND_RESULT;
 
-    SET_LINE_NUMBER
-    const Token* name = MatchOne(Identifier);
-    if (name == NULL)
-        return ERROR_RESULT_LINE("Expected identifier after type");
+    Consume();
+    Consume();
 
     NodePtr initializer = {NULL, NullNode};
     const Token* equals = MatchOne(Equals);
@@ -417,18 +419,15 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (PeekOne(Identifier, 1) == NULL || PeekOne(LeftBracket, 2) == NULL)
+    const Token* type = PeekType(0);
+    const Token* identifier = PeekOne(Identifier, 1);
+
+    if (!(identifier && type && PeekOne(LeftBracket, 2)))
         return NOT_FOUND_RESULT;
 
-    const Token* type = MatchType();
-    assert(type != NULL);
-
-    const Token* identifier = MatchOne(Identifier);
-    assert(identifier != NULL);
-
-    SET_LINE_NUMBER;
-    if (MatchOne(LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
+    Consume();
+    Consume();
+    Consume();
 
     Array params; {
         HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon), assert(0));
