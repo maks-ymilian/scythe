@@ -491,6 +491,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
 
+    WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
 
@@ -777,11 +778,12 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateBlockStatement(const BlockStmt* in);
+static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope);
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
     SetCurrentStream(functionsStream);
+    PushScope();
 
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType));
@@ -789,6 +791,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     assert(in->identifier.type == Identifier);
 
     WRITE_LITERAL("function ");
+    WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
 
@@ -812,9 +815,12 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
         ArrayAdd(&params, &param);
 
+        WRITE_LITERAL("var_");
         WRITE_TEXT(varDecl->identifier.text);
         if (i < in->parameters.length - 1)
             WRITE_LITERAL(",");
+
+        HANDLE_ERROR(RegisterVariable(varDecl->identifier, param.type));
 
         if (param.defaultValue.ptr != NULL)
         {
@@ -823,20 +829,24 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
             StreamSetPosition(currentStream, beforePos);
         }
     }
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
     WRITE_LITERAL(")\n");
-    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr));
+    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr, false));
 
+    PopScope();
     SetCurrentStream(mainStream);
+
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
+
     return SUCCESS_RESULT;
 }
 
 static Result GenerateStatement(const NodePtr* in);
 
-static Result GenerateBlockStatement(const BlockStmt* in)
+static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope)
 {
-    PushScope();
+    if (changeScope)
+        PushScope();
 
     WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
@@ -847,7 +857,8 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     }
     WRITE_LITERAL(");\n");
 
-    PopScope();
+    if (changeScope)
+        PopScope();
 
     return SUCCESS_RESULT;
 }
@@ -868,7 +879,7 @@ static Result GenerateSectionStatement(const SectionStmt* in)
     WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
     WRITE_LITERAL("\n");
-    return GenerateBlockStatement(in->block.ptr);
+    return GenerateBlockStatement(in->block.ptr, true);
 }
 
 static Result GenerateStatement(const NodePtr* in)
@@ -882,7 +893,7 @@ static Result GenerateStatement(const NodePtr* in)
         case VariableDeclaration:
             return GenerateVariableDeclaration(in->ptr);
         case BlockStatement:
-            return GenerateBlockStatement(in->ptr);
+            return GenerateBlockStatement(in->ptr, true);
         case FunctionDeclaration:
             return GenerateFunctionDeclaration(in->ptr);
         default:
