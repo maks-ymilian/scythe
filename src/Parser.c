@@ -274,25 +274,39 @@ static Result ParseExpressionStatement(NodePtr* out)
     long SET_LINE_NUMBER
 
     NodePtr expr;
-    bool noExpression = false;
     HANDLE_ERROR(ParseExpression(&expr),
                  {
+                 if (MatchOne(Semicolon) == NULL) return result;
                  expr.ptr = NULL;
                  expr.type = NullNode;
-                 noExpression = true;
                  });
-    const Result expressionResult = result;
 
-    const Token* semicolon = MatchOne(Semicolon);
-    if (semicolon == NULL)
-    {
-        if (noExpression)
-            return expressionResult;
+    if (MatchOne(Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
-    }
 
     const ExpressionStmt* expressionStmt = AllocExpressionStmt((ExpressionStmt){expr});
     *out = (NodePtr){(void*)expressionStmt, ExpressionStatement};
+    return SUCCESS_RESULT;
+}
+
+static Result ParseReturnStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    if (MatchOne(Return) == NULL)
+        return NOT_FOUND_RESULT;
+
+    SET_LINE_NUMBER
+    NodePtr expr;
+    HANDLE_ERROR(ParseExpression(&expr),
+                 return ERROR_RESULT_LINE("Expected expression after return"));
+
+    if (MatchOne(Semicolon) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
+
+    const ReturnStmt* returnStmt = AllocReturnStmt((ReturnStmt){expr});
+    *out = (NodePtr){(void*)returnStmt, ReturnStatement};
+
     return SUCCESS_RESULT;
 }
 
@@ -467,6 +481,10 @@ static Result ParseStatement(NodePtr* out)
     if (result.success || result.hasError)
         return result;
 
+    result = ParseReturnStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
     result = ParseExpressionStatement(out);
     return result;
 }
@@ -495,7 +513,7 @@ static Result ParseProgram(NodePtr* out)
     }
 
     Program* program = AllocProgram((Program){stmtArray});
-    *out = (NodePtr){program, ProgramRoot};
+    *out = (NodePtr){program, RootNode};
     return SUCCESS_RESULT;
 }
 

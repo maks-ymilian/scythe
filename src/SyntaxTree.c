@@ -65,6 +65,12 @@ ExpressionStmt* AllocExpressionStmt(const ExpressionStmt stmt)
     return new;
 }
 
+ReturnStmt* AllocReturnStmt(const ReturnStmt stmt)
+{
+    ALLOCATE(ReturnStmt, stmt);
+    return new;
+}
+
 VarDeclStmt* AllocVarDeclStmt(const VarDeclStmt stmt)
 {
     ALLOCATE(VarDeclStmt, stmt);
@@ -152,6 +158,16 @@ static void FreeNode(const NodePtr node)
             free(node.ptr);
             return;
         }
+        case ReturnStatement:
+        {
+            DEBUG_PRINT("Freeing ReturnStmt\n")
+            const ReturnStmt* ptr = node.ptr;
+
+            FreeNode(ptr->expr);
+
+            free(node.ptr);
+            return;
+        }
         case ExpressionStatement:
         {
             DEBUG_PRINT("Freeing ExpressionStmt\n")
@@ -174,7 +190,7 @@ static void FreeNode(const NodePtr node)
             free(node.ptr);
             return;
         }
-        case ProgramRoot:
+        case RootNode:
         {
             DEBUG_PRINT("Freeing ProgramRoot\n");
             const Program* ptr = node.ptr;

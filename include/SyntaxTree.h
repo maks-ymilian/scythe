@@ -14,9 +14,11 @@ typedef enum
     Section,
     BlockStatement,
     ExpressionStatement,
+    ReturnStatement,
     VariableDeclaration,
     FunctionDeclaration,
-    ProgramRoot,
+
+    RootNode,
 } NodeType;
 
 typedef struct
@@ -85,6 +87,14 @@ typedef struct
 } ExpressionStmt;
 
 ExpressionStmt* AllocExpressionStmt(ExpressionStmt stmt);
+
+
+typedef struct
+{
+    NodePtr expr;
+} ReturnStmt;
+
+ReturnStmt* AllocReturnStmt(ReturnStmt stmt);
 
 
 typedef struct

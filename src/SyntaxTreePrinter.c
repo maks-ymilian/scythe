@@ -56,7 +56,7 @@ static void PrintStmt(const NodePtr stmt)
 
     switch (stmt.type)
     {
-        case ProgramRoot:
+        case RootNode:
         {
             const Program* program = stmt.ptr;
             for (int i = 0; i < program->statements.length; ++i)

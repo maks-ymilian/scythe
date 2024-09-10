@@ -754,6 +754,14 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
+static Result GenerateReturnStatement(const ReturnStmt* in)
+{
+    Type type;
+    const Result result = GenerateExpression(&in->expr, &type, true);
+    WRITE_LITERAL(";\n");
+    return result;
+}
+
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     Type type;
@@ -894,6 +902,8 @@ static Result GenerateStatement(const NodePtr* in)
     {
         case ExpressionStatement:
             return GenerateExpressionStatement(in->ptr);
+        case ReturnStatement:
+            return GenerateReturnStatement(in->ptr);
         case Section:
             return GenerateSectionStatement(in->ptr);
         case VariableDeclaration:
@@ -912,7 +922,7 @@ Result GenerateProgram(const Program* in)
     for (int i = 0; i < in->statements.length; ++i)
     {
         const NodePtr* stmt = in->statements.array[i];
-        assert(stmt->type != ProgramRoot);
+        assert(stmt->type != RootNode);
         HANDLE_ERROR(GenerateStatement(stmt));
     }
 
@@ -933,7 +943,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
     WRITE_LITERAL("\n");
     const Buffer outputBuffer = CombineStreams();
 
-    FreeSyntaxTree((NodePtr){syntaxTree, ProgramRoot});
+    FreeSyntaxTree((NodePtr){syntaxTree, RootNode});
     FreeResources();
 
     if (result.hasError)
