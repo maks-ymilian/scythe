@@ -55,15 +55,51 @@ typedef struct
     Array parameterList;
 } SymbolAttributes;
 
-static Map symbolTable;
+typedef struct ScopeNode ScopeNode;
 
-static Array symbolsAddedThisScope;
+struct ScopeNode
+{
+    ScopeNode* parent;
+    Map symbolTable;
+};
+
+static ScopeNode* currentScope;
 
 static Map includedSections;
 
 static MemoryStream* mainStream;
 static MemoryStream* functionsStream;
 static MemoryStream* currentStream;
+
+static ScopeNode* AllocateScopeNode()
+{
+    ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
+    scopeNode->parent = NULL;
+    scopeNode->symbolTable = AllocateMap(sizeof(SymbolAttributes));
+    return scopeNode;
+}
+
+static void PopScope()
+{
+    for (MAP_ITERATE(i, &currentScope->symbolTable))
+    {
+        const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
+        if (symbol.symbolType == FunctionSymbol)
+            FreeArray(&symbol.parameterList);
+    }
+
+    ScopeNode* parent = currentScope->parent;
+    FreeMap(&currentScope->symbolTable);
+    free(currentScope);
+    currentScope = parent;
+}
+
+static void PushScope()
+{
+    ScopeNode* newScope = AllocateScopeNode();
+    newScope->parent = currentScope;
+    currentScope = newScope;
+}
 
 static bool AddType(const char* name, const MetaType metaType)
 {
@@ -93,17 +129,6 @@ static const char* GetTypeName(const Type type)
 {
     assert(type.id < typeNames.length);
     return *(char**)typeNames.array[type.id];
-}
-
-static void ClearSymbolsAddedInThisScope()
-{
-    for (size_t i = 0; i < symbolsAddedThisScope.length; ++i)
-    {
-        char* name = *(char**)symbolsAddedThisScope.array[i];
-        assert(MapRemove(&symbolTable, name));
-        free(name);
-    }
-    ArrayClear(&symbolsAddedThisScope);
 }
 
 static char* AllocateString1Str(const char* format, const char* insert)
@@ -164,13 +189,8 @@ static Result AddSymbol(const char* name, const Type type, const int errorLineNu
     if (funcParams != NULL)
         attributes.parameterList = *funcParams;
 
-    if (!MapAdd(&symbolTable, name, &attributes))
+    if (!MapAdd(&currentScope->symbolTable, name, &attributes))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
-
-    const int nameLength = strlen(name);
-    char* nameCopy = malloc(nameLength + 1);
-    memcpy(nameCopy, name, nameLength + 1);
-    ArrayAdd(&symbolsAddedThisScope, &nameCopy);
 
     return SUCCESS_RESULT;
 }
@@ -183,13 +203,6 @@ static Result RegisterVariable(const Token identifier, const Type type)
 static Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
 {
     return AddSymbol(identifier.text, returnType, identifier.lineNumber, FunctionSymbol, funcParams);
-}
-
-static SymbolAttributes GetKnownSymbol(const char* name)
-{
-    const SymbolAttributes* symbol = MapGet(&symbolTable, name);
-    assert(symbol != NULL);
-    return *symbol;
 }
 
 static void SetCurrentStream(MemoryStream* stream) { currentStream = stream; }
@@ -213,19 +226,13 @@ static void FreeResources()
 {
     FreeMap(&types);
 
-    for (MAP_ITERATE(i, &symbolTable))
-    {
-        const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
-        if (symbol.symbolType == FunctionSymbol)
-            FreeArray(&symbol.parameterList);
-    }
-    FreeMap(&symbolTable);
+    while (currentScope != NULL)
+        PopScope();
 
     for (int i = 0; i < typeNames.length; ++i)
         free(*(char**)typeNames.array[i]);
     FreeArray(&typeNames);
 
-    FreeArray(&symbolsAddedThisScope);
     FreeMap(&includedSections);
 
     FreeMemoryStream(mainStream, true);
@@ -234,14 +241,15 @@ static void FreeResources()
 
 static void InitResources()
 {
+    ScopeNode* globalScope = AllocateScopeNode();
+    currentScope = globalScope;
+
     mainStream = AllocateMemoryStream();
     functionsStream = AllocateMemoryStream();
     SetCurrentStream(mainStream);
 
-    symbolTable = AllocateMap(sizeof(SymbolAttributes));
     types = AllocateMap(sizeof(Type));
     typeNames = AllocateArray(sizeof(char*));
-    symbolsAddedThisScope = AllocateArray(sizeof(char*));
     includedSections = AllocateMap(0);
 
     bool success = AddType("int", PrimitiveType);
@@ -346,9 +354,22 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
 
 static Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
 {
-    SymbolAttributes* symbol = MapGet(&symbolTable, identifier.text);
-    if (symbol == NULL)
-        return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
+    SymbolAttributes* symbol;
+    const ScopeNode* scope = currentScope;
+
+    while (true)
+    {
+        if (scope == NULL)
+            return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
+
+        symbol = MapGet(&scope->symbolTable, identifier.text);
+
+        if (symbol != NULL)
+            break;
+
+        scope = scope->parent;
+    }
+
     *outSymbol = symbol;
     return SUCCESS_RESULT;
 }
@@ -815,6 +836,8 @@ static Result GenerateStatement(const NodePtr* in);
 
 static Result GenerateBlockStatement(const BlockStmt* in)
 {
+    PushScope();
+
     WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
     {
@@ -824,7 +847,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     }
     WRITE_LITERAL(");\n");
 
-    ClearSymbolsAddedInThisScope();
+    PopScope();
 
     return SUCCESS_RESULT;
 }
