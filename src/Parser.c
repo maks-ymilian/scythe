@@ -361,13 +361,9 @@ static Result ParseSectionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* at = MatchOne(At);
-    if (at == NULL)
-        return NOT_FOUND_RESULT;
-
     const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
     if (sectionType == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected section type after \"#t\"", At);
+        return NOT_FOUND_RESULT;
 
     NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
