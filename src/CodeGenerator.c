@@ -16,14 +16,14 @@
 if (result.hasError)\
     return result;}
 
-#define WRITE_LITERAL(text) StreamWrite(outputText, text, sizeof(text) - 1)
-#define WRITE_TEXT(text) StreamWrite(outputText, text, strlen(text));
+#define WRITE_LITERAL(text) StreamWrite(currentStream, text, sizeof(text) - 1)
+#define WRITE_TEXT(text) StreamWrite(currentStream, text, strlen(text));
 
 #define GET_WRITTEN_CHARS(code, arrayName, charsLength)\
-const size_t  arrayName##_pos = StreamGetPosition(outputText);\
+const size_t  arrayName##_pos = StreamGetPosition(currentStream);\
 code;\
-const size_t  arrayName##_length = StreamGetPosition(outputText) -  arrayName##_pos;\
-char* arrayName##_chars = (char*)StreamRewindRead(outputText,  arrayName##_length).buffer;\
+const size_t  arrayName##_length = StreamGetPosition(currentStream) -  arrayName##_pos;\
+char* arrayName##_chars = (char*)StreamRewindRead(currentStream,  arrayName##_length).buffer;\
 charsLength = arrayName##_length;\
 char arrayName[charsLength];\
 memcpy(arrayName,  arrayName##_chars, charsLength)
@@ -44,7 +44,6 @@ typedef struct
     Type type;
     char* name;
     NodePtr defaultValue;
-    long lineNumber;
 } FunctionParameter;
 
 typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
@@ -58,11 +57,13 @@ typedef struct
 
 static Map symbolTable;
 
-static MemoryStream* outputText;
-
 static Array symbolsAddedThisScope;
 
 static Map includedSections;
+
+static MemoryStream* mainStream;
+static MemoryStream* functionsStream;
+static MemoryStream* currentStream;
 
 static bool AddType(const char* name, const MetaType metaType)
 {
@@ -191,7 +192,24 @@ static SymbolAttributes GetKnownSymbol(const char* name)
     return *symbol;
 }
 
-static void FreeTables()
+static void SetCurrentStream(MemoryStream* stream) { currentStream = stream; }
+
+static Buffer CombineStreams()
+{
+    MemoryStream* stream = AllocateMemoryStream();
+
+    const Buffer functions = StreamRewindRead(functionsStream, 0);
+    StreamWrite(stream, functions.buffer, functions.length);
+
+    const Buffer sections = StreamRewindRead(mainStream, 0);
+    StreamWrite(stream, sections.buffer, sections.length);
+
+    const Buffer out = StreamRewindRead(stream, 0);
+    FreeMemoryStream(stream, false);
+    return out;
+}
+
+static void FreeResources()
 {
     FreeMap(&types);
 
@@ -209,10 +227,17 @@ static void FreeTables()
 
     FreeArray(&symbolsAddedThisScope);
     FreeMap(&includedSections);
+
+    FreeMemoryStream(mainStream, true);
+    FreeMemoryStream(functionsStream, true);
 }
 
-static void InitTables()
+static void InitResources()
 {
+    mainStream = AllocateMemoryStream();
+    functionsStream = AllocateMemoryStream();
+    SetCurrentStream(mainStream);
+
     symbolTable = AllocateMap(sizeof(SymbolAttributes));
     types = AllocateMap(sizeof(Type));
     typeNames = AllocateArray(sizeof(char*));
@@ -472,13 +497,6 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
         if (i != symbol->parameterList.length - 1)
             WRITE_LITERAL(",");
-
-        if (callExpr != NULL && funcParam->defaultValue.ptr != NULL) // if default wasnt used, then check it for errors
-        {
-            const size_t beforePos = StreamGetPosition(outputText);
-            HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, &funcParam->defaultValue, funcParam->lineNumber));
-            StreamSetPosition(outputText, beforePos);
-        }
     }
 
     WRITE_LITERAL(")");
@@ -547,7 +565,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true)),
         right, rightLength);
 
-    StreamRewind(outputText, leftLength + operatorLength + rightLength);
+    StreamRewind(currentStream, leftLength + operatorLength + rightLength);
 
     bool textWritten = false;
 
@@ -580,10 +598,10 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             {
                 if (leftType.id == GetKnownType("int").id)
                 {
-                    StreamWrite(outputText, left, leftLength);
-                    StreamWrite(outputText, operator, operatorLength);
+                    StreamWrite(currentStream, left, leftLength);
+                    StreamWrite(currentStream, operator, operatorLength);
                     WRITE_LITERAL("((");
-                    StreamWrite(outputText, right, rightLength);
+                    StreamWrite(currentStream, right, rightLength);
                     WRITE_LITERAL(")|0)");
                     textWritten = true;
                 }
@@ -609,12 +627,12 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 default: assert(0);
             }
 
-            StreamWrite(outputText, left, leftLength);
+            StreamWrite(currentStream, left, leftLength);
             WRITE_TEXT(GetTokenTypeString(Equals));
             WRITE_LITERAL("((");
-            StreamWrite(outputText, left, leftLength);
+            StreamWrite(currentStream, left, leftLength);
             WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
-            StreamWrite(outputText, right, rightLength);
+            StreamWrite(currentStream, right, rightLength);
             WRITE_LITERAL(")");
             if (leftType.id == GetKnownType("int").id)
                 WRITE_LITERAL("|0");
@@ -670,9 +688,9 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     if (!textWritten)
     {
-        StreamWrite(outputText, left, leftLength);
-        StreamWrite(outputText, operator, operatorLength);
-        StreamWrite(outputText, right, rightLength);
+        StreamWrite(currentStream, left, leftLength);
+        StreamWrite(currentStream, operator, operatorLength);
+        StreamWrite(currentStream, right, rightLength);
     }
 
     WRITE_LITERAL(")");
@@ -738,12 +756,21 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
+static Result GenerateBlockStatement(const BlockStmt* in);
+
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
+    SetCurrentStream(functionsStream);
+
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType));
 
     assert(in->identifier.type == Identifier);
+
+    WRITE_LITERAL("function ");
+    WRITE_TEXT(in->identifier.text);
+    WRITE_LITERAL("(");
+
     Array params = AllocateArray(sizeof(FunctionParameter));
     bool hasOptionalParams = false;
     for (int i = 0; i < in->parameters.length; ++i)
@@ -761,14 +788,22 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         FunctionParameter param;
         param.name = varDecl->identifier.text;
         param.defaultValue = varDecl->initializer;
-        param.lineNumber = varDecl->identifier.lineNumber;
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
         ArrayAdd(&params, &param);
+
+        if (param.defaultValue.ptr != NULL)
+        {
+            const size_t beforePos = StreamGetPosition(currentStream);
+            HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
+            StreamSetPosition(currentStream, beforePos);
+        }
     }
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
-    WRITE_LITERAL("function declaration(");
     WRITE_LITERAL(")\n");
+    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr));
+
+    SetCurrentStream(mainStream);
     return SUCCESS_RESULT;
 }
 
@@ -842,28 +877,24 @@ Result GenerateProgram(const Program* in)
 
 Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 {
-    InitTables();
+    InitResources();
 
-    outputText = AllocateMemoryStream();
+    SetCurrentStream(functionsStream);
+    WRITE_LITERAL("@init\n");
 
-    const NodePtr stmt = {syntaxTree, ProgramRoot};
-    // PrintSyntaxTree(&stmt);
+    SetCurrentStream(mainStream);
 
     const Result result = GenerateProgram(syntaxTree);
 
-    FreeSyntaxTree(stmt);
-    FreeTables();
+    WRITE_LITERAL("\n");
+    const Buffer outputBuffer = CombineStreams();
+
+    FreeSyntaxTree((NodePtr){syntaxTree, ProgramRoot});
+    FreeResources();
 
     if (result.hasError)
-    {
-        FreeMemoryStream(outputText, true);
         return result;
-    }
 
-    WRITE_LITERAL("\n");
-
-    const Buffer outputBuffer = StreamRewindRead(outputText, 0);
-    FreeMemoryStream(outputText, false);
     *outputCode = outputBuffer.buffer;
     *length = outputBuffer.length;
 

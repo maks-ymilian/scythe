@@ -27,8 +27,6 @@ Buffer StreamRead(MemoryStream* stream, const size_t length)
     const size_t bytesLeft = stream->position - stream->length;
     const size_t minLength = length < bytesLeft ? length : bytesLeft;
 
-    assert(minLength != 0);
-
     const Buffer buffer = (Buffer){&stream->buffer[stream->position], minLength};
     stream->position += minLength;
     return buffer;
@@ -76,7 +74,6 @@ static void Reallocate(MemoryStream* stream)
 size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 {
     assert(buffer != NULL);
-    assert(length > 0);
 
     if (stream->position + length >= stream->capacity)
         Reallocate(stream);
