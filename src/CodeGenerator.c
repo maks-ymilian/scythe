@@ -791,6 +791,10 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type));
         ArrayAdd(&params, &param);
 
+        WRITE_TEXT(varDecl->identifier.text);
+        if (i < in->parameters.length - 1)
+            WRITE_LITERAL(",");
+
         if (param.defaultValue.ptr != NULL)
         {
             const size_t beforePos = StreamGetPosition(currentStream);
