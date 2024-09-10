@@ -46,6 +46,7 @@ const char* GetTokenTypeString(const TokenType tokenType)
         case NumberLiteral: return "NumberLiteral";
         case StringLiteral: return "StringLiteral";
         case Identifier: return "Identifier";
+
         case Init: return "init";
         case Sample: return "sample";
         case Serialize: return "serialize";
@@ -53,6 +54,9 @@ const char* GetTokenTypeString(const TokenType tokenType)
         case GFX: return "gfx";
         case Slider: return "slider";
 
+        case Return: return "return";
+
+        case Void: return "void";
         case Int: return "int";
         case Float: return "float";
         case String: return "string";

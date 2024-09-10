@@ -144,10 +144,13 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     ADD_KEYWORD(GFX);
     ADD_KEYWORD(Slider);
 
+    ADD_KEYWORD(Void);
     ADD_KEYWORD(Int);
     ADD_KEYWORD(Float);
     ADD_KEYWORD(String);
     ADD_KEYWORD(Bool);
+
+    ADD_KEYWORD(Return);
 
     tokens = AllocateArray(sizeof(Token));
 

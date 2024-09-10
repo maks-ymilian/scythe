@@ -19,7 +19,8 @@ typedef enum
 
     // keywords
     Init, Slider, Block, Sample, Serialize, GFX,
-    Int, Float, String, Bool,
+    Void, Int, Float, String, Bool,
+    Return,
 
     //end of file
     EndOfFile,
