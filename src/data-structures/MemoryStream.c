@@ -54,7 +54,7 @@ size_t StreamGetPosition(const MemoryStream* stream) { return stream->position; 
 
 void StreamSetPosition(MemoryStream* stream, const size_t position)
 {
-    assert(position < stream->position);
+    assert(position <= stream->position);
     stream->position = position;
 }
 

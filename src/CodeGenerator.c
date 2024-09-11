@@ -774,7 +774,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
     Type type;
-    const Result result = GenerateExpression(&in->expr, &type, true);
+    const Result result = GenerateExpression(&in->expr, &type, false);
     WRITE_LITERAL(";\n");
     return result;
 }
@@ -809,6 +809,77 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
+static Result CheckReturnPaths(const NodePtr* in, const long lineNumber, Array* outArray)
+{
+    const Result error = ERROR_RESULT("All code paths must return a value", lineNumber);
+
+    switch (in->type)
+    {
+        case ReturnStatement:
+        {
+            const ReturnStmt* returnStmt = in->ptr;
+            ArrayAdd(outArray, returnStmt);
+            return SUCCESS_RESULT;
+        }
+        case BlockStatement:
+        {
+            const BlockStmt* block = in->ptr;
+            bool found = false;
+            for (int i = 0; i < block->statements.length; ++i)
+            {
+                const NodePtr* node = block->statements.array[i];
+                if (CheckReturnPaths(node, lineNumber, outArray).success)
+                    found = true;
+            }
+            if (found) return SUCCESS_RESULT;
+            return error;
+        }
+        case ExpressionStatement:
+            return error;
+        case VariableDeclaration:
+            return error;
+        case FunctionDeclaration:
+            return error;
+        default: assert(0);
+    }
+}
+
+static Result CheckReturnStatements(const Type returnType, const Array* returnStatements)
+{
+    const size_t streamPos = StreamGetPosition(currentStream);
+
+    const bool isVoid = returnType.id == GetKnownType("void").id;
+    for (int i = 0; i < returnStatements->length; ++i)
+    {
+        const ReturnStmt* returnStmt = returnStatements->array[i];
+
+        if (returnStmt->expr.type == NullNode)
+        {
+            if (!isVoid)
+                return ERROR_RESULT(
+                    AllocateString1Str("A function with return type \"%s\" must return a value", GetTypeName(returnType)),
+                    returnStmt->returnToken.lineNumber);
+        }
+        else
+        {
+            if (isVoid)
+                return ERROR_RESULT(
+                    AllocateString1Str("A function with return type \"%s\" cannot return a value", GetTypeName(returnType)),
+                    returnStmt->returnToken.lineNumber);
+
+            Type exprType;
+            HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true));
+            HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
+                "Cannot convert type \"%s\" to return type \"%s\"",
+                returnStmt->returnToken.lineNumber));
+        }
+    }
+
+    StreamSetPosition(currentStream, streamPos);
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope);
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
@@ -819,6 +890,13 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
+
+    Array returnArray = AllocateArray(sizeof(ReturnStmt));
+    const Result returnPaths = CheckReturnPaths(&in->block, in->identifier.lineNumber, &returnArray);
+    if (returnType.id != GetKnownType("void").id && returnPaths.hasError)
+        return returnPaths;
+    HANDLE_ERROR(CheckReturnStatements(returnType, &returnArray));
+    FreeArray(&returnArray);
 
     assert(in->identifier.type == Identifier);
 

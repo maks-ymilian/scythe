@@ -300,7 +300,8 @@ static Result ParseReturnStatement(NodePtr* out)
     SET_LINE_NUMBER
     NodePtr expr;
     HANDLE_ERROR(ParseExpression(&expr),
-                 return ERROR_RESULT_LINE("Expected expression after return"));
+        expr.type = NullNode;
+        expr.ptr = NULL;)
 
     if (MatchOne(Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
