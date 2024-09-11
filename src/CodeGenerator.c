@@ -415,6 +415,18 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
             WRITE_TEXT(literal.text);
             return SUCCESS_RESULT;
         }
+        case True:
+        {
+            WRITE_LITERAL("1");
+            *outType = GetKnownType("bool");
+            return SUCCESS_RESULT;
+        }
+        case False:
+        {
+            WRITE_LITERAL("0");
+            *outType = GetKnownType("bool");
+            return SUCCESS_RESULT;
+        }
         default:
             assert(0);
     }

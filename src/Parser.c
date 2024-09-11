@@ -107,7 +107,7 @@ static Result ParsePrimary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* token = Match((TokenType[]){NumberLiteral, StringLiteral, Identifier, LeftBracket}, 4);
+    const Token* token = Match((TokenType[]){NumberLiteral, StringLiteral, Identifier, LeftBracket, True, False}, 6);
     if (token == NULL)
         return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
@@ -127,6 +127,8 @@ static Result ParsePrimary(NodePtr* out)
         case NumberLiteral:
         case StringLiteral:
         case Identifier:
+        case True:
+        case False:
         {
             LiteralExpr* literal = AllocLiteral((LiteralExpr){*token});
             *out = (NodePtr){literal, LiteralExpression};
@@ -300,8 +302,8 @@ static Result ParseReturnStatement(NodePtr* out)
     SET_LINE_NUMBER
     NodePtr expr;
     HANDLE_ERROR(ParseExpression(&expr),
-        expr.type = NullNode;
-        expr.ptr = NULL;)
+                 expr.type = NullNode;
+                 expr.ptr = NULL;)
 
     if (MatchOne(Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
