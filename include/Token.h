@@ -15,12 +15,12 @@ typedef enum
 
     // literals
     NumberLiteral, StringLiteral,
-    Identifier,
+    Identifier, True, False,
 
     // keywords
     Init, Slider, Block, Sample, Serialize, GFX,
     Void, Int, Float, String, Bool,
-    Return,
+    If, Return,
 
     //end of file
     EndOfFile,
