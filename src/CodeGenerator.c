@@ -61,6 +61,7 @@ struct ScopeNode
 {
     ScopeNode* parent;
     Map symbolTable;
+    bool isFunction;
 };
 
 static ScopeNode* currentScope;
@@ -75,6 +76,7 @@ static ScopeNode* AllocateScopeNode()
 {
     ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
     scopeNode->parent = NULL;
+    scopeNode->isFunction = false;
     scopeNode->symbolTable = AllocateMap(sizeof(SymbolAttributes));
     return scopeNode;
 }
@@ -756,6 +758,21 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
+    bool inFunction = false;
+    const ScopeNode* scope = currentScope;
+    while (scope != NULL)
+    {
+        if (scope->isFunction)
+        {
+            inFunction = true;
+            break;
+        }
+
+        scope = scope->parent;
+    }
+    if (!inFunction)
+        return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
+
     Type type;
     const Result result = GenerateExpression(&in->expr, &type, true);
     WRITE_LITERAL(";\n");
@@ -798,6 +815,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
     SetCurrentStream(functionsStream);
     PushScope();
+    currentScope->isFunction = true;
 
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));

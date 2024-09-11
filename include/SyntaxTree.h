@@ -92,6 +92,7 @@ ExpressionStmt* AllocExpressionStmt(ExpressionStmt stmt);
 typedef struct
 {
     NodePtr expr;
+    Token returnToken;
 } ReturnStmt;
 
 ReturnStmt* AllocReturnStmt(ReturnStmt stmt);

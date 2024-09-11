@@ -293,7 +293,8 @@ static Result ParseReturnStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (MatchOne(Return) == NULL)
+    const Token* returnToken = MatchOne(Return);
+    if (returnToken == NULL)
         return NOT_FOUND_RESULT;
 
     SET_LINE_NUMBER
@@ -304,7 +305,7 @@ static Result ParseReturnStatement(NodePtr* out)
     if (MatchOne(Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
 
-    const ReturnStmt* returnStmt = AllocReturnStmt((ReturnStmt){expr});
+    const ReturnStmt* returnStmt = AllocReturnStmt((ReturnStmt){expr, *returnToken});
     *out = (NodePtr){(void*)returnStmt, ReturnStatement};
 
     return SUCCESS_RESULT;
