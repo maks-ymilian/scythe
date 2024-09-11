@@ -214,16 +214,17 @@ static Result ParseUnary(NodePtr* out)
 
 DEF_LEFT_BINARY_PRODUCTION(ParseFactor, ParseUnary, Asterisk COMMA Slash, 2)
 DEF_LEFT_BINARY_PRODUCTION(ParseTerm, ParseFactor, Plus COMMA Minus, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseComparison, ParseTerm,
+DEF_LEFT_BINARY_PRODUCTION(ParseNumberComparison, ParseTerm,
                            RightAngleBracket COMMA RightAngleEquals COMMA LeftAngleBracket COMMA LeftAngleEquals, 4)
-DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseComparison, EqualsEquals COMMA ExclamationEquals, 2)
+DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseNumberComparison, EqualsEquals COMMA ExclamationEquals, 2)
+DEF_LEFT_BINARY_PRODUCTION(ParseBooleanOperators, ParseEquality, AmpersandAmpersand COMMA PipePipe, 2)
 
 static Result ParseAssignment(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     NodePtr left;
-    HANDLE_ERROR(ParseEquality(&left),
+    HANDLE_ERROR(ParseBooleanOperators(&left),
                  return result);
 
     Array exprArray = AllocateArray(sizeof(NodePtr));
