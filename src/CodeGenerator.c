@@ -609,6 +609,11 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     StreamRewind(currentStream, leftLength + operatorLength + rightLength);
 
+    Result operatorTypeError = ERROR_RESULT_TOKEN(
+        AllocateString2Str("Cannot use operator \"#t\" on types \"%s\" and \"%s\"",
+            GetTypeName(leftType), GetTypeName(rightType)),
+        in->operator.lineNumber, in->operator.type);
+
     bool textWritten = false;
 
     switch (in->operator.type)
@@ -697,11 +702,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                  leftType.id != floatType.id) ||
                 (rightType.id != intType.id &&
                  rightType.id != floatType.id))
-            {
-                const char* message = AllocateString2Str("Operator \"#t\" can only be used on %s and %s types",
-                                                         GetTypeName(intType), GetTypeName(floatType));
-                return ERROR_RESULT_TOKEN(message, in->operator.lineNumber, in->operator.type);
-            }
+                return operatorTypeError;
 
             if (leftType.id == floatType.id || rightType.id == floatType.id)
                 *outType = floatType;
@@ -711,16 +712,41 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
             break;
         }
 
-        case AmpersandAmpersand:
-        case PipePipe:
         case EqualsEquals:
         case ExclamationEquals:
+            // equality
+        {
+            if (!CheckAssignmentCompatibility(leftType, rightType, "you should not be reading this", 69420).success)
+                return operatorTypeError;
+
+            *outType = GetKnownType("bool");
+            break;
+        }
         case LeftAngleBracket:
         case RightAngleBracket:
         case LeftAngleEquals:
         case RightAngleEquals:
-            // comparison
+            // number comparison
         {
+            const Type intType = GetKnownType("int");
+            const Type floatType = GetKnownType("float");
+            if ((leftType.id != intType.id &&
+                 leftType.id != floatType.id) ||
+                (rightType.id != intType.id &&
+                 rightType.id != floatType.id))
+                return operatorTypeError;
+
+            *outType = GetKnownType("bool");
+            break;
+        }
+        case AmpersandAmpersand:
+        case PipePipe:
+            // boolean operators
+        {
+            const Type boolType = GetKnownType("bool");
+            if (leftType.id != boolType.id || rightType.id != boolType.id)
+                return operatorTypeError;
+
             *outType = GetKnownType("bool");
             break;
         }
