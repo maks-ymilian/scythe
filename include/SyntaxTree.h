@@ -15,6 +15,7 @@ typedef enum
     BlockStatement,
     ExpressionStatement,
     ReturnStatement,
+    IfStatement,
     VariableDeclaration,
     FunctionDeclaration,
 
@@ -87,6 +88,17 @@ typedef struct
 } ExpressionStmt;
 
 ExpressionStmt* AllocExpressionStmt(ExpressionStmt stmt);
+
+
+typedef struct
+{
+    Token ifToken;
+    NodePtr expr;
+    NodePtr stmt;
+    NodePtr elseStmt;
+} IfStmt;
+
+IfStmt* AllocIfStmt(IfStmt stmt);
 
 
 typedef struct

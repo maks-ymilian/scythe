@@ -1030,6 +1030,30 @@ static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope
     return SUCCESS_RESULT;
 }
 
+static Result GenerateIfStatement(const IfStmt* in)
+{
+    Type exprType;
+    HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
+    const Type boolType = GetKnownType("bool");
+    if (exprType.id != boolType.id)
+        return ERROR_RESULT(
+            AllocateString1Str("Expression inside if statement must be evaluate to a \"%s\"", GetTypeName(boolType)),
+            in->ifToken.lineNumber);
+
+    WRITE_LITERAL("?(\n");
+    HANDLE_ERROR(GenerateStatement(&in->stmt));
+    WRITE_LITERAL(")");
+    if (in->elseStmt.type != NullNode)
+    {
+        WRITE_LITERAL(":(\n");
+        HANDLE_ERROR(GenerateStatement(&in->elseStmt));
+        WRITE_LITERAL(")");
+    }
+    WRITE_LITERAL(";\n");
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateSectionStatement(const SectionStmt* in)
 {
     if (in->type.type != Init &&
@@ -1065,6 +1089,8 @@ static Result GenerateStatement(const NodePtr* in)
             return GenerateBlockStatement(in->ptr, true);
         case FunctionDeclaration:
             return GenerateFunctionDeclaration(in->ptr);
+        case IfStatement:
+            return GenerateIfStatement(in->ptr);
         default:
             assert(0);
     }

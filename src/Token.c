@@ -55,6 +55,7 @@ const char* GetTokenTypeString(const TokenType tokenType)
         case Slider: return "slider";
 
         case If: return "if";
+        case Else: return "else";
         case True: return "true";
         case False: return "false";
         case Return: return "return";

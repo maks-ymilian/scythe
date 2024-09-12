@@ -173,11 +173,11 @@ static Result ParseFunctionCall(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (PeekOne(LeftBracket, 1) == NULL)
+    const Token* identifier = PeekOne(Identifier, 0);
+    if (identifier == NULL || PeekOne(LeftBracket, 1) == NULL)
         return ParsePrimary(out);
 
-    const Token* identifier = MatchOne(Identifier);
-    assert(identifier != NULL);
+    assert(MatchOne(Identifier) != NULL);
     assert(MatchOne(LeftBracket) != NULL);
 
     Array params;
@@ -316,6 +316,49 @@ static Result ParseReturnStatement(NodePtr* out)
 }
 
 static Result ParseStatement(NodePtr* out);
+
+static Result ParseIfStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER;
+
+    const Token* ifToken = MatchOne(If);
+    if (ifToken == NULL)
+        return NOT_FOUND_RESULT;
+
+    SET_LINE_NUMBER;
+    if (MatchOne(LeftBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
+
+    SET_LINE_NUMBER;
+    NodePtr expr; {
+        HANDLE_ERROR(ParseExpression(&expr),
+                     return ERROR_RESULT_LINE("Expected expression in if statement"));
+    }
+
+    SET_LINE_NUMBER;
+    if (MatchOne(RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+
+    SET_LINE_NUMBER;
+    NodePtr stmt;
+    HANDLE_ERROR(ParseStatement(&stmt),
+                 return ERROR_RESULT_LINE("Expected statement"));
+
+    NodePtr elseStmt;
+    if (MatchOne(Else))
+    {
+        SET_LINE_NUMBER;
+        HANDLE_ERROR(ParseStatement(&elseStmt),
+                     return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Else));
+    }
+    else
+        elseStmt = (NodePtr){NULL, NullNode};
+
+    const IfStmt* ifStmt = AllocIfStmt((IfStmt){*ifToken, expr, stmt, elseStmt});
+    *out = (NodePtr){(void*)ifStmt, IfStatement};
+
+    return SUCCESS_RESULT;
+}
 
 static Result ParseBlockStatement(NodePtr* out)
 {
@@ -471,6 +514,10 @@ static Result ParseStatement(NodePtr* out)
     long SET_LINE_NUMBER
 
     Result result = ParseFunctionDeclaration(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseIfStatement(out);
     if (result.success || result.hasError)
         return result;
 

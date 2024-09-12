@@ -65,6 +65,12 @@ ExpressionStmt* AllocExpressionStmt(const ExpressionStmt stmt)
     return new;
 }
 
+IfStmt* AllocIfStmt(const IfStmt stmt)
+{
+    ALLOCATE(IfStmt, stmt);
+    return new;
+}
+
 ReturnStmt* AllocReturnStmt(const ReturnStmt stmt)
 {
     ALLOCATE(ReturnStmt, stmt);
@@ -210,6 +216,18 @@ static void FreeNode(const NodePtr node)
             for (int i = 0; i < ptr->statements.length; ++i)
                 FreeNode(*(NodePtr*)ptr->statements.array[i]);
             FreeArray(&ptr->statements);
+
+            free(node.ptr);
+            return;
+        }
+        case IfStatement:
+        {
+            DEBUG_PRINT("Freeing IfStatement\n");
+            const IfStmt* ptr = node.ptr;
+
+            FreeNode(ptr->expr);
+            FreeNode(ptr->stmt);
+            FreeNode(ptr->elseStmt);
 
             free(node.ptr);
             return;

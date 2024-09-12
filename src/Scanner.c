@@ -151,6 +151,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     ADD_KEYWORD(Bool);
 
     ADD_KEYWORD(If);
+    ADD_KEYWORD(Else);
     ADD_KEYWORD(True);
     ADD_KEYWORD(False);
     ADD_KEYWORD(Return);
