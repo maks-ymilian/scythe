@@ -62,6 +62,7 @@ struct ScopeNode
     ScopeNode* parent;
     Map symbolTable;
     bool isFunction;
+    Type functionReturnType;
 };
 
 static ScopeNode* currentScope;
@@ -492,13 +493,13 @@ static int Max(const int a, const int b)
     return b;
 };
 
-static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression);
+static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression, const bool convertToInteger);
 
-static Result GenerateFunctionParameter(const Type type, const NodePtr* expr, const long lineNumber)
+static Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, const long lineNumber)
 {
     Type exprType;
-    HANDLE_ERROR(GenerateExpression(expr, &exprType, true));
-    HANDLE_ERROR(CheckAssignmentCompatibility(type, exprType,
+    HANDLE_ERROR(GenerateExpression(expr, &exprType, true, paramType.id == GetKnownType("int").id));
+    HANDLE_ERROR(CheckAssignmentCompatibility(paramType, exprType,
         "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", lineNumber));
 
     return SUCCESS_RESULT;
@@ -560,7 +561,7 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     WRITE_TEXT(GetTokenTypeString(in->operator.type));
 
     Type type;
-    HANDLE_ERROR(GenerateExpression(&in->expression, &type, true));
+    HANDLE_ERROR(GenerateExpression(&in->expression, &type, true, false));
 
     switch (in->operator.type)
     {
@@ -593,7 +594,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     size_t leftLength;
     Type leftType;
     GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true)),
+        HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true, false)),
         left, leftLength);
 
     size_t operatorLength;
@@ -604,12 +605,12 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     size_t rightLength;
     Type rightType;
     GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true)),
+        HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true, false)),
         right, rightLength);
 
     StreamRewind(currentStream, leftLength + operatorLength + rightLength);
 
-    Result operatorTypeError = ERROR_RESULT_TOKEN(
+    const Result operatorTypeError = ERROR_RESULT_TOKEN(
         AllocateString2Str("Cannot use operator \"#t\" on types \"%s\" and \"%s\"",
             GetTypeName(leftType), GetTypeName(rightType)),
         in->operator.lineNumber, in->operator.type);
@@ -641,20 +642,18 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
             *outType = leftType;
 
-            if (in->operator.type == Equals)
+            if (leftType.id == GetKnownType("int").id)
             {
-                if (leftType.id == GetKnownType("int").id)
-                {
-                    StreamWrite(currentStream, left, leftLength);
-                    StreamWrite(currentStream, operator, operatorLength);
-                    WRITE_LITERAL("((");
-                    StreamWrite(currentStream, right, rightLength);
-                    WRITE_LITERAL(")|0)");
-                    textWritten = true;
-                }
-
-                break;
+                StreamWrite(currentStream, left, leftLength);
+                StreamWrite(currentStream, operator, operatorLength);
+                WRITE_LITERAL("(");
+                StreamWrite(currentStream, right, rightLength);
+                WRITE_LITERAL("|0)");
+                textWritten = true;
             }
+
+            if (in->operator.type == Equals)
+                break;
 
             TokenType arithmeticOperator;
             switch (in->operator.type)
@@ -765,54 +764,72 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression)
+static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression, const bool convertToInteger)
 {
+    if (in->type == NullNode)
+    {
+        if (expectingExpression)
+            assert(0);
+        return SUCCESS_RESULT;
+    }
+
+    if (convertToInteger)
+        WRITE_LITERAL("(");
+
+    Result result;
+
     switch (in->type)
     {
-        case NullNode:
-            if (expectingExpression)
-                assert(0);
-            return SUCCESS_RESULT;
         case BinaryExpression:
-            return GenerateBinaryExpression(in->ptr, outType);
+            result = GenerateBinaryExpression(in->ptr, outType);
+            break;
         case UnaryExpression:
-            return GenerateUnaryExpression(in->ptr, outType);
+            result = GenerateUnaryExpression(in->ptr, outType);
+            break;
         case LiteralExpression:
-            return GenerateLiteralExpression(in->ptr, outType);
+            result = GenerateLiteralExpression(in->ptr, outType);
+            break;
         case FunctionCallExpression:
-            return GenerateFunctionCallExpression(in->ptr, outType);
+            result = GenerateFunctionCallExpression(in->ptr, outType);
+            break;
         default:
             assert(0);
     }
+
+    if (convertToInteger)
+    {
+        if (outType->id == GetKnownType("float").id)
+            WRITE_LITERAL("|0");
+        WRITE_LITERAL(")");
+    }
+
+    return result;
 }
 
 static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {
     Type type;
-    const Result result = GenerateExpression(&in->expr, &type, false);
+    const Result result = GenerateExpression(&in->expr, &type, false, false);
     WRITE_LITERAL(";\n");
     return result;
 }
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
-    bool inFunction = false;
     const ScopeNode* scope = currentScope;
     while (scope != NULL)
     {
         if (scope->isFunction)
-        {
-            inFunction = true;
             break;
-        }
 
         scope = scope->parent;
     }
-    if (!inFunction)
+    if (!scope->isFunction)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
-    Type type;
-    const Result result = GenerateExpression(&in->expr, &type, false);
+    Type exprType;
+    const Result result = GenerateExpression(&in->expr, &exprType, false,
+                                             scope->functionReturnType.id == GetKnownType("int").id);
     WRITE_LITERAL(";\n");
     return result;
 }
@@ -906,7 +923,7 @@ static Result CheckReturnStatements(const Type returnType, const Array* returnSt
                     returnStmt->returnToken.lineNumber);
 
             Type exprType;
-            HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true));
+            HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true, false));
             HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
                 "Cannot convert type \"%s\" to return type \"%s\"",
                 returnStmt->returnToken.lineNumber));
@@ -924,10 +941,12 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
     SetCurrentStream(functionsStream);
     PushScope();
-    currentScope->isFunction = true;
 
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
+
+    currentScope->isFunction = true;
+    currentScope->functionReturnType = returnType;
 
     Array returnArray = AllocateArray(sizeof(ReturnStmt));
     const Result returnPaths = CheckReturnPaths(&in->block, in->identifier.lineNumber, &returnArray);
@@ -1069,7 +1088,6 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 
     SetCurrentStream(functionsStream);
     WRITE_LITERAL("@init\n");
-
     SetCurrentStream(mainStream);
 
     const Result result = GenerateProgram(syntaxTree);
