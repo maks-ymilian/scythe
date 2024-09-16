@@ -864,40 +864,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result CheckReturnPaths(const NodePtr* in, const long lineNumber, Array* outArray)
-{
-    const Result error = ERROR_RESULT("All code paths must return a value", lineNumber);
-
-    switch (in->type)
-    {
-        case ReturnStatement:
-        {
-            const ReturnStmt* returnStmt = in->ptr;
-            ArrayAdd(outArray, returnStmt);
-            return SUCCESS_RESULT;
-        }
-        case BlockStatement:
-        {
-            const BlockStmt* block = in->ptr;
-            bool found = false;
-            for (int i = 0; i < block->statements.length; ++i)
-            {
-                const NodePtr* node = block->statements.array[i];
-                if (CheckReturnPaths(node, lineNumber, outArray).success)
-                    found = true;
-            }
-            if (found) return SUCCESS_RESULT;
-            return error;
-        }
-        case ExpressionStatement:
-            return error;
-        case VariableDeclaration:
-            return error;
-        case FunctionDeclaration:
-            return error;
-        default: assert(0);
-    }
-}
+typedef enum { NoReturn, IsReturn, ContainsReturn } ReturnThing;
 
 static Result CheckReturnStatements(const Type returnType, const Array* returnStatements)
 {
@@ -948,12 +915,11 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     currentScope->isFunction = true;
     currentScope->functionReturnType = returnType;
 
-    Array returnArray = AllocateArray(sizeof(ReturnStmt));
-    const Result returnPaths = CheckReturnPaths(&in->block, in->identifier.lineNumber, &returnArray);
-    if (returnType.id != GetKnownType("void").id && returnPaths.hasError)
-        return returnPaths;
-    HANDLE_ERROR(CheckReturnStatements(returnType, &returnArray));
-    FreeArray(&returnArray);
+    // Array returnArray = AllocateArray(sizeof(ReturnStmt));
+    // HANDLE_ERROR(CheckReturnPaths(&in->block, returnType.id == GetKnownType("void").id,
+    //     in->identifier.lineNumber, &returnArray));
+    // HANDLE_ERROR(CheckReturnStatements(returnType, &returnArray));
+    // FreeArray(&returnArray);
 
     assert(in->identifier.type == Identifier);
 
