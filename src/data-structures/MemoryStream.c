@@ -65,9 +65,10 @@ void FreeMemoryStream(MemoryStream* stream, const bool freeBuffer)
     free(stream);
 }
 
-static void Reallocate(MemoryStream* stream)
+static void Reallocate(MemoryStream* stream, const size_t minCapacity)
 {
-    stream->capacity *= 2;
+    while (stream->capacity < minCapacity)
+        stream->capacity *= 2;
     stream->buffer = realloc(stream->buffer, stream->capacity);
 }
 
@@ -76,7 +77,7 @@ size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length
     assert(buffer != NULL);
 
     if (stream->position + length >= stream->capacity)
-        Reallocate(stream);
+        Reallocate(stream, stream->position + length + 1);
 
     memmove(stream->buffer + stream->position, buffer, length);
     stream->position += length;
