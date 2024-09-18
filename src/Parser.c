@@ -384,6 +384,10 @@ static Result ParseBlockStatement(NodePtr* out)
             break;
         }
 
+        SET_LINE_NUMBER
+        if (stmt.type == Section)
+            return ERROR_RESULT_LINE("Nested sections are not allowed");
+
         ArrayAdd(&statements, &stmt);
     }
 

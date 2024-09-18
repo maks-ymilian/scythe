@@ -814,9 +814,9 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static Result GenerateReturnStatement(const ReturnStmt* in)
+static ScopeNode* GetFunctionScope()
 {
-    const ScopeNode* scope = currentScope;
+    ScopeNode* scope = currentScope;
     while (scope != NULL)
     {
         if (scope->isFunction)
@@ -824,13 +824,28 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
 
         scope = scope->parent;
     }
-    if (!scope->isFunction)
+    return scope;
+}
+
+static Result GenerateReturnStatement(const ReturnStmt* in)
+{
+    const ScopeNode* functionScope = GetFunctionScope();
+    if (functionScope == NULL)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
-    Type exprType;
-    const Result result = GenerateExpression(&in->expr, &exprType, false,
-                                             scope->functionReturnType.id == GetKnownType("int").id);
-    WRITE_LITERAL(";\n");
+    WRITE_LITERAL("(");
+    WRITE_LITERAL("__hasReturned = 1;");
+
+    Result result = SUCCESS_RESULT;
+    if (in->expr.type != NullNode)
+    {
+        WRITE_LITERAL("__returnValue =");
+        Type exprType;
+        result = GenerateExpression(&in->expr, &exprType, false,
+                                                 functionScope->functionReturnType.id == GetKnownType("int").id);
+    }
+    WRITE_LITERAL(");\n");
+
     return result;
 }
 
@@ -930,7 +945,7 @@ static Result CheckReturnStatements(const NodePtr node, const Type returnType)
     }
 }
 
-static bool AllPathsReturn(const NodePtr node)
+static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn)
 {
     switch (node.type)
     {
@@ -939,7 +954,12 @@ static bool AllPathsReturn(const NodePtr node)
         case IfStatement:
         {
             const IfStmt* ifStmt = node.ptr;
-            return AllPathsReturn(ifStmt->trueStmt) && AllPathsReturn(ifStmt->falseStmt);
+            const bool trueReturns = ControlPathsReturn(ifStmt->trueStmt, allPathsMustReturn);
+            const bool falseReturns = ControlPathsReturn(ifStmt->falseStmt, allPathsMustReturn);
+
+            if (allPathsMustReturn)
+                return trueReturns && falseReturns;
+            return trueReturns || falseReturns;
         }
         case BlockStatement:
         {
@@ -947,7 +967,7 @@ static bool AllPathsReturn(const NodePtr node)
             for (int i = 0; i < block->statements.length; ++i)
             {
                 const NodePtr* statement = block->statements.array[i];
-                if (AllPathsReturn(*statement))
+                if (ControlPathsReturn(*statement, allPathsMustReturn))
                     return true;
             }
             return false;
@@ -961,7 +981,44 @@ static bool AllPathsReturn(const NodePtr node)
     }
 }
 
-static Result GenerateBlockStatement(const BlockStmt* in, bool changeScope);
+static Result GenerateStatement(const NodePtr* in);
+
+static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
+{
+    WRITE_LITERAL("(0;\n");
+
+    if (topLevel)
+    {
+        WRITE_LITERAL("__hasReturned = 0;\n");
+        WRITE_LITERAL("__returnValue = 0;\n");
+    }
+
+    long returnIfStatementCount = 0;
+    for (int i = 0; i < in->statements.length; ++i)
+    {
+        const NodePtr* node = in->statements.array[i];
+        HANDLE_ERROR(GenerateStatement(node));
+
+        if (ControlPathsReturn(*node, false))
+        {
+            const size_t statementsLeft = in->statements.length - (i + 1);
+            if (statementsLeft == 0)
+                continue;
+
+            WRITE_LITERAL("(!__hasReturned) ? (\n");
+            returnIfStatementCount++;
+        }
+    }
+    for (int i = 0; i < returnIfStatementCount; ++i)
+        WRITE_LITERAL(");");
+
+    if (topLevel)
+        WRITE_LITERAL("__returnValue;\n");
+
+    WRITE_LITERAL(");\n");
+
+    return SUCCESS_RESULT;
+}
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
@@ -977,7 +1034,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     assert(in->block.type == BlockStatement);
 
     HANDLE_ERROR(CheckReturnStatements(in->block, returnType));
-    if (!AllPathsReturn(in->block) && returnType.id != GetKnownType("void").id)
+    if (!ControlPathsReturn(in->block, true) && returnType.id != GetKnownType("void").id)
         return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
 
     assert(in->identifier.type == Identifier);
@@ -1026,7 +1083,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     }
 
     WRITE_LITERAL(")\n");
-    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr, false));
+    HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
 
     PopScope();
     SetCurrentStream(mainStream);
@@ -1036,24 +1093,16 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStatement(const NodePtr* in);
-
-static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope)
+static Result GenerateBlockStatement(const BlockStmt* in)
 {
-    if (changeScope)
-        PushScope();
+    PushScope();
 
     WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
-    {
-        const NodePtr* stmt = in->statements.array[i];
-        if (stmt->type == Section) return ERROR_RESULT("Nested sections are not allowed", ((SectionStmt*)stmt->ptr)->type.lineNumber);
-        HANDLE_ERROR(GenerateStatement(stmt));
-    }
+        HANDLE_ERROR(GenerateStatement(in->statements.array[i]));
     WRITE_LITERAL(");\n");
 
-    if (changeScope)
-        PopScope();
+    PopScope();
 
     return SUCCESS_RESULT;
 }
@@ -1098,7 +1147,7 @@ static Result GenerateSectionStatement(const SectionStmt* in)
     WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
     WRITE_LITERAL("\n");
-    return GenerateBlockStatement(in->block.ptr, true);
+    return GenerateBlockStatement(in->block.ptr);
 }
 
 static Result GenerateStatement(const NodePtr* in)
@@ -1114,7 +1163,10 @@ static Result GenerateStatement(const NodePtr* in)
         case VariableDeclaration:
             return GenerateVariableDeclaration(in->ptr);
         case BlockStatement:
-            return GenerateBlockStatement(in->ptr, true);
+        {
+            const ScopeNode* functionScope = GetFunctionScope();
+            return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
+        }
         case FunctionDeclaration:
             return GenerateFunctionDeclaration(in->ptr);
         case IfStatement:
