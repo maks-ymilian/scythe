@@ -344,10 +344,10 @@ static Result ParseIfStatement(NodePtr* out)
     HANDLE_ERROR(ParseStatement(&stmt),
                  return ERROR_RESULT_LINE("Expected statement"));
 
+    SET_LINE_NUMBER;
     NodePtr elseStmt;
     if (MatchOne(Else))
     {
-        SET_LINE_NUMBER;
         HANDLE_ERROR(ParseStatement(&elseStmt),
                      return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Else));
     }
