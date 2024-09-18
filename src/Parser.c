@@ -562,8 +562,8 @@ static Result ParseProgram(NodePtr* out)
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement"))
 
-        if (stmt.type != Section)
-            return ERROR_RESULT_LINE("Expected section statement");
+        if (stmt.type != Section && stmt.type != FunctionDeclaration)
+            return ERROR_RESULT_LINE("Expected section statement or function declaration");
 
         ArrayAdd(&stmtArray, &stmt);
     }
