@@ -866,40 +866,68 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
 typedef enum { NoReturn, IsReturn, ContainsReturn } ReturnThing;
 
-static Result CheckReturnStatements(const Type returnType, const Array* returnStatements)
+static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type returnType)
 {
     const size_t streamPos = StreamGetPosition(currentStream);
 
     const bool isVoid = returnType.id == GetKnownType("void").id;
-    for (int i = 0; i < returnStatements->length; ++i)
+    if (returnStmt->expr.type == NullNode)
     {
-        const ReturnStmt* returnStmt = returnStatements->array[i];
+        if (!isVoid)
+            return ERROR_RESULT(
+                AllocateString1Str("A function with return type \"%s\" must return a value", GetTypeName(returnType)),
+                returnStmt->returnToken.lineNumber);
+    }
+    else
+    {
+        if (isVoid)
+            return ERROR_RESULT(
+                AllocateString1Str("A function with return type \"%s\" cannot return a value", GetTypeName(returnType)),
+                returnStmt->returnToken.lineNumber);
 
-        if (returnStmt->expr.type == NullNode)
-        {
-            if (!isVoid)
-                return ERROR_RESULT(
-                    AllocateString1Str("A function with return type \"%s\" must return a value", GetTypeName(returnType)),
-                    returnStmt->returnToken.lineNumber);
-        }
-        else
-        {
-            if (isVoid)
-                return ERROR_RESULT(
-                    AllocateString1Str("A function with return type \"%s\" cannot return a value", GetTypeName(returnType)),
-                    returnStmt->returnToken.lineNumber);
-
-            Type exprType;
-            HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true, false));
-            HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
-                "Cannot convert type \"%s\" to return type \"%s\"",
-                returnStmt->returnToken.lineNumber));
-        }
+        Type exprType;
+        HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true, false));
+        HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
+            "Cannot convert type \"%s\" to return type \"%s\"",
+            returnStmt->returnToken.lineNumber));
     }
 
     StreamSetPosition(currentStream, streamPos);
 
     return SUCCESS_RESULT;
+}
+
+static Result CheckReturnStatements(const NodePtr node, const Type returnType)
+{
+    switch (node.type)
+    {
+        case ReturnStatement:
+            HANDLE_ERROR(CheckReturnStatement(node.ptr, returnType));
+            return SUCCESS_RESULT;
+        case IfStatement:
+        {
+            const IfStmt* ifStmt = node.ptr;
+            HANDLE_ERROR(CheckReturnStatements(ifStmt->trueStmt, returnType));
+            HANDLE_ERROR(CheckReturnStatements(ifStmt->falseStmt, returnType));
+            return SUCCESS_RESULT;
+        }
+        case BlockStatement:
+        {
+            const BlockStmt* block = node.ptr;
+            for (int i = 0; i < block->statements.length; ++i)
+            {
+                const NodePtr* stmt = block->statements.array[i];
+                HANDLE_ERROR(CheckReturnStatements(*stmt, returnType));
+            }
+            return SUCCESS_RESULT;
+        }
+        case ExpressionStatement:
+        case VariableDeclaration:
+        case FunctionDeclaration:
+        case NullNode:
+            return SUCCESS_RESULT;
+        default: assert(0);
+    }
 }
 
 static bool AllPathsReturn(const NodePtr node)
@@ -948,14 +976,9 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     assert(in->block.type == BlockStatement);
 
-    if (!AllPathsReturn(in->block))
+    HANDLE_ERROR(CheckReturnStatements(in->block, returnType));
+    if (!AllPathsReturn(in->block) && returnType.id != GetKnownType("void").id)
         return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
-
-    // Array returnArray = AllocateArray(sizeof(ReturnStmt));
-    // HANDLE_ERROR(CheckReturnPaths(&in->block, returnType.id == GetKnownType("void").id,
-    //     in->identifier.lineNumber, &returnArray));
-    // HANDLE_ERROR(CheckReturnStatements(returnType, &returnArray));
-    // FreeArray(&returnArray);
 
     assert(in->identifier.type == Identifier);
 
