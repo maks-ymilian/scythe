@@ -493,7 +493,7 @@ static int Max(const int a, const int b)
     return b;
 };
 
-static Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression, const bool convertToInteger);
+static Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpression, bool convertToInteger);
 
 static Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, const long lineNumber)
 {
@@ -902,7 +902,38 @@ static Result CheckReturnStatements(const Type returnType, const Array* returnSt
     return SUCCESS_RESULT;
 }
 
-static Result GenerateBlockStatement(const BlockStmt* in, const bool changeScope);
+static bool AllPathsReturn(const NodePtr node)
+{
+    switch (node.type)
+    {
+        case ReturnStatement:
+            return true;
+        case IfStatement:
+        {
+            const IfStmt* ifStmt = node.ptr;
+            return AllPathsReturn(ifStmt->trueStmt) && AllPathsReturn(ifStmt->falseStmt);
+        }
+        case BlockStatement:
+        {
+            const BlockStmt* block = node.ptr;
+            for (int i = 0; i < block->statements.length; ++i)
+            {
+                const NodePtr* statement = block->statements.array[i];
+                if (AllPathsReturn(*statement))
+                    return true;
+            }
+            return false;
+        }
+        case ExpressionStatement:
+        case VariableDeclaration:
+        case FunctionDeclaration:
+        case NullNode:
+            return false;
+        default: assert(0);
+    }
+}
+
+static Result GenerateBlockStatement(const BlockStmt* in, bool changeScope);
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
@@ -914,6 +945,11 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     currentScope->isFunction = true;
     currentScope->functionReturnType = returnType;
+
+    assert(in->block.type == BlockStatement);
+
+    if (!AllPathsReturn(in->block))
+        return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
 
     // Array returnArray = AllocateArray(sizeof(ReturnStmt));
     // HANDLE_ERROR(CheckReturnPaths(&in->block, returnType.id == GetKnownType("void").id,
@@ -1007,12 +1043,12 @@ static Result GenerateIfStatement(const IfStmt* in)
             in->ifToken.lineNumber);
 
     WRITE_LITERAL("?(\n");
-    HANDLE_ERROR(GenerateStatement(&in->stmt));
+    HANDLE_ERROR(GenerateStatement(&in->trueStmt));
     WRITE_LITERAL(")");
-    if (in->elseStmt.type != NullNode)
+    if (in->falseStmt.type != NullNode)
     {
         WRITE_LITERAL(":(\n");
-        HANDLE_ERROR(GenerateStatement(&in->elseStmt));
+        HANDLE_ERROR(GenerateStatement(&in->falseStmt));
         WRITE_LITERAL(")");
     }
     WRITE_LITERAL(";\n");

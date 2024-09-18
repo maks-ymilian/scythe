@@ -226,8 +226,8 @@ static void FreeNode(const NodePtr node)
             const IfStmt* ptr = node.ptr;
 
             FreeNode(ptr->expr);
-            FreeNode(ptr->stmt);
-            FreeNode(ptr->elseStmt);
+            FreeNode(ptr->trueStmt);
+            FreeNode(ptr->falseStmt);
 
             free(node.ptr);
             return;

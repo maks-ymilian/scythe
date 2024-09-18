@@ -94,8 +94,8 @@ typedef struct
 {
     Token ifToken;
     NodePtr expr;
-    NodePtr stmt;
-    NodePtr elseStmt;
+    NodePtr trueStmt;
+    NodePtr falseStmt;
 } IfStmt;
 
 IfStmt* AllocIfStmt(IfStmt stmt);
