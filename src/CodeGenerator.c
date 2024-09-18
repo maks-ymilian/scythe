@@ -987,6 +987,9 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
 
+    if (in->parameters.length > 40)
+        return ERROR_RESULT("Functions can only have up to 40 parameters", in->identifier.lineNumber);
+
     Array params = AllocateArray(sizeof(FunctionParameter));
     bool hasOptionalParams = false;
     for (int i = 0; i < in->parameters.length; ++i)
