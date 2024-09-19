@@ -395,8 +395,7 @@ static Result ParseBlockStatement(NodePtr* out)
         ArrayAdd(&statements, &stmt);
     }
 
-    const Token* closingBrace = MatchOne(RightCurlyBracket);
-    if (closingBrace == NULL)
+    if (MatchOne(RightCurlyBracket) == NULL)
     {
         if (exitResult.errorMessage != NULL)
             return ERROR_RESULT_LINE_TOKEN(exitResult.errorMessage, exitResult.tokenType);
@@ -544,7 +543,7 @@ static Result ParseStructDeclaration(NodePtr* out)
 
     SET_LINE_NUMBER
     if (MatchOne(RightCurlyBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct declaration", RightCurlyBracket);
+        return ERROR_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
     StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt){*identifier, members});
     *out = (NodePtr){structDecl, StructDeclaration};
