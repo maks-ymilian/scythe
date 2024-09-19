@@ -93,6 +93,13 @@ FuncDeclStmt* AllocFuncDeclStmt(const FuncDeclStmt stmt)
     return new;
 }
 
+StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
+{
+    ALLOCATE(StructDeclStmt, stmt);
+    new->identifier = CopyToken(stmt.identifier);
+    return new;
+}
+
 Program* AllocProgram(const Program program)
 {
     ALLOCATE(Program, program);
@@ -114,7 +121,7 @@ static void FreeNode(const NodePtr node)
             FreeNode(ptr->right);
 
             free(node.ptr)
-            DEBUG_PRINT("Freeing BinaryExpr\n");
+                    DEBUG_PRINT("Freeing BinaryExpr\n");
             return;
         }
         case UnaryExpression:
@@ -125,7 +132,7 @@ static void FreeNode(const NodePtr node)
             FreeToken(&ptr->operator);
 
             free(node.ptr)
-            DEBUG_PRINT("Freeing UnaryExpr\n");
+                    DEBUG_PRINT("Freeing UnaryExpr\n");
             return;
         }
         case LiteralExpression:
@@ -135,7 +142,7 @@ static void FreeNode(const NodePtr node)
             FreeToken(&ptr->value);
 
             free(node.ptr)
-            DEBUG_PRINT("Freeing LiteralExpr\n");
+                    DEBUG_PRINT("Freeing LiteralExpr\n");
             return;
         }
         case FunctionCallExpression:
@@ -148,7 +155,7 @@ static void FreeNode(const NodePtr node)
             FreeArray(&ptr->parameters);
 
             free(node.ptr)
-            DEBUG_PRINT("Freeing FunctionCallExpression\n");
+                    DEBUG_PRINT("Freeing FunctionCallExpression\n");
             return;
         }
 
@@ -240,6 +247,18 @@ static void FreeNode(const NodePtr node)
             for (int i = 0; i < ptr->parameters.length; ++i)
                 FreeNode(*(NodePtr*)ptr->parameters.array[i]);
             FreeArray(&ptr->parameters);
+
+            free(node.ptr);
+            return;
+        }
+        case StructDeclaration:
+        {
+            DEBUG_PRINT("Freeing StructDeclaration\n");
+            const StructDeclStmt* ptr = node.ptr;
+
+            for (int i = 0; i < ptr->members.length; ++i)
+                FreeNode(*(NodePtr*)ptr->members.array[i]);
+            FreeArray(&ptr->members);
 
             free(node.ptr);
             return;

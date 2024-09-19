@@ -18,6 +18,7 @@ typedef enum
     IfStatement,
     VariableDeclaration,
     FunctionDeclaration,
+    StructDeclaration,
 
     RootNode,
 } NodeType;
@@ -129,6 +130,15 @@ typedef struct
 } FuncDeclStmt;
 
 FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);
+
+
+typedef struct
+{
+    Token identifier;
+    Array members;
+} StructDeclStmt;
+
+StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
 
 
 typedef struct

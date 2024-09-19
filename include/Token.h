@@ -20,7 +20,7 @@ typedef enum
     // keywords
     Init, Slider, Block, Sample, Serialize, GFX,
     Void, Int, Float, String, Bool,
-    If, Else, Return,
+    If, Else, Struct, Return,
 
     //end of file
     EndOfFile,

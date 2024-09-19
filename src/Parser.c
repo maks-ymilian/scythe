@@ -388,6 +388,10 @@ static Result ParseBlockStatement(NodePtr* out)
         if (stmt.type == Section)
             return ERROR_RESULT_LINE("Nested sections are not allowed");
 
+        SET_LINE_NUMBER
+        if (stmt.type == StructDeclaration)
+            return ERROR_RESULT_LINE("Struct declarations not allowed inside code blocks");
+
         ArrayAdd(&statements, &stmt);
     }
 
@@ -513,11 +517,50 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParseStructDeclaration(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    if (MatchOne(Struct) == NULL)
+        return NOT_FOUND_RESULT;
+
+    SET_LINE_NUMBER
+    const Token* identifier = MatchOne(Identifier);
+    if (identifier == NULL)
+        return ERROR_RESULT_LINE("Expected struct name");
+
+    SET_LINE_NUMBER
+    if (MatchOne(LeftCurlyBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct name", LeftCurlyBracket);
+
+    Array members = AllocateArray(sizeof(NodePtr));
+    while(true)
+    {
+        NodePtr member;
+        HANDLE_ERROR(ParseVariableDeclaration(&member, true),
+            break);
+        ArrayAdd(&members, &member);
+    }
+
+    SET_LINE_NUMBER
+    if (MatchOne(RightCurlyBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct declaration", RightCurlyBracket);
+
+    StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt){*identifier, members});
+    *out = (NodePtr){structDecl, StructDeclaration};
+
+    return SUCCESS_RESULT;
+}
+
 static Result ParseStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     Result result = ParseFunctionDeclaration(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseStructDeclaration(out);
     if (result.success || result.hasError)
         return result;
 
@@ -562,8 +605,10 @@ static Result ParseProgram(NodePtr* out)
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement"))
 
-        if (stmt.type != Section && stmt.type != FunctionDeclaration)
-            return ERROR_RESULT_LINE("Expected section statement or function declaration");
+        if (stmt.type != Section &&
+            stmt.type != FunctionDeclaration &&
+            stmt.type != StructDeclaration)
+            return ERROR_RESULT_LINE("Expected section statement, struct declaration, or function declaration");
 
         ArrayAdd(&stmtArray, &stmt);
     }

@@ -1093,6 +1093,11 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
+static Result GenerateStructDeclaration(const StructDeclStmt* in)
+{
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateBlockStatement(const BlockStmt* in)
 {
     PushScope();
@@ -1169,6 +1174,8 @@ static Result GenerateStatement(const NodePtr* in)
         }
         case FunctionDeclaration:
             return GenerateFunctionDeclaration(in->ptr);
+        case StructDeclaration:
+            return GenerateStructDeclaration(in->ptr);
         case IfStatement:
             return GenerateIfStatement(in->ptr);
         default:
