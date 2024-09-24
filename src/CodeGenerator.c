@@ -50,9 +50,10 @@ typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
 
 typedef struct
 {
-    Type type;
     SymbolType symbolType;
-    Array parameterList;
+    Type type;
+    Array parameters;
+    const Array* members;
 } SymbolAttributes;
 
 typedef struct ScopeNode ScopeNode;
@@ -88,7 +89,7 @@ static void PopScope()
     {
         const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
         if (symbol.symbolType == FunctionSymbol)
-            FreeArray(&symbol.parameterList);
+            FreeArray(&symbol.parameters);
     }
 
     ScopeNode* parent = currentScope->parent;
@@ -184,28 +185,45 @@ static char* AllocateString2Int(const char* format, const int insert1, const int
     return str;
 }
 
-static Result AddSymbol(const char* name, const Type type, const int errorLineNumber, const SymbolType symbolType, const Array* funcParams)
+static Result AddSymbol(
+    const char* name,
+    const Type* type,
+    const int errorLineNumber,
+    const SymbolType symbolType,
+    const Array* funcParams,
+    const Array* members)
 {
     SymbolAttributes attributes;
-    attributes.type = type;
     attributes.symbolType = symbolType;
+    if (type != NULL)
+        attributes.type = *type;
+    if (members != NULL)
+        attributes.members = members;
     if (funcParams != NULL)
-        attributes.parameterList = *funcParams;
+        attributes.parameters = *funcParams;
 
     if (!MapAdd(&currentScope->symbolTable, name, &attributes))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
+
+    SymbolAttributes* s = MapGet(&currentScope->symbolTable, name);
 
     return SUCCESS_RESULT;
 }
 
 static Result RegisterVariable(const Token identifier, const Type type)
 {
-    return AddSymbol(identifier.text, type, identifier.lineNumber, VariableSymbol, NULL);
+    return AddSymbol(identifier.text, &type, identifier.lineNumber, VariableSymbol, NULL, NULL);
 }
 
 static Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
 {
-    return AddSymbol(identifier.text, returnType, identifier.lineNumber, FunctionSymbol, funcParams);
+    return AddSymbol(identifier.text, &returnType, identifier.lineNumber, FunctionSymbol, funcParams, NULL);
+}
+
+static Result RegisterStruct(const Token identifier, const Array* members)
+{
+    AddType(identifier.text, StructType);
+    return AddSymbol(identifier.text, NULL, identifier.lineNumber, StructSymbol, NULL, members);
 }
 
 static void SetCurrentStream(MemoryStream* stream) { currentStream = stream; }
@@ -380,6 +398,14 @@ static Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
     return SUCCESS_RESULT;
 }
 
+static SymbolAttributes* GetKnownSymbol(const Token identifier)
+{
+    SymbolAttributes* symbol;
+    const Result result = GetSymbol(identifier, &symbol);
+    assert(result.success);
+    return symbol;
+}
+
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
@@ -516,11 +542,11 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
 
-    for (int i = 0; i < Max(symbol->parameterList.length, in->parameters.length); ++i)
+    for (int i = 0; i < Max(symbol->parameters.length, in->parameters.length); ++i)
     {
         const FunctionParameter* funcParam = NULL;
-        if (i < symbol->parameterList.length)
-            funcParam = symbol->parameterList.array[i];
+        if (i < symbol->parameters.length)
+            funcParam = symbol->parameters.array[i];
 
         const NodePtr* callExpr = NULL;
         if (i < in->parameters.length)
@@ -529,7 +555,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         if (funcParam == NULL && callExpr != NULL ||
             funcParam != NULL && funcParam->defaultValue.ptr == NULL && callExpr == NULL)
             return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-                                    symbol->parameterList.length, in->parameters.length), in->identifier.lineNumber);
+                                    symbol->parameters.length, in->parameters.length), in->identifier.lineNumber);
 
         const NodePtr* writeExpr;
         if (callExpr != NULL)
@@ -538,7 +564,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             writeExpr = &funcParam->defaultValue;
 
         HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
-        if (i != symbol->parameterList.length - 1)
+        if (i != symbol->parameters.length - 1)
             WRITE_LITERAL(",");
     }
 
@@ -842,17 +868,22 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
         WRITE_LITERAL("__returnValue =");
         Type exprType;
         result = GenerateExpression(&in->expr, &exprType, false,
-                                                 functionScope->functionReturnType.id == GetKnownType("int").id);
+                                    functionScope->functionReturnType.id == GetKnownType("int").id);
     }
     WRITE_LITERAL(");\n");
 
     return result;
 }
 
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in);
+
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
+
+    if (type.metaType == StructType)
+        return GenerateStructVariableDeclaration(in);
 
     assert(in->identifier.type == Identifier);
     HANDLE_ERROR(RegisterVariable(in->identifier, type));
@@ -879,7 +910,18 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-typedef enum { NoReturn, IsReturn, ContainsReturn } ReturnThing;
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in)
+{
+    const SymbolAttributes* structSymbol = GetKnownSymbol(in->type);
+    for (int i = 0; i < structSymbol->members->length; ++i)
+    {
+        const NodePtr* node = structSymbol->members->array[i];
+        assert(node->type == VariableDeclaration);
+        HANDLE_ERROR(GenerateVariableDeclaration(node->ptr));
+    }
+
+    return SUCCESS_RESULT;
+}
 
 static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type returnType)
 {
@@ -1095,6 +1137,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
 static Result GenerateStructDeclaration(const StructDeclStmt* in)
 {
+    HANDLE_ERROR(RegisterStruct(in->identifier, &in->members));
     return SUCCESS_RESULT;
 }
 
