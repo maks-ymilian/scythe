@@ -5,7 +5,7 @@
 #include "Scanner.h"
 #include "Parser.h"
 #include "data-structures/Array.h"
-#include "CodeGenerator.h"
+#include "code-generator/CodeGenerator.h"
 
 #define HANDLE_ERROR(func, message)\
 {\

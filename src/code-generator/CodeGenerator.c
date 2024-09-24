@@ -2,275 +2,19 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
-#include "SyntaxTreePrinter.h"
-#include "data-structures/Map.h"
-#include "data-structures/MemoryStream.h"
+#include "CodeGeneratorData.h"
 
 #define HANDLE_ERROR(function)\
 {const Result result = function;\
 if (result.hasError)\
     return result;}
 
-#define WRITE_LITERAL(text) StreamWrite(currentStream, text, sizeof(text) - 1)
-#define WRITE_TEXT(text) StreamWrite(currentStream, text, strlen(text));
-
-#define GET_WRITTEN_CHARS(code, arrayName, charsLength)\
-const size_t  arrayName##_pos = StreamGetPosition(currentStream);\
-code;\
-const size_t  arrayName##_length = StreamGetPosition(currentStream) -  arrayName##_pos;\
-char* arrayName##_chars = (char*)StreamRewindRead(currentStream,  arrayName##_length).buffer;\
-charsLength = arrayName##_length;\
-char arrayName[charsLength];\
-memcpy(arrayName,  arrayName##_chars, charsLength)
-
-typedef enum { PrimitiveType, StructType, EnumType } MetaType;
-
-typedef struct
-{
-    const char* name;
-    MetaType metaType;
-    uint32_t id;
-} Type;
-
-static Map types;
-
-typedef struct
-{
-    Type type;
-    char* name;
-    NodePtr defaultValue;
-} FunctionParameter;
-
-typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
-
-typedef struct
-{
-    SymbolType symbolType;
-    Type type;
-    Array parameters;
-    const Array* members;
-} SymbolAttributes;
-
-typedef struct ScopeNode ScopeNode;
-
-struct ScopeNode
-{
-    ScopeNode* parent;
-    Map symbolTable;
-    bool isFunction;
-    Type functionReturnType;
-};
-
-static ScopeNode* currentScope;
-static Map includedSections;
-
-static MemoryStream* mainStream;
-static MemoryStream* functionsStream;
-static MemoryStream* currentStream;
-
-static ScopeNode* AllocateScopeNode()
-{
-    ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
-    scopeNode->parent = NULL;
-    scopeNode->isFunction = false;
-    scopeNode->symbolTable = AllocateMap(sizeof(SymbolAttributes));
-    return scopeNode;
-}
-
-static void PopScope()
-{
-    for (MAP_ITERATE(i, &currentScope->symbolTable))
-    {
-        const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
-        if (symbol.symbolType == FunctionSymbol)
-            FreeArray(&symbol.parameters);
-    }
-
-    ScopeNode* parent = currentScope->parent;
-    FreeMap(&currentScope->symbolTable);
-    free(currentScope);
-    currentScope = parent;
-}
-
-static void PushScope()
-{
-    ScopeNode* newScope = AllocateScopeNode();
-    newScope->parent = currentScope;
-    currentScope = newScope;
-}
-
-static bool AddType(const char* name, const MetaType metaType)
-{
-    Type type;
-    type.name = name;
-    type.id = types.elementCount;
-    type.metaType = metaType;
-
-    const bool success = MapAdd(&types, name, &type);
-    if (!success)
-        return false;
-
-    return true;
-}
-
-static Type GetKnownType(const char* name)
-{
-    const Type* type = MapGet(&types, name);
-    assert(type != NULL);
-    return *type;
-}
-
-static char* AllocateString1Str(const char* format, const char* insert)
-{
-    const size_t insertLength = strlen(insert);
-    const size_t formatLength = strlen(format) - 2;
-    const size_t bufferLength = insertLength + formatLength + 1;
-    char* str = malloc(bufferLength);
-    snprintf(str, bufferLength, format, insert);
-    return str;
-}
-
-static char* AllocateString2Str(const char* format, const char* insert1, const char* insert2)
-{
-    const size_t insertLength = strlen(insert1) + strlen(insert2);
-    const size_t formatLength = strlen(format) - 4;
-    const size_t bufferLength = insertLength + formatLength + 1;
-    char* str = malloc(bufferLength);
-    snprintf(str, bufferLength, format, insert1, insert2);
-    return str;
-}
-
-static int IntCharCount(int number)
-{
-    int minusSign = 0;
-    if (number < 0)
-    {
-        number = abs(number);
-        minusSign = 1;
-    }
-    if (number < 10) return 1 + minusSign;
-    if (number < 100) return 2 + minusSign;
-    if (number < 1000) return 3 + minusSign;
-    if (number < 10000) return 4 + minusSign;
-    if (number < 100000) return 5 + minusSign;
-    if (number < 1000000) return 6 + minusSign;
-    if (number < 10000000) return 7 + minusSign;
-    if (number < 100000000) return 8 + minusSign;
-    if (number < 1000000000) return 9 + minusSign;
-    return 10 + minusSign;
-}
-
-static char* AllocateString2Int(const char* format, const int insert1, const int insert2)
-{
-    const size_t insertLength = IntCharCount(insert1) + IntCharCount(insert2);
-    const size_t formatLength = strlen(format) - 4;
-    const size_t bufferLength = insertLength + formatLength + 1;
-    char* str = malloc(bufferLength);
-    snprintf(str, bufferLength, format, insert1, insert2);
-    return str;
-}
-
-static Result AddSymbol(
-    const char* name,
-    const Type* type,
-    const int errorLineNumber,
-    const SymbolType symbolType,
-    const Array* funcParams,
-    const Array* members)
-{
-    SymbolAttributes attributes;
-    attributes.symbolType = symbolType;
-    if (type != NULL)
-        attributes.type = *type;
-    if (members != NULL)
-        attributes.members = members;
-    if (funcParams != NULL)
-        attributes.parameters = *funcParams;
-
-    if (!MapAdd(&currentScope->symbolTable, name, &attributes))
-        return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
-
-    return SUCCESS_RESULT;
-}
-
-static Result RegisterVariable(const Token identifier, const Type type)
-{
-    return AddSymbol(identifier.text, &type, identifier.lineNumber, VariableSymbol, NULL, NULL);
-}
-
-static Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
-{
-    return AddSymbol(identifier.text, &returnType, identifier.lineNumber, FunctionSymbol, funcParams, NULL);
-}
-
-static Result RegisterStruct(const Token identifier, const Array* members)
-{
-    AddType(identifier.text, StructType);
-    return AddSymbol(identifier.text, NULL, identifier.lineNumber, StructSymbol, NULL, members);
-}
-
-static void SetCurrentStream(MemoryStream* stream) { currentStream = stream; }
-
-static Buffer CombineStreams()
-{
-    MemoryStream* stream = AllocateMemoryStream();
-
-    const Buffer functions = StreamRewindRead(functionsStream, 0);
-    StreamWrite(stream, functions.buffer, functions.length);
-
-    const Buffer sections = StreamRewindRead(mainStream, 0);
-    StreamWrite(stream, sections.buffer, sections.length);
-
-    const Buffer out = StreamRewindRead(stream, 0);
-    FreeMemoryStream(stream, false);
-    return out;
-}
-
-static void FreeResources()
-{
-    FreeMap(&types);
-
-    while (currentScope != NULL)
-        PopScope();
-
-    FreeMap(&includedSections);
-
-    FreeMemoryStream(mainStream, true);
-    FreeMemoryStream(functionsStream, true);
-}
-
-static void InitResources()
-{
-    ScopeNode* globalScope = AllocateScopeNode();
-    currentScope = globalScope;
-
-    mainStream = AllocateMemoryStream();
-    functionsStream = AllocateMemoryStream();
-    SetCurrentStream(mainStream);
-
-    types = AllocateMap(sizeof(Type));
-    includedSections = AllocateMap(0);
-
-    bool success = AddType("void", PrimitiveType);
-    assert(success);
-
-    success = AddType("int", PrimitiveType);
-    assert(success);
-
-    success = AddType("float", PrimitiveType);
-    assert(success);
-
-    success = AddType("string", PrimitiveType);
-    assert(success);
-
-    success = AddType("bool", PrimitiveType);
-    assert(success);
-}
+#define WRITE_LITERAL(text) Write(text, sizeof(text) - 1)
+#define WRITE_TEXT(text) Write(text, strlen(text));
 
 static bool IsDigitBase(const char c, const int base)
 {
@@ -359,36 +103,6 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     return SUCCESS_RESULT;
 }
 
-static Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
-{
-    SymbolAttributes* symbol;
-    const ScopeNode* scope = currentScope;
-
-    while (true)
-    {
-        if (scope == NULL)
-            return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
-
-        symbol = MapGet(&scope->symbolTable, identifier.text);
-
-        if (symbol != NULL)
-            break;
-
-        scope = scope->parent;
-    }
-
-    *outSymbol = symbol;
-    return SUCCESS_RESULT;
-}
-
-static SymbolAttributes* GetKnownSymbol(const Token identifier)
-{
-    SymbolAttributes* symbol;
-    const Result result = GetSymbol(identifier, &symbol);
-    assert(result.success);
-    return symbol;
-}
-
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
@@ -457,43 +171,6 @@ static Result CheckAssignmentCompatibility(const Type left, const Type right, co
         errorMessage,
         right.name, left.name);
     return ERROR_RESULT(message, lineNumber);
-}
-
-static Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVoid)
-{
-    if (typeToken.type == Identifier)
-    {
-        const char* typeName = typeToken.text;
-        const Type* get = MapGet(&types, typeName);
-        if (get == NULL)
-        {
-            return ERROR_RESULT(AllocateString1Str("Unknown type \"%s\"", typeName), typeToken.lineNumber);
-        }
-        *outType = *get;
-    }
-    else
-    {
-        switch (typeToken.type)
-        {
-            case Void:
-                if (!allowVoid)
-                    return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Void);
-            case Int:
-            case Float:
-            case String:
-            case Bool:
-                break;
-
-            default: assert(0);
-        }
-
-        const char* typeName = GetTokenTypeString(typeToken.type);
-        const Type* get = MapGet(&types, typeName);
-        assert(get != NULL);
-        *outType = *get;
-    }
-
-    return SUCCESS_RESULT;
 }
 
 static int Max(const int a, const int b)
@@ -600,24 +277,23 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_LITERAL("(");
 
-    size_t leftLength;
+    BeginUndo();
+
+    BeginRead();
     Type leftType;
-    GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true, false)),
-        left, leftLength);
+    HANDLE_ERROR(GenerateExpression(&in->left, &leftType, true, false));
+    const Buffer left = EndRead();
 
-    size_t operatorLength;
-    GET_WRITTEN_CHARS(
-        WRITE_TEXT(GetTokenTypeString(in->operator.type)),
-        operator, operatorLength);
+    BeginRead();
+    WRITE_TEXT(GetTokenTypeString(in->operator.type));
+    const Buffer operator = EndRead();
 
-    size_t rightLength;
+    BeginRead();
     Type rightType;
-    GET_WRITTEN_CHARS(
-        HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true, false)),
-        right, rightLength);
+    HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true, false));
+    const Buffer right = EndRead();
 
-    StreamRewind(currentStream, leftLength + operatorLength + rightLength);
+    EndUndo();
 
     const Result operatorTypeError = ERROR_RESULT_TOKEN(
         AllocateString2Str("Cannot use operator \"#t\" on types \"%s\" and \"%s\"",
@@ -653,10 +329,10 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
             if (leftType.id == GetKnownType("int").id)
             {
-                StreamWrite(currentStream, left, leftLength);
-                StreamWrite(currentStream, operator, operatorLength);
+                Write(left.buffer, left.length);
+                Write(operator.buffer, operator.length);
                 WRITE_LITERAL("(");
-                StreamWrite(currentStream, right, rightLength);
+                Write(right.buffer, right.length);
                 WRITE_LITERAL("|0)");
                 textWritten = true;
             }
@@ -682,12 +358,12 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 default: assert(0);
             }
 
-            StreamWrite(currentStream, left, leftLength);
+            Write(left.buffer, left.length);
             WRITE_TEXT(GetTokenTypeString(Equals));
             WRITE_LITERAL("((");
-            StreamWrite(currentStream, left, leftLength);
+            Write(left.buffer, left.length);
             WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
-            StreamWrite(currentStream, right, rightLength);
+            Write(right.buffer, right.length);
             WRITE_LITERAL(")");
             if (leftType.id == GetKnownType("int").id)
                 WRITE_LITERAL("|0");
@@ -764,10 +440,14 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     if (!textWritten)
     {
-        StreamWrite(currentStream, left, leftLength);
-        StreamWrite(currentStream, operator, operatorLength);
-        StreamWrite(currentStream, right, rightLength);
+        Write(left.buffer, left.length);
+        Write(operator.buffer, operator.length);
+        Write(right.buffer, right.length);
     }
+
+    free(left.buffer);
+    free(operator.buffer);
+    free(right.buffer);
 
     WRITE_LITERAL(")");
     return SUCCESS_RESULT;
@@ -821,19 +501,6 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     const Result result = GenerateExpression(&in->expr, &type, false, false);
     WRITE_LITERAL(";\n");
     return result;
-}
-
-static ScopeNode* GetFunctionScope()
-{
-    ScopeNode* scope = currentScope;
-    while (scope != NULL)
-    {
-        if (scope->isFunction)
-            break;
-
-        scope = scope->parent;
-    }
-    return scope;
 }
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
@@ -908,7 +575,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in)
 
 static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type returnType)
 {
-    const size_t streamPos = StreamGetPosition(currentStream);
+    BeginUndo();
 
     const bool isVoid = returnType.id == GetKnownType("void").id;
     if (returnStmt->expr.type == NullNode)
@@ -932,7 +599,7 @@ static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type retu
             returnStmt->returnToken.lineNumber));
     }
 
-    StreamSetPosition(currentStream, streamPos);
+    EndUndo();
 
     return SUCCESS_RESULT;
 }
@@ -1047,12 +714,13 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
-    SetCurrentStream(functionsStream);
+    SetCurrentStream(FunctionsStream);
     PushScope();
 
     Type returnType;
     HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
 
+    ScopeNode* currentScope = GetCurrentScope();
     currentScope->isFunction = true;
     currentScope->functionReturnType = returnType;
 
@@ -1101,9 +769,9 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
         if (param.defaultValue.ptr != NULL)
         {
-            const size_t beforePos = StreamGetPosition(currentStream);
+            BeginUndo();
             HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
-            StreamSetPosition(currentStream, beforePos);
+            EndUndo();
         }
     }
 
@@ -1111,7 +779,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
 
     PopScope();
-    SetCurrentStream(mainStream);
+    SetCurrentStream(MainStream);
 
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
@@ -1172,9 +840,6 @@ static Result GenerateSectionStatement(const SectionStmt* in)
         in->type.type != GFX)
         assert(0);
 
-    if (!MapAdd(&includedSections, GetTokenTypeString(in->type.type), NULL))
-        return ERROR_RESULT("Duplicate sections are not allowed", in->type.lineNumber);
-
     WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
     WRITE_LITERAL("\n");
@@ -1225,9 +890,9 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 {
     InitResources();
 
-    SetCurrentStream(functionsStream);
+    SetCurrentStream(FunctionsStream);
     WRITE_LITERAL("@init\n");
-    SetCurrentStream(mainStream);
+    SetCurrentStream(MainStream);
 
     const Result result = GenerateProgram(syntaxTree);
 

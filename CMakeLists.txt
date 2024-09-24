@@ -13,9 +13,10 @@ set(SOURCES
         "src/SyntaxTree.c"
         "src/data-structures/Array.c"
         "src/Result.c"
-        "src/CodeGenerator.c"
+        "src/code-generator/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
+        "src/code-generator/CodeGeneratorData.c"
 )
 
 add_compile_options(-fsanitize=address,undefined -g)
