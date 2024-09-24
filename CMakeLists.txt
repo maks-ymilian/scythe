@@ -16,7 +16,8 @@ set(SOURCES
         "src/code-generator/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
-        "src/code-generator/CodeGeneratorData.c"
+        "src/code-generator/Data.c"
+        "src/code-generator/ExpressionGenerator.c"
 )
 
 add_compile_options(-fsanitize=address,undefined -g)
