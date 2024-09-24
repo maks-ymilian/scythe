@@ -23,4 +23,4 @@ add_link_options(-fsanitize=address,undefined)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_include_directories(${PROJECT_NAME} PRIVATE "include")
+target_include_directories(${PROJECT_NAME} PRIVATE "src")

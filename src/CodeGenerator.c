@@ -67,7 +67,6 @@ struct ScopeNode
 };
 
 static ScopeNode* currentScope;
-
 static Map includedSections;
 
 static MemoryStream* mainStream;
