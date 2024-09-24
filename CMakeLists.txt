@@ -13,11 +13,11 @@ set(SOURCES
         "src/SyntaxTree.c"
         "src/data-structures/Array.c"
         "src/Result.c"
-        "src/code-generator/CodeGenerator.c"
+        "src/code-generation/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
-        "src/code-generator/Data.c"
-        "src/code-generator/ExpressionGenerator.c"
+        "src/code-generation/Data.c"
+        "src/code-generation/ExpressionGenerator.c"
 )
 
 add_compile_options(-fsanitize=address,undefined -g)
