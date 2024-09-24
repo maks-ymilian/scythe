@@ -32,12 +32,12 @@ typedef enum { PrimitiveType, StructType, EnumType } MetaType;
 
 typedef struct
 {
+    const char* name;
     MetaType metaType;
     uint32_t id;
 } Type;
 
 static Map types;
-static Array typeNames;
 
 typedef struct
 {
@@ -108,16 +108,13 @@ static void PushScope()
 static bool AddType(const char* name, const MetaType metaType)
 {
     Type type;
+    type.name = name;
     type.id = types.elementCount;
     type.metaType = metaType;
 
     const bool success = MapAdd(&types, name, &type);
     if (!success)
         return false;
-
-    char* typeName = malloc(strlen(name) + 1);
-    strcpy(typeName, name);
-    ArrayAdd(&typeNames, &typeName);
 
     return true;
 }
@@ -127,12 +124,6 @@ static Type GetKnownType(const char* name)
     const Type* type = MapGet(&types, name);
     assert(type != NULL);
     return *type;
-}
-
-static const char* GetTypeName(const Type type)
-{
-    assert(type.id < typeNames.length);
-    return *(char**)typeNames.array[type.id];
 }
 
 static char* AllocateString1Str(const char* format, const char* insert)
@@ -205,8 +196,6 @@ static Result AddSymbol(
     if (!MapAdd(&currentScope->symbolTable, name, &attributes))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
 
-    SymbolAttributes* s = MapGet(&currentScope->symbolTable, name);
-
     return SUCCESS_RESULT;
 }
 
@@ -250,10 +239,6 @@ static void FreeResources()
     while (currentScope != NULL)
         PopScope();
 
-    for (int i = 0; i < typeNames.length; ++i)
-        free(*(char**)typeNames.array[i]);
-    FreeArray(&typeNames);
-
     FreeMap(&includedSections);
 
     FreeMemoryStream(mainStream, true);
@@ -270,7 +255,6 @@ static void InitResources()
     SetCurrentStream(mainStream);
 
     types = AllocateMap(sizeof(Type));
-    typeNames = AllocateArray(sizeof(char*));
     includedSections = AllocateMap(0);
 
     bool success = AddType("void", PrimitiveType);
@@ -472,7 +456,7 @@ static Result CheckAssignmentCompatibility(const Type left, const Type right, co
 
     const char* message = AllocateString2Str(
         errorMessage,
-        GetTypeName(right), GetTypeName(left));
+        right.name, left.name);
     return ERROR_RESULT(message, lineNumber);
 }
 
@@ -576,7 +560,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 
 static Result UnaryOperatorErrorResult(const Token operator, const Type type)
 {
-    return ERROR_RESULT_TOKEN(AllocateString1Str("Cannot use operator \"#t\" on type \"%s\"", GetTypeName(type)),
+    return ERROR_RESULT_TOKEN(AllocateString1Str("Cannot use operator \"#t\" on type \"%s\"", type.name),
                               operator.lineNumber, operator.type);
 }
 
@@ -638,7 +622,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     const Result operatorTypeError = ERROR_RESULT_TOKEN(
         AllocateString2Str("Cannot use operator \"#t\" on types \"%s\" and \"%s\"",
-            GetTypeName(leftType), GetTypeName(rightType)),
+            leftType.name, rightType.name),
         in->operator.lineNumber, in->operator.type);
 
     bool textWritten = false;
@@ -895,7 +879,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
             initializer = (NodePtr){&zero, LiteralExpression};
         else
-            return ERROR_RESULT(AllocateString1Str("Variable of type \"%s\" must be initialized", GetTypeName(type)),
+            return ERROR_RESULT(AllocateString1Str("Variable of type \"%s\" must be initialized", type.name),
                                 in->identifier.lineNumber);
     }
     else
@@ -932,14 +916,14 @@ static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type retu
     {
         if (!isVoid)
             return ERROR_RESULT(
-                AllocateString1Str("A function with return type \"%s\" must return a value", GetTypeName(returnType)),
+                AllocateString1Str("A function with return type \"%s\" must return a value", returnType.name),
                 returnStmt->returnToken.lineNumber);
     }
     else
     {
         if (isVoid)
             return ERROR_RESULT(
-                AllocateString1Str("A function with return type \"%s\" cannot return a value", GetTypeName(returnType)),
+                AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 returnStmt->returnToken.lineNumber);
 
         Type exprType;
@@ -1162,7 +1146,7 @@ static Result GenerateIfStatement(const IfStmt* in)
     const Type boolType = GetKnownType("bool");
     if (exprType.id != boolType.id)
         return ERROR_RESULT(
-            AllocateString1Str("Expression inside if statement must be evaluate to a \"%s\"", GetTypeName(boolType)),
+            AllocateString1Str("Expression inside if statement must be evaluate to a \"%s\"", boolType.name),
             in->ifToken.lineNumber);
 
     WRITE_LITERAL("?(\n");
