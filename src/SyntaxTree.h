@@ -58,9 +58,12 @@ typedef struct
 FuncCallExpr* AllocFuncCall(FuncCallExpr expr);
 
 
-typedef struct
+typedef struct LiteralExpr LiteralExpr;
+
+typedef struct LiteralExpr
 {
     Token value;
+    LiteralExpr* next;
 } LiteralExpr;
 
 LiteralExpr* AllocLiteral(LiteralExpr expr);

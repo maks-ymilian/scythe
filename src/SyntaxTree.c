@@ -141,6 +141,9 @@ static void FreeNode(const NodePtr node)
 
             FreeToken(&ptr->value);
 
+            if (ptr->next != NULL)
+                FreeNode((NodePtr){ptr->next, LiteralExpression});
+
             free(node.ptr)
                     DEBUG_PRINT("Freeing LiteralExpr\n");
             return;

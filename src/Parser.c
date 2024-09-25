@@ -124,13 +124,31 @@ static Result ParsePrimary(NodePtr* out)
 
             return result;
         }
+        case Identifier:
+        {
+            LiteralExpr* first = AllocLiteral((LiteralExpr){*token, NULL});
+            LiteralExpr* prev = first;
+            while (MatchOne(Dot) != NULL)
+            {
+                SET_LINE_NUMBER
+                const Token* identifier = MatchOne(Identifier);
+                if (identifier == NULL)
+                    return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Dot);
+
+                LiteralExpr* next = AllocLiteral((LiteralExpr){*identifier, NULL});
+                prev->next = next;
+                prev = next;
+            }
+
+            *out = (NodePtr){first, LiteralExpression};
+            return SUCCESS_RESULT;
+        }
         case NumberLiteral:
         case StringLiteral:
-        case Identifier:
         case True:
         case False:
         {
-            LiteralExpr* literal = AllocLiteral((LiteralExpr){*token});
+            LiteralExpr* literal = AllocLiteral((LiteralExpr){*token, NULL});
             *out = (NodePtr){literal, LiteralExpression};
             return SUCCESS_RESULT;
         }
@@ -533,11 +551,11 @@ static Result ParseStructDeclaration(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct name", LeftCurlyBracket);
 
     Array members = AllocateArray(sizeof(NodePtr));
-    while(true)
+    while (true)
     {
         NodePtr member;
         HANDLE_ERROR(ParseVariableDeclaration(&member, true),
-            break);
+                     break);
         ArrayAdd(&members, &member);
     }
 
