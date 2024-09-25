@@ -69,10 +69,13 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in)
 {
-    const SymbolAttributes* structSymbol = GetKnownSymbol(in->type);
-    for (int i = 0; i < structSymbol->members->length; ++i)
+    const SymbolData* symbol = GetKnownSymbol(in->type);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData data = symbol->structData;
+
+    for (int i = 0; i < data.members->length; ++i)
     {
-        const NodePtr* node = structSymbol->members->array[i];
+        const NodePtr* node = data.members->array[i];
         assert(node->type == VariableDeclaration);
         HANDLE_ERROR(GenerateVariableDeclaration(node->ptr));
     }

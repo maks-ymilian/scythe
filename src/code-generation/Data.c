@@ -170,9 +170,9 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
+Result GetSymbol(const Token identifier, SymbolData** outSymbol)
 {
-    SymbolAttributes* symbol;
+    SymbolData* symbol;
     const ScopeNode* scope = currentScope;
 
     while (true)
@@ -192,9 +192,9 @@ Result GetSymbol(const Token identifier, SymbolAttributes** outSymbol)
     return SUCCESS_RESULT;
 }
 
-SymbolAttributes* GetKnownSymbol(const Token identifier)
+SymbolData* GetKnownSymbol(const Token identifier)
 {
-    SymbolAttributes* symbol;
+    SymbolData* symbol;
     const Result result = GetSymbol(identifier, &symbol);
     assert(result.success);
     return symbol;
@@ -214,24 +214,9 @@ static bool AddType(const char* name, const MetaType metaType)
     return true;
 }
 
-static Result AddSymbol(
-    const char* name,
-    const Type* type,
-    const int errorLineNumber,
-    const SymbolType symbolType,
-    const Array* funcParams,
-    const Array* members)
+static Result AddSymbol(const char* name, const SymbolData data, const long errorLineNumber)
 {
-    SymbolAttributes attributes;
-    attributes.symbolType = symbolType;
-    if (type != NULL)
-        attributes.type = *type;
-    if (members != NULL)
-        attributes.members = members;
-    if (funcParams != NULL)
-        attributes.parameters = *funcParams;
-
-    if (!MapAdd(&currentScope->symbolTable, name, &attributes))
+    if (!MapAdd(&currentScope->symbolTable, name, &data))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
 
     return SUCCESS_RESULT;
@@ -239,18 +224,38 @@ static Result AddSymbol(
 
 Result RegisterVariable(const Token identifier, const Type type)
 {
-    return AddSymbol(identifier.text, &type, identifier.lineNumber, VariableSymbol, NULL, NULL);
+    VariableSymbolData data;
+    data.type = type;
+
+    SymbolData symbolData;
+    symbolData.symbolType = VariableSymbol;
+    symbolData.variableData = data;
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
 }
 
 Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
 {
-    return AddSymbol(identifier.text, &returnType, identifier.lineNumber, FunctionSymbol, funcParams, NULL);
+    FunctionSymbolData data;
+    data.parameters = *funcParams;
+    data.returnType = returnType;
+
+    SymbolData symbolData;
+    symbolData.symbolType = FunctionSymbol;
+    symbolData.functionData = data;
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
 }
 
 Result RegisterStruct(const Token identifier, const Array* members)
 {
+    StructSymbolData data;
+    data.members = members;
+
+    SymbolData symbolData;
+    symbolData.symbolType = StructSymbol;
+    symbolData.structData = data;
+
     AddType(identifier.text, StructType);
-    return AddSymbol(identifier.text, NULL, identifier.lineNumber, StructSymbol, NULL, members);
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
 }
 
 static ScopeNode* AllocateScopeNode()
@@ -258,7 +263,7 @@ static ScopeNode* AllocateScopeNode()
     ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
     scopeNode->parent = NULL;
     scopeNode->isFunction = false;
-    scopeNode->symbolTable = AllocateMap(sizeof(SymbolAttributes));
+    scopeNode->symbolTable = AllocateMap(sizeof(SymbolData));
     return scopeNode;
 }
 
@@ -273,9 +278,9 @@ void PopScope()
 {
     for (MAP_ITERATE(i, &currentScope->symbolTable))
     {
-        const SymbolAttributes symbol = *(SymbolAttributes*)i->value;
+        const SymbolData symbol = *(SymbolData*)i->value;
         if (symbol.symbolType == FunctionSymbol)
-            FreeArray(&symbol.parameters);
+            FreeArray(&symbol.functionData.parameters);
     }
 
     ScopeNode* parent = currentScope->parent;

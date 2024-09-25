@@ -113,12 +113,12 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         }
         case Identifier:
         {
-            SymbolAttributes* symbol;
+            SymbolData* symbol;
             HANDLE_ERROR(GetSymbol(literal, &symbol));
             if (symbol->symbolType != VariableSymbol)
                 return ERROR_RESULT("Identifier must be the name of a variable", literal.lineNumber);
 
-            *outType = symbol->type;
+            *outType = symbol->variableData.type;
             WRITE_LITERAL("var_");
             WRITE_TEXT(literal.text);
             return SUCCESS_RESULT;
@@ -177,20 +177,21 @@ Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, cons
 
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
-    SymbolAttributes* symbol;
+    SymbolData* symbol;
     HANDLE_ERROR(GetSymbol(in->identifier, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
+    const FunctionSymbolData data = symbol->functionData;
 
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
 
-    for (int i = 0; i < Max(symbol->parameters.length, in->parameters.length); ++i)
+    for (int i = 0; i < Max(data.parameters.length, in->parameters.length); ++i)
     {
         const FunctionParameter* funcParam = NULL;
-        if (i < symbol->parameters.length)
-            funcParam = symbol->parameters.array[i];
+        if (i < data.parameters.length)
+            funcParam = data.parameters.array[i];
 
         const NodePtr* callExpr = NULL;
         if (i < in->parameters.length)
@@ -199,7 +200,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         if (funcParam == NULL && callExpr != NULL ||
             funcParam != NULL && funcParam->defaultValue.ptr == NULL && callExpr == NULL)
             return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-                                    symbol->parameters.length, in->parameters.length), in->identifier.lineNumber);
+                                    data.parameters.length, in->parameters.length), in->identifier.lineNumber);
 
         const NodePtr* writeExpr;
         if (callExpr != NULL)
@@ -208,13 +209,13 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             writeExpr = &funcParam->defaultValue;
 
         HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
-        if (i != symbol->parameters.length - 1)
+        if (i != data.parameters.length - 1)
             WRITE_LITERAL(",");
     }
 
     WRITE_LITERAL(")");
 
-    *outType = symbol->type;
+    *outType = data.returnType;
     return SUCCESS_RESULT;
 }
 

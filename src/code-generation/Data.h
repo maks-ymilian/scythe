@@ -23,15 +23,35 @@ typedef struct
     NodePtr defaultValue;
 } FunctionParameter;
 
+typedef struct
+{
+    Type type;
+} VariableSymbolData;
+
+typedef struct
+{
+    Type returnType;
+    Array parameters;
+} FunctionSymbolData;
+
+typedef struct
+{
+    const Array* members;
+} StructSymbolData;
+
 typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
 
 typedef struct
 {
     SymbolType symbolType;
-    Type type;
-    Array parameters;
-    const Array* members;
-} SymbolAttributes;
+
+    union
+    {
+        VariableSymbolData variableData;
+        FunctionSymbolData functionData;
+        StructSymbolData structData;
+    };
+} SymbolData;
 
 typedef struct ScopeNode ScopeNode;
 
@@ -60,8 +80,8 @@ char* AllocateString2Int(const char* format, int insert1, int insert2);
 Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);
 
-Result GetSymbol(Token identifier, SymbolAttributes** outSymbol);
-SymbolAttributes* GetKnownSymbol(Token identifier);
+Result GetSymbol(Token identifier, SymbolData** outSymbol);
+SymbolData* GetKnownSymbol(Token identifier);
 Result RegisterVariable(Token identifier, Type type);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams);
 Result RegisterStruct(Token identifier, const Array* members);
