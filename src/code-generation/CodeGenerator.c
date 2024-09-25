@@ -69,13 +69,12 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type)
 {
-    const SymbolData* symbol = GetKnownSymbol(in->type);
+    const SymbolData* symbol = GetKnownSymbol(in->type.text, in->type.lineNumber);
     assert(symbol->symbolType == StructSymbol);
     const StructSymbolData data = symbol->structData;
 
     PushScope();
 
-    BeginUndo();
     for (int i = 0; i < data.members->length; ++i)
     {
         const NodePtr* node = data.members->array[i];
@@ -87,7 +86,6 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
             default: assert(0);
         }
     }
-    EndUndo();
 
     Map symbolTable;
     PopScope(&symbolTable);
@@ -98,7 +96,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 
 static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type returnType)
 {
-    BeginUndo();
+    const size_t pos = GetStreamPosition();
 
     const bool isVoid = returnType.id == GetKnownType("void").id;
     if (returnStmt->expr.type == NullNode)
@@ -122,7 +120,7 @@ static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type retu
             returnStmt->returnToken.lineNumber));
     }
 
-    EndUndo();
+    SetStreamPosition(pos);
 
     return SUCCESS_RESULT;
 }
@@ -292,9 +290,9 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
         if (param.defaultValue.ptr != NULL)
         {
-            BeginUndo();
+            const size_t pos = GetStreamPosition();
             HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
-            EndUndo();
+            SetStreamPosition(pos);
         }
     }
 

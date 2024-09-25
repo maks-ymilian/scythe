@@ -114,13 +114,38 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         case Identifier:
         {
             SymbolData* symbol;
-            HANDLE_ERROR(GetSymbol(literal, &symbol));
+            HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
             if (symbol->symbolType != VariableSymbol)
-                return ERROR_RESULT("Identifier must be the name of a variable", literal.lineNumber);
+                return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
-            *outType = symbol->variableData.type;
             WRITE_LITERAL("var_");
-            WRITE_TEXT(literal.text);
+            WRITE_TEXT(in->value.text);
+
+            Type type = symbol->variableData.type;
+            const LiteralExpr* current = in;
+            while (current->next != NULL)
+            {
+                WRITE_LITERAL(".");
+
+                if (type.metaType != StructType)
+                    return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
+
+                const SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
+                if (memberSymbol == NULL)
+                    return ERROR_RESULT(
+                        AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
+                            current->next->value.text, type.name),
+                        current->next->value.lineNumber);
+
+                assert(memberSymbol->symbolType == VariableSymbol);
+                type = memberSymbol->variableData.type;
+
+                WRITE_TEXT(current->next->value.text);
+
+                current = current->next;
+            }
+
+            *outType = type;
             return SUCCESS_RESULT;
         }
         case True:
@@ -178,7 +203,7 @@ Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, cons
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
     SymbolData* symbol;
-    HANDLE_ERROR(GetSymbol(in->identifier, &symbol));
+    HANDLE_ERROR(GetSymbol(in->identifier.text, in->identifier.lineNumber, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData data = symbol->functionData;
@@ -262,7 +287,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_LITERAL("(");
 
-    BeginUndo();
+    const size_t pos = GetStreamPosition();
 
     BeginRead();
     Type leftType;
@@ -278,7 +303,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     HANDLE_ERROR(GenerateExpression(&in->right, &rightType, true, false));
     const Buffer right = EndRead();
 
-    EndUndo();
+    SetStreamPosition(pos);
 
     const Result operatorTypeError = ERROR_RESULT_TOKEN(
         AllocateString2Str("Cannot use operator \"#t\" on types \"%s\" and \"%s\"",

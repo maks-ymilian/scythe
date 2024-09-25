@@ -13,7 +13,6 @@ static MemoryStream* mainStream;
 static MemoryStream* functionsStream;
 static MemoryStream* currentStream;
 
-static size_t streamUndoPoint;
 static size_t streamReadPoint;
 
 void Write(const void* buffer, const size_t length)
@@ -51,14 +50,14 @@ void SetCurrentStream(const StreamType stream)
     }
 }
 
-void BeginUndo()
+size_t GetStreamPosition()
 {
-    streamUndoPoint = StreamGetPosition(currentStream);
+    return StreamGetPosition(currentStream);
 }
 
-void EndUndo()
+void SetStreamPosition(const size_t pos)
 {
-    StreamSetPosition(currentStream, streamUndoPoint);
+    StreamSetPosition(currentStream, pos);
 }
 
 void BeginRead()
@@ -170,7 +169,7 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(const Token identifier, SymbolData** outSymbol)
+Result GetSymbol(const char* name, const long errorLineNumber, SymbolData** outSymbol)
 {
     SymbolData* symbol;
     const ScopeNode* scope = currentScope;
@@ -178,9 +177,9 @@ Result GetSymbol(const Token identifier, SymbolData** outSymbol)
     while (true)
     {
         if (scope == NULL)
-            return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier.text), identifier.lineNumber);
+            return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), errorLineNumber);
 
-        symbol = MapGet(&scope->symbolTable, identifier.text);
+        symbol = MapGet(&scope->symbolTable, name);
 
         if (symbol != NULL)
             break;
@@ -192,10 +191,10 @@ Result GetSymbol(const Token identifier, SymbolData** outSymbol)
     return SUCCESS_RESULT;
 }
 
-SymbolData* GetKnownSymbol(const Token identifier)
+SymbolData* GetKnownSymbol(const char* name, const long errorLineNumber)
 {
     SymbolData* symbol;
-    const Result result = GetSymbol(identifier, &symbol);
+    const Result result = GetSymbol(name, errorLineNumber, &symbol);
     assert(result.success);
     return symbol;
 }

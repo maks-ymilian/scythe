@@ -69,8 +69,8 @@ typedef enum { MainStream, FunctionsStream } StreamType;
 void Write(const void* buffer, size_t length);
 Buffer CombineStreams();
 void SetCurrentStream(StreamType stream);
-void BeginUndo();
-void EndUndo();
+size_t GetStreamPosition();
+void SetStreamPosition(size_t pos);
 void BeginRead();
 Buffer EndRead();
 
@@ -81,8 +81,8 @@ char* AllocateString2Int(const char* format, int insert1, int insert2);
 Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);
 
-Result GetSymbol(Token identifier, SymbolData** outSymbol);
-SymbolData* GetKnownSymbol(Token identifier);
+Result GetSymbol(const char* name, long errorLineNumber, SymbolData** outSymbol);
+SymbolData* GetKnownSymbol(const char* name, long errorLineNumber);
 Result RegisterVariable(Token identifier, Type type, const Map* symbolTable);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams);
 Result RegisterStruct(Token identifier, const Array* members);
