@@ -222,10 +222,15 @@ static Result AddSymbol(const char* name, const SymbolData data, const long erro
     return SUCCESS_RESULT;
 }
 
-Result RegisterVariable(const Token identifier, const Type type)
+Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable)
 {
     VariableSymbolData data;
     data.type = type;
+    if (symbolTable != NULL)
+    {
+        assert(type.metaType == StructType);
+        data.symbolTable = *symbolTable;
+    }
 
     SymbolData symbolData;
     symbolData.symbolType = VariableSymbol;
@@ -274,7 +279,7 @@ void PushScope()
     currentScope = newScope;
 }
 
-void PopScope()
+void PopScope(Map* outSymbolTable)
 {
     for (MAP_ITERATE(i, &currentScope->symbolTable))
     {
@@ -284,7 +289,12 @@ void PopScope()
     }
 
     ScopeNode* parent = currentScope->parent;
-    FreeMap(&currentScope->symbolTable);
+
+    if (outSymbolTable == NULL)
+        FreeMap(&currentScope->symbolTable);
+    else
+        *outSymbolTable = currentScope->symbolTable;
+
     free(currentScope);
     currentScope = parent;
 }
@@ -339,7 +349,7 @@ void FreeResources()
     FreeMap(&types);
 
     while (currentScope != NULL)
-        PopScope();
+        PopScope(NULL);
 
     FreeMemoryStream(mainStream, true);
     FreeMemoryStream(functionsStream, true);

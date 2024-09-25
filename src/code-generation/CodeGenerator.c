@@ -32,7 +32,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
     return result;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in);
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type);
 
 static Result GenerateVariableDeclaration(const VarDeclStmt* in)
 {
@@ -40,10 +40,10 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
     if (type.metaType == StructType)
-        return GenerateStructVariableDeclaration(in);
+        return GenerateStructVariableDeclaration(in, type);
 
     assert(in->identifier.type == Identifier);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -67,18 +67,31 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in)
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type)
 {
     const SymbolData* symbol = GetKnownSymbol(in->type);
     assert(symbol->symbolType == StructSymbol);
     const StructSymbolData data = symbol->structData;
 
+    PushScope();
+
+    BeginUndo();
     for (int i = 0; i < data.members->length; ++i)
     {
         const NodePtr* node = data.members->array[i];
-        assert(node->type == VariableDeclaration);
-        HANDLE_ERROR(GenerateVariableDeclaration(node->ptr));
+        switch (node->type)
+        {
+            case VariableDeclaration:
+                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr));
+                break;
+            default: assert(0);
+        }
     }
+    EndUndo();
+
+    Map symbolTable;
+    PopScope(&symbolTable);
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable));
 
     return SUCCESS_RESULT;
 }
@@ -275,7 +288,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         if (i < in->parameters.length - 1)
             WRITE_LITERAL(",");
 
-        HANDLE_ERROR(RegisterVariable(varDecl->identifier, param.type));
+        HANDLE_ERROR(RegisterVariable(varDecl->identifier, param.type, NULL));
 
         if (param.defaultValue.ptr != NULL)
         {
@@ -288,7 +301,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     WRITE_LITERAL(")\n");
     HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
 
-    PopScope();
+    PopScope(NULL);
     SetCurrentStream(MainStream);
 
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
@@ -311,7 +324,7 @@ static Result GenerateBlockStatement(const BlockStmt* in)
         HANDLE_ERROR(GenerateStatement(in->statements.array[i]));
     WRITE_LITERAL(");\n");
 
-    PopScope();
+    PopScope(NULL);
 
     return SUCCESS_RESULT;
 }

@@ -26,6 +26,7 @@ typedef struct
 typedef struct
 {
     Type type;
+    Map symbolTable;
 } VariableSymbolData;
 
 typedef struct
@@ -82,12 +83,12 @@ Type GetKnownType(const char* name);
 
 Result GetSymbol(Token identifier, SymbolData** outSymbol);
 SymbolData* GetKnownSymbol(Token identifier);
-Result RegisterVariable(Token identifier, Type type);
+Result RegisterVariable(Token identifier, Type type, const Map* symbolTable);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams);
 Result RegisterStruct(Token identifier, const Array* members);
 
 void PushScope();
-void PopScope();
+void PopScope(Map* outSymbolTable);
 ScopeNode* GetFunctionScope();
 ScopeNode* GetCurrentScope();
 
