@@ -61,11 +61,13 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     char* fullName = in->identifier.text;
     if (prefix != NULL) fullName = AllocateString2Str("%s%s", prefix, in->identifier.text);
 
+    const bool isInteger = type.id == GetKnownType("int").id;
+
     WRITE_LITERAL("var_");
     WRITE_TEXT(fullName);
     WRITE_LITERAL("=");
     Type initializerType;
-    HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, true));
+    HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, isInteger));
     WRITE_LITERAL(";\n");
 
     HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType,
