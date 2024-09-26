@@ -258,7 +258,10 @@ Result RegisterStruct(const Token identifier, const Array* members)
     symbolData.symbolType = StructSymbol;
     symbolData.structData = data;
 
-    AddType(identifier.text, StructType);
+    if (!AddType(identifier.text, StructType))
+        return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
+                            identifier.lineNumber);
+
     return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
 }
 
