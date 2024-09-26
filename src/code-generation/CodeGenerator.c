@@ -323,6 +323,26 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 static Result GenerateStructDeclaration(const StructDeclStmt* in)
 {
     HANDLE_ERROR(RegisterStruct(in->identifier, &in->members));
+
+    Type type;
+    assert(GetTypeFromToken(in->identifier, &type, false).success);
+
+    for (int i = 0; i < in->members.length; ++i)
+    {
+        const NodePtr* node = in->members.array[i];
+        if (node->type != VariableDeclaration)
+            continue;
+
+        const VarDeclStmt* varDecl = node->ptr;
+        Type varDeclType;
+        HANDLE_ERROR(GetTypeFromToken(varDecl->type, &varDeclType, false));
+        if (varDeclType.id == type.id)
+            return ERROR_RESULT(
+                AllocateString2Str("Member \"%s\" of type \"%s\" causes a cycle in the struct layout",
+                    varDecl->identifier.text, type.name),
+                varDecl->identifier.lineNumber);
+    }
+
     return SUCCESS_RESULT;
 }
 
