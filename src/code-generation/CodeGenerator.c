@@ -32,7 +32,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
     return result;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type);
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type, const char* prefix);
 
 static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix)
 {
@@ -40,7 +40,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
     if (type.metaType == StructType)
-        return GenerateStructVariableDeclaration(in, type);
+        return GenerateStructVariableDeclaration(in, type, prefix);
 
     assert(in->identifier.type == Identifier);
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL));
@@ -76,7 +76,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type)
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
     const SymbolData* symbol = GetKnownSymbol(in->type.text, in->type.lineNumber);
     assert(symbol->symbolType == StructSymbol);
@@ -91,9 +91,11 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         {
             case VariableDeclaration:
             {
-                char prefix[strlen(in->identifier.text) + 2];
-                assert(snprintf(prefix, sizeof(prefix), "%s.", in->identifier.text));
-                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, prefix));
+                if (prefix == NULL)
+                    prefix = "";
+                char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
+                assert(snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text));
+                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix));
                 break;
             }
             default: assert(0);

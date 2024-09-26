@@ -113,7 +113,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         }
         case Identifier:
         {
-            SymbolData* symbol;
+            const SymbolData* symbol;
             HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
             if (symbol->symbolType != VariableSymbol)
                 return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
@@ -139,6 +139,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 
                 assert(memberSymbol->symbolType == VariableSymbol);
                 type = memberSymbol->variableData.type;
+                symbol = memberSymbol;
 
                 WRITE_TEXT(current->next->value.text);
 
