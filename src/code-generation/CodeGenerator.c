@@ -34,7 +34,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type);
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in)
+static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix)
 {
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
@@ -58,11 +58,20 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in)
     else
         initializer = in->initializer;
 
-    LiteralExpr literal = {in->identifier};
-    const Token equals = {Equals, in->identifier.lineNumber, NULL};
-    BinaryExpr binary = {(NodePtr){&literal, LiteralExpression}, equals, initializer};
-    const ExpressionStmt stmt = {(NodePtr){&binary, BinaryExpression}};
-    HANDLE_ERROR(GenerateExpressionStatement(&stmt));
+    char* fullName = in->identifier.text;
+    if (prefix != NULL) fullName = AllocateString2Str("%s%s", prefix, in->identifier.text);
+
+    WRITE_LITERAL("var_");
+    WRITE_TEXT(fullName);
+    WRITE_LITERAL("=");
+    Type initializerType;
+    HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, true));
+    WRITE_LITERAL(";\n");
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType,
+        "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->identifier.lineNumber));
+
+    if (prefix != NULL) free(fullName);
 
     return SUCCESS_RESULT;
 }
@@ -81,8 +90,12 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         switch (node->type)
         {
             case VariableDeclaration:
-                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr));
+            {
+                char prefix[strlen(in->identifier.text) + 2];
+                assert(snprintf(prefix, sizeof(prefix), "%s.", in->identifier.text));
+                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, prefix));
                 break;
+            }
             default: assert(0);
         }
     }
@@ -378,7 +391,7 @@ static Result GenerateStatement(const NodePtr* in)
         case Section:
             return GenerateSectionStatement(in->ptr);
         case VariableDeclaration:
-            return GenerateVariableDeclaration(in->ptr);
+            return GenerateVariableDeclaration(in->ptr, NULL);
         case BlockStatement:
         {
             const ScopeNode* functionScope = GetFunctionScope();
