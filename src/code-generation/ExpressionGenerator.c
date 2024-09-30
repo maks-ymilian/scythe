@@ -127,7 +127,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         }
         case Identifier:
         {
-            const SymbolData* symbol;
+            SymbolData* symbol;
             HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
             if (symbol->symbolType != VariableSymbol)
                 return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
@@ -144,7 +144,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
                 if (type.metaType != StructType)
                     return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
 
-                const SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
+                SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
                 if (memberSymbol == NULL)
                     return ERROR_RESULT(
                         AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
