@@ -9,6 +9,21 @@ static bool IsDigitBase(const char c, const int base)
     assert(0);
 }
 
+static int CountCharacters(const char character, const char* string)
+{
+    assert(string != NULL);
+
+    int count = 0;
+    int i = 0;
+    while (string[i] != '\0')
+    {
+        if (string[i] == character)
+            count++;
+        i++;
+    }
+    return count;
+}
+
 static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* out)
 {
     assert(token.type == NumberLiteral);
@@ -32,33 +47,32 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     bool integer = true;
     if (base == 10)
     {
-        if (text[length - 1] == 'f' || text[length - 1] == 'F')
-            integer = false;
-        else
-            integer = true;
+        const int dotCount = CountCharacters('.', text);
+        assert(dotCount >= 0);
+        if (dotCount > 1)
+            return ERROR_RESULT("Only one dot is allowed in a number literal", token.lineNumber);
+
+        integer = !dotCount;
     }
 
     if (!integer && base != 10)
         return ERROR_RESULT("Float literal must be base 10", token.lineNumber);
 
     const size_t startIndex = base == 10 ? 0 : 2;
-    const size_t endIndex = integer ? length : length - 1;
+    const size_t endIndex = length;
 
     size_t i = startIndex;
     while (i < endIndex)
     {
-        if (!IsDigitBase(text[i], base))
+        if (text[i] == '.')
         {
-            if (text[i] == '.')
-            {
-                if (integer)
-                    return ERROR_RESULT("Dots in integer literals are not allowed", token.lineNumber);
-            }
-            else
-            {
-                const char insert[2] = {text[i], '\0'};
-                return ERROR_RESULT(AllocateString1Str("Unexpected digit in number literal \"%s\"", insert), token.lineNumber);
-            }
+            if (integer)
+                return ERROR_RESULT("Dots in integer literals are not allowed", token.lineNumber);
+        }
+        else if (!IsDigitBase(text[i], base))
+        {
+            const char insert[2] = {text[i], '\0'};
+            return ERROR_RESULT(AllocateString1Str("Unexpected digit in number literal \"%s\"", insert), token.lineNumber);
         }
 
         i++;
