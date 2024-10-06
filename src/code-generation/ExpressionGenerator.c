@@ -351,8 +351,36 @@ static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightP
     }
 }
 
+static bool IsAssignmentOperator(const TokenType token)
+{
+    switch (token)
+    {
+        case Equals:
+        case PlusEquals:
+        case MinusEquals:
+        case SlashEquals:
+        case AsteriskEquals:
+            return true;
+        default: return false;
+    }
+}
+
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
+    // break up chained assignment
+    if (IsAssignmentOperator(in->operator.type) &&
+        in->right.type == BinaryExpression &&
+        IsAssignmentOperator(((BinaryExpr*)in->right.ptr)->operator.type))
+    {
+        WRITE_LITERAL("(");
+        HANDLE_ERROR(GenerateBinaryExpression(in->right.ptr, outType));
+        WRITE_LITERAL(";");
+        const BinaryExpr expr = (BinaryExpr){in->left, in->operator, ((BinaryExpr*)in->right.ptr)->left};
+        const Result result = GenerateBinaryExpression(&expr, outType);
+        WRITE_LITERAL(";)");
+        return result;
+    }
+
     WRITE_LITERAL("(");
 
     const size_t pos = GetStreamPosition();
@@ -405,28 +433,28 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
             *outType = leftType;
 
-            if (leftType.id == GetKnownType("int").id)
-            {
-                Write(left.buffer, left.length);
-                Write(operator.buffer, operator.length);
-                WRITE_LITERAL("(");
-                Write(right.buffer, right.length);
-                WRITE_LITERAL("|0)");
-                textWritten = true;
-            }
-
-            if (leftType.metaType == StructType)
-            {
-                assert(in->operator.type == Equals);
-                assert(leftType.id == rightType.id);
-
-                GenerateStructAssignment(in->left, in->right, leftType);
-
-                textWritten = true;
-            }
-
             if (in->operator.type == Equals)
+            {
+                if (leftType.id == GetKnownType("int").id)
+                {
+                    Write(left.buffer, left.length);
+                    Write(operator.buffer, operator.length);
+                    WRITE_LITERAL("(");
+                    Write(right.buffer, right.length);
+                    WRITE_LITERAL("|0)");
+                    textWritten = true;
+                }
+                else if (leftType.metaType == StructType)
+                {
+                    assert(in->operator.type == Equals);
+                    assert(leftType.id == rightType.id);
+
+                    GenerateStructAssignment(in->left, in->right, leftType);
+
+                    textWritten = true;
+                }
                 break;
+            }
 
             TokenType arithmeticOperator;
             switch (in->operator.type)
