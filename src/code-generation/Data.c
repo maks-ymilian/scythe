@@ -39,14 +39,14 @@ void SetCurrentStream(const StreamType stream)
 {
     switch (stream)
     {
-        case MainStream:
-            currentStream = mainStream;
-            break;
-        case FunctionsStream:
-            currentStream = functionsStream;
-            break;
-        default:
-            assert(0);
+    case MainStream:
+        currentStream = mainStream;
+        break;
+    case FunctionsStream:
+        currentStream = functionsStream;
+        break;
+    default:
+        assert(0);
     }
 }
 
@@ -146,16 +146,16 @@ Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVo
     {
         switch (typeToken.type)
         {
-            case Void:
-                if (!allowVoid)
-                    return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Void);
-            case Int:
-            case Float:
-            case String:
-            case Bool:
-                break;
+        case Void:
+            if (!allowVoid)
+                return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Void);
+        case Int:
+        case Float:
+        case String:
+        case Bool:
+            break;
 
-            default: assert(0);
+        default: assert(0);
         }
 
         const char* typeName = GetTokenTypeString(typeToken.type);

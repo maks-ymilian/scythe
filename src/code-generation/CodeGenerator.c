@@ -109,16 +109,16 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         const NodePtr* node = data.members->array[i];
         switch (node->type)
         {
-            case VariableDeclaration:
-            {
-                if (prefix == NULL)
-                    prefix = "";
-                char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
-                assert(snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text));
-                HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix));
-                break;
-            }
-            default: assert(0);
+        case VariableDeclaration:
+        {
+            if (prefix == NULL)
+                prefix = "";
+            char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
+            assert(snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text));
+            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix));
+            break;
+        }
+        default: assert(0);
         }
     }
 
@@ -148,35 +148,35 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
 {
     switch (node.type)
     {
-        case ReturnStatement:
-            return true;
-        case IfStatement:
-        {
-            const IfStmt* ifStmt = node.ptr;
-            const bool trueReturns = ControlPathsReturn(ifStmt->trueStmt, allPathsMustReturn);
-            const bool falseReturns = ControlPathsReturn(ifStmt->falseStmt, allPathsMustReturn);
+    case ReturnStatement:
+        return true;
+    case IfStatement:
+    {
+        const IfStmt* ifStmt = node.ptr;
+        const bool trueReturns = ControlPathsReturn(ifStmt->trueStmt, allPathsMustReturn);
+        const bool falseReturns = ControlPathsReturn(ifStmt->falseStmt, allPathsMustReturn);
 
-            if (allPathsMustReturn)
-                return trueReturns && falseReturns;
-            return trueReturns || falseReturns;
-        }
-        case BlockStatement:
+        if (allPathsMustReturn)
+            return trueReturns && falseReturns;
+        return trueReturns || falseReturns;
+    }
+    case BlockStatement:
+    {
+        const BlockStmt* block = node.ptr;
+        for (int i = 0; i < block->statements.length; ++i)
         {
-            const BlockStmt* block = node.ptr;
-            for (int i = 0; i < block->statements.length; ++i)
-            {
-                const NodePtr* statement = block->statements.array[i];
-                if (ControlPathsReturn(*statement, allPathsMustReturn))
-                    return true;
-            }
-            return false;
+            const NodePtr* statement = block->statements.array[i];
+            if (ControlPathsReturn(*statement, allPathsMustReturn))
+                return true;
         }
-        case ExpressionStatement:
-        case VariableDeclaration:
-        case FunctionDeclaration:
-        case NullNode:
-            return false;
-        default: assert(0);
+        return false;
+    }
+    case ExpressionStatement:
+    case VariableDeclaration:
+    case FunctionDeclaration:
+    case NullNode:
+        return false;
+    default: assert(0);
     }
 }
 
@@ -376,27 +376,27 @@ static Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
-        case ExpressionStatement:
-            return GenerateExpressionStatement(in->ptr);
-        case ReturnStatement:
-            return GenerateReturnStatement(in->ptr);
-        case Section:
-            return GenerateSectionStatement(in->ptr);
-        case VariableDeclaration:
-            return GenerateVariableDeclaration(in->ptr, NULL);
-        case BlockStatement:
-        {
-            const ScopeNode* functionScope = GetFunctionScope();
-            return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
-        }
-        case FunctionDeclaration:
-            return GenerateFunctionDeclaration(in->ptr);
-        case StructDeclaration:
-            return GenerateStructDeclaration(in->ptr);
-        case IfStatement:
-            return GenerateIfStatement(in->ptr);
-        default:
-            assert(0);
+    case ExpressionStatement:
+        return GenerateExpressionStatement(in->ptr);
+    case ReturnStatement:
+        return GenerateReturnStatement(in->ptr);
+    case Section:
+        return GenerateSectionStatement(in->ptr);
+    case VariableDeclaration:
+        return GenerateVariableDeclaration(in->ptr, NULL);
+    case BlockStatement:
+    {
+        const ScopeNode* functionScope = GetFunctionScope();
+        return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
+    }
+    case FunctionDeclaration:
+        return GenerateFunctionDeclaration(in->ptr);
+    case StructDeclaration:
+        return GenerateStructDeclaration(in->ptr);
+    case IfStatement:
+        return GenerateIfStatement(in->ptr);
+    default:
+        assert(0);
     }
 }
 

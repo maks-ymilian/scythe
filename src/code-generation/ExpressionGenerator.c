@@ -106,77 +106,77 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     const Token literal = in->value;
     switch (literal.type)
     {
-        case NumberLiteral:
+    case NumberLiteral:
+    {
+        char number[strlen(literal.text) + 1];
+        bool integer;
+        HANDLE_ERROR(EvaluateNumberLiteral(literal, &integer, number));
+        *outType = integer ? GetKnownType("int") : GetKnownType("float");
+
+        WRITE_TEXT(number);
+        return SUCCESS_RESULT;
+    }
+    case StringLiteral:
+    {
+        WRITE_LITERAL("\"");
+        if (literal.text[0] != '\0')
+            WRITE_TEXT(literal.text);
+        WRITE_LITERAL("\"");
+        *outType = GetKnownType("string");
+        return SUCCESS_RESULT;
+    }
+    case Identifier:
+    {
+        SymbolData* symbol;
+        HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
+        if (symbol->symbolType != VariableSymbol)
+            return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
+
+        WRITE_LITERAL(VARIABLE_PREFIX);
+        WRITE_TEXT(in->value.text);
+
+        Type type = symbol->variableData.type;
+        const LiteralExpr* current = in;
+        while (current->next != NULL)
         {
-            char number[strlen(literal.text) + 1];
-            bool integer;
-            HANDLE_ERROR(EvaluateNumberLiteral(literal, &integer, number));
-            *outType = integer ? GetKnownType("int") : GetKnownType("float");
+            WRITE_LITERAL(".");
 
-            WRITE_TEXT(number);
-            return SUCCESS_RESULT;
+            if (type.metaType != StructType)
+                return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
+
+            SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
+            if (memberSymbol == NULL)
+                return ERROR_RESULT(
+                    AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
+                        current->next->value.text, type.name),
+                    current->next->value.lineNumber);
+
+            assert(memberSymbol->symbolType == VariableSymbol);
+            type = memberSymbol->variableData.type;
+            symbol = memberSymbol;
+
+            WRITE_TEXT(current->next->value.text);
+
+            current = current->next;
         }
-        case StringLiteral:
-        {
-            WRITE_LITERAL("\"");
-            if (literal.text[0] != '\0')
-                WRITE_TEXT(literal.text);
-            WRITE_LITERAL("\"");
-            *outType = GetKnownType("string");
-            return SUCCESS_RESULT;
-        }
-        case Identifier:
-        {
-            SymbolData* symbol;
-            HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
-            if (symbol->symbolType != VariableSymbol)
-                return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
-            WRITE_LITERAL(VARIABLE_PREFIX);
-            WRITE_TEXT(in->value.text);
-
-            Type type = symbol->variableData.type;
-            const LiteralExpr* current = in;
-            while (current->next != NULL)
-            {
-                WRITE_LITERAL(".");
-
-                if (type.metaType != StructType)
-                    return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
-
-                SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
-                if (memberSymbol == NULL)
-                    return ERROR_RESULT(
-                        AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
-                            current->next->value.text, type.name),
-                        current->next->value.lineNumber);
-
-                assert(memberSymbol->symbolType == VariableSymbol);
-                type = memberSymbol->variableData.type;
-                symbol = memberSymbol;
-
-                WRITE_TEXT(current->next->value.text);
-
-                current = current->next;
-            }
-
-            *outType = type;
-            return SUCCESS_RESULT;
-        }
-        case True:
-        {
-            WRITE_LITERAL("1");
-            *outType = GetKnownType("bool");
-            return SUCCESS_RESULT;
-        }
-        case False:
-        {
-            WRITE_LITERAL("0");
-            *outType = GetKnownType("bool");
-            return SUCCESS_RESULT;
-        }
-        default:
-            assert(0);
+        *outType = type;
+        return SUCCESS_RESULT;
+    }
+    case True:
+    {
+        WRITE_LITERAL("1");
+        *outType = GetKnownType("bool");
+        return SUCCESS_RESULT;
+    }
+    case False:
+    {
+        WRITE_LITERAL("0");
+        *outType = GetKnownType("bool");
+        return SUCCESS_RESULT;
+    }
+    default:
+        assert(0);
     }
 }
 
@@ -276,20 +276,20 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
     switch (in->operator.type)
     {
-        case Exclamation:
-            if (type.id != GetKnownType("bool").id)
-                return UnaryOperatorErrorResult(in->operator, type);
-            break;
-        case Minus:
-            if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
-                return UnaryOperatorErrorResult(in->operator, type);
-            break;
-        case Plus:
-            if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
-                return UnaryOperatorErrorResult(in->operator, type);
-            break;
-        default:
-            assert(0);
+    case Exclamation:
+        if (type.id != GetKnownType("bool").id)
+            return UnaryOperatorErrorResult(in->operator, type);
+        break;
+    case Minus:
+        if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
+            return UnaryOperatorErrorResult(in->operator, type);
+        break;
+    case Plus:
+        if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
+            return UnaryOperatorErrorResult(in->operator, type);
+        break;
+    default:
+        assert(0);
     }
 
     *outType = type;
@@ -318,35 +318,35 @@ static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightP
         const NodePtr* node = structData.members->array[i];
         switch (node->type)
         {
-            case VariableDeclaration:
-            {
-                const VarDeclStmt* varDecl = node->ptr;
-                LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
+        case VariableDeclaration:
+        {
+            const VarDeclStmt* varDecl = node->ptr;
+            LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
 
-                LiteralExpr* leftLast = left;
-                while (leftLast->next != NULL) leftLast = leftLast->next;
-                LiteralExpr* rightLast = right;
-                while (rightLast->next != NULL) rightLast = rightLast->next;
+            LiteralExpr* leftLast = left;
+            while (leftLast->next != NULL) leftLast = leftLast->next;
+            LiteralExpr* rightLast = right;
+            while (rightLast->next != NULL) rightLast = rightLast->next;
 
-                leftLast->next = &varDeclIdentifier;
-                rightLast->next = &varDeclIdentifier;
+            leftLast->next = &varDeclIdentifier;
+            rightLast->next = &varDeclIdentifier;
 
-                BinaryExpr expr = (BinaryExpr){leftPtr, equals, rightPtr};
-                NodePtr node = (NodePtr){&expr, BinaryExpression};
+            BinaryExpr expr = (BinaryExpr){leftPtr, equals, rightPtr};
+            NodePtr node = (NodePtr){&expr, BinaryExpression};
 
-                Type outType;
-                const Result result = GenerateExpression(&node, &outType, true, false);
+            Type outType;
+            const Result result = GenerateExpression(&node, &outType, true, false);
 
-                leftLast->next = NULL;
-                rightLast->next = NULL;
+            leftLast->next = NULL;
+            rightLast->next = NULL;
 
-                if (result.errorMessage != NULL)
-                    printf("%s", result.errorMessage);
-                assert(result.success);
-                WRITE_LITERAL(";");
-                break;
-            }
-            default: assert(0);
+            if (result.errorMessage != NULL)
+                printf("%s", result.errorMessage);
+            assert(result.success);
+            WRITE_LITERAL(";");
+            break;
+        }
+        default: assert(0);
         }
     }
 }
@@ -355,13 +355,13 @@ static bool IsAssignmentOperator(const TokenType token)
 {
     switch (token)
     {
-        case Equals:
-        case PlusEquals:
-        case MinusEquals:
-        case SlashEquals:
-        case AsteriskEquals:
-            return true;
-        default: return false;
+    case Equals:
+    case PlusEquals:
+    case MinusEquals:
+    case SlashEquals:
+    case AsteriskEquals:
+        return true;
+    default: return false;
     }
 }
 
@@ -410,148 +410,148 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     switch (in->operator.type)
     {
-        case Equals:
-        case PlusEquals:
-        case MinusEquals:
-        case SlashEquals:
-        case AsteriskEquals:
-            // assignment
+    case Equals:
+    case PlusEquals:
+    case MinusEquals:
+    case SlashEquals:
+    case AsteriskEquals:
+        // assignment
+    {
+        bool isLvalue = false;
+        if (in->left.type == LiteralExpression)
         {
-            bool isLvalue = false;
-            if (in->left.type == LiteralExpression)
-            {
-                const LiteralExpr* literal = in->left.ptr;
-                if (literal->value.type == Identifier)
-                    isLvalue = true;
-            }
+            const LiteralExpr* literal = in->left.ptr;
+            if (literal->value.type == Identifier)
+                isLvalue = true;
+        }
 
-            if (!isLvalue)
-                return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
+        if (!isLvalue)
+            return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
 
-            HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType,
-                "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->operator.lineNumber));
+        HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType,
+            "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->operator.lineNumber));
 
-            *outType = leftType;
+        *outType = leftType;
 
-            if (in->operator.type == Equals)
-            {
-                if (leftType.id == GetKnownType("int").id)
-                {
-                    Write(left.buffer, left.length);
-                    Write(operator.buffer, operator.length);
-                    WRITE_LITERAL("(");
-                    Write(right.buffer, right.length);
-                    WRITE_LITERAL("|0)");
-                    textWritten = true;
-                }
-                else if (leftType.metaType == StructType)
-                {
-                    assert(in->operator.type == Equals);
-                    assert(leftType.id == rightType.id);
-
-                    GenerateStructAssignment(in->left, in->right, leftType);
-
-                    textWritten = true;
-                }
-                break;
-            }
-
-            TokenType arithmeticOperator;
-            switch (in->operator.type)
-            {
-                case PlusEquals:
-                    arithmeticOperator = Plus;
-                    break;
-                case MinusEquals:
-                    arithmeticOperator = Minus;
-                    break;
-                case AsteriskEquals:
-                    arithmeticOperator = Asterisk;
-                    break;
-                case SlashEquals:
-                    arithmeticOperator = Slash;
-                    break;
-                default: assert(0);
-            }
-
-            Write(left.buffer, left.length);
-            WRITE_TEXT(GetTokenTypeString(Equals));
-            WRITE_LITERAL("((");
-            Write(left.buffer, left.length);
-            WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
-            Write(right.buffer, right.length);
-            WRITE_LITERAL(")");
+        if (in->operator.type == Equals)
+        {
             if (leftType.id == GetKnownType("int").id)
-                WRITE_LITERAL("|0");
-            WRITE_LITERAL(")");
+            {
+                Write(left.buffer, left.length);
+                Write(operator.buffer, operator.length);
+                WRITE_LITERAL("(");
+                Write(right.buffer, right.length);
+                WRITE_LITERAL("|0)");
+                textWritten = true;
+            }
+            else if (leftType.metaType == StructType)
+            {
+                assert(in->operator.type == Equals);
+                assert(leftType.id == rightType.id);
 
-            textWritten = true;
+                GenerateStructAssignment(in->left, in->right, leftType);
 
-            // fallthrough
-        }
-
-        case Plus:
-        case Minus:
-        case Slash:
-        case Asterisk:
-            // arithmetic
-        {
-            const Type intType = GetKnownType("int");
-            const Type floatType = GetKnownType("float");
-            if ((leftType.id != intType.id &&
-                 leftType.id != floatType.id) ||
-                (rightType.id != intType.id &&
-                 rightType.id != floatType.id))
-                return operatorTypeError;
-
-            if (leftType.id == floatType.id || rightType.id == floatType.id)
-                *outType = floatType;
-            else
-                *outType = intType;
-
+                textWritten = true;
+            }
             break;
         }
 
-        case EqualsEquals:
-        case ExclamationEquals:
-            // equality
+        TokenType arithmeticOperator;
+        switch (in->operator.type)
         {
-            if (!CheckAssignmentCompatibility(leftType, rightType, "you should not be reading this", 69420).success)
-                return operatorTypeError;
-
-            *outType = GetKnownType("bool");
+        case PlusEquals:
+            arithmeticOperator = Plus;
             break;
-        }
-        case LeftAngleBracket:
-        case RightAngleBracket:
-        case LeftAngleEquals:
-        case RightAngleEquals:
-            // number comparison
-        {
-            const Type intType = GetKnownType("int");
-            const Type floatType = GetKnownType("float");
-            if ((leftType.id != intType.id &&
-                 leftType.id != floatType.id) ||
-                (rightType.id != intType.id &&
-                 rightType.id != floatType.id))
-                return operatorTypeError;
-
-            *outType = GetKnownType("bool");
+        case MinusEquals:
+            arithmeticOperator = Minus;
             break;
-        }
-        case AmpersandAmpersand:
-        case PipePipe:
-            // boolean operators
-        {
-            const Type boolType = GetKnownType("bool");
-            if (leftType.id != boolType.id || rightType.id != boolType.id)
-                return operatorTypeError;
-
-            *outType = GetKnownType("bool");
+        case AsteriskEquals:
+            arithmeticOperator = Asterisk;
             break;
-        }
-
+        case SlashEquals:
+            arithmeticOperator = Slash;
+            break;
         default: assert(0);
+        }
+
+        Write(left.buffer, left.length);
+        WRITE_TEXT(GetTokenTypeString(Equals));
+        WRITE_LITERAL("((");
+        Write(left.buffer, left.length);
+        WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
+        Write(right.buffer, right.length);
+        WRITE_LITERAL(")");
+        if (leftType.id == GetKnownType("int").id)
+            WRITE_LITERAL("|0");
+        WRITE_LITERAL(")");
+
+        textWritten = true;
+
+        // fallthrough
+    }
+
+    case Plus:
+    case Minus:
+    case Slash:
+    case Asterisk:
+        // arithmetic
+    {
+        const Type intType = GetKnownType("int");
+        const Type floatType = GetKnownType("float");
+        if ((leftType.id != intType.id &&
+             leftType.id != floatType.id) ||
+            (rightType.id != intType.id &&
+             rightType.id != floatType.id))
+            return operatorTypeError;
+
+        if (leftType.id == floatType.id || rightType.id == floatType.id)
+            *outType = floatType;
+        else
+            *outType = intType;
+
+        break;
+    }
+
+    case EqualsEquals:
+    case ExclamationEquals:
+        // equality
+    {
+        if (!CheckAssignmentCompatibility(leftType, rightType, "you should not be reading this", 69420).success)
+            return operatorTypeError;
+
+        *outType = GetKnownType("bool");
+        break;
+    }
+    case LeftAngleBracket:
+    case RightAngleBracket:
+    case LeftAngleEquals:
+    case RightAngleEquals:
+        // number comparison
+    {
+        const Type intType = GetKnownType("int");
+        const Type floatType = GetKnownType("float");
+        if ((leftType.id != intType.id &&
+             leftType.id != floatType.id) ||
+            (rightType.id != intType.id &&
+             rightType.id != floatType.id))
+            return operatorTypeError;
+
+        *outType = GetKnownType("bool");
+        break;
+    }
+    case AmpersandAmpersand:
+    case PipePipe:
+        // boolean operators
+    {
+        const Type boolType = GetKnownType("bool");
+        if (leftType.id != boolType.id || rightType.id != boolType.id)
+            return operatorTypeError;
+
+        *outType = GetKnownType("bool");
+        break;
+    }
+
+    default: assert(0);
     }
 
     if (!textWritten)
@@ -585,20 +585,20 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
 
     switch (in->type)
     {
-        case BinaryExpression:
-            result = GenerateBinaryExpression(in->ptr, outType);
-            break;
-        case UnaryExpression:
-            result = GenerateUnaryExpression(in->ptr, outType);
-            break;
-        case LiteralExpression:
-            result = GenerateLiteralExpression(in->ptr, outType);
-            break;
-        case FunctionCallExpression:
-            result = GenerateFunctionCallExpression(in->ptr, outType);
-            break;
-        default:
-            assert(0);
+    case BinaryExpression:
+        result = GenerateBinaryExpression(in->ptr, outType);
+        break;
+    case UnaryExpression:
+        result = GenerateUnaryExpression(in->ptr, outType);
+        break;
+    case LiteralExpression:
+        result = GenerateLiteralExpression(in->ptr, outType);
+        break;
+    case FunctionCallExpression:
+        result = GenerateFunctionCallExpression(in->ptr, outType);
+        break;
+    default:
+        assert(0);
     }
 
     if (convertToInteger)
