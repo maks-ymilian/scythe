@@ -108,6 +108,21 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
     PopScope(&symbolTable);
     HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable));
 
+    if (in->initializer.type != NullNode)
+    {
+        LiteralExpr left = (LiteralExpr){in->identifier, NULL};
+        BinaryExpr expr = (BinaryExpr)
+        {
+            (NodePtr){&left, LiteralExpression},
+            (Token){Equals, in->type.lineNumber, NULL},
+            in->initializer
+        };
+        const NodePtr node = (NodePtr){&expr, BinaryExpression};
+        Type outType;
+        HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
+        WRITE_LITERAL(";");
+    }
+
     return SUCCESS_RESULT;
 }
 
