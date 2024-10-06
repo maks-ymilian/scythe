@@ -19,17 +19,35 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
     WRITE_LITERAL("(");
     WRITE_LITERAL("__hasReturned = 1;");
 
-    Result result = SUCCESS_RESULT;
-    if (in->expr.type != NullNode)
+    const Type returnType = functionScope->functionReturnType;
+    const bool isVoid = returnType.id == GetKnownType("void").id;
+    if (in->expr.type == NullNode)
     {
+        if (!isVoid)
+            return ERROR_RESULT(
+                AllocateString1Str("A function with return type \"%s\" must return a value", returnType.name),
+                in->returnToken.lineNumber);
+    }
+    else
+    {
+        if (isVoid)
+            return ERROR_RESULT(
+                AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
+                in->returnToken.lineNumber);
+
         WRITE_LITERAL("__returnValue =");
         Type exprType;
-        result = GenerateExpression(&in->expr, &exprType, false,
-                                    functionScope->functionReturnType.id == GetKnownType("int").id);
+        HANDLE_ERROR(GenerateExpression(
+            &in->expr, &exprType, true, functionScope->functionReturnType.id == GetKnownType("int").id));
+
+        HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
+            "Cannot convert type \"%s\" to return type \"%s\"",
+            in->returnToken.lineNumber));
     }
+
     WRITE_LITERAL(");\n");
 
-    return result;
+    return SUCCESS_RESULT;
 }
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type, const char* prefix);
@@ -126,70 +144,6 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
     return SUCCESS_RESULT;
 }
 
-static Result CheckReturnStatement(const ReturnStmt* returnStmt, const Type returnType)
-{
-    const size_t pos = GetStreamPosition();
-
-    const bool isVoid = returnType.id == GetKnownType("void").id;
-    if (returnStmt->expr.type == NullNode)
-    {
-        if (!isVoid)
-            return ERROR_RESULT(
-                AllocateString1Str("A function with return type \"%s\" must return a value", returnType.name),
-                returnStmt->returnToken.lineNumber);
-    }
-    else
-    {
-        if (isVoid)
-            return ERROR_RESULT(
-                AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
-                returnStmt->returnToken.lineNumber);
-
-        Type exprType;
-        HANDLE_ERROR(GenerateExpression(&returnStmt->expr, &exprType, true, false));
-        HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
-            "Cannot convert type \"%s\" to return type \"%s\"",
-            returnStmt->returnToken.lineNumber));
-    }
-
-    SetStreamPosition(pos);
-
-    return SUCCESS_RESULT;
-}
-
-static Result CheckReturnStatements(const NodePtr node, const Type returnType)
-{
-    switch (node.type)
-    {
-        case ReturnStatement:
-            HANDLE_ERROR(CheckReturnStatement(node.ptr, returnType));
-            return SUCCESS_RESULT;
-        case IfStatement:
-        {
-            const IfStmt* ifStmt = node.ptr;
-            HANDLE_ERROR(CheckReturnStatements(ifStmt->trueStmt, returnType));
-            HANDLE_ERROR(CheckReturnStatements(ifStmt->falseStmt, returnType));
-            return SUCCESS_RESULT;
-        }
-        case BlockStatement:
-        {
-            const BlockStmt* block = node.ptr;
-            for (int i = 0; i < block->statements.length; ++i)
-            {
-                const NodePtr* stmt = block->statements.array[i];
-                HANDLE_ERROR(CheckReturnStatements(*stmt, returnType));
-            }
-            return SUCCESS_RESULT;
-        }
-        case ExpressionStatement:
-        case VariableDeclaration:
-        case FunctionDeclaration:
-        case NullNode:
-            return SUCCESS_RESULT;
-        default: assert(0);
-    }
-}
-
 static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn)
 {
     switch (node.type)
@@ -279,7 +233,6 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     assert(in->block.type == BlockStatement);
 
-    HANDLE_ERROR(CheckReturnStatements(in->block, returnType));
     if (!ControlPathsReturn(in->block, true) && returnType.id != GetKnownType("void").id)
         return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
 
