@@ -82,7 +82,7 @@ Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);
 
 Result GetSymbol(const char* name, long errorLineNumber, SymbolData** outSymbol);
-SymbolData* GetKnownSymbol(const char* name, long errorLineNumber);
+SymbolData* GetKnownSymbol(const char* name);
 Result RegisterVariable(Token identifier, Type type, const Map* symbolTable);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams);
 Result RegisterStruct(Token identifier, const Array* members);

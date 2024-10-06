@@ -63,7 +63,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     const bool isInteger = type.id == GetKnownType("int").id;
 
-    WRITE_LITERAL("var_");
+    WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(fullName);
     WRITE_LITERAL("=");
     Type initializerType;
@@ -80,7 +80,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
-    const SymbolData* symbol = GetKnownSymbol(in->type.text, in->type.lineNumber);
+    const SymbolData* symbol = GetKnownSymbol(in->type.text);
     assert(symbol->symbolType == StructSymbol);
     const StructSymbolData data = symbol->structData;
 
@@ -298,7 +298,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type, false));
         ArrayAdd(&params, &param);
 
-        WRITE_LITERAL("var_");
+        WRITE_LITERAL(VARIABLE_PREFIX);
         WRITE_TEXT(varDecl->identifier.text);
         if (i < in->parameters.length - 1)
             WRITE_LITERAL(",");

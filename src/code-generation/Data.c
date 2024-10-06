@@ -191,10 +191,10 @@ Result GetSymbol(const char* name, const long errorLineNumber, SymbolData** outS
     return SUCCESS_RESULT;
 }
 
-SymbolData* GetKnownSymbol(const char* name, const long errorLineNumber)
+SymbolData* GetKnownSymbol(const char* name)
 {
     SymbolData* symbol;
-    const Result result = GetSymbol(name, errorLineNumber, &symbol);
+    const Result result = GetSymbol(name, 0, &symbol);
     assert(result.success);
     return symbol;
 }

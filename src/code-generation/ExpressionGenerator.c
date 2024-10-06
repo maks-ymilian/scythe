@@ -132,7 +132,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
             if (symbol->symbolType != VariableSymbol)
                 return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
-            WRITE_LITERAL("var_");
+            WRITE_LITERAL(VARIABLE_PREFIX);
             WRITE_TEXT(in->value.text);
 
             Type type = symbol->variableData.type;
@@ -298,6 +298,59 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
+static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightPtr, const Type structType, const long lineNumber)
+{
+    assert(leftPtr.type == LiteralExpression);
+    assert(rightPtr.type == LiteralExpression);
+    LiteralExpr* left = leftPtr.ptr;
+    LiteralExpr* right = rightPtr.ptr;
+
+    assert(structType.metaType == StructType);
+
+    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData structData = symbol->structData;
+
+    const Token equals = (Token){Equals, lineNumber, NULL};
+
+    for (int i = 0; i < structData.members->length; ++i)
+    {
+        const NodePtr* node = structData.members->array[i];
+        switch (node->type)
+        {
+            case VariableDeclaration:
+            {
+                const VarDeclStmt* varDecl = node->ptr;
+                LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
+
+                LiteralExpr* leftLast = left;
+                while (leftLast->next != NULL) leftLast = leftLast->next;
+                LiteralExpr* rightLast = right;
+                while (rightLast->next != NULL) rightLast = rightLast->next;
+
+                leftLast->next = &varDeclIdentifier;
+                rightLast->next = &varDeclIdentifier;
+
+                BinaryExpr expr = (BinaryExpr){leftPtr, equals, rightPtr};
+                NodePtr node = (NodePtr){&expr, BinaryExpression};
+
+                Type outType;
+                const Result result = GenerateExpression(&node, &outType, true, false);
+
+                leftLast->next = NULL;
+                rightLast->next = NULL;
+
+                if (result.errorMessage != NULL)
+                    printf("%s", result.errorMessage);
+                assert(result.success);
+                WRITE_LITERAL(";");
+                break;
+            }
+            default: assert(0);
+        }
+    }
+}
+
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     WRITE_LITERAL("(");
@@ -359,6 +412,16 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 WRITE_LITERAL("(");
                 Write(right.buffer, right.length);
                 WRITE_LITERAL("|0)");
+                textWritten = true;
+            }
+
+            if (leftType.metaType == StructType)
+            {
+                assert(in->operator.type == Equals);
+                assert(leftType.id == rightType.id);
+
+                GenerateStructAssignment(in->left, in->right, leftType, in->operator.lineNumber);
+
                 textWritten = true;
             }
 
