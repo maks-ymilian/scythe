@@ -298,7 +298,7 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightPtr, const Type structType, const long lineNumber)
+static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightPtr, const Type structType)
 {
     assert(leftPtr.type == LiteralExpression);
     assert(rightPtr.type == LiteralExpression);
@@ -311,7 +311,7 @@ static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightP
     assert(symbol->symbolType == StructSymbol);
     const StructSymbolData structData = symbol->structData;
 
-    const Token equals = (Token){Equals, lineNumber, NULL};
+    const Token equals = (Token){Equals, 0, NULL};
 
     for (int i = 0; i < structData.members->length; ++i)
     {
@@ -420,7 +420,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(in->operator.type == Equals);
                 assert(leftType.id == rightType.id);
 
-                GenerateStructAssignment(in->left, in->right, leftType, in->operator.lineNumber);
+                GenerateStructAssignment(in->left, in->right, leftType);
 
                 textWritten = true;
             }
@@ -459,7 +459,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
             textWritten = true;
 
-            // no break here is intentional
+            // fallthrough
         }
 
         case Plus:
