@@ -24,13 +24,13 @@ Buffer CombineStreams()
 {
     MemoryStream* stream = AllocateMemoryStream();
 
-    const Buffer functions = StreamRewindRead(functionsStream, 0);
+    const Buffer functions = StreamGetBuffer(functionsStream);
     StreamWrite(stream, functions.buffer, functions.length);
 
-    const Buffer sections = StreamRewindRead(mainStream, 0);
+    const Buffer sections = StreamGetBuffer(mainStream);
     StreamWrite(stream, sections.buffer, sections.length);
 
-    const Buffer out = StreamRewindRead(stream, 0);
+    const Buffer out = StreamGetBuffer(stream);
     FreeMemoryStream(stream, false);
     return out;
 }

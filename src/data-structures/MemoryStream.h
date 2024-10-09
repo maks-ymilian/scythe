@@ -20,6 +20,7 @@ void StreamWriteByte(MemoryStream* stream, uint8_t data);
 
 Buffer StreamRead(MemoryStream* stream, size_t length);
 Buffer StreamRewindRead(MemoryStream* stream, size_t offset);
+Buffer StreamGetBuffer(const MemoryStream* stream);
 
 void StreamRewind(MemoryStream* stream, size_t offset);
 
