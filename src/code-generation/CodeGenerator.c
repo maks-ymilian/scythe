@@ -35,10 +35,11 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
                 AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 in->returnToken.lineNumber);
 
-        WRITE_LITERAL("__returnValue =");
+        WRITE_LITERAL("stack_push(");
         Type exprType;
         HANDLE_ERROR(GenerateExpression(
             &in->expr, &exprType, true, functionScope->functionReturnType.id == GetKnownType("int").id));
+        WRITE_LITERAL(");");
 
         HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
             "Cannot convert type \"%s\" to return type \"%s\"",
@@ -187,10 +188,7 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
     WRITE_LITERAL("(0;\n");
 
     if (topLevel)
-    {
         WRITE_LITERAL("__hasReturned = 0;\n");
-        WRITE_LITERAL("__returnValue = 0;\n");
-    }
 
     long returnIfStatementCount = 0;
     for (int i = 0; i < in->statements.length; ++i)
@@ -210,9 +208,6 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
     }
     for (int i = 0; i < returnIfStatementCount; ++i)
         WRITE_LITERAL(");");
-
-    if (topLevel)
-        WRITE_LITERAL("__returnValue;\n");
 
     WRITE_LITERAL(");\n");
 
