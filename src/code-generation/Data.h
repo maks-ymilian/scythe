@@ -64,7 +64,7 @@ struct ScopeNode
     Type functionReturnType;
 };
 
-typedef enum { MainStream, FunctionsStream } StreamType;
+typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 
 void Write(const void* buffer, size_t length);
 Buffer CombineStreams();

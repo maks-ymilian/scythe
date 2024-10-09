@@ -11,6 +11,7 @@ static ScopeNode* currentScope;
 
 static MemoryStream* mainStream;
 static MemoryStream* functionsStream;
+static MemoryStream* expressionStream;
 static MemoryStream* currentStream;
 
 static Array streamReadPoints;
@@ -44,6 +45,9 @@ void SetCurrentStream(const StreamType stream)
         break;
     case FunctionsStream:
         currentStream = functionsStream;
+        break;
+    case ExpressionStream:
+        currentStream = expressionStream;
         break;
     default:
         assert(0);
@@ -333,6 +337,7 @@ void InitResources()
 
     mainStream = AllocateMemoryStream();
     functionsStream = AllocateMemoryStream();
+    expressionStream = AllocateMemoryStream();
     SetCurrentStream(MainStream);
 
     types = AllocateMap(sizeof(Type));
@@ -364,4 +369,5 @@ void FreeResources()
 
     FreeMemoryStream(mainStream, true);
     FreeMemoryStream(functionsStream, true);
+    FreeMemoryStream(expressionStream, true);
 }
