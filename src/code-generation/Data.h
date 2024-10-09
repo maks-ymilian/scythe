@@ -69,6 +69,7 @@ typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 void Write(const void* buffer, size_t length);
 Buffer CombineStreams();
 void SetCurrentStream(StreamType stream);
+void SetPreviousStream();
 size_t GetStreamPosition();
 void SetStreamPosition(size_t pos);
 void BeginRead();

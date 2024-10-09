@@ -13,6 +13,7 @@ static MemoryStream* mainStream;
 static MemoryStream* functionsStream;
 static MemoryStream* expressionStream;
 static MemoryStream* currentStream;
+static MemoryStream* previousStream;
 
 static Array streamReadPoints;
 
@@ -38,6 +39,7 @@ Buffer CombineStreams()
 
 void SetCurrentStream(const StreamType stream)
 {
+    previousStream = currentStream;
     switch (stream)
     {
     case MainStream:
@@ -52,6 +54,11 @@ void SetCurrentStream(const StreamType stream)
     default:
         assert(0);
     }
+}
+
+void SetPreviousStream()
+{
+    currentStream = previousStream;
 }
 
 size_t GetStreamPosition()

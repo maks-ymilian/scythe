@@ -280,7 +280,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
 
     PopScope(NULL);
-    SetCurrentStream(MainStream);
+    SetPreviousStream();
 
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
@@ -413,7 +413,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 
     SetCurrentStream(FunctionsStream);
     WRITE_LITERAL("@init\n");
-    SetCurrentStream(MainStream);
+    SetPreviousStream();
 
     const Result result = GenerateProgram(syntaxTree);
 
