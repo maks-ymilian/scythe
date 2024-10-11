@@ -34,7 +34,7 @@ void PrintError(const Result result)
 		i++;
 	}
 
-	const char* buffer = (char*)StreamRewindRead(stream, 0).buffer;
+	const char* buffer = (char*)StreamGetBuffer(stream).buffer;
 	printf("%s (line %"PRIu32")\n", buffer, result.lineNumber);\
 
 	FreeMemoryStream(stream, true);
