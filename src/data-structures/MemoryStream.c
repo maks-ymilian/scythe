@@ -94,5 +94,11 @@ size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)
 {
-    StreamWrite(stream, &data, 1);
+    if (stream->position + 1 >= stream->capacity)
+        Reallocate(stream, stream->position + 2);
+
+    stream->buffer[stream->position] = data;
+    stream->position += 1;
+    if (stream->position > stream->length)
+        stream->length = stream->position;
 }
