@@ -1,5 +1,7 @@
 #include "ExpressionGenerator.h"
 
+static long expressionDepth = 0;
+
 static bool IsDigitBase(const char c, const int base)
 {
     if (base == 10) return isdigit(c);
@@ -578,6 +580,15 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         return SUCCESS_RESULT;
     }
 
+    if (expressionDepth == 0)
+    {
+        WRITE_LITERAL("(");
+        SetCurrentStream(ExpressionStream);
+        BeginRead();
+    }
+
+    expressionDepth++;
+
     if (convertToInteger)
         WRITE_LITERAL("(");
 
@@ -605,6 +616,18 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
     {
         if (outType->id == GetKnownType("float").id)
             WRITE_LITERAL("|0");
+        WRITE_LITERAL(")");
+    }
+
+    expressionDepth--;
+
+    if (expressionDepth == 0)
+    {
+        const Buffer expr = EndRead();
+        SetStreamPosition(0);
+        SetPreviousStream();
+        Write(expr.buffer, expr.length);
+        free(expr.buffer);
         WRITE_LITERAL(")");
     }
 
