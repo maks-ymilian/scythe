@@ -10,6 +10,64 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
+static void GeneratePushStructVariable(const NodePtr expr, const Type exprType)
+{
+    if (expr.type == FunctionCallExpression)
+    {
+        //not implemented
+        assert(0);
+    }
+
+    assert(expr.type == LiteralExpression);
+
+    const SymbolData* symbol = GetKnownSymbol(exprType.name);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData structSymbol = symbol->structData;
+
+    for (int i = 0; i < structSymbol.members->length; ++i)
+    {
+        const NodePtr* node = structSymbol.members->array[i];
+
+        switch (node->type)
+        {
+        case VariableDeclaration:
+        {
+            const VarDeclStmt* varDecl = node->ptr;
+
+            Type memberType; {
+                const Result result = GetTypeFromToken(varDecl->type, &memberType, false);
+                assert(result.success);
+            }
+
+            LiteralExpr literal = *(LiteralExpr*)expr.ptr;
+            LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
+            LiteralExpr* last = &literal;
+            while (last->next != NULL) last = last->next;
+            last->next = &next;
+            NodePtr node = (NodePtr){&literal, LiteralExpression};
+
+            if (memberType.metaType == StructType)
+            {
+                GeneratePushStructVariable(node, memberType);
+                last->next = NULL;
+                break;
+            }
+
+            WRITE_LITERAL("stack_push(");
+            Type _;
+            const Result result = GenerateExpression(&node, &_, true, false);
+            last->next = NULL;
+            if (!result.success) printf("%s", result.errorMessage);
+            assert(result.success);
+            WRITE_LITERAL(");");
+            break;
+        }
+        default:
+            assert(0);
+        }
+    }
+}
+
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
     const ScopeNode* functionScope = GetFunctionScope();
@@ -35,6 +93,8 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
                 AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 in->returnToken.lineNumber);
 
+        const size_t pos = GetStreamPosition();
+
         WRITE_LITERAL("stack_push(");
         Type exprType;
         HANDLE_ERROR(GenerateExpression(
@@ -44,6 +104,12 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
         HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
             "Cannot convert type \"%s\" to return type \"%s\"",
             in->returnToken.lineNumber));
+
+        if (exprType.metaType == StructType)
+        {
+            SetStreamPosition(pos);
+            GeneratePushStructVariable(in->expr, exprType);
+        }
     }
 
     WRITE_LITERAL(");\n");

@@ -349,6 +349,12 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
 static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightPtr, const Type structType)
 {
+    if (rightPtr.type == FunctionCallExpression)
+    {
+        // not implemented yet
+        assert(0);
+    }
+
     assert(leftPtr.type == LiteralExpression);
     assert(rightPtr.type == LiteralExpression);
     LiteralExpr* left = leftPtr.ptr;
