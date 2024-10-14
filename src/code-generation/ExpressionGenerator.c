@@ -1,7 +1,7 @@
 #include "ExpressionGenerator.h"
 
 static long expressionDepth = 0;
-static long functionCallCount = 0;
+static long uniqueCounter = 0;
 
 static int CountCharsInNumber(long number)
 {
@@ -294,9 +294,9 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     WRITE_LITERAL(");");
     WRITE_LITERAL("__ret");
 
-    functionCallCount++;
-    char counter[CountCharsInNumber(functionCallCount) + 1];
-    snprintf(counter, sizeof(counter), "%ld", functionCallCount);
+    uniqueCounter++;
+    char counter[CountCharsInNumber(uniqueCounter) + 1];
+    snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
     Write(counter, sizeof(counter) - 1);
     WRITE_LITERAL("=stack_pop();");
 
