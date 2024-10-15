@@ -251,6 +251,35 @@ Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, cons
     return SUCCESS_RESULT;
 }
 
+static long CountStructVariables(const Type structType)
+{
+    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData* structData = &symbol->structData;
+
+    long count = 0;
+    for (int i = 0; i < structData->members->length; ++i)
+    {
+        const NodePtr* member = structData->members->array[i];
+        if (member->type != VariableDeclaration)
+            continue;
+
+        const VarDeclStmt* varDecl = member->ptr;
+        Type memberType;
+        const Result result = GetTypeFromToken(varDecl->type, &memberType, false);
+        assert(result.success);
+
+        if (memberType.metaType == StructType)
+        {
+            count += CountStructVariables(memberType);
+            continue;
+        }
+
+        count++;
+    }
+    return count;
+}
+
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
     SetPreviousStream();
@@ -259,17 +288,16 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     HANDLE_ERROR(GetSymbol(in->identifier.text, in->identifier.lineNumber, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
-    const FunctionSymbolData data = symbol->functionData;
+    const FunctionSymbolData function = symbol->functionData;
 
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
-
-    for (int i = 0; i < Max(data.parameters.length, in->parameters.length); ++i)
+    for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
     {
         const FunctionParameter* funcParam = NULL;
-        if (i < data.parameters.length)
-            funcParam = data.parameters.array[i];
+        if (i < function.parameters.length)
+            funcParam = function.parameters.array[i];
 
         const NodePtr* callExpr = NULL;
         if (i < in->parameters.length)
@@ -278,7 +306,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         if (funcParam == NULL && callExpr != NULL ||
             funcParam != NULL && funcParam->defaultValue.ptr == NULL && callExpr == NULL)
             return ERROR_RESULT(AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-                                    data.parameters.length, in->parameters.length), in->identifier.lineNumber);
+                                    function.parameters.length, in->parameters.length), in->identifier.lineNumber);
 
         const NodePtr* writeExpr;
         if (callExpr != NULL)
@@ -287,24 +315,32 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             writeExpr = &funcParam->defaultValue;
 
         HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
-        if (i != data.parameters.length - 1)
+        if (i != function.parameters.length - 1)
             WRITE_LITERAL(",");
     }
-
     WRITE_LITERAL(");");
-    WRITE_LITERAL("__ret");
 
-    uniqueCounter++;
-    char counter[CountCharsInNumber(uniqueCounter) + 1];
-    snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
-    Write(counter, sizeof(counter) - 1);
-    WRITE_LITERAL("=stack_pop();");
+    const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
+    for (int i = 0; i < variableCount; ++i)
+    {
+        WRITE_LITERAL("__ret");
+        uniqueCounter++;
+        char counter[CountCharsInNumber(uniqueCounter) + 1];
+        snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
+        Write(counter, sizeof(counter) - 1);
+        WRITE_LITERAL("=stack_pop();");
 
-    SetCurrentStream(ExpressionStream);
-    WRITE_LITERAL("__ret");
-    Write(counter, sizeof(counter) - 1);
+        if (variableCount == 1)
+        {
+            SetCurrentStream(ExpressionStream);
+            WRITE_LITERAL("__ret");
+            Write(counter, sizeof(counter) - 1);
+        }
+    }
+    if (variableCount != 1)
+        SetCurrentStream(ExpressionStream);
 
-    *outType = data.returnType;
+    *outType = function.returnType;
     return SUCCESS_RESULT;
 }
 
@@ -499,6 +535,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(leftType.id == rightType.id);
 
                 GenerateStructAssignment(in->left, in->right, leftType);
+                WRITE_LITERAL("0");
 
                 textWritten = true;
             }
