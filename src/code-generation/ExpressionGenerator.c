@@ -425,19 +425,10 @@ static bool IsAssignmentOperator(const TokenType token)
 
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
-    // break up chained assignment
     if (IsAssignmentOperator(in->operator.type) &&
         in->right.type == BinaryExpression &&
         IsAssignmentOperator(((BinaryExpr*)in->right.ptr)->operator.type))
-    {
-        WRITE_LITERAL("(");
-        HANDLE_ERROR(GenerateBinaryExpression(in->right.ptr, outType));
-        WRITE_LITERAL(";");
-        const BinaryExpr expr = (BinaryExpr){in->left, in->operator, ((BinaryExpr*)in->right.ptr)->left};
-        const Result result = GenerateBinaryExpression(&expr, outType);
-        WRITE_LITERAL(";)");
-        return result;
-    }
+        return ERROR_RESULT("Chained assignment is not allowed", in->operator.lineNumber);
 
     WRITE_LITERAL("(");
 
