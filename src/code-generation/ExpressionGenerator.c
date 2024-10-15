@@ -347,25 +347,12 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightPtr, const Type structType)
+static void GenerateFunctionStructAssignment(const LiteralExpr* left, const FuncCallExpr* right, const StructSymbolData structData)
 {
-    if (rightPtr.type == FunctionCallExpression)
-    {
-        // not implemented yet
-        assert(0);
-    }
+}
 
-    assert(leftPtr.type == LiteralExpression);
-    assert(rightPtr.type == LiteralExpression);
-    LiteralExpr* left = leftPtr.ptr;
-    LiteralExpr* right = rightPtr.ptr;
-
-    assert(structType.metaType == StructType);
-
-    const SymbolData* symbol = GetKnownSymbol(structType.name);
-    assert(symbol->symbolType == StructSymbol);
-    const StructSymbolData structData = symbol->structData;
-
+static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* right, const StructSymbolData structData)
+{
     const Token equals = (Token){Equals, 0, NULL};
 
     for (int i = 0; i < structData.members->length; ++i)
@@ -386,7 +373,7 @@ static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightP
             leftLast->next = &varDeclIdentifier;
             rightLast->next = &varDeclIdentifier;
 
-            BinaryExpr expr = (BinaryExpr){leftPtr, equals, rightPtr};
+            BinaryExpr expr = (BinaryExpr){(NodePtr){left, LiteralExpression}, equals, (NodePtr){right, LiteralExpression}};
             NodePtr node = (NodePtr){&expr, BinaryExpression};
 
             Type outType;
@@ -404,6 +391,22 @@ static void GenerateStructAssignment(const NodePtr leftPtr, const NodePtr rightP
         default: assert(0);
         }
     }
+}
+
+static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
+{
+    assert(left.type == LiteralExpression);
+
+    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData structData = symbol->structData;
+
+    if (right.type == LiteralExpression)
+        GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
+    else if (right.type == FunctionCallExpression)
+        GenerateFunctionStructAssignment(left.ptr, right.ptr, structData);
+    else
+        assert(0);
 }
 
 static bool IsAssignmentOperator(const TokenType token)
