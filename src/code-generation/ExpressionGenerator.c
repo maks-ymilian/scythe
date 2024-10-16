@@ -382,8 +382,49 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static void GenerateFunctionStructAssignment(const LiteralExpr* left, const FuncCallExpr* right, const StructSymbolData structData)
+static void GenerateFunctionStructAssignment(LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
 {
+    long _returnNumber = uniqueCounter;
+    if (returnNumber == NULL) returnNumber = &_returnNumber;
+
+    for (int i = structData.members->length - 1; i >= 0; --i)
+    {
+        const NodePtr* node = structData.members->array[i];
+        if (node->type != VariableDeclaration)
+            continue;
+        const VarDeclStmt* varDecl = node->ptr;
+        LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
+
+        LiteralExpr* leftLast = left;
+        while (leftLast->next != NULL) leftLast = leftLast->next;
+
+        leftLast->next = &varDeclIdentifier;
+
+        Type memberType;
+        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
+        if (memberType.metaType == StructType)
+        {
+            const SymbolData* symbol = GetKnownSymbol(memberType.name);
+            assert(symbol->symbolType == StructSymbol);
+            const StructSymbolData* structData = &symbol->structData;
+            GenerateFunctionStructAssignment(left, *structData, returnNumber);
+            continue;
+        }
+
+        const NodePtr leftNode = (NodePtr){left, LiteralExpression};
+        Type _;
+        ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
+
+        WRITE_LITERAL("=");
+        WRITE_LITERAL("__ret");
+        char counter[CountCharsInNumber(*returnNumber) + 1];
+        snprintf(counter, sizeof(counter), "%ld", *returnNumber);
+        Write(counter, sizeof(counter) - 1);
+        --*returnNumber;
+        WRITE_LITERAL(";");
+
+        leftLast->next = NULL;
+    }
 }
 
 static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* right, const StructSymbolData structData)
@@ -436,7 +477,7 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
     if (right.type == LiteralExpression)
         GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
     else if (right.type == FunctionCallExpression)
-        GenerateFunctionStructAssignment(left.ptr, right.ptr, structData);
+        GenerateFunctionStructAssignment(left.ptr, structData, NULL);
     else
         assert(0);
 }
