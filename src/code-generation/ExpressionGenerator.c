@@ -266,8 +266,7 @@ static long CountStructVariables(const Type structType)
 
         const VarDeclStmt* varDecl = member->ptr;
         Type memberType;
-        const Result result = GetTypeFromToken(varDecl->type, &memberType, false);
-        assert(result.success);
+        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
 
         if (memberType.metaType == StructType)
         {
@@ -413,14 +412,11 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
             NodePtr node = (NodePtr){&expr, BinaryExpression};
 
             Type outType;
-            const Result result = GenerateExpression(&node, &outType, true, false);
+            ASSERT_ERROR(GenerateExpression(&node, &outType, true, false));
 
             leftLast->next = NULL;
             rightLast->next = NULL;
 
-            if (result.errorMessage != NULL)
-                printf("%s", result.errorMessage);
-            assert(result.success);
             WRITE_LITERAL(";");
             break;
         }

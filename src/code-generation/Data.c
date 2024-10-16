@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "Common.h"
+
 static Map types;
 
 static ScopeNode* currentScope;
@@ -210,8 +212,7 @@ Result GetSymbol(const char* name, const long errorLineNumber, SymbolData** outS
 SymbolData* GetKnownSymbol(const char* name)
 {
     SymbolData* symbol;
-    const Result result = GetSymbol(name, 0, &symbol);
-    assert(result.success);
+    ASSERT_ERROR(GetSymbol(name, 0, &symbol));
     return symbol;
 }
 

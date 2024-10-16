@@ -34,10 +34,8 @@ static void GeneratePushStructVariable(const NodePtr expr, const Type exprType)
         {
             const VarDeclStmt* varDecl = node->ptr;
 
-            Type memberType; {
-                const Result result = GetTypeFromToken(varDecl->type, &memberType, false);
-                assert(result.success);
-            }
+            Type memberType;
+            ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
 
             LiteralExpr literal = *(LiteralExpr*)expr.ptr;
             LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
@@ -55,10 +53,8 @@ static void GeneratePushStructVariable(const NodePtr expr, const Type exprType)
 
             WRITE_LITERAL("stack_push(");
             Type _;
-            const Result result = GenerateExpression(&node, &_, true, false);
+            ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
             last->next = NULL;
-            if (!result.success) printf("%s", result.errorMessage);
-            assert(result.success);
             WRITE_LITERAL(");");
             break;
         }
