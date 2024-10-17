@@ -18,7 +18,7 @@ if (result.hasError)\
 #define ASSERT_ERROR(function)\
 {const Result result = function;\
 if (result.hasError){\
-    printf("Assertion failed: %s", result.errorMessage);\
+    printf("Assertion failed: %s\n", result.errorMessage);\
     assert(0);}}
 
 #define WRITE_LITERAL(text) Write(text, sizeof(text) - 1)
