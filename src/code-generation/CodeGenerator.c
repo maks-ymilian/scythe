@@ -10,12 +10,24 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static void GeneratePushStructVariable(const NodePtr expr, const Type exprType)
+static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix);
+
+static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
 {
+    PushScope();
+
+    LiteralExpr variable;
     if (expr.type == FunctionCallExpression)
     {
-        //not implemented
-        assert(0);
+        const FuncCallExpr* funcCall = expr.ptr;
+
+        const Token typeToken = (Token){Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
+        const Token identifier = (Token){Identifier, funcCall->identifier.lineNumber, "0"};
+        const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
+        ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL));
+
+        variable = (LiteralExpr){identifier, NULL};
+        expr = (NodePtr){&variable, LiteralExpression};
     }
 
     assert(expr.type == LiteralExpression);
@@ -62,6 +74,8 @@ static void GeneratePushStructVariable(const NodePtr expr, const Type exprType)
             assert(0);
         }
     }
+
+    PopScope(NULL);
 }
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
