@@ -22,7 +22,7 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
         const FuncCallExpr* funcCall = expr.ptr;
 
         const Token typeToken = (Token){Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
-        const Token identifier = (Token){Identifier, funcCall->identifier.lineNumber, "0"};
+        const Token identifier = (Token){Identifier, funcCall->identifier.lineNumber, "temp"};
         const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
         ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL));
 
