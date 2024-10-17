@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-#include "SyntaxTreePrinter.h"
+#include "SyntaxTree.h"
 #include "data-structures/Map.h"
 #include "data-structures/MemoryStream.h"
 #include "Result.h"

@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "SyntaxTreePrinter.h"
-
 #define SET_LINE_NUMBER lineNumber = ((Token*)tokens.array[pointer])->lineNumber;
 
 #define NOT_FOUND_RESULT (Result){false, false, NULL, 0}

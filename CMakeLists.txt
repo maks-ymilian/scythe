@@ -9,7 +9,6 @@ set(SOURCES
         "src/Scanner.c"
         "src/Token.c"
         "src/Parser.c"
-        "src/SyntaxTreePrinter.c"
         "src/SyntaxTree.c"
         "src/data-structures/Array.c"
         "src/Result.c"
