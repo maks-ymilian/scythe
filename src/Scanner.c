@@ -65,7 +65,7 @@ static void ScanWord()
     {
         const char character = Advance();
 
-        if (!isalnum(character))
+        if (!isalnum(character) && character != '_')
         {
             pointer--;
             break;
@@ -258,7 +258,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
         if (isdigit(character)) // number literal
             ScanNumberLiteral();
-        else if (isalpha(character)) // identifier / keyword
+        else if (isalpha(character) || character == '_') // identifier / keyword
             ScanWord();
         else if (character == '"') // string literal
             ScanStringLiteral();
