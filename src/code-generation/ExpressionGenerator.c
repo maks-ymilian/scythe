@@ -382,12 +382,12 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static void GenerateFunctionStructAssignment(LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
+static void GenerateFunctionStructAssignment(const LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
 {
     long _returnNumber = uniqueCounter;
     if (returnNumber == NULL) returnNumber = &_returnNumber;
 
-    for (int i = structData.members->length - 1; i >= 0; --i)
+    for (int i = 0; i < structData.members->length; i++)
     {
         const NodePtr* node = structData.members->array[i];
         if (node->type != VariableDeclaration)
@@ -395,7 +395,7 @@ static void GenerateFunctionStructAssignment(LiteralExpr* left, const StructSymb
         const VarDeclStmt* varDecl = node->ptr;
         LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
 
-        LiteralExpr* leftLast = left;
+        LiteralExpr* leftLast = (LiteralExpr*)left;
         while (leftLast->next != NULL) leftLast = leftLast->next;
 
         leftLast->next = &varDeclIdentifier;
@@ -408,12 +408,15 @@ static void GenerateFunctionStructAssignment(LiteralExpr* left, const StructSymb
             assert(symbol->symbolType == StructSymbol);
             const StructSymbolData* structData = &symbol->structData;
             GenerateFunctionStructAssignment(left, *structData, returnNumber);
+            leftLast->next = NULL;
             continue;
         }
 
         const NodePtr leftNode = (NodePtr){left, LiteralExpression};
         Type _;
         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
+
+        leftLast->next = NULL;
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
@@ -422,8 +425,6 @@ static void GenerateFunctionStructAssignment(LiteralExpr* left, const StructSymb
         Write(counter, sizeof(counter) - 1);
         --*returnNumber;
         WRITE_LITERAL(";");
-
-        leftLast->next = NULL;
     }
 }
 
