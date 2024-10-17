@@ -412,7 +412,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
             continue;
         }
 
-        const NodePtr leftNode = (NodePtr){left, LiteralExpression};
+        const NodePtr leftNode = (NodePtr){(void*)left, LiteralExpression};
         Type _;
         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
 
