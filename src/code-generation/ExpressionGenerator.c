@@ -216,7 +216,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     }
 }
 
-Result CheckAssignmentCompatibility(const Type left, const Type right, const char* errorMessage, const long lineNumber)
+Result CheckAssignmentCompatibility(const Type left, const Type right, const long lineNumber)
 {
     if (left.id == right.id)
         return SUCCESS_RESULT;
@@ -228,7 +228,7 @@ Result CheckAssignmentCompatibility(const Type left, const Type right, const cha
         return SUCCESS_RESULT;
 
     const char* message = AllocateString2Str(
-        errorMessage,
+        "Cannot convert from type \"%s\" to type \"%s\"",
         right.name, left.name);
     return ERROR_RESULT(message, lineNumber);
 }
@@ -245,8 +245,7 @@ Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, cons
 {
     Type exprType;
     HANDLE_ERROR(GenerateExpression(expr, &exprType, true, paramType.id == GetKnownType("int").id));
-    HANDLE_ERROR(CheckAssignmentCompatibility(paramType, exprType,
-        "Cannot assign value of type \"%s\" to function parameter of type \"%s\"", lineNumber));
+    HANDLE_ERROR(CheckAssignmentCompatibility(paramType, exprType, lineNumber));
 
     return SUCCESS_RESULT;
 }
@@ -551,8 +550,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         if (!isLvalue)
             return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);
 
-        HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType,
-            "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->operator.lineNumber));
+        HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType, in->operator.lineNumber));
 
         *outType = leftType;
 
@@ -640,7 +638,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     case ExclamationEquals:
         // equality
     {
-        if (!CheckAssignmentCompatibility(leftType, rightType, "you should not be reading this", 69420).success)
+        if (!CheckAssignmentCompatibility(leftType, rightType, 69420).success)
             return operatorTypeError;
 
         *outType = GetKnownType("bool");

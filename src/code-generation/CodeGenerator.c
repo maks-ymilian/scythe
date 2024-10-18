@@ -78,6 +78,26 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
     PopScope(NULL);
 }
 
+static Result GeneratePushVariable(const NodePtr expr, const Type expectedType, const long lineNumber)
+{
+    const size_t pos = GetStreamPosition();
+
+    WRITE_LITERAL("stack_push(");
+    Type exprType;
+    HANDLE_ERROR(GenerateExpression(&expr, &exprType, true, expectedType.id == GetKnownType("int").id));
+    WRITE_LITERAL(");");
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(expectedType, exprType, lineNumber));
+
+    if (exprType.metaType == StructType)
+    {
+        SetStreamPosition(pos);
+        GeneratePushStructVariable(expr, exprType);
+    }
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
     const ScopeNode* functionScope = GetFunctionScope();
@@ -103,23 +123,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
                 AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 in->returnToken.lineNumber);
 
-        const size_t pos = GetStreamPosition();
-
-        WRITE_LITERAL("stack_push(");
-        Type exprType;
-        HANDLE_ERROR(GenerateExpression(
-            &in->expr, &exprType, true, functionScope->functionReturnType.id == GetKnownType("int").id));
-        WRITE_LITERAL(");");
-
-        HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType,
-            "Cannot convert type \"%s\" to return type \"%s\"",
-            in->returnToken.lineNumber));
-
-        if (exprType.metaType == StructType)
-        {
-            SetStreamPosition(pos);
-            GeneratePushStructVariable(in->expr, exprType);
-        }
+        HANDLE_ERROR(GeneratePushVariable(in->expr, returnType, in->returnToken.lineNumber));
     }
 
     WRITE_LITERAL(");\n");
@@ -165,8 +169,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, isInteger));
     WRITE_LITERAL(";\n");
 
-    HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType,
-        "Cannot assign value of type \"%s\" to variable of type \"%s\"", in->identifier.lineNumber));
+    HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->identifier.lineNumber));
 
     if (prefix != NULL) free(fullName);
 
