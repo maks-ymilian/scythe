@@ -14,13 +14,14 @@ static ScopeNode* currentScope;
 static MemoryStream* mainStream;
 static MemoryStream* functionsStream;
 static MemoryStream* expressionStream;
-static MemoryStream* currentStream;
-static MemoryStream* previousStream;
+static MemoryStream* currentStream = NULL;
+static Array streamStack;
 
 static Array streamReadPoints;
 
 void Write(const void* buffer, const size_t length)
 {
+    assert(currentStream != NULL);
     StreamWrite(currentStream, buffer, length);
 }
 
@@ -41,7 +42,6 @@ Buffer CombineStreams()
 
 void SetCurrentStream(const StreamType stream)
 {
-    previousStream = currentStream;
     switch (stream)
     {
     case MainStream:
@@ -56,11 +56,15 @@ void SetCurrentStream(const StreamType stream)
     default:
         assert(0);
     }
+
+    ArrayAdd(&streamStack, &currentStream);
 }
 
 void SetPreviousStream()
 {
-    currentStream = previousStream;
+    assert(streamStack.length > 0);
+    ArrayRemove(&streamStack, streamStack.length - 1);
+    currentStream = *(MemoryStream**)streamStack.array[streamStack.length - 1];
 }
 
 size_t GetStreamPosition()
@@ -338,6 +342,8 @@ ScopeNode* GetCurrentScope()
 
 void InitResources()
 {
+    streamStack = AllocateArray(sizeof(MemoryStream*));
+
     streamReadPoints = AllocateArray(sizeof(size_t));
 
     ScopeNode* globalScope = AllocateScopeNode();
@@ -368,6 +374,8 @@ void InitResources()
 
 void FreeResources()
 {
+    FreeArray(&streamStack);
+
     FreeArray(&streamReadPoints);
 
     FreeMap(&types);
