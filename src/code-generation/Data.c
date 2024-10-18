@@ -64,7 +64,11 @@ void SetPreviousStream()
 {
     assert(streamStack.length > 0);
     ArrayRemove(&streamStack, streamStack.length - 1);
-    currentStream = *(MemoryStream**)streamStack.array[streamStack.length - 1];
+
+    if (streamStack.length > 0)
+        currentStream = *(MemoryStream**)streamStack.array[streamStack.length - 1];
+    else
+        currentStream = NULL;
 }
 
 size_t GetStreamPosition()
