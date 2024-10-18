@@ -78,7 +78,7 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
     PopScope(NULL);
 }
 
-static Result GeneratePushVariable(const NodePtr expr, const Type expectedType, const long lineNumber)
+Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long lineNumber)
 {
     const size_t pos = GetStreamPosition();
 
@@ -123,7 +123,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
                 AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 in->returnToken.lineNumber);
 
-        HANDLE_ERROR(GeneratePushVariable(in->expr, returnType, in->returnToken.lineNumber));
+        HANDLE_ERROR(GeneratePushValue(in->expr, returnType, in->returnToken.lineNumber));
     }
 
     WRITE_LITERAL(");\n");
@@ -349,9 +349,9 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
         if (param.defaultValue.ptr != NULL)
         {
-            const size_t pos = GetStreamPosition();
-            HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
-            SetStreamPosition(pos);
+            // const size_t pos = GetStreamPosition();
+            // HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
+            // SetStreamPosition(pos);
         }
     }
 

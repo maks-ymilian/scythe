@@ -1,5 +1,7 @@
 #include "ExpressionGenerator.h"
 
+#include "StatementGenerator.h"
+
 static long expressionDepth = 0;
 static long uniqueCounter = 0;
 
@@ -241,15 +243,6 @@ static int Max(const int a, const int b)
 
 Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpression, bool convertToInteger);
 
-Result GenerateFunctionParameter(const Type paramType, const NodePtr* expr, const long lineNumber)
-{
-    Type exprType;
-    HANDLE_ERROR(GenerateExpression(expr, &exprType, true, paramType.id == GetKnownType("int").id));
-    HANDLE_ERROR(CheckAssignmentCompatibility(paramType, exprType, lineNumber));
-
-    return SUCCESS_RESULT;
-}
-
 static long CountStructVariables(const Type structType)
 {
     const SymbolData* symbol = GetKnownSymbol(structType.name);
@@ -288,8 +281,6 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
 
-    WRITE_LITERAL("func_");
-    WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(");
     for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
     {
@@ -312,11 +303,11 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         else
             writeExpr = &funcParam->defaultValue;
 
-        HANDLE_ERROR(GenerateFunctionParameter(funcParam->type, writeExpr, in->identifier.lineNumber));
-        if (i != function.parameters.length - 1)
-            WRITE_LITERAL(",");
+        HANDLE_ERROR(GeneratePushValue(*writeExpr, funcParam->type, in->identifier.lineNumber));
     }
-    WRITE_LITERAL(");");
+    WRITE_LITERAL("func_");
+    WRITE_TEXT(in->identifier.text);
+    WRITE_LITERAL("(););");
 
     const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
     for (int i = 0; i < variableCount; ++i)
