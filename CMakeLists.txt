@@ -17,6 +17,7 @@ set(SOURCES
         "src/data-structures/MemoryStream.c"
         "src/code-generation/Data.c"
         "src/code-generation/ExpressionGenerator.c"
+        "src/code-generation/StatementGenerator.c"
 )
 
 add_compile_options(-fsanitize=address,undefined -g)
