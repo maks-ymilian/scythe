@@ -52,14 +52,14 @@ static void Compile(const char* source)
     free(outputCode);
 }
 
-int main(void)
+static void CompileFile(const char* path)
 {
-    FILE* file = fopen("D:/Program Files/REAPER (x64)/Effects/jjjjjjjjjjjjjjjj/test.txt", "rb");
+    FILE* file = fopen(path, "rb");
 
     if (file == NULL)
     {
         perror("Failed to open file: ");
-        return 1;
+        exit(1);
     }
 
     fseek(file, 0, SEEK_END);
@@ -69,7 +69,7 @@ int main(void)
     if (fileSize == -1L)
     {
         perror("ftell failed: ");
-        return 1;
+        exit(1);
     }
 
     char* buffer = malloc(fileSize + 1);
@@ -77,7 +77,7 @@ int main(void)
     if (buffer == NULL)
     {
         perror("malloc failed: ");
-        return 1;
+        exit(1);
     }
 
     fread(buffer, (size_t)fileSize, 1, file);
@@ -87,6 +87,11 @@ int main(void)
     Compile(buffer);
 
     free(buffer);
+}
+
+int main()
+{
+    CompileFile("D:/Program Files/REAPER (x64)/Effects/jjjjjjjjjjjjjjjj/test.txt");
 
     return 0;
 }
