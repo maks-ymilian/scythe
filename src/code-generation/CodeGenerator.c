@@ -3,7 +3,7 @@
 #include "StatementGenerator.h"
 #include "Common.h"
 
-Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
+Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* outputLength)
 {
     InitResources();
 
@@ -13,7 +13,6 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
 
     const Result result = GenerateProgram(syntaxTree);
 
-    WRITE_LITERAL("\n");
     const Buffer outputBuffer = CombineStreams();
 
     FreeSyntaxTree((NodePtr){syntaxTree, RootNode});
@@ -23,7 +22,7 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* length)
         return result;
 
     *outputCode = outputBuffer.buffer;
-    *length = outputBuffer.length;
+    *outputLength = outputBuffer.length;
 
     return SUCCESS_RESULT;
 }

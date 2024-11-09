@@ -35,6 +35,7 @@ Buffer CombineStreams()
     const Buffer sections = StreamGetBuffer(mainStream);
     StreamWrite(stream, sections.buffer, sections.length);
 
+    StreamWriteByte(stream, '\n');
     const Buffer out = StreamGetBuffer(stream);
     FreeMemoryStream(stream, false);
     return out;
