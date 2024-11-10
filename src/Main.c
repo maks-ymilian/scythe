@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <unistd.h>
+#include <libgen.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -20,7 +22,7 @@ if (result.hasError)\
 }else assert(result.success);\
 }
 
-static void Compile(const char* source)
+static void Compile(const char* source, const char* outputPath)
 {
     Array tokens;
     HANDLE_ERROR(Scan(source, &tokens), "Scan error");
@@ -35,63 +37,62 @@ static void Compile(const char* source)
 
     printf("Output code:\n%.*s", (int)outputCodeLength, (char*)outputCode);
 
-    const char* path = "D:/Program Files/REAPER (x64)/Effects/jjjjjjjjjjjjjjjj/test.jsfx";
-    FILE* file = fopen(path, "wb");
+    FILE* file = fopen(outputPath, "wb");
     if (file == NULL)
     {
-        perror("Failed to open/create file: ");
+        printf("Failed to open output file %s: %s\n", outputPath, strerror(errno));
         exit(1);
     }
     const size_t bytesWritten = fwrite(outputCode, sizeof(uint8_t), outputCodeLength, file);
     if (bytesWritten < outputCodeLength)
     {
-        printf("An error occurred when writing to file %s\nBytes written: %llu\nTotal bytes: %llu", path, bytesWritten, outputCodeLength);
+        printf("An error occurred when writing to file %s\nBytes written: %llu\nTotal bytes: %llu", outputPath, bytesWritten, outputCodeLength);
         exit(1);
     }
 
     free(outputCode);
 }
 
-static void CompileFile(const char* path)
+static void CompileFile(const char* inputPath, const char* outputPath)
 {
-    FILE* file = fopen(path, "rb");
-
+    FILE* file = fopen(inputPath, "rb");
     if (file == NULL)
     {
-        perror("Failed to open file: ");
+        printf("Failed to open input file %s: %s\n", inputPath, strerror(errno));
         exit(1);
     }
 
     fseek(file, 0, SEEK_END);
     const long fileSize = ftell(file);
+    assert(fileSize != -1L);
     rewind(file);
 
-    if (fileSize == -1L)
-    {
-        perror("ftell failed: ");
-        exit(1);
-    }
+    char* string = malloc(fileSize + 1);
+    assert(string != NULL);
 
-    char* buffer = malloc(fileSize + 1);
-
-    if (buffer == NULL)
-    {
-        perror("malloc failed: ");
-        exit(1);
-    }
-
-    fread(buffer, (size_t)fileSize, 1, file);
+    fread(string, (size_t)fileSize, 1, file);
     fclose(file);
-    buffer[fileSize] = 0;
+    string[fileSize] = '\0';
 
-    Compile(buffer);
+    Compile(string, outputPath);
 
-    free(buffer);
+    free(string);
 }
 
-int main()
+int main(const int argc, const char** argv)
 {
-    CompileFile("D:/Program Files/REAPER (x64)/Effects/jjjjjjjjjjjjjjjj/test.txt");
+    if (argc < 2 || argc > 3)
+    {
+        printf("Usage: scythe <input_path> [output_path]\n");
+        return 1;
+    }
+
+    const char* inputPath = argv[1];
+
+    const char* outputPath = "out.jsfx";
+    if (argc == 3) outputPath = argv[2];
+
+    CompileFile(inputPath, outputPath);
 
     return 0;
 }
