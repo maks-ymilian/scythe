@@ -22,7 +22,26 @@ if (result.hasError)\
 }else assert(result.success);\
 }
 
-static void Compile(const char* source, const char* outputPath)
+static void WriteOutputFile(const char* path, const char* code, const size_t length)
+{
+    printf("Output code:\n%.*s", (int)length, code);
+
+    FILE* file = fopen(path, "wb");
+    if (file == NULL)
+    {
+        printf("Failed to open output file %s: %s\n", path, strerror(errno));
+        exit(1);
+    }
+    const size_t bytesWritten = fwrite(code, sizeof(uint8_t), length, file);
+    if (bytesWritten < length)
+    {
+        printf("An error occurred when writing to file %s\nBytes written: %llu\nTotal bytes: %llu", path, bytesWritten, length);
+        exit(1);
+    }
+    fclose(file);
+}
+
+static char* Compile(const char* source, size_t* length)
 {
     Array tokens;
     HANDLE_ERROR(Scan(source, &tokens), "Scan error");
@@ -35,22 +54,10 @@ static void Compile(const char* source, const char* outputPath)
     HANDLE_ERROR(GenerateCode(syntaxTree.ptr, &outputCode, &outputCodeLength), "Code generation error");
     assert(outputCode != NULL);
 
-    printf("Output code:\n%.*s", (int)outputCodeLength, (char*)outputCode);
+    if (length != NULL)
+        *length = outputCodeLength;
 
-    FILE* file = fopen(outputPath, "wb");
-    if (file == NULL)
-    {
-        printf("Failed to open output file %s: %s\n", outputPath, strerror(errno));
-        exit(1);
-    }
-    const size_t bytesWritten = fwrite(outputCode, sizeof(uint8_t), outputCodeLength, file);
-    if (bytesWritten < outputCodeLength)
-    {
-        printf("An error occurred when writing to file %s\nBytes written: %llu\nTotal bytes: %llu", outputPath, bytesWritten, outputCodeLength);
-        exit(1);
-    }
-
-    free(outputCode);
+    return (char*)outputCode;
 }
 
 static void CompileFile(const char* inputPath, const char* outputPath)
@@ -74,8 +81,11 @@ static void CompileFile(const char* inputPath, const char* outputPath)
     fclose(file);
     string[fileSize] = '\0';
 
-    Compile(string, outputPath);
+    size_t outputLength = 0;
+    char* outputCode = Compile(string, &outputLength);
+    WriteOutputFile(outputPath, outputCode, outputLength);
 
+    free(outputCode);
     free(string);
 }
 
@@ -86,7 +96,8 @@ int main(void)
 {
     size_t sourceLength = 0;
     const char* testSource = GenerateTestSource(&sourceLength);
-    printf("%.*s", (int)sourceLength, testSource);
+    WriteOutputFile("C:/REAPER/Effects/scythe/test/test.jsfx", testSource, sourceLength);
+    system("\"C:/REAPER/reaper.exe\" -nonewinst C:/REAPER/Effects/scythe/test/run_test.lua");
 
     return 0;
 }
