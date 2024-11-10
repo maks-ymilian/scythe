@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
-#include <libgen.h>
 
 #include "Scanner.h"
 #include "Parser.h"
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
+#include "tests/TestGenerator.h"
 
 #define HANDLE_ERROR(func, message)\
 {\
@@ -79,6 +79,20 @@ static void CompileFile(const char* inputPath, const char* outputPath)
     free(string);
 }
 
+#define RUN_TEST
+
+#ifdef RUN_TEST
+int main(void)
+{
+    size_t sourceLength = 0;
+    const char* testSource = GenerateTestSource(&sourceLength);
+    printf("%.*s", (int)sourceLength, testSource);
+
+    return 0;
+}
+#endif
+
+#ifndef RUN_TEST
 int main(const int argc, const char** argv)
 {
     if (argc < 2 || argc > 3)
@@ -96,3 +110,4 @@ int main(const int argc, const char** argv)
 
     return 0;
 }
+#endif
