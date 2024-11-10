@@ -22,7 +22,8 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* outputLen
         return result;
 
     *outputCode = outputBuffer.buffer;
-    *outputLength = outputBuffer.length;
+    if (outputLength != NULL)
+        *outputLength = outputBuffer.length;
 
     return SUCCESS_RESULT;
 }
