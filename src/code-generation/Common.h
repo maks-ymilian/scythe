@@ -23,5 +23,3 @@ if (result.hasError){\
 
 #define WRITE_LITERAL(text) Write(text, sizeof(text) - 1)
 #define WRITE_TEXT(text) Write(text, strlen(text));
-
-int CountCharsInNumber(long number);

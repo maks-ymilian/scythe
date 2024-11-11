@@ -1,6 +1,6 @@
-#include "Common.h"
+#pragma once
 
-int CountCharsInNumber(long number)
+static inline int CountCharsInNumber(long number)
 {
     if (number == 0)
         return 1;

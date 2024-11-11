@@ -1,6 +1,7 @@
 #include "ExpressionGenerator.h"
 
 #include "StatementGenerator.h"
+#include "Utils.h"
 
 static long expressionDepth = 0;
 static long uniqueCounter = 0;
