@@ -1,32 +1,27 @@
 #include "TestGenerator.h"
 
-#include "code-generation/Common.h"
-#include "code-generation/CodeGenerator.h"
-#include "SyntaxTree.h"
+#include <stdlib.h>
 
-char* GenerateTestSource(size_t* outLength)
+#include "data-structures/MemoryStream.h"
+
+#define WRITE_LITERAL(text) StreamWrite(stream, text, sizeof(text) - 1)
+#define WRITE_TEXT(text) StreamWrite(stream, text, strlen(text));
+
+static MemoryStream* stream = NULL;
+
+char* GenerateTestSource()
 {
-    BlockStmt* blockStmt = AllocBlockStmt((BlockStmt){.statements = AllocateArray(sizeof(NodePtr))});
-    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt)
-    {
-        .type = (Token){.type = Float, .text = NULL, .lineNumber = 0},
-        .initializer = (NodePtr){.ptr = NULL, .type = NullNode},
-        .identifier = (Token){.type = Identifier, .text = "yooo", .lineNumber = 0}
-    });
-    const NodePtr statement1 = (NodePtr){.ptr = varDecl, .type = VariableDeclaration};
-    ArrayAdd(&blockStmt->statements, &statement1);
+    stream = AllocateMemoryStream();
 
-    const NodePtr blockPtr = (NodePtr){.ptr = blockStmt, .type = BlockStatement};
-    SectionStmt* section = AllocSectionStmt((SectionStmt)
-    {
-        .type = (Token){.type = Init, .text = NULL, .lineNumber = 0},
-        .block = blockPtr,
-    });
-    const NodePtr statement = (NodePtr){.type = Section, .ptr = section};
-    Program* syntaxTree = AllocProgram((Program){.statements = AllocateArray(sizeof(NodePtr))});
-    ArrayAdd(&syntaxTree->statements, &statement);
+    WRITE_LITERAL("init{");
 
-    uint8_t* source = NULL;
-    ASSERT_ERROR(GenerateCode(syntaxTree, &source, outLength));
-    return (char*)source;
+    WRITE_LITERAL("int a = 5;");
+
+    WRITE_LITERAL("}");
+
+    WRITE_LITERAL("\0");
+
+    const Buffer buffer = StreamGetBuffer(stream);
+    FreeMemoryStream(stream, false);
+    return (char*)buffer.buffer;
 }

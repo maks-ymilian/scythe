@@ -94,9 +94,14 @@ static void CompileFile(const char* inputPath, const char* outputPath)
 #ifdef RUN_TEST
 int main(void)
 {
-    size_t sourceLength = 0;
-    const char* testSource = GenerateTestSource(&sourceLength);
-    WriteOutputFile("C:/REAPER/Effects/scythe/test/test.jsfx", testSource, sourceLength);
+    const char* testSource = GenerateTestSource();
+
+    size_t outputLength = 0;
+    char* outputSource = Compile(testSource, &outputLength);
+
+    WriteOutputFile("C:/REAPER/Effects/scythe/test/test.jsfx", outputSource, outputLength);
+    free(outputSource);
+
     system("\"C:/REAPER/reaper.exe\" -nonewinst C:/REAPER/Effects/scythe/test/run_test.lua");
 
     return 0;
