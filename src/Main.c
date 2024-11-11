@@ -94,10 +94,11 @@ static void CompileFile(const char* inputPath, const char* outputPath)
 #ifdef RUN_TEST
 int main(void)
 {
-    const char* testSource = GenerateTestSource();
+    char* testSource = GenerateTestSource();
 
     size_t outputLength = 0;
     char* outputSource = Compile(testSource, &outputLength);
+    free(testSource);
 
     WriteOutputFile("C:/REAPER/Effects/scythe/test/test.jsfx", outputSource, outputLength);
     free(outputSource);
