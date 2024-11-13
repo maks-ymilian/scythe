@@ -96,6 +96,12 @@ int main(void)
 {
     char* testSource = GenerateTestSource();
 
+    printf("Test code:\n"
+           "%s\n"
+           "\n"
+           "-----------------------------------------------------------------\n",
+           testSource);
+
     size_t outputLength = 0;
     char* outputSource = Compile(testSource, &outputLength);
     free(testSource);
