@@ -6,6 +6,13 @@
 static long expressionDepth = 0;
 static long uniqueCounter = 0;
 
+static void WriteInteger(const long integer)
+{
+    char string[CountCharsInNumber(integer) + 1];
+    snprintf(string, sizeof(string), "%ld", integer);
+    Write(string, sizeof(string) - 1);
+}
+
 static bool IsDigitBase(const char c, const int base)
 {
     if (base == 10) return isdigit(c);
@@ -287,16 +294,14 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         {
             WRITE_LITERAL("__ret");
             uniqueCounter++;
-            char counter[CountCharsInNumber(uniqueCounter) + 1];
-            snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
-            Write(counter, sizeof(counter) - 1);
+            WriteInteger(uniqueCounter);
             WRITE_LITERAL("=stack_pop();");
 
             if (variableCount == 1)
             {
                 SetCurrentStream(ExpressionStream);
                 WRITE_LITERAL("__ret");
-                Write(counter, sizeof(counter) - 1);
+                WriteInteger(uniqueCounter);
             }
         }
         if (variableCount != 1) SetCurrentStream(ExpressionStream);
@@ -383,9 +388,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
-        char counter[CountCharsInNumber(*returnNumber) + 1];
-        snprintf(counter, sizeof(counter), "%ld", *returnNumber);
-        Write(counter, sizeof(counter) - 1);
+        WriteInteger(*returnNumber);
         --*returnNumber;
         WRITE_LITERAL(";");
     }
