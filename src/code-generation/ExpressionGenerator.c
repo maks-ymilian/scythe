@@ -4,7 +4,7 @@
 #include "Utils.h"
 
 static long expressionDepth = 0;
-static long uniqueCounter = 0;
+static long returnCounter = 0;
 
 static void WriteInteger(const long integer)
 {
@@ -293,15 +293,15 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         for (int i = 0; i < variableCount; ++i)
         {
             WRITE_LITERAL("__ret");
-            uniqueCounter++;
-            WriteInteger(uniqueCounter);
+            returnCounter++;
+            WriteInteger(returnCounter);
             WRITE_LITERAL("=stack_pop();");
 
             if (variableCount == 1)
             {
                 SetCurrentStream(ExpressionStream);
                 WRITE_LITERAL("__ret");
-                WriteInteger(uniqueCounter);
+                WriteInteger(returnCounter);
             }
         }
         if (variableCount != 1) SetCurrentStream(ExpressionStream);
@@ -352,7 +352,7 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
 static void GenerateFunctionStructAssignment(const LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
 {
-    long _returnNumber = uniqueCounter;
+    long _returnNumber = returnCounter;
     if (returnNumber == NULL) returnNumber = &_returnNumber;
 
     for (int i = 0; i < structData.members->length; i++)
