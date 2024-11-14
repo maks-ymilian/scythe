@@ -77,7 +77,7 @@ static void Reallocate(MemoryStream* stream, const size_t minCapacity)
     stream->buffer = realloc(stream->buffer, stream->capacity);
 }
 
-size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
+void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 {
     assert(buffer != NULL);
 
@@ -88,8 +88,6 @@ size_t StreamWrite(MemoryStream* stream, const void* buffer, const size_t length
     stream->position += length;
     if (stream->position > stream->length)
         stream->length = stream->position;
-
-    return length;
 }
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)

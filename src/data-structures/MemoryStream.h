@@ -15,7 +15,7 @@ typedef struct
 MemoryStream* AllocateMemoryStream();
 void FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
-size_t StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
+void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
 
 Buffer StreamRead(MemoryStream* stream, size_t length);
