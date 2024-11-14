@@ -241,13 +241,16 @@ static long CountStructVariables(const Type structType)
 
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
-    SetPreviousStream();
-
     SymbolData* symbol;
     HANDLE_ERROR(GetSymbol(in->identifier.text, in->identifier.lineNumber, &symbol));
     if (symbol->symbolType != FunctionSymbol)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
+
+    const bool isVoid = function.returnType.id == GetKnownType("void").id;
+
+    if (!isVoid)
+        SetPreviousStream();
 
     WRITE_LITERAL("(");
     for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
@@ -277,25 +280,27 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("(););");
 
-    const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
-    for (int i = 0; i < variableCount; ++i)
+    if (!isVoid)
     {
-        WRITE_LITERAL("__ret");
-        uniqueCounter++;
-        char counter[CountCharsInNumber(uniqueCounter) + 1];
-        snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
-        Write(counter, sizeof(counter) - 1);
-        WRITE_LITERAL("=stack_pop();");
-
-        if (variableCount == 1)
+        const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
+        for (int i = 0; i < variableCount; ++i)
         {
-            SetCurrentStream(ExpressionStream);
             WRITE_LITERAL("__ret");
+            uniqueCounter++;
+            char counter[CountCharsInNumber(uniqueCounter) + 1];
+            snprintf(counter, sizeof(counter), "%ld", uniqueCounter);
             Write(counter, sizeof(counter) - 1);
+            WRITE_LITERAL("=stack_pop();");
+
+            if (variableCount == 1)
+            {
+                SetCurrentStream(ExpressionStream);
+                WRITE_LITERAL("__ret");
+                Write(counter, sizeof(counter) - 1);
+            }
         }
+        if (variableCount != 1) SetCurrentStream(ExpressionStream);
     }
-    if (variableCount != 1)
-        SetCurrentStream(ExpressionStream);
 
     *outType = function.returnType;
     return SUCCESS_RESULT;
