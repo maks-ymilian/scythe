@@ -89,7 +89,7 @@ static void CompileFile(const char* inputPath, const char* outputPath)
     free(string);
 }
 
-#define RUN_TEST
+// #define RUN_TEST
 
 #ifdef RUN_TEST
 int main(void)
