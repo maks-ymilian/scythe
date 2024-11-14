@@ -98,6 +98,21 @@ Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long
     return SUCCESS_RESULT;
 }
 
+Result GeneratePopValue(const VarDeclStmt* varDecl)
+{
+    WRITE_LITERAL("(");
+
+    HANDLE_ERROR(GenerateVariableDeclaration(varDecl, NULL));
+
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(varDecl->identifier.text);
+    WRITE_LITERAL("=stack_pop();");
+
+    WRITE_LITERAL(");");
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
     const ScopeNode* functionScope = GetFunctionScope();
@@ -315,18 +330,15 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     WRITE_LITERAL("function ");
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
-    WRITE_LITERAL("(");
+    WRITE_LITERAL("()\n");
 
-    if (in->parameters.length > 40)
-        return ERROR_RESULT("Functions can only have up to 40 parameters", in->identifier.lineNumber);
-
+    WRITE_LITERAL("(0;");
     Array params = AllocateArray(sizeof(FunctionParameter));
     bool hasOptionalParams = false;
     for (int i = 0; i < in->parameters.length; ++i)
     {
         const NodePtr* node = in->parameters.array[i];
         assert(node->type == VariableDeclaration);
-
         const VarDeclStmt* varDecl = node->ptr;
 
         if (varDecl->initializer.ptr != NULL)
@@ -339,24 +351,19 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         param.defaultValue = varDecl->initializer;
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type, false));
         ArrayAdd(&params, &param);
-
-        WRITE_LITERAL(VARIABLE_PREFIX);
-        WRITE_TEXT(varDecl->identifier.text);
-        if (i < in->parameters.length - 1)
-            WRITE_LITERAL(",");
-
-        HANDLE_ERROR(RegisterVariable(varDecl->identifier, param.type, NULL));
-
-        if (param.defaultValue.ptr != NULL)
-        {
-            // const size_t pos = GetStreamPosition();
-            // HANDLE_ERROR(GenerateFunctionParameter(param.type, &param.defaultValue, varDecl->identifier.lineNumber));
-            // SetStreamPosition(pos);
-        }
     }
 
-    WRITE_LITERAL(")\n");
+    for (int i = in->parameters.length - 1; i >= 0; --i)
+    {
+        const NodePtr* node = in->parameters.array[i];
+        assert(node->type == VariableDeclaration);
+        const VarDeclStmt* varDecl = node->ptr;
+
+        HANDLE_ERROR(GeneratePopValue(varDecl));
+    }
+
     HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
+    WRITE_LITERAL(");\n");
 
     PopScope(NULL);
     SetPreviousStream();
