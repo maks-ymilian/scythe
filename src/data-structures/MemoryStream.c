@@ -90,6 +90,18 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
         stream->length = stream->position;
 }
 
+void StreamInsert(MemoryStream* stream, const void* buffer, const size_t length, const size_t position)
+{
+    assert(buffer != NULL);
+
+    if (stream->position + length >= stream->capacity)
+        Reallocate(stream, stream->position + length + 1);
+
+    memmove(stream->buffer + position + length, stream->buffer + position, stream->length - position);
+    memmove(stream->buffer + position, buffer, length);
+    stream->position += length;
+}
+
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)
 {
     if (stream->position + 1 >= stream->capacity)
