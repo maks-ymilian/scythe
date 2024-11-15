@@ -310,7 +310,8 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
-    SetCurrentStream(FunctionsStream);
+    BeginRead();
+
     PushScope();
 
     Type returnType;
@@ -366,7 +367,8 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     WRITE_LITERAL(");\n");
 
     PopScope(NULL);
-    SetPreviousStream();
+
+    EndReadMove(0);
 
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 

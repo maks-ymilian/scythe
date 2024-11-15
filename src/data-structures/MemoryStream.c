@@ -99,7 +99,9 @@ void StreamInsert(MemoryStream* stream, const void* buffer, const size_t length,
 
     memmove(stream->buffer + position + length, stream->buffer + position, stream->length - position);
     memmove(stream->buffer + position, buffer, length);
-    stream->position += length;
+
+    if (stream->position >= position)
+        stream->position += length;
 }
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)

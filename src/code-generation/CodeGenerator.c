@@ -7,19 +7,18 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* outputLen
 {
     InitResources();
 
-    SetCurrentStream(FunctionsStream);
-    WRITE_LITERAL("@init\n");
-    SetPreviousStream();
-
     const Result result = GenerateProgram(syntaxTree);
 
-    const Buffer outputBuffer = CombineStreams();
+    const Buffer outputBuffer = ReadAll();
 
     FreeSyntaxTree((NodePtr){syntaxTree, RootNode});
     FreeResources();
 
     if (result.hasError)
+    {
+        free(outputBuffer.buffer);
         return result;
+    }
 
     *outputCode = outputBuffer.buffer;
     if (outputLength != NULL)

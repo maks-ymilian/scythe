@@ -11,80 +11,27 @@ static Map types;
 
 static ScopeNode* currentScope;
 
-static MemoryStream* mainStream;
-static MemoryStream* functionsStream;
-static MemoryStream* expressionStream;
-static MemoryStream* currentStream = NULL;
-static Array streamStack;
-
+static MemoryStream* stream;
 static Array streamReadPoints;
 
 void Write(const void* buffer, const size_t length)
 {
-    assert(currentStream != NULL);
-    StreamWrite(currentStream, buffer, length);
-}
-
-Buffer CombineStreams()
-{
-    MemoryStream* stream = AllocateMemoryStream();
-
-    const Buffer functions = StreamGetBuffer(functionsStream);
-    StreamWrite(stream, functions.buffer, functions.length);
-
-    const Buffer sections = StreamGetBuffer(mainStream);
-    StreamWrite(stream, sections.buffer, sections.length);
-
-    StreamWriteByte(stream, '\n');
-    const Buffer out = StreamGetBuffer(stream);
-    FreeMemoryStream(stream, false);
-    return out;
-}
-
-void SetCurrentStream(const StreamType stream)
-{
-    switch (stream)
-    {
-    case MainStream:
-        currentStream = mainStream;
-        break;
-    case FunctionsStream:
-        currentStream = functionsStream;
-        break;
-    case ExpressionStream:
-        currentStream = expressionStream;
-        break;
-    default:
-        assert(0);
-    }
-
-    ArrayAdd(&streamStack, &currentStream);
-}
-
-void SetPreviousStream()
-{
-    assert(streamStack.length > 0);
-    ArrayRemove(&streamStack, streamStack.length - 1);
-
-    if (streamStack.length > 0)
-        currentStream = *(MemoryStream**)streamStack.array[streamStack.length - 1];
-    else
-        currentStream = NULL;
+    StreamWrite(stream, buffer, length);
 }
 
 size_t GetStreamPosition()
 {
-    return StreamGetPosition(currentStream);
+    return StreamGetPosition(stream);
 }
 
 void SetStreamPosition(const size_t pos)
 {
-    StreamSetPosition(currentStream, pos);
+    StreamSetPosition(stream, pos);
 }
 
 void BeginRead()
 {
-    const size_t readPoint = StreamGetPosition(currentStream);
+    const size_t readPoint = StreamGetPosition(stream);
     ArrayAdd(&streamReadPoints, &readPoint);
 }
 
@@ -94,8 +41,39 @@ Buffer EndRead()
     const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
     ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
 
-    const size_t length = StreamGetPosition(currentStream) - readPoint;
-    Buffer buffer = StreamRewindRead(currentStream, length);
+    const size_t length = StreamGetPosition(stream) - readPoint;
+    Buffer buffer = StreamRewindRead(stream, length);
+
+    uint8_t* new = malloc(buffer.length);
+    memcpy(new, buffer.buffer, buffer.length);
+    buffer.buffer = new;
+    return buffer;
+}
+
+void EndReadMove(const size_t pos)
+{
+    assert(streamReadPoints.length != 0);
+    const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
+    ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
+
+    const size_t length = StreamGetPosition(stream) - readPoint;
+    Buffer buffer = StreamRewindRead(stream, length);
+
+    StreamSetPosition(stream, readPoint);
+
+    buffer.buffer += length;
+    StreamInsert(stream, buffer.buffer, buffer.length, pos);
+
+    for (int i = 0; i < streamReadPoints.length; ++i)
+    {
+        size_t* point = streamReadPoints.array[i];
+        if (*point >= pos) *point += length;
+    }
+}
+
+Buffer ReadAll()
+{
+    Buffer buffer = StreamGetBuffer(stream);
     uint8_t* new = malloc(buffer.length);
     memcpy(new, buffer.buffer, buffer.length);
     buffer.buffer = new;
@@ -347,17 +325,11 @@ ScopeNode* GetCurrentScope()
 
 void InitResources()
 {
-    streamStack = AllocateArray(sizeof(MemoryStream*));
-
     streamReadPoints = AllocateArray(sizeof(size_t));
+    stream = AllocateMemoryStream();
 
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
-
-    mainStream = AllocateMemoryStream();
-    functionsStream = AllocateMemoryStream();
-    expressionStream = AllocateMemoryStream();
-    SetCurrentStream(MainStream);
 
     types = AllocateMap(sizeof(Type));
 
@@ -379,16 +351,11 @@ void InitResources()
 
 void FreeResources()
 {
-    FreeArray(&streamStack);
-
-    FreeArray(&streamReadPoints);
-
     FreeMap(&types);
 
     while (currentScope != NULL)
         PopScope(NULL);
 
-    FreeMemoryStream(mainStream, true);
-    FreeMemoryStream(functionsStream, true);
-    FreeMemoryStream(expressionStream, true);
+    FreeArray(&streamReadPoints);
+    FreeMemoryStream(stream, true);
 }

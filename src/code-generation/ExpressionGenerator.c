@@ -3,7 +3,7 @@
 #include "StatementGenerator.h"
 #include "Utils.h"
 
-static long expressionDepth = 0;
+static long expressionDepth = 0; // todo
 static long returnCounter = 0;
 
 static void WriteInteger(const long integer)
@@ -256,8 +256,8 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 
     const bool isVoid = function.returnType.id == GetKnownType("void").id;
 
-    if (!isVoid)
-        SetPreviousStream();
+    // if (!isVoid)
+    //     SetPreviousStream();
 
     WRITE_LITERAL("(");
     for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
@@ -299,12 +299,12 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 
             if (variableCount == 1)
             {
-                SetCurrentStream(ExpressionStream);
+                // SetCurrentStream(ExpressionStream); todo
                 WRITE_LITERAL("__ret");
                 WriteInteger(returnCounter);
             }
         }
-        if (variableCount != 1) SetCurrentStream(ExpressionStream);
+        // if (variableCount != 1) SetCurrentStream(ExpressionStream);
     }
 
     *outType = function.returnType;
@@ -667,14 +667,14 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         return SUCCESS_RESULT;
     }
 
-    if (expressionDepth == 0)
-    {
-        WRITE_LITERAL("(");
-        SetCurrentStream(ExpressionStream);
-        BeginRead();
-    }
-
-    expressionDepth++;
+    // if (expressionDepth == 0) todo
+    // {
+    //     WRITE_LITERAL("(");
+    //     //SetCurrentStream(ExpressionStream);
+    //     BeginRead();
+    // }
+    //
+    // expressionDepth++;
 
     if (convertToInteger)
         WRITE_LITERAL("(");
@@ -706,17 +706,17 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         WRITE_LITERAL(")");
     }
 
-    expressionDepth--;
-
-    if (expressionDepth == 0)
-    {
-        const Buffer expr = EndRead();
-        SetStreamPosition(0);
-        SetPreviousStream();
-        Write(expr.buffer, expr.length);
-        free(expr.buffer);
-        WRITE_LITERAL(")");
-    }
+    // expressionDepth--;
+    //
+    // if (expressionDepth == 0)
+    // {
+    //     const Buffer expr = EndRead();
+    //     SetStreamPosition(0);
+    //     //SetPreviousStream();
+    //     Write(expr.buffer, expr.length);
+    //     free(expr.buffer);
+    //     WRITE_LITERAL(")");
+    // }
 
     return result;
 }
