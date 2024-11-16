@@ -337,6 +337,9 @@ void InitResources()
     tempStream = AllocateMemoryStream();
     finalStream = AllocateMemoryStream();
 
+    const char section[] = "@init\n";
+    StreamWrite(finalStream, section, sizeof(section) - 1);
+
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
 
