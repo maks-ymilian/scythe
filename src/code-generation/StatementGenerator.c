@@ -36,6 +36,7 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
     assert(symbol->symbolType == StructSymbol);
     const StructSymbolData structSymbol = symbol->structData;
 
+    // todo make a function for this because this is copy pasted twice
     for (int i = 0; i < structSymbol.members->length; ++i)
     {
         const NodePtr* node = structSymbol.members->array[i];
@@ -98,17 +99,68 @@ Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long
     return SUCCESS_RESULT;
 }
 
+static void GeneratePopStructVariable(const LiteralExpr* literal, const Type structType)
+{
+    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    assert(symbol->symbolType == StructSymbol);
+    const StructSymbolData structData = symbol->structData;
+
+    // todo make a function for this because this is copy pasted twice
+    for (int i = structData.members->length - 1; i >= 0; --i)
+    {
+        const NodePtr* node = structData.members->array[i];
+
+        switch (node->type)
+        {
+        case VariableDeclaration:
+        {
+            const VarDeclStmt* varDecl = node->ptr;
+
+            Type memberType;
+            ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
+
+            LiteralExpr _literal = *literal;
+            LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
+            LiteralExpr* last = &_literal;
+            while (last->next != NULL) last = last->next;
+            last->next = &next;
+
+            if (memberType.metaType == StructType)
+            {
+                GeneratePopStructVariable(&_literal, memberType);
+                last->next = NULL;
+                break;
+            }
+
+            Type _;
+            NodePtr node = (NodePtr){&_literal, LiteralExpression};
+            ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+            last->next = NULL;
+            WRITE_LITERAL("=stack_pop();");
+            break;
+        }
+        default:
+            assert(0);
+        }
+    }
+}
+
 Result GeneratePopValue(const VarDeclStmt* varDecl)
 {
-    WRITE_LITERAL("(");
-
     HANDLE_ERROR(GenerateVariableDeclaration(varDecl, NULL));
+
+    Type type;
+    ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
+    if (type.metaType == StructType)
+    {
+        const LiteralExpr literal = (LiteralExpr){.value = varDecl->identifier, .next = NULL};
+        GeneratePopStructVariable(&literal, type);
+        return SUCCESS_RESULT;
+    }
 
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(varDecl->identifier.text);
     WRITE_LITERAL("=stack_pop();");
-
-    WRITE_LITERAL(");");
 
     return SUCCESS_RESULT;
 }
