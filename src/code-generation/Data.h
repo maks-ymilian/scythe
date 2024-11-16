@@ -67,8 +67,8 @@ struct ScopeNode
 typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 
 void Write(const void* buffer, size_t length);
-size_t GetStreamPosition();
-void SetStreamPosition(size_t pos);
+size_t GetStreamPosition(); // todo remove
+void SetStreamPosition(size_t pos); // todo remove
 void BeginRead();
 Buffer EndRead();
 void EndReadMove(size_t pos);
