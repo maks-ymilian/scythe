@@ -67,12 +67,6 @@ void EndReadMove(const size_t pos)
     StreamSetPosition(tempStream, readPoint);
 
     StreamInsert(finalStream, buffer.buffer, buffer.length, pos);
-
-    for (int i = 0; i < streamReadPoints.length; ++i)
-    {
-        size_t* point = streamReadPoints.array[i];
-        if (*point >= pos) *point += length;
-    }
 }
 
 Buffer ReadAll()
