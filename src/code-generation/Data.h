@@ -70,8 +70,8 @@ typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 int GetFunctionCounter();
 
 void Write(const void* buffer, size_t length);
-size_t GetStreamPosition(); // todo remove
-void SetStreamPosition(size_t pos); // todo remove
+size_t GetStreamPosition();
+void SetStreamPosition(size_t pos);
 void BeginRead();
 Buffer EndRead();
 void EndReadMove(size_t pos);

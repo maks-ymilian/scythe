@@ -2,7 +2,7 @@
 
 #include "StatementGenerator.h"
 
-justtatic long returnCounter = 0;
+static long returnCounter = 0;
 
 static bool IsDigitBase(const char c, const int base)
 {
