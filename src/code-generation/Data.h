@@ -33,6 +33,7 @@ typedef struct
 {
     Type returnType;
     Array parameters;
+    int uniqueName;
 } FunctionSymbolData;
 
 typedef struct
@@ -65,6 +66,8 @@ struct ScopeNode
 };
 
 typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
+
+int GetFunctionCounter();
 
 void Write(const void* buffer, size_t length);
 size_t GetStreamPosition(); // todo remove

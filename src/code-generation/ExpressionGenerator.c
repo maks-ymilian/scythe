@@ -1,17 +1,9 @@
 #include "ExpressionGenerator.h"
 
 #include "StatementGenerator.h"
-#include "Utils.h"
 
 static long expressionDepth = 0; // todo
 static long returnCounter = 0;
-
-static void WriteInteger(const long integer)
-{
-    char string[CountCharsInNumber(integer) + 1];
-    snprintf(string, sizeof(string), "%ld", integer);
-    Write(string, sizeof(string) - 1);
-}
 
 static bool IsDigitBase(const char c, const int base)
 {
@@ -285,6 +277,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     }
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
+    WriteInteger(function.uniqueName);
     WRITE_LITERAL("(););");
 
     if (!isVoid)

@@ -331,6 +331,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     WRITE_LITERAL("function ");
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
+    WriteInteger(GetFunctionCounter());
     WRITE_LITERAL("()\n");
 
     WRITE_LITERAL("(0;");

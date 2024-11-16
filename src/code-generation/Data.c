@@ -7,6 +7,8 @@
 
 #include "Common.h"
 
+static int functionCounter;
+
 static Map types;
 
 static ScopeNode* currentScope;
@@ -14,6 +16,8 @@ static ScopeNode* currentScope;
 static MemoryStream* tempStream;
 static MemoryStream* finalStream;
 static Array streamReadPoints;
+
+int GetFunctionCounter() { return functionCounter; }
 
 void Write(const void* buffer, const size_t length)
 {
@@ -246,6 +250,8 @@ Result RegisterFunction(const Token identifier, const Type returnType, const Arr
     FunctionSymbolData data;
     data.parameters = *funcParams;
     data.returnType = returnType;
+    data.uniqueName = functionCounter;
+    functionCounter++;
 
     SymbolData symbolData;
     symbolData.symbolType = FunctionSymbol;
@@ -325,6 +331,8 @@ ScopeNode* GetCurrentScope()
 
 void InitResources()
 {
+    functionCounter = 0;
+
     streamReadPoints = AllocateArray(sizeof(size_t));
     tempStream = AllocateMemoryStream();
     finalStream = AllocateMemoryStream();
