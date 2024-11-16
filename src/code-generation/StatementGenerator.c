@@ -368,7 +368,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     PopScope(NULL);
 
-    EndReadMove(0);
+    EndReadMove(SIZE_MAX);
 
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
 
@@ -449,10 +449,13 @@ static Result GenerateSectionStatement(const SectionStmt* in)
         in->type.type != GFX)
         assert(0);
 
+    BeginRead();
     WRITE_LITERAL("\n@");
     WRITE_TEXT(GetTokenTypeString(in->type.type));
     WRITE_LITERAL("\n");
-    return GenerateBlockStatement(in->block.ptr);
+    const Result result = GenerateBlockStatement(in->block.ptr);
+    EndReadMove(SIZE_MAX);
+    return result;
 }
 
 static Result GenerateStatement(const NodePtr* in)

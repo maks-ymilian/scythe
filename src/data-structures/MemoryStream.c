@@ -52,7 +52,7 @@ Buffer StreamRewindRead(MemoryStream* stream, const size_t offset)
 
 Buffer StreamGetBuffer(const MemoryStream* stream)
 {
-    return (Buffer){stream->buffer, stream->length};
+    return (Buffer){stream->buffer, stream->position};
 }
 
 size_t StreamGetPosition(const MemoryStream* stream) { return stream->position; }
@@ -94,14 +94,25 @@ void StreamInsert(MemoryStream* stream, const void* buffer, const size_t length,
 {
     assert(buffer != NULL);
 
-    if (stream->position + length >= stream->capacity)
-        Reallocate(stream, stream->position + length + 1);
+    if (position >= stream->length)
+    {
+        StreamWrite(stream, buffer, length);
+        return;
+    }
+
+    uint8_t bufferCopy[length];
+    memcpy(bufferCopy, buffer, length);
+
+    if (stream->length + length >= stream->capacity)
+        Reallocate(stream, stream->length + length + 1);
 
     memmove(stream->buffer + position + length, stream->buffer + position, stream->length - position);
-    memmove(stream->buffer + position, buffer, length);
+    memmove(stream->buffer + position, bufferCopy, length);
 
     if (stream->position >= position)
         stream->position += length;
+
+    stream->length += length;
 }
 
 void StreamWriteByte(MemoryStream* stream, const uint8_t data)

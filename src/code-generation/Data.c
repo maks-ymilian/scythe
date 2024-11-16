@@ -11,27 +11,28 @@ static Map types;
 
 static ScopeNode* currentScope;
 
-static MemoryStream* stream;
+static MemoryStream* tempStream;
+static MemoryStream* finalStream;
 static Array streamReadPoints;
 
 void Write(const void* buffer, const size_t length)
 {
-    StreamWrite(stream, buffer, length);
+    StreamWrite(tempStream, buffer, length);
 }
 
 size_t GetStreamPosition()
 {
-    return StreamGetPosition(stream);
+    return StreamGetPosition(tempStream);
 }
 
 void SetStreamPosition(const size_t pos)
 {
-    StreamSetPosition(stream, pos);
+    StreamSetPosition(tempStream, pos);
 }
 
 void BeginRead()
 {
-    const size_t readPoint = StreamGetPosition(stream);
+    const size_t readPoint = StreamGetPosition(tempStream);
     ArrayAdd(&streamReadPoints, &readPoint);
 }
 
@@ -41,8 +42,8 @@ Buffer EndRead()
     const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
     ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
 
-    const size_t length = StreamGetPosition(stream) - readPoint;
-    Buffer buffer = StreamRewindRead(stream, length);
+    const size_t length = StreamGetPosition(tempStream) - readPoint;
+    Buffer buffer = StreamRewindRead(tempStream, length);
 
     uint8_t* new = malloc(buffer.length);
     memcpy(new, buffer.buffer, buffer.length);
@@ -56,13 +57,12 @@ void EndReadMove(const size_t pos)
     const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
     ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
 
-    const size_t length = StreamGetPosition(stream) - readPoint;
-    Buffer buffer = StreamRewindRead(stream, length);
+    const size_t length = StreamGetPosition(tempStream) - readPoint;
+    const Buffer buffer = StreamRewindRead(tempStream, length);
 
-    StreamSetPosition(stream, readPoint);
+    StreamSetPosition(tempStream, readPoint);
 
-    buffer.buffer += length;
-    StreamInsert(stream, buffer.buffer, buffer.length, pos);
+    StreamInsert(finalStream, buffer.buffer, buffer.length, pos);
 
     for (int i = 0; i < streamReadPoints.length; ++i)
     {
@@ -73,7 +73,7 @@ void EndReadMove(const size_t pos)
 
 Buffer ReadAll()
 {
-    Buffer buffer = StreamGetBuffer(stream);
+    Buffer buffer = StreamGetBuffer(finalStream);
     uint8_t* new = malloc(buffer.length);
     memcpy(new, buffer.buffer, buffer.length);
     buffer.buffer = new;
@@ -326,7 +326,8 @@ ScopeNode* GetCurrentScope()
 void InitResources()
 {
     streamReadPoints = AllocateArray(sizeof(size_t));
-    stream = AllocateMemoryStream();
+    tempStream = AllocateMemoryStream();
+    finalStream = AllocateMemoryStream();
 
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
@@ -357,5 +358,6 @@ void FreeResources()
         PopScope(NULL);
 
     FreeArray(&streamReadPoints);
-    FreeMemoryStream(stream, true);
+    FreeMemoryStream(tempStream, true);
+    FreeMemoryStream(finalStream, true);
 }
