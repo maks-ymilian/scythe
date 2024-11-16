@@ -7,7 +7,6 @@
 #include "Parser.h"
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
-#include "tests/TestGenerator.h"
 
 #define HANDLE_ERROR(func, message)\
 {\
@@ -89,33 +88,6 @@ static void CompileFile(const char* inputPath, const char* outputPath)
     free(string);
 }
 
-// #define RUN_TEST
-
-#ifdef RUN_TEST
-int main(void)
-{
-    char* testSource = GenerateTestSource();
-
-    printf("Test code:\n"
-           "%s\n"
-           "\n"
-           "-----------------------------------------------------------------\n",
-           testSource);
-
-    size_t outputLength = 0;
-    char* outputSource = Compile(testSource, &outputLength);
-    free(testSource);
-
-    WriteOutputFile("C:/REAPER/Effects/scythe/test/test.jsfx", outputSource, outputLength);
-    free(outputSource);
-
-    system("\"C:/REAPER/reaper.exe\" -nonewinst C:/REAPER/Effects/scythe/test/run_test.lua");
-
-    return 0;
-}
-#endif
-
-#ifndef RUN_TEST
 int main(const int argc, const char** argv)
 {
     if (argc < 2 || argc > 3)
@@ -133,4 +105,3 @@ int main(const int argc, const char** argv)
 
     return 0;
 }
-#endif
