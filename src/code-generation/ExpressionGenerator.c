@@ -2,8 +2,7 @@
 
 #include "StatementGenerator.h"
 
-static long expressionDepth = 0; // todo
-static long returnCounter = 0;
+justtatic long returnCounter = 0;
 
 static bool IsDigitBase(const char c, const int base)
 {
@@ -246,11 +245,6 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
 
-    const bool isVoid = function.returnType.id == GetKnownType("void").id;
-
-    // if (!isVoid)
-    //     SetPreviousStream();
-
     WRITE_LITERAL("(");
     for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
     {
@@ -280,7 +274,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     WriteInteger(function.uniqueName);
     WRITE_LITERAL("(););");
 
-    if (!isVoid)
+    if (function.returnType.id != GetKnownType("void").id)
     {
         const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
         for (int i = 0; i < variableCount; ++i)
@@ -289,15 +283,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
             returnCounter++;
             WriteInteger(returnCounter);
             WRITE_LITERAL("=stack_pop();");
-
-            if (variableCount == 1)
-            {
-                // SetCurrentStream(ExpressionStream); todo
-                WRITE_LITERAL("__ret");
-                WriteInteger(returnCounter);
-            }
         }
-        // if (variableCount != 1) SetCurrentStream(ExpressionStream);
     }
 
     *outType = function.returnType;
@@ -530,6 +516,9 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(in->operator.type == Equals);
                 assert(leftType.id == rightType.id);
 
+                if (in->right.type == FunctionCallExpression)
+                    Write(right.buffer, right.length);
+
                 GenerateStructAssignment(in->left, in->right, leftType);
                 WRITE_LITERAL("0");
 
@@ -660,15 +649,6 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         return SUCCESS_RESULT;
     }
 
-    // if (expressionDepth == 0) todo
-    // {
-    //     WRITE_LITERAL("(");
-    //     //SetCurrentStream(ExpressionStream);
-    //     BeginRead();
-    // }
-    //
-    // expressionDepth++;
-
     if (convertToInteger)
         WRITE_LITERAL("(");
 
@@ -698,18 +678,6 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
             WRITE_LITERAL("|0");
         WRITE_LITERAL(")");
     }
-
-    // expressionDepth--;
-    //
-    // if (expressionDepth == 0)
-    // {
-    //     const Buffer expr = EndRead();
-    //     SetStreamPosition(0);
-    //     //SetPreviousStream();
-    //     Write(expr.buffer, expr.length);
-    //     free(expr.buffer);
-    //     WRITE_LITERAL(")");
-    // }
 
     return result;
 }
