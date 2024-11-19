@@ -10,6 +10,12 @@
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
 
+typedef struct
+{
+    AST ast;
+    Array dependencies;
+}ProgramNode;
+
 static char* GetFileString(const char* path)
 {
     FILE* file = fopen(path, "rb");
@@ -46,6 +52,21 @@ static void HandleError(const Result result, const char* errorStage)
     printf("Press ENTER to continue...\n");
     getchar();
     exit(1);
+}
+
+static ProgramNode kfkjskj(const char* path)
+{
+    ProgramNode node = (ProgramNode){};
+
+    char* file = GetFileString(path);
+    Array tokens;
+    HandleError(Scan(file, &tokens), "Scan");
+    free(file);
+
+    HandleError(Parse(&tokens, &node.ast), "Parse");
+    FreeTokenArray(&tokens);
+
+    return node;
 }
 
 char* Compile(const char* path, size_t* outLength)
