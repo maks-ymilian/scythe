@@ -11,6 +11,7 @@ typedef enum
     LiteralExpression,
     FunctionCallExpression,
 
+    ImportStatement,
     Section,
     BlockStatement,
     ExpressionStatement,
@@ -141,6 +142,13 @@ typedef struct
 
 StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
 
+
+typedef struct
+{
+    char* file;
+} ImportStmt;
+
+ImportStmt* AllocImportStmt(ImportStmt stmt);
 
 typedef struct
 {

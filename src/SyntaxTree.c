@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "stdlib.h"
 #include <stdio.h>
+#include <string.h>
 
 // #define ENABLE_PRINT
 #ifdef ENABLE_PRINT
@@ -100,6 +101,16 @@ StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
     return new;
 }
 
+ImportStmt* AllocImportStmt(ImportStmt stmt)
+{
+    ALLOCATE(ImportStmt, stmt);
+    const char* oldString = stmt.file;
+    const size_t length = strlen(oldString) + 1;
+    stmt.file = malloc(length);
+    memcpy(stmt.file, oldString, length);
+    return new;
+}
+
 static void FreeNode(const NodePtr node)
 {
     switch (node.type)
@@ -157,6 +168,13 @@ static void FreeNode(const NodePtr node)
         }
 
         // statements
+        case ImportStatement:
+        {
+            DEBUG_PRINT("Freeing ImportStmt\n");
+            const ImportStmt* ptr = node.ptr;
+            free(ptr->file);
+            return;
+        }
         case Section:
         {
             DEBUG_PRINT("Freeing SectionStmt\n");
