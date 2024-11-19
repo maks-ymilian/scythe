@@ -1,25 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <unistd.h>
+#include <inttypes.h>
 
-#include "Scanner.h"
-#include "Parser.h"
-#include "data-structures/Array.h"
-#include "code-generation/CodeGenerator.h"
-
-#define HANDLE_ERROR(func, message)\
-{\
-Result result = func;\
-if (result.hasError)\
-{\
-	printf(message": ");\
-	PrintError(result);\
-	printf("Press ENTER to continue...\n");\
-	getchar();\
-	exit(1);\
-}else assert(result.success);\
-}
+#include "Compiler.h"
 
 static void WriteOutputFile(const char* path, const char* code, const size_t length)
 {
@@ -40,54 +24,6 @@ static void WriteOutputFile(const char* path, const char* code, const size_t len
     fclose(file);
 }
 
-static char* Compile(const char* source, size_t* length)
-{
-    Array tokens;
-    HANDLE_ERROR(Scan(source, &tokens), "Scan error");
-
-    NodePtr syntaxTree;
-    HANDLE_ERROR(Parse(&tokens, &syntaxTree), "Parse error");
-
-    uint8_t* outputCode = NULL;
-    size_t outputCodeLength = 0;
-    HANDLE_ERROR(GenerateCode(syntaxTree.ptr, &outputCode, &outputCodeLength), "Code generation error");
-    assert(outputCode != NULL);
-
-    if (length != NULL)
-        *length = outputCodeLength;
-
-    return (char*)outputCode;
-}
-
-static void CompileFile(const char* inputPath, const char* outputPath)
-{
-    FILE* file = fopen(inputPath, "rb");
-    if (file == NULL)
-    {
-        printf("Failed to open input file %s: %s\n", inputPath, strerror(errno));
-        exit(1);
-    }
-
-    fseek(file, 0, SEEK_END);
-    const long fileSize = ftell(file);
-    assert(fileSize != -1L);
-    rewind(file);
-
-    char* string = malloc(fileSize + 1);
-    assert(string != NULL);
-
-    fread(string, (size_t)fileSize, 1, file);
-    fclose(file);
-    string[fileSize] = '\0';
-
-    size_t outputLength = 0;
-    char* outputCode = Compile(string, &outputLength);
-    WriteOutputFile(outputPath, outputCode, outputLength);
-
-    free(outputCode);
-    free(string);
-}
-
 int main(const int argc, const char** argv)
 {
     if (argc < 2 || argc > 3)
@@ -101,7 +37,9 @@ int main(const int argc, const char** argv)
     const char* outputPath = "out.jsfx";
     if (argc == 3) outputPath = argv[2];
 
-    CompileFile(inputPath, outputPath);
+    size_t outputLength;
+    const char* outputCode = Compile(inputPath, &outputLength);
+    WriteOutputFile(outputPath, outputCode, outputLength);
 
     return 0;
 }
