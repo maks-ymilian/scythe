@@ -640,7 +640,6 @@ Result Parse(const Array* tokenArray, NodePtr* outSyntaxTree)
     NodePtr program = {NULL};
 
     const Result result = ParseProgram(&program);
-    FreeTokenArray(&tokens);
     if (result.success)
         *outSyntaxTree = program;
 

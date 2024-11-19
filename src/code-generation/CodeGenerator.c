@@ -11,7 +11,6 @@ Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* outputLen
 
     const Buffer outputBuffer = ReadAll();
 
-    FreeSyntaxTree((NodePtr){syntaxTree, RootNode});
     FreeResources();
 
     if (result.hasError)
