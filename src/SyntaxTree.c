@@ -252,7 +252,7 @@ static void FreeNode(const NodePtr node)
     }
 }
 
-void FreeSyntaxTree(const Program root)
+void FreeSyntaxTree(const AST root)
 {
     for (int i = 0; i < root.statements.length; ++i)
     {

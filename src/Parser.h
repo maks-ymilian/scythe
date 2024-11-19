@@ -4,4 +4,4 @@
 #include "data-structures/Array.h"
 #include "SyntaxTree.h"
 
-Result Parse(const Array* tokenArray, Program* outSyntaxTree);
+Result Parse(const Array* tokenArray, AST* outSyntaxTree);

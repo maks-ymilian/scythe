@@ -145,7 +145,7 @@ StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
 typedef struct
 {
     Array statements;
-} Program;
+} AST;
 
 
-void FreeSyntaxTree(Program root);
+void FreeSyntaxTree(AST root);

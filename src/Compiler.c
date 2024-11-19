@@ -55,7 +55,7 @@ char* Compile(const char* path, size_t* outLength)
     HandleError(Scan(file, &tokens), "Scan");
     free(file);
 
-    Program syntaxTree;
+    AST syntaxTree;
     HandleError(Parse(&tokens, &syntaxTree), "Parse");
     FreeTokenArray(&tokens);
 

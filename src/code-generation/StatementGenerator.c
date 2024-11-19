@@ -502,7 +502,7 @@ static Result GenerateStatement(const NodePtr* in)
     }
 }
 
-Result GenerateProgram(const Program* in)
+Result GenerateProgram(const AST* in)
 {
     for (int i = 0; i < in->statements.length; ++i)
     {

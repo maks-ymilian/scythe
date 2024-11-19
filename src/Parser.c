@@ -603,7 +603,7 @@ static Result ParseStatement(NodePtr* out)
     return result;
 }
 
-static Result ParseProgram(Program* out)
+static Result ParseProgram(AST* out)
 {
     long SET_LINE_NUMBER
 
@@ -628,11 +628,11 @@ static Result ParseProgram(Program* out)
         ArrayAdd(&stmtArray, &stmt);
     }
 
-    *out = (Program){stmtArray};
+    *out = (AST){stmtArray};
     return SUCCESS_RESULT;
 }
 
-Result Parse(const Array* tokenArray, Program* outSyntaxTree)
+Result Parse(const Array* tokenArray, AST* outSyntaxTree)
 {
     tokens = *tokenArray;
     return ParseProgram(outSyntaxTree);
