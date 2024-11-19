@@ -100,12 +100,6 @@ StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
     return new;
 }
 
-Program* AllocProgram(const Program program)
-{
-    ALLOCATE(Program, program);
-    return new;
-}
-
 static void FreeNode(const NodePtr node)
 {
     switch (node.type)
@@ -206,18 +200,6 @@ static void FreeNode(const NodePtr node)
             free(node.ptr);
             return;
         }
-        case RootNode:
-        {
-            DEBUG_PRINT("Freeing ProgramRoot\n");
-            const Program* ptr = node.ptr;
-
-            for (int i = 0; i < ptr->statements.length; ++i)
-                FreeNode(*(NodePtr*)ptr->statements.array[i]);
-            FreeArray(&ptr->statements);
-
-            free(node.ptr);
-            return;
-        }
         case BlockStatement:
         {
             DEBUG_PRINT("Freeing BlockStatement\n");
@@ -270,7 +252,11 @@ static void FreeNode(const NodePtr node)
     }
 }
 
-void FreeSyntaxTree(const NodePtr root)
+void FreeSyntaxTree(const Program root)
 {
-    FreeNode(root);
+    for (int i = 0; i < root.statements.length; ++i)
+    {
+        const NodePtr* node = root.statements.array[i];
+        FreeNode(*node);
+    }
 }

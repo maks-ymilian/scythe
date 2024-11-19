@@ -5,4 +5,4 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result GenerateCode(Program* syntaxTree, uint8_t** outputCode, size_t* outputLength);
+Result GenerateCode(const Program* syntaxTree, uint8_t** outputCode, size_t* outputLength);

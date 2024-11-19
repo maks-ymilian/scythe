@@ -55,13 +55,13 @@ char* Compile(const char* path, size_t* outLength)
     HandleError(Scan(file, &tokens), "Scan");
     free(file);
 
-    NodePtr syntaxTree;
+    Program syntaxTree;
     HandleError(Parse(&tokens, &syntaxTree), "Parse");
     FreeTokenArray(&tokens);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(syntaxTree.ptr, (uint8_t**)&outputCode, &outputCodeLength), "Code generation");
+    HandleError(GenerateCode(&syntaxTree, (uint8_t**)&outputCode, &outputCodeLength), "Code generation");
     assert(outputCode != NULL);
     FreeSyntaxTree(syntaxTree);
 

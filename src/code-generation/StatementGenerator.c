@@ -506,9 +506,8 @@ Result GenerateProgram(const Program* in)
 {
     for (int i = 0; i < in->statements.length; ++i)
     {
-        const NodePtr* stmt = in->statements.array[i];
-        assert(stmt->type != RootNode);
-        HANDLE_ERROR(GenerateStatement(stmt));
+        const NodePtr* node = in->statements.array[i];
+        HANDLE_ERROR(GenerateStatement(node));
     }
 
     return SUCCESS_RESULT;

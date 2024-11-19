@@ -603,7 +603,7 @@ static Result ParseStatement(NodePtr* out)
     return result;
 }
 
-static Result ParseProgram(NodePtr* out)
+static Result ParseProgram(Program* out)
 {
     long SET_LINE_NUMBER
 
@@ -628,20 +628,12 @@ static Result ParseProgram(NodePtr* out)
         ArrayAdd(&stmtArray, &stmt);
     }
 
-    Program* program = AllocProgram((Program){stmtArray});
-    *out = (NodePtr){program, RootNode};
+    *out = (Program){stmtArray};
     return SUCCESS_RESULT;
 }
 
-Result Parse(const Array* tokenArray, NodePtr* outSyntaxTree)
+Result Parse(const Array* tokenArray, Program* outSyntaxTree)
 {
     tokens = *tokenArray;
-
-    NodePtr program = {NULL};
-
-    const Result result = ParseProgram(&program);
-    if (result.success)
-        *outSyntaxTree = program;
-
-    return result;
+    return ParseProgram(outSyntaxTree);
 }

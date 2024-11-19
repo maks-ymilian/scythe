@@ -19,8 +19,6 @@ typedef enum
     VariableDeclaration,
     FunctionDeclaration,
     StructDeclaration,
-
-    RootNode,
 } NodeType;
 
 typedef struct
@@ -149,7 +147,5 @@ typedef struct
     Array statements;
 } Program;
 
-Program* AllocProgram(Program program);
 
-
-void FreeSyntaxTree(NodePtr root);
+void FreeSyntaxTree(Program root);
