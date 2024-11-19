@@ -290,8 +290,6 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
     }
 }
 
-static Result GenerateStatement(const NodePtr* in);
-
 static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
 {
     WRITE_LITERAL("(0;\n");
