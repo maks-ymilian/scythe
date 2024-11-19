@@ -474,7 +474,7 @@ static Result GenerateSectionStatement(const SectionStmt* in)
     return result;
 }
 
-static Result GenerateStatement(const NodePtr* in)
+Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
@@ -500,15 +500,4 @@ static Result GenerateStatement(const NodePtr* in)
     default:
         assert(0);
     }
-}
-
-Result GenerateProgram(const AST* in)
-{
-    for (int i = 0; i < in->statements.length; ++i)
-    {
-        const NodePtr* node = in->statements.array[i];
-        HANDLE_ERROR(GenerateStatement(node));
-    }
-
-    return SUCCESS_RESULT;
 }

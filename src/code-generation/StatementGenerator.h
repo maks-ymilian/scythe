@@ -2,6 +2,6 @@
 
 #include "Common.h"
 
-Result GenerateProgram(const AST* in);
+Result GenerateStatement(const NodePtr* in);
 
 Result GeneratePushValue(NodePtr expr, Type expectedType, long lineNumber);
