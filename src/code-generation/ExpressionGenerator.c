@@ -588,6 +588,9 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
     case ExclamationEquals:
         // equality
     {
+        if (leftType.metaType == StructType || rightType.metaType == StructType)
+            return operatorTypeError;
+
         if (!CheckAssignmentCompatibility(leftType, rightType, 69420).success)
             return operatorTypeError;
 
