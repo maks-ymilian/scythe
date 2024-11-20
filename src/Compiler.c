@@ -17,14 +17,6 @@ typedef struct
     Array dependencies;
 } ProgramNode;
 
-static void FreeProgramNode(const ProgramNode* programNode)
-{
-    FreeSyntaxTree(programNode->ast);
-    for (int i = 0; i < programNode->dependencies.length; ++i)
-        FreeProgramNode(programNode->dependencies.array[i]);
-    FreeArray(&programNode->dependencies);
-}
-
 static char* GetFileString(const char* path)
 {
     FILE* file = fopen(path, "rb");
@@ -44,17 +36,6 @@ static char* GetFileString(const char* path)
     return string;
 }
 
-static Result ProcessImportPath(const char* path, const int lineNumber, char** outString)
-{
-    *outString = GetFileString(path);
-    if (*outString == NULL)
-        return ERROR_RESULT(
-            AllocateString2Str("Failed to open input file \"%s\": %s", path, strerror(errno)),
-            lineNumber);
-
-    return SUCCESS_RESULT;
-}
-
 static void HandleError(const Result result, const char* errorStage)
 {
     if (result.success)
@@ -69,6 +50,25 @@ static void HandleError(const Result result, const char* errorStage)
     printf("Press ENTER to continue...\n");
     getchar();
     exit(1);
+}
+
+static void FreeProgramNode(const ProgramNode* programNode)
+{
+    FreeSyntaxTree(programNode->ast);
+    for (int i = 0; i < programNode->dependencies.length; ++i)
+        FreeProgramNode(programNode->dependencies.array[i]);
+    FreeArray(&programNode->dependencies);
+}
+
+static Result ProcessImportPath(const char* path, const int lineNumber, char** outString)
+{
+    *outString = GetFileString(path);
+    if (*outString == NULL)
+        return ERROR_RESULT(
+            AllocateString2Str("Failed to open input file \"%s\": %s", path, strerror(errno)),
+            lineNumber);
+
+    return SUCCESS_RESULT;
 }
 
 static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt)
