@@ -16,6 +16,14 @@ typedef struct
     Array dependencies;
 }ProgramNode;
 
+static void FreeProgramNode(const ProgramNode* programNode)
+{
+    FreeSyntaxTree(programNode->ast);
+    for (int i = 0; i < programNode->dependencies.length; ++i)
+        FreeProgramNode(programNode->dependencies.array[i]);
+    FreeArray(&programNode->dependencies);
+}
+
 static char* GetFileString(const char* path)
 {
     FILE* file = fopen(path, "rb");
@@ -54,37 +62,43 @@ static void HandleError(const Result result, const char* errorStage)
     exit(1);
 }
 
-static ProgramNode kfkjskj(const char* path)
+static ProgramNode GenerateProgramNode(const char* path)
 {
-    ProgramNode node = (ProgramNode){};
+    ProgramNode programNode;
 
     char* file = GetFileString(path);
     Array tokens;
     HandleError(Scan(file, &tokens), "Scan");
     free(file);
 
-    HandleError(Parse(&tokens, &node.ast), "Parse");
+    HandleError(Parse(&tokens, &programNode.ast), "Parse");
     FreeTokenArray(&tokens);
 
-    return node;
+    Array dependencies = AllocateArray(sizeof(ProgramNode));
+    for (int i = 0; i < programNode.ast.statements.length; ++i)
+    {
+        const NodePtr* node = programNode.ast.statements.array[i];
+        if (node->type != ImportStatement) break;
+        const ImportStmt* importStmt = node->ptr;
+
+        ProgramNode importedNode = GenerateProgramNode(importStmt->file);
+        ArrayAdd(&dependencies, &importedNode);
+    }
+    programNode.dependencies = dependencies;
+
+    return programNode;
 }
 
 char* Compile(const char* path, size_t* outLength)
 {
-    char* file = GetFileString(path);
-    Array tokens;
-    HandleError(Scan(file, &tokens), "Scan");
-    free(file);
-
-    AST syntaxTree;
-    HandleError(Parse(&tokens, &syntaxTree), "Parse");
-    FreeTokenArray(&tokens);
+    const ProgramNode programTree = GenerateProgramNode(path);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(&syntaxTree, (uint8_t**)&outputCode, &outputCodeLength), "Code generation");
+    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength), "Code generation");
     assert(outputCode != NULL);
-    FreeSyntaxTree(syntaxTree);
+
+    FreeProgramNode(&programTree);
 
     *outLength = outputCodeLength;
     return outputCode;
