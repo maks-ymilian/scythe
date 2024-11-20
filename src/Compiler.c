@@ -12,7 +12,7 @@
 #include "code-generation/CodeGenerator.h"
 #include "StringHelper.h"
 
-static const char* currentFilePath = NULL;
+static const char* lastFilePath = NULL;
 
 static Array allFileStats;
 
@@ -79,7 +79,7 @@ static Result GetFileStatus(const char* path, const int lineNumber, Stat* status
     return SUCCESS_RESULT;
 }
 
-static Result ProcessImportPath(const char* path, const int lineNumber, char** outString)
+static Result GetSourceFromImportPath(const char* path, const int lineNumber, char** outString)
 {
     *outString = GetFileString(path);
     if (*outString == NULL)
@@ -96,19 +96,19 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
     char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(ProcessImportPath(path, lineNumber, &source), "Import", currentFilePath);
+    HandleError(GetSourceFromImportPath(path, lineNumber, &source), "Import", lastFilePath);
 
     Stat status;
-    HandleError(GetFileStatus(path, -1, &status), "Import", currentFilePath);
+    HandleError(GetFileStatus(path, -1, &status), "Import", lastFilePath);
     ArrayAdd(&allFileStats, &status);
 
-    currentFilePath = path;
+    lastFilePath = path;
 
     Array tokens;
-    HandleError(Scan(source, &tokens), "Scan", currentFilePath);
+    HandleError(Scan(source, &tokens), "Scan", path);
     free(source);
 
-    HandleError(Parse(&tokens, &programNode.ast), "Parse", currentFilePath);
+    HandleError(Parse(&tokens, &programNode.ast), "Parse", path);
     FreeTokenArray(&tokens);
 
     Array dependencies = AllocateArray(sizeof(ProgramNode));
