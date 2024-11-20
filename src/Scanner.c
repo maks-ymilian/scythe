@@ -8,12 +8,17 @@
 
 #include "data-structures/Map.h"
 
+#define HANDLE_ERROR(function)\
+{const Result result = function;\
+if (result.hasError)\
+    return result;}
+
 #define ADD_KEYWORD(tokenType) {const TokenType t = tokenType; MapAdd(&keywords, GetTokenTypeString(tokenType), &t);};
 
 static const char* source;
 static long pointer;
 static long currentTokenStart;
-static long currentLine;
+static int currentLine;
 
 static Array tokens;
 
@@ -80,19 +85,27 @@ static void ScanWord()
         AddNewToken(Identifier, lexeme);
 }
 
-static void ScanStringLiteral()
+static Result ScanStringLiteral()
 {
     const long start = pointer + 1;
+    bool foundClosingCharacter = false;
     while (!IsAtEnd())
     {
         const char character = Advance();
 
         if (character == '"')
+        {
+            foundClosingCharacter = true;
             break;
+        }
     }
     const long end = pointer - 1;
 
+    if (!foundClosingCharacter)
+        return ERROR_RESULT("String literal is never closed", currentLine);
+
     AddNewToken(StringLiteral, AllocateSubstring(start, end));
+    return SUCCESS_RESULT;
 }
 
 static void ScanNumberLiteral()
@@ -262,12 +275,9 @@ Result Scan(const char* const sourceCode, Array* outTokens)
         else if (isalpha(character) || character == '_') // identifier / keyword
             ScanWord();
         else if (character == '"') // string literal
-            ScanStringLiteral();
+            HANDLE_ERROR(ScanStringLiteral())
         else // error
-        {
-            FreeArray(&tokens);
             return ERROR_RESULT("Unexpected character", currentLine);
-        }
     }
     AddNewToken(EndOfFile, NULL);
 
