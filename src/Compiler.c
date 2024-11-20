@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -13,10 +12,6 @@
 #include "StringHelper.h"
 
 static const char* lastFilePath = NULL;
-
-static Array allFileStats;
-
-typedef struct stat Stat;
 
 typedef struct
 {
@@ -69,16 +64,6 @@ static void FreeProgramNode(const ProgramNode* programNode)
     FreeArray(&programNode->dependencies);
 }
 
-static Result GetFileStatus(const char* path, const int lineNumber, Stat* status)
-{
-    if (stat(path, status) == -1)
-        return ERROR_RESULT(
-            AllocateString2Str("Failed to get file status \"%s\": %s", path, strerror(errno)),
-            lineNumber);
-
-    return SUCCESS_RESULT;
-}
-
 static Result GetSourceFromImportPath(const char* path, const int lineNumber, char** outString)
 {
     *outString = GetFileString(path);
@@ -97,10 +82,6 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
     char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
     HandleError(GetSourceFromImportPath(path, lineNumber, &source), "Import", lastFilePath);
-
-    Stat status;
-    HandleError(GetFileStatus(path, -1, &status), "Import", lastFilePath);
-    ArrayAdd(&allFileStats, &status);
 
     lastFilePath = path;
 
@@ -128,11 +109,7 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
 char* Compile(const char* path, size_t* outLength)
 {
-    allFileStats = AllocateArray(sizeof(Stat));
-
     const ProgramNode programTree = GenerateProgramNode(path, NULL);
-
-    FreeArray(&allFileStats);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
