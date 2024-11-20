@@ -477,6 +477,8 @@ Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
+    case ImportStatement:
+        return SUCCESS_RESULT;
     case ExpressionStatement:
         return GenerateExpressionStatement(in->ptr);
     case ReturnStatement:
