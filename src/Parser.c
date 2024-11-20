@@ -567,6 +567,13 @@ static Result ParseStructDeclaration(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParseImportStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    if (MatchOne(Impo))
+}
+
 static Result ParseStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER

@@ -156,6 +156,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     ADD_KEYWORD(True);
     ADD_KEYWORD(False);
     ADD_KEYWORD(Return);
+    ADD_KEYWORD(Import);
 
     tokens = AllocateArray(sizeof(Token));
 

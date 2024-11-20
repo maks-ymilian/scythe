@@ -60,6 +60,7 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Else: return "else";
     case Struct: return "struct";
     case Return: return "return";
+    case Import: return "import";
 
     case Void: return "void";
     case Int: return "int";
