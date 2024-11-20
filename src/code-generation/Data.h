@@ -77,10 +77,6 @@ Buffer EndRead();
 void EndReadMove(size_t pos);
 Buffer ReadAll();
 
-char* AllocateString1Str(const char* format, const char* insert);
-char* AllocateString2Str(const char* format, const char* insert1, const char* insert2);
-char* AllocateString2Int(const char* format, int insert1, int insert2);
-
 Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);
 

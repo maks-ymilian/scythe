@@ -145,6 +145,7 @@ StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
 
 typedef struct
 {
+    Token import;
     char* file;
 } ImportStmt;
 

@@ -1,6 +1,7 @@
 #include "ExpressionGenerator.h"
 
 #include "StatementGenerator.h"
+#include "StringHelper.h"
 
 static long returnCounter = 0;
 

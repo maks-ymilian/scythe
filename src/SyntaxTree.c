@@ -104,10 +104,14 @@ StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
 ImportStmt* AllocImportStmt(const ImportStmt stmt)
 {
     ALLOCATE(ImportStmt, stmt);
+
+    new->import = CopyToken(stmt.import);
+
     const char* oldString = new->file;
     const size_t length = strlen(oldString) + 1;
     new->file = malloc(length);
     memcpy(new->file, oldString, length);
+
     return new;
 }
 
@@ -172,6 +176,7 @@ static void FreeNode(const NodePtr node)
     {
         DEBUG_PRINT("Freeing ImportStmt\n");
         const ImportStmt* ptr = node.ptr;
+        FreeToken(&ptr->import);
         free(ptr->file);
         return;
     }

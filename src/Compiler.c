@@ -9,12 +9,13 @@
 #include "Parser.h"
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
+#include "StringHelper.h"
 
 typedef struct
 {
     AST ast;
     Array dependencies;
-}ProgramNode;
+} ProgramNode;
 
 static void FreeProgramNode(const ProgramNode* programNode)
 {
@@ -28,10 +29,7 @@ static char* GetFileString(const char* path)
 {
     FILE* file = fopen(path, "rb");
     if (file == NULL)
-    {
-        printf("Failed to open input file %s: %s\n", path, strerror(errno));
-        exit(1);
-    }
+        return NULL;
 
     fseek(file, 0, SEEK_END);
     const long fileSize = ftell(file);
@@ -44,6 +42,17 @@ static char* GetFileString(const char* path)
     fclose(file);
     string[fileSize] = '\0';
     return string;
+}
+
+static Result ProcessImportPath(const char* path, const int lineNumber, char** outString)
+{
+    *outString = GetFileString(path);
+    if (*outString == NULL)
+        return ERROR_RESULT(
+            AllocateString2Str("Failed to open input file \"%s\": %s", path, strerror(errno)),
+            lineNumber);
+
+    return SUCCESS_RESULT;
 }
 
 static void HandleError(const Result result, const char* errorStage)
@@ -62,11 +71,14 @@ static void HandleError(const Result result, const char* errorStage)
     exit(1);
 }
 
-static ProgramNode GenerateProgramNode(const char* path)
+static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt)
 {
     ProgramNode programNode;
 
-    char* file = GetFileString(path);
+    char* file = NULL;
+    const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
+    HandleError(ProcessImportPath(path, lineNumber, &file), "Import");
+
     Array tokens;
     HandleError(Scan(file, &tokens), "Scan");
     free(file);
@@ -81,7 +93,7 @@ static ProgramNode GenerateProgramNode(const char* path)
         if (node->type != ImportStatement) break;
         const ImportStmt* importStmt = node->ptr;
 
-        ProgramNode importedNode = GenerateProgramNode(importStmt->file);
+        ProgramNode importedNode = GenerateProgramNode(importStmt->file, importStmt);
         ArrayAdd(&dependencies, &importedNode);
     }
     programNode.dependencies = dependencies;
@@ -91,7 +103,7 @@ static ProgramNode GenerateProgramNode(const char* path)
 
 char* Compile(const char* path, size_t* outLength)
 {
-    const ProgramNode programTree = GenerateProgramNode(path);
+    const ProgramNode programTree = GenerateProgramNode(path, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;

@@ -571,14 +571,15 @@ static Result ParseImportStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (MatchOne(Import) == NULL)
+    const Token* import = MatchOne(Import);
+    if (import == NULL)
         return NOT_FOUND_RESULT;
 
     const Token* path = MatchOne(StringLiteral);
     if (path == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Import);
 
-    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text});
+    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text, .import = *import});
     *out = (NodePtr){.ptr = importStmt, .type = ImportStatement};
     return SUCCESS_RESULT;
 }
