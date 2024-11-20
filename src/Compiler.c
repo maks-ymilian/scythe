@@ -20,6 +20,12 @@ typedef struct
     Array dependencies;
 } ProgramNode;
 
+typedef struct
+{
+    char* path;
+    ProgramNode* programNode;
+} FileRecord;
+
 static char* GetFileString(const char* path)
 {
     FILE* file = fopen(path, "rb");
@@ -43,8 +49,8 @@ static void FreeOpenedFilesArray()
 {
     for (int i = 0; i < openedFiles.length; ++i)
     {
-        char* string = *(char**)openedFiles.array[i];
-        free(string);
+        const FileRecord* file = openedFiles.array[i];
+        free(file->path);
     }
     FreeArray(&openedFiles);
 }
@@ -70,10 +76,7 @@ static void HandleError(const Result result, const char* errorStage, const char*
 static void FreeProgramNode(ProgramNode* programNode)
 {
     FreeSyntaxTree(programNode->ast);
-    for (int i = 0; i < programNode->dependencies.length; ++i)
-        FreeProgramNode(*(ProgramNode**)programNode->dependencies.array[i]);
     FreeArray(&programNode->dependencies);
-
     free(programNode);
 }
 
@@ -110,20 +113,21 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
     for (int i = 0; i < openedFiles.length; ++i)
     {
-        const char* currentPath = *(char**)openedFiles.array[i];
+        const FileRecord* currentRecord = openedFiles.array[i];
 
-        const int isSameFile = IsSameFile(path, currentPath);
+        const int isSameFile = IsSameFile(path, currentRecord->path);
         if (isSameFile == -1)
             HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
                 "Import", containingPath);
 
         if (isSameFile)
-            assert(0); // todo
+            return currentRecord->programNode;
     }
-    char* _ = AllocateString(path);
-    ArrayAdd(&openedFiles, &_);
 
     ProgramNode* programNode = malloc(sizeof(ProgramNode));
+
+    const FileRecord record = (FileRecord){.programNode = programNode, .path = AllocateString(path)};
+    ArrayAdd(&openedFiles, &record);
 
     char* source = NULL;
     HandleError(GetSourceFromImportPath(path, lineNumber, &source),
@@ -155,9 +159,9 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
 char* Compile(const char* path, size_t* outLength)
 {
-    openedFiles = AllocateArray(sizeof(char*));
-    ProgramNode* programTree = GenerateProgramNode(path, NULL, NULL);
-    FreeOpenedFilesArray();
+    openedFiles = AllocateArray(sizeof(FileRecord));
+
+    const ProgramNode* programTree = GenerateProgramNode(path, NULL, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
@@ -165,7 +169,9 @@ char* Compile(const char* path, size_t* outLength)
         "Code generation", NULL);
     assert(outputCode != NULL);
 
-    FreeProgramNode(programTree);
+    for (int i = 0; i < openedFiles.length; ++i)
+        FreeProgramNode(((FileRecord*)openedFiles.array[i])->programNode);
+    FreeOpenedFilesArray();
 
     *outLength = outputCodeLength;
     return outputCode;
