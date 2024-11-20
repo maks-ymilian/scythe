@@ -11,8 +11,6 @@
 #include "code-generation/CodeGenerator.h"
 #include "StringHelper.h"
 
-static const char* lastFilePath = NULL;
-
 typedef struct
 {
     AST ast;
@@ -75,15 +73,13 @@ static Result GetSourceFromImportPath(const char* path, const int lineNumber, ch
     return SUCCESS_RESULT;
 }
 
-static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt)
+static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
 {
     ProgramNode programNode;
 
     char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(GetSourceFromImportPath(path, lineNumber, &source), "Import", lastFilePath);
-
-    lastFilePath = path;
+    HandleError(GetSourceFromImportPath(path, lineNumber, &source), "Import", containingPath);
 
     Array tokens;
     HandleError(Scan(source, &tokens), "Scan", path);
@@ -99,7 +95,7 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
         if (node->type != ImportStatement) break;
         const ImportStmt* importStmt = node->ptr;
 
-        ProgramNode importedNode = GenerateProgramNode(importStmt->file, importStmt);
+        ProgramNode importedNode = GenerateProgramNode(importStmt->file, importStmt, path);
         ArrayAdd(&dependencies, &importedNode);
     }
     programNode.dependencies = dependencies;
@@ -109,7 +105,7 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
 char* Compile(const char* path, size_t* outLength)
 {
-    const ProgramNode programTree = GenerateProgramNode(path, NULL);
+    const ProgramNode programTree = GenerateProgramNode(path, NULL, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
