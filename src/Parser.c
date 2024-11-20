@@ -666,6 +666,8 @@ static Result ParseProgram(AST* out)
 
 Result Parse(const Array* tokenArray, AST* outSyntaxTree)
 {
+    pointer = 0;
     tokens = *tokenArray;
+
     return ParseProgram(outSyntaxTree);
 }
