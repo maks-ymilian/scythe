@@ -19,6 +19,7 @@ set(SOURCES
         "src/code-generation/ExpressionGenerator.c"
         "src/code-generation/StatementGenerator.c"
         "src/Compiler.c"
+        "src/FileUtils.c"
 )
 
 add_compile_options(-fsanitize=address,undefined -g)
