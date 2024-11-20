@@ -36,9 +36,9 @@ void PrintError(const Result result)
 
 	const char* buffer = (char*)StreamGetBuffer(stream).buffer;
 	if (result.lineNumber > 0)
-		printf("%s (line %d)\n", buffer, result.lineNumber);\
+		printf("%s (line %d)", buffer, result.lineNumber);\
 	else
-		printf("%s\n", buffer);\
+		printf("%s", buffer);\
 
 	FreeMemoryStream(stream, true);
 }

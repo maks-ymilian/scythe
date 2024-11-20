@@ -11,6 +11,8 @@
 #include "code-generation/CodeGenerator.h"
 #include "StringHelper.h"
 
+static const char* currentFilePath = NULL;
+
 typedef struct
 {
     AST ast;
@@ -36,7 +38,7 @@ static char* GetFileString(const char* path)
     return string;
 }
 
-static void HandleError(const Result result, const char* errorStage)
+static void HandleError(const Result result, const char* errorStage, const char* filePath)
 {
     if (result.success)
     {
@@ -47,6 +49,8 @@ static void HandleError(const Result result, const char* errorStage)
     assert(result.hasError);
     printf("%s error: ", errorStage);
     PrintError(result);
+    if (filePath) printf(" (%s)", filePath);
+    printf("\n");
     printf("Press ENTER to continue...\n");
     getchar();
     exit(1);
@@ -77,13 +81,15 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
     char* file = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(ProcessImportPath(path, lineNumber, &file), "Import");
+    HandleError(ProcessImportPath(path, lineNumber, &file), "Import", currentFilePath);
+
+    currentFilePath = path;
 
     Array tokens;
-    HandleError(Scan(file, &tokens), "Scan");
+    HandleError(Scan(file, &tokens), "Scan", currentFilePath);
     free(file);
 
-    HandleError(Parse(&tokens, &programNode.ast), "Parse");
+    HandleError(Parse(&tokens, &programNode.ast), "Parse", currentFilePath);
     FreeTokenArray(&tokens);
 
     Array dependencies = AllocateArray(sizeof(ProgramNode));
@@ -107,7 +113,7 @@ char* Compile(const char* path, size_t* outLength)
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength), "Code generation");
+    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength), "Code generation", NULL);
     assert(outputCode != NULL);
 
     FreeProgramNode(&programTree);
