@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "Common.h"
-#include "StringHelper.h"
+#include "StringUtils.h"
 
 static int functionCounter;
 

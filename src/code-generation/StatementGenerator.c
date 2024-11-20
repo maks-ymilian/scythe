@@ -1,7 +1,7 @@
 #include "StatementGenerator.h"
 
 #include "ExpressionGenerator.h"
-#include "StringHelper.h"
+#include "StringUtils.h"
 
 static Result GenerateExpressionStatement(const ExpressionStmt* in)
 {

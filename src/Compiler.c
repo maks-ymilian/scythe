@@ -9,7 +9,7 @@
 #include "Parser.h"
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
-#include "StringHelper.h"
+#include "StringUtils.h"
 #include "FileUtils.h"
 
 static Array openedFiles;
