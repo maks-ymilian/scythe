@@ -35,7 +35,10 @@ void PrintError(const Result result)
 	}
 
 	const char* buffer = (char*)StreamGetBuffer(stream).buffer;
-	printf("%s (line %"PRIu32")\n", buffer, result.lineNumber);\
+	if (result.lineNumber > 0)
+		printf("%s (line %d)\n", buffer, result.lineNumber);\
+	else
+		printf("%s\n", buffer);\
 
 	FreeMemoryStream(stream, true);
 }
