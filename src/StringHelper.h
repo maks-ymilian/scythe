@@ -20,6 +20,14 @@ static inline int IntCharCount(int number)
     return 10 + minusSign;
 }
 
+static inline char* AllocateString(const char* string)
+{
+    const size_t length = strlen(string) + 1;
+    char* new = malloc(length);
+    memcpy(new, string, length);
+    return new;
+}
+
 static inline char* AllocateString1Str(const char* format, const char* insert)
 {
     const size_t insertLength = strlen(insert);

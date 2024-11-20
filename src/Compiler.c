@@ -10,6 +10,9 @@
 #include "data-structures/Array.h"
 #include "code-generation/CodeGenerator.h"
 #include "StringHelper.h"
+#include "FileUtils.h"
+
+static Array openedFiles;
 
 typedef struct
 {
@@ -34,6 +37,16 @@ static char* GetFileString(const char* path)
     fclose(file);
     string[fileSize] = '\0';
     return string;
+}
+
+static void FreeOpenedFilesArray()
+{
+    for (int i = 0; i < openedFiles.length; ++i)
+    {
+        char* string = *(char**)openedFiles.array[i];
+        free(string);
+    }
+    FreeArray(&openedFiles);
 }
 
 static void HandleError(const Result result, const char* errorStage, const char* filePath)
@@ -79,13 +92,25 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
     char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(GetSourceFromImportPath(path, lineNumber, &source), "Import", containingPath);
+    HandleError(GetSourceFromImportPath(path, lineNumber, &source),
+        "Import", containingPath);
+
+    for (int i = 0; i < openedFiles.length; ++i)
+    {
+        const char* currentPath = *(char**)openedFiles.array[i];
+        if (IsSameFile(path, currentPath))
+            assert(0); // todo
+    }
+    char* _ = AllocateString(path);
+    ArrayAdd(&openedFiles, &_);
 
     Array tokens;
-    HandleError(Scan(source, &tokens), "Scan", path);
+    HandleError(Scan(source, &tokens),
+        "Scan", path);
     free(source);
 
-    HandleError(Parse(&tokens, &programNode.ast), "Parse", path);
+    HandleError(Parse(&tokens, &programNode.ast),
+        "Parse", path);
     FreeTokenArray(&tokens);
 
     Array dependencies = AllocateArray(sizeof(ProgramNode));
@@ -105,11 +130,14 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 
 char* Compile(const char* path, size_t* outLength)
 {
+    openedFiles = AllocateArray(sizeof(char*));
     const ProgramNode programTree = GenerateProgramNode(path, NULL, NULL);
+    FreeOpenedFilesArray();
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength), "Code generation", NULL);
+    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength),
+        "Code generation", NULL);
     assert(outputCode != NULL);
 
     FreeProgramNode(&programTree);
