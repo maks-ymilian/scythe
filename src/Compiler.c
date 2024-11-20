@@ -109,7 +109,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 {
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
     HandleError(IsFileOpenable(path, lineNumber),
-        "Import", containingPath);
+                "Import", containingPath);
 
     for (int i = 0; i < openedFiles.length; ++i)
     {
@@ -118,7 +118,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
         const int isSameFile = IsSameFile(path, currentRecord->path);
         if (isSameFile == -1)
             HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
-                "Import", containingPath);
+                        "Import", containingPath);
 
         if (isSameFile)
             return currentRecord->programNode;
@@ -131,15 +131,15 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
     char* source = NULL;
     HandleError(GetSourceFromImportPath(path, lineNumber, &source),
-        "Read", containingPath);
+                "Read", containingPath);
 
     Array tokens;
     HandleError(Scan(source, &tokens),
-        "Scan", path);
+                "Scan", path);
     free(source);
 
     HandleError(Parse(&tokens, &programNode->ast),
-        "Parse", path);
+                "Parse", path);
     FreeTokenArray(&tokens);
 
     Array dependencies = AllocateArray(sizeof(ProgramNode*));
@@ -166,7 +166,7 @@ char* Compile(const char* path, size_t* outLength)
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
     HandleError(GenerateCode(&programTree->ast, (uint8_t**)&outputCode, &outputCodeLength),
-        "Code generation", NULL);
+                "Code generation", NULL);
     assert(outputCode != NULL);
 
     for (int i = 0; i < openedFiles.length; ++i)
