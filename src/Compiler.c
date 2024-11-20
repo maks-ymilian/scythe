@@ -105,6 +105,22 @@ static Result GetSourceFromImportPath(const char* path, const int lineNumber, ch
     return SUCCESS_RESULT;
 }
 
+static Result CheckForCircularDependency(const ProgramNode* node, const ProgramNode* importedNode, const int lineNumber)
+{
+    for (int i = 0; i < importedNode->dependencies.length; ++i)
+    {
+        const ProgramNode* dependency = *(ProgramNode**)importedNode->dependencies.array[i];
+
+        if (dependency == node)
+            return ERROR_RESULT("Circular dependency detected", lineNumber);
+
+        const Result result = CheckForCircularDependency(node, dependency, lineNumber);
+        if (result.hasError) return result;
+    }
+
+    return SUCCESS_RESULT;
+}
+
 static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
 {
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
@@ -142,7 +158,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
                 "Parse", path);
     FreeTokenArray(&tokens);
 
-    Array dependencies = AllocateArray(sizeof(ProgramNode*));
+    programNode->dependencies = AllocateArray(sizeof(ProgramNode*));
     for (int i = 0; i < programNode->ast.statements.length; ++i)
     {
         const NodePtr* node = programNode->ast.statements.array[i];
@@ -150,9 +166,11 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
         const ImportStmt* importStmt = node->ptr;
 
         ProgramNode* importedNode = GenerateProgramNode(importStmt->file, importStmt, path);
-        ArrayAdd(&dependencies, &importedNode);
+        ArrayAdd(&programNode->dependencies, &importedNode);
+
+        HandleError(CheckForCircularDependency(programNode, importedNode, importStmt->import.lineNumber),
+            "Import", path);
     }
-    programNode->dependencies = dependencies;
 
     return programNode;
 }
