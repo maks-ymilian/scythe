@@ -67,12 +67,14 @@ static void HandleError(const Result result, const char* errorStage, const char*
     exit(1);
 }
 
-static void FreeProgramNode(const ProgramNode* programNode)
+static void FreeProgramNode(ProgramNode* programNode)
 {
     FreeSyntaxTree(programNode->ast);
     for (int i = 0; i < programNode->dependencies.length; ++i)
-        FreeProgramNode(programNode->dependencies.array[i]);
+        FreeProgramNode(*(ProgramNode**)programNode->dependencies.array[i]);
     FreeArray(&programNode->dependencies);
+
+    free(programNode);
 }
 
 static Result IsFileOpenable(const char* path, const int lineNumber)
@@ -100,7 +102,7 @@ static Result GetSourceFromImportPath(const char* path, const int lineNumber, ch
     return SUCCESS_RESULT;
 }
 
-static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
+static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
 {
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
     HandleError(IsFileOpenable(path, lineNumber),
@@ -121,7 +123,7 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
     char* _ = AllocateString(path);
     ArrayAdd(&openedFiles, &_);
 
-    ProgramNode programNode;
+    ProgramNode* programNode = malloc(sizeof(ProgramNode));
 
     char* source = NULL;
     HandleError(GetSourceFromImportPath(path, lineNumber, &source),
@@ -132,21 +134,21 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
         "Scan", path);
     free(source);
 
-    HandleError(Parse(&tokens, &programNode.ast),
+    HandleError(Parse(&tokens, &programNode->ast),
         "Parse", path);
     FreeTokenArray(&tokens);
 
-    Array dependencies = AllocateArray(sizeof(ProgramNode));
-    for (int i = 0; i < programNode.ast.statements.length; ++i)
+    Array dependencies = AllocateArray(sizeof(ProgramNode*));
+    for (int i = 0; i < programNode->ast.statements.length; ++i)
     {
-        const NodePtr* node = programNode.ast.statements.array[i];
+        const NodePtr* node = programNode->ast.statements.array[i];
         if (node->type != ImportStatement) break;
         const ImportStmt* importStmt = node->ptr;
 
-        ProgramNode importedNode = GenerateProgramNode(importStmt->file, importStmt, path);
+        ProgramNode* importedNode = GenerateProgramNode(importStmt->file, importStmt, path);
         ArrayAdd(&dependencies, &importedNode);
     }
-    programNode.dependencies = dependencies;
+    programNode->dependencies = dependencies;
 
     return programNode;
 }
@@ -154,16 +156,16 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 char* Compile(const char* path, size_t* outLength)
 {
     openedFiles = AllocateArray(sizeof(char*));
-    const ProgramNode programTree = GenerateProgramNode(path, NULL, NULL);
+    ProgramNode* programTree = GenerateProgramNode(path, NULL, NULL);
     FreeOpenedFilesArray();
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(&programTree.ast, (uint8_t**)&outputCode, &outputCodeLength),
+    HandleError(GenerateCode(&programTree->ast, (uint8_t**)&outputCode, &outputCodeLength),
         "Code generation", NULL);
     assert(outputCode != NULL);
 
-    FreeProgramNode(&programTree);
+    FreeProgramNode(programTree);
 
     *outLength = outputCodeLength;
     return outputCode;
