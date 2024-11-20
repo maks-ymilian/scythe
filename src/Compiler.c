@@ -79,15 +79,15 @@ static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* impor
 {
     ProgramNode programNode;
 
-    char* file = NULL;
+    char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(ProcessImportPath(path, lineNumber, &file), "Import", currentFilePath);
+    HandleError(ProcessImportPath(path, lineNumber, &source), "Import", currentFilePath);
 
     currentFilePath = path;
 
     Array tokens;
-    HandleError(Scan(file, &tokens), "Scan", currentFilePath);
-    free(file);
+    HandleError(Scan(source, &tokens), "Scan", currentFilePath);
+    free(source);
 
     HandleError(Parse(&tokens, &programNode.ast), "Parse", currentFilePath);
     FreeTokenArray(&tokens);
