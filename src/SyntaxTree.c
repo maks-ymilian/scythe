@@ -101,13 +101,13 @@ StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
     return new;
 }
 
-ImportStmt* AllocImportStmt(ImportStmt stmt)
+ImportStmt* AllocImportStmt(const ImportStmt stmt)
 {
     ALLOCATE(ImportStmt, stmt);
-    const char* oldString = stmt.file;
+    const char* oldString = new->file;
     const size_t length = strlen(oldString) + 1;
-    stmt.file = malloc(length);
-    memcpy(stmt.file, oldString, length);
+    new->file = malloc(length);
+    memcpy(new->file, oldString, length);
     return new;
 }
 
