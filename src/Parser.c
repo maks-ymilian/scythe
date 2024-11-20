@@ -111,46 +111,46 @@ static Result ParsePrimary(NodePtr* out)
 
     switch (token->type)
     {
-        case LeftBracket:
+    case LeftBracket:
+    {
+        HANDLE_ERROR(ParseExpression(out),
+                     return ERROR_RESULT_LINE("Expected expression"));
+
+        const Token* closingBracket = MatchOne(RightBracket);
+        if (closingBracket == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+
+        return result;
+    }
+    case Identifier:
+    {
+        LiteralExpr* first = AllocLiteral((LiteralExpr){*token, NULL});
+        LiteralExpr* prev = first;
+        while (MatchOne(Dot) != NULL)
         {
-            HANDLE_ERROR(ParseExpression(out),
-                         return ERROR_RESULT_LINE("Expected expression"));
+            SET_LINE_NUMBER
+            const Token* identifier = MatchOne(Identifier);
+            if (identifier == NULL)
+                return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Dot);
 
-            const Token* closingBracket = MatchOne(RightBracket);
-            if (closingBracket == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
-
-            return result;
+            LiteralExpr* next = AllocLiteral((LiteralExpr){*identifier, NULL});
+            prev->next = next;
+            prev = next;
         }
-        case Identifier:
-        {
-            LiteralExpr* first = AllocLiteral((LiteralExpr){*token, NULL});
-            LiteralExpr* prev = first;
-            while (MatchOne(Dot) != NULL)
-            {
-                SET_LINE_NUMBER
-                const Token* identifier = MatchOne(Identifier);
-                if (identifier == NULL)
-                    return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Dot);
 
-                LiteralExpr* next = AllocLiteral((LiteralExpr){*identifier, NULL});
-                prev->next = next;
-                prev = next;
-            }
-
-            *out = (NodePtr){first, LiteralExpression};
-            return SUCCESS_RESULT;
-        }
-        case NumberLiteral:
-        case StringLiteral:
-        case True:
-        case False:
-        {
-            LiteralExpr* literal = AllocLiteral((LiteralExpr){*token, NULL});
-            *out = (NodePtr){literal, LiteralExpression};
-            return SUCCESS_RESULT;
-        }
-        default: assert(0);
+        *out = (NodePtr){first, LiteralExpression};
+        return SUCCESS_RESULT;
+    }
+    case NumberLiteral:
+    case StringLiteral:
+    case True:
+    case False:
+    {
+        LiteralExpr* literal = AllocLiteral((LiteralExpr){*token, NULL});
+        *out = (NodePtr){literal, LiteralExpression};
+        return SUCCESS_RESULT;
+    }
+    default: assert(0);
     }
 }
 
@@ -571,14 +571,27 @@ static Result ParseImportStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (MatchOne(Impo))
+    if (MatchOne(Import) == NULL)
+        return NOT_FOUND_RESULT;
+
+    const Token* path = MatchOne(StringLiteral);
+    if (path == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Import);
+
+    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text});
+    *out = (NodePtr){.ptr = importStmt, .type = ImportStatement};
+    return SUCCESS_RESULT;
 }
 
 static Result ParseStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    Result result = ParseFunctionDeclaration(out);
+    Result result = ParseImportStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseFunctionDeclaration(out);
     if (result.success || result.hasError)
         return result;
 
@@ -616,10 +629,10 @@ static Result ParseProgram(AST* out)
 
     Array stmtArray = AllocateArray(sizeof(NodePtr));
 
+    bool allowImportStatements = true;
     while (true)
     {
-        const Token* end = MatchOne(EndOfFile);
-        if (end != NULL)
+        if (MatchOne(EndOfFile) != NULL)
             break;
 
         NodePtr stmt;
@@ -627,9 +640,20 @@ static Result ParseProgram(AST* out)
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement"))
 
+        if (stmt.type == ImportStatement)
+        {
+            if (!allowImportStatements)
+                return ERROR_RESULT_LINE("Import statements must be at the top of the file");
+        }
+        else
+        {
+            allowImportStatements = false;
+        }
+
         if (stmt.type != Section &&
             stmt.type != FunctionDeclaration &&
-            stmt.type != StructDeclaration)
+            stmt.type != StructDeclaration &&
+            stmt.type != ImportStatement)
             return ERROR_RESULT_LINE("Expected section statement, struct declaration, or function declaration");
 
         ArrayAdd(&stmtArray, &stmt);
