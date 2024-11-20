@@ -75,6 +75,20 @@ static void FreeProgramNode(const ProgramNode* programNode)
     FreeArray(&programNode->dependencies);
 }
 
+static Result IsFileOpenable(const char* path, const int lineNumber)
+{
+    FILE* file = fopen(path, "rb");
+
+    if (file == NULL)
+        return ERROR_RESULT(
+            AllocateString2Str("Failed to open input file \"%s\": %s", path, strerror(errno)),
+            lineNumber);
+
+    fclose(file);
+
+    return SUCCESS_RESULT;
+}
+
 static Result GetSourceFromImportPath(const char* path, const int lineNumber, char** outString)
 {
     *outString = GetFileString(path);
@@ -88,21 +102,30 @@ static Result GetSourceFromImportPath(const char* path, const int lineNumber, ch
 
 static ProgramNode GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
 {
-    ProgramNode programNode;
-
-    char* source = NULL;
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(GetSourceFromImportPath(path, lineNumber, &source),
+    HandleError(IsFileOpenable(path, lineNumber),
         "Import", containingPath);
 
     for (int i = 0; i < openedFiles.length; ++i)
     {
         const char* currentPath = *(char**)openedFiles.array[i];
-        if (IsSameFile(path, currentPath))
+
+        const int isSameFile = IsSameFile(path, currentPath);
+        if (isSameFile == -1)
+            HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
+                "Import", containingPath);
+
+        if (isSameFile)
             assert(0); // todo
     }
     char* _ = AllocateString(path);
     ArrayAdd(&openedFiles, &_);
+
+    ProgramNode programNode;
+
+    char* source = NULL;
+    HandleError(GetSourceFromImportPath(path, lineNumber, &source),
+        "Read", containingPath);
 
     Array tokens;
     HandleError(Scan(source, &tokens),
