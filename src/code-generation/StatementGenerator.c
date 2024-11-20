@@ -82,6 +82,17 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
         variable = (LiteralExpr){identifier, NULL};
         expr = (NodePtr){&variable, LiteralExpression};
     }
+    else if (expr.type == BinaryExpression)
+    {
+        const BinaryExpr* binary = expr.ptr;
+        assert(binary->operator.type == Equals);
+
+        Type _;
+        ASSERT_ERROR(GenerateExpression(&expr, &_, true, false));
+        WRITE_LITERAL(";");
+
+        expr = binary->left;
+    }
 
     assert(expr.type == LiteralExpression);
     GenerateStructMemberNames(expr.ptr, exprType, "stack_push(", ");", false);
