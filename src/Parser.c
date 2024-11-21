@@ -193,8 +193,8 @@ static Result ParseFunctionCall(NodePtr* out)
     if (identifier == NULL || PeekOne(LeftBracket, 1) == NULL)
         return ParsePrimary(out);
 
-    assert(MatchOne(Identifier) != NULL);
-    assert(MatchOne(LeftBracket) != NULL);
+    if (MatchOne(Identifier) == NULL) assert(0);
+    if (MatchOne(LeftBracket) == NULL) assert(0);
 
     Array params;
     HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression), assert(0));

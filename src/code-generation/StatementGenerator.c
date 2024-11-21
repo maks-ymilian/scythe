@@ -236,7 +236,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
             if (prefix == NULL)
                 prefix = "";
             char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
-            assert(snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text));
+            if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0) assert(0);
             HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix));
             break;
         }
@@ -406,7 +406,8 @@ static Result GenerateStructDeclaration(const StructDeclStmt* in)
     HANDLE_ERROR(RegisterStruct(in->identifier, &in->members));
 
     Type type;
-    assert(GetTypeFromToken(in->identifier, &type, false).success);
+    if (GetTypeFromToken(in->identifier, &type, false).success == false)
+        assert(0);
 
     for (int i = 0; i < in->members.length; ++i)
     {
