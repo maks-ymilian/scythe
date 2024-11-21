@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "Token.h"
 #include "data-structures/Array.h"
 
@@ -118,6 +120,7 @@ typedef struct
     Token type;
     Token identifier;
     NodePtr initializer;
+    bool public;
 } VarDeclStmt;
 
 VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
@@ -129,6 +132,7 @@ typedef struct
     Token identifier;
     Array parameters;
     NodePtr block;
+    bool public;
 } FuncDeclStmt;
 
 FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);
@@ -138,6 +142,7 @@ typedef struct
 {
     Token identifier;
     Array members;
+    bool public;
 } StructDeclStmt;
 
 StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);

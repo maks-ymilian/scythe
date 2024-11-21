@@ -466,12 +466,14 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
-    const Token* type = PeekType(0);
-    const Token* name = PeekOne(Identifier, 1);
+    const bool publicFound = PeekOne(Public, 0);
+    const Token* type = PeekType(0 + publicFound);
+    const Token* name = PeekOne(Identifier, 1 + publicFound);
 
     if (!(name && type))
         return NOT_FOUND_RESULT;
 
+    if (publicFound) Consume();
     Consume();
     Consume();
 
@@ -490,7 +492,13 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
             return ERROR_RESULT_LINE("Expected \";\"");
     }
 
-    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt){*type, *name, initializer});
+    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt)
+    {
+        .type = *type,
+        .identifier = *name,
+        .initializer = initializer,
+        .public = publicFound,
+    });
     *out = (NodePtr){varDecl, VariableDeclaration};
     return SUCCESS_RESULT;
 }
@@ -504,12 +512,14 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* type = PeekType(0);
-    const Token* identifier = PeekOne(Identifier, 1);
+    const bool publicFound = PeekOne(Public, 0) != NULL;
+    const Token* type = PeekType(0 + publicFound);
+    const Token* identifier = PeekOne(Identifier, 1 + publicFound);
 
-    if (!(identifier && type && PeekOne(LeftBracket, 2)))
+    if (!(identifier && type && PeekOne(LeftBracket, 2 + publicFound)))
         return NOT_FOUND_RESULT;
 
+    if (publicFound) Consume();
     Consume();
     Consume();
     Consume();
@@ -526,7 +536,14 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected code block after function declaration"));
 
-    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt){*type, *identifier, params, block});
+    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt)
+    {
+        .type = *type,
+        .identifier = *identifier,
+        .parameters = params,
+        .block = block,
+        .public = publicFound,
+    });
     *out = (NodePtr){funcDecl, FunctionDeclaration};
 
     return SUCCESS_RESULT;
@@ -536,8 +553,12 @@ static Result ParseStructDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    if (MatchOne(Struct) == NULL)
+    const bool publicFound = PeekOne(Public, 0) != NULL;
+    if (PeekOne(Struct, publicFound) == NULL)
         return NOT_FOUND_RESULT;
+
+    if (publicFound) Consume();
+    Consume();
 
     SET_LINE_NUMBER
     const Token* identifier = MatchOne(Identifier);
@@ -561,7 +582,12 @@ static Result ParseStructDeclaration(NodePtr* out)
     if (MatchOne(RightCurlyBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
-    StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt){*identifier, members});
+    StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt)
+    {
+        .identifier = *identifier,
+        .members = members,
+        .public = publicFound,
+    });
     *out = (NodePtr){structDecl, StructDeclaration};
 
     return SUCCESS_RESULT;
