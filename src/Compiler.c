@@ -77,6 +77,29 @@ static void HandleError(const Result result, const char* errorStage, const char*
     exit(1);
 }
 
+static Result WriteOutputFile(const char* path, const char* code, const size_t length)
+{
+    FILE* file = fopen(path, "wb");
+    if (file == NULL)
+    {
+        fclose(file);
+        return ERROR_RESULT(AllocateString2Str("Failed to open output file \"%s\": %s", path, strerror(errno)), -1);
+    }
+
+    if (length == 0)
+    {
+        fclose(file);
+        return SUCCESS_RESULT;
+    }
+
+    fwrite(code, sizeof(uint8_t), length, file);
+    if (ferror(file))
+        return ERROR_RESULT(AllocateString1Str("Failed to write to output file \"%s\"", path), -1);
+
+    fclose(file);
+    return SUCCESS_RESULT;
+}
+
 static Result IsFileOpenable(const char* path, const int lineNumber)
 {
     FILE* file = fopen(path, "rb");
@@ -172,19 +195,21 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
     return programNode;
 }
 
-char* Compile(const char* path, size_t* outLength)
+void Compile(const char* inputPath, const char* outputPath)
 {
     programNodes = AllocateArray(sizeof(ProgramNodeEntry));
-    const ProgramNode* programTree = GenerateProgramNode(path, NULL, NULL);
+    const ProgramNode* programTree = GenerateProgramNode(inputPath, NULL, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
     HandleError(GenerateCode(&programTree->ast, (uint8_t**)&outputCode, &outputCodeLength),
                 "Code generation", NULL);
-    assert(outputCode != NULL);
 
     FreeProgramTree();
 
-    *outLength = outputCodeLength;
-    return outputCode;
+    printf("Output code:\n%.*s", (int)outputCodeLength, outputCode);
+    HandleError(WriteOutputFile(outputPath, outputCode, outputCodeLength),
+        "Write", NULL);
+
+    free(outputCode);
 }

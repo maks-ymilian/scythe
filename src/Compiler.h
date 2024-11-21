@@ -1,5 +1,3 @@
 #pragma once
 
-#include <inttypes.h>
-
-char* Compile(const char* path, size_t* outLength);
+void Compile(const char* inputPath, const char* outputPath);
