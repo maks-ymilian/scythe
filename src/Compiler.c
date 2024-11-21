@@ -209,7 +209,7 @@ void Compile(const char* inputPath, const char* outputPath)
 
     printf("Output code:\n%.*s", (int)outputCodeLength, outputCode);
     HandleError(WriteOutputFile(outputPath, outputCode, outputCodeLength),
-        "Write", NULL);
+                "Write", NULL);
 
     free(outputCode);
 }

@@ -180,6 +180,10 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     const ScopeNode* scope = GetCurrentScope();
     const bool globalScope = scope->parent == NULL;
 
+    if (!globalScope && in->public)
+        return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
+            in->identifier.lineNumber, Public);
+
     if (globalScope) BeginRead();
 
     Type type;
@@ -342,6 +346,12 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
 
 static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 {
+    const ScopeNode* scope = GetCurrentScope();
+    const bool globalScope = scope->parent == NULL;
+    if (!globalScope && in->public)
+        return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
+            in->identifier.lineNumber, Public);
+
     BeginRead();
 
     PushScope();
