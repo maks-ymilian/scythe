@@ -680,8 +680,10 @@ static Result ParseProgram(AST* out)
         if (stmt.type != Section &&
             stmt.type != FunctionDeclaration &&
             stmt.type != StructDeclaration &&
+            stmt.type != VariableDeclaration &&
             stmt.type != ImportStatement)
-            return ERROR_RESULT_LINE("Expected section statement, struct declaration, or function declaration");
+            return ERROR_RESULT_LINE(
+                "Expected section statement, variable declaration, struct declaration, or function declaration");
 
         ArrayAdd(&stmtArray, &stmt);
     }

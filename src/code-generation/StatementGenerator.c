@@ -177,6 +177,11 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type
 
 static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix)
 {
+    const ScopeNode* scope = GetCurrentScope();
+    const bool globalScope = scope->parent == NULL;
+
+    if (globalScope) BeginRead();
+
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
@@ -214,6 +219,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->identifier.lineNumber));
 
     if (prefix != NULL) free(fullName);
+
+    if (globalScope) EndReadMove(SIZE_MAX);
 
     return SUCCESS_RESULT;
 }
