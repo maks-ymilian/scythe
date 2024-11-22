@@ -11,7 +11,7 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
     return result;
 }
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix);
+static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName);
 
 static void GenerateStructMemberNames(
     const LiteralExpr* expr,
@@ -25,8 +25,8 @@ static void GenerateStructMemberNames(
     const StructSymbolData structSymbol = symbol->structData;
 
     for (int i = reverseOrder ? structSymbol.members->length - 1 : 0;
-        reverseOrder ? i >= 0 : i < structSymbol.members->length;
-        reverseOrder ? --i : ++i)
+         reverseOrder ? i >= 0 : i < structSymbol.members->length;
+         reverseOrder ? --i : ++i)
     {
         const NodePtr* node = structSymbol.members->array[i];
 
@@ -52,11 +52,13 @@ static void GenerateStructMemberNames(
                 break;
             }
 
-            if (beforeText != NULL) WRITE_TEXT(beforeText);
+            if (beforeText != NULL)
+                WRITE_TEXT(beforeText);
             Type _;
             ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
             last->next = NULL;
-            if (afterText != NULL) WRITE_TEXT(afterText);
+            if (afterText != NULL)
+                WRITE_TEXT(afterText);
             break;
         }
         default:
@@ -77,7 +79,7 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
         const Token typeToken = (Token){Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
         const Token identifier = (Token){Identifier, funcCall->identifier.lineNumber, "temp"};
         const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
-        ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL));
+        ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL, NULL));
 
         variable = (LiteralExpr){identifier, NULL};
         expr = (NodePtr){&variable, LiteralExpression};
@@ -122,7 +124,8 @@ Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long
 
 Result GeneratePopValue(const VarDeclStmt* varDecl)
 {
-    HANDLE_ERROR(GenerateVariableDeclaration(varDecl, NULL));
+    int uniqueName;
+    HANDLE_ERROR(GenerateVariableDeclaration(varDecl, NULL, &uniqueName));
 
     Type type;
     ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
@@ -135,6 +138,7 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
 
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(varDecl->identifier.text);
+    WriteInteger(uniqueName);
     WRITE_LITERAL("=stack_pop();");
 
     return SUCCESS_RESULT;
@@ -175,14 +179,14 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type, const char* prefix);
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix)
+static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName)
 {
     const ScopeNode* scope = GetCurrentScope();
     const bool globalScope = scope->parent == NULL;
 
     if (!globalScope && in->public)
         return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
-            in->identifier.lineNumber, Public);
+                                  in->identifier.lineNumber, Public);
 
     if (globalScope) BeginRead();
 
@@ -193,7 +197,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
         return GenerateStructVariableDeclaration(in, type, prefix);
 
     assert(in->identifier.type == Identifier);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL));
+    int uniqueName;
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, &uniqueName));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -215,6 +220,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(fullName);
+    WriteInteger(uniqueName);
     WRITE_LITERAL("=");
     Type initializerType;
     HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, isInteger));
@@ -226,6 +232,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     if (globalScope) EndReadMove(SIZE_MAX);
 
+    if (outUniqueName != NULL) *outUniqueName = uniqueName;
     return SUCCESS_RESULT;
 }
 
@@ -247,8 +254,9 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
             if (prefix == NULL)
                 prefix = "";
             char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
-            if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0) assert(0);
-            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix));
+            if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0)
+                assert(0);
+            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix, NULL));
             break;
         }
         default: assert(0);
@@ -257,7 +265,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 
     Map symbolTable;
     PopScope(&symbolTable);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, NULL));
 
     if (in->initializer.type != NullNode)
     {
@@ -350,7 +358,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     const bool globalScope = scope->parent == NULL;
     if (!globalScope && in->public)
         return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
-            in->identifier.lineNumber, Public);
+                                  in->identifier.lineNumber, Public);
 
     BeginRead();
 
@@ -370,12 +378,8 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     assert(in->identifier.type == Identifier);
 
-    WRITE_LITERAL("function ");
-    WRITE_LITERAL("func_");
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(GetFunctionCounter());
-    WRITE_LITERAL("()\n");
-
+    const size_t pos = GetStreamPosition();
+    BeginRead();
     WRITE_LITERAL("(0;");
     Array params = AllocateArray(sizeof(FunctionParameter));
     bool hasOptionalParams = false;
@@ -408,19 +412,29 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
     WRITE_LITERAL(");\n");
+    const Buffer functionBlock = EndRead();
+    SetStreamPosition(pos);
 
     PopScope(NULL);
 
-    EndReadMove(SIZE_MAX);
+    int uniqueName;
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, &uniqueName));
 
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params));
+    WRITE_LITERAL("function ");
+    WRITE_LITERAL("func_");
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(uniqueName);
+    WRITE_LITERAL("()\n");
+    Write(functionBlock.buffer, functionBlock.length);
+
+    EndReadMove(SIZE_MAX);
 
     return SUCCESS_RESULT;
 }
 
 static Result GenerateStructDeclaration(const StructDeclStmt* in)
 {
-    HANDLE_ERROR(RegisterStruct(in->identifier, &in->members));
+    HANDLE_ERROR(RegisterStruct(in->identifier, &in->members, NULL));
 
     Type type;
     if (GetTypeFromToken(in->identifier, &type, false).success == false)
@@ -515,7 +529,7 @@ Result GenerateStatement(const NodePtr* in)
     case Section:
         return GenerateSectionStatement(in->ptr);
     case VariableDeclaration:
-        return GenerateVariableDeclaration(in->ptr, NULL);
+        return GenerateVariableDeclaration(in->ptr, NULL, NULL);
     case BlockStatement:
     {
         const ScopeNode* functionScope = GetFunctionScope();

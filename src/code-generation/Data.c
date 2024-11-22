@@ -8,7 +8,7 @@
 #include "Common.h"
 #include "StringUtils.h"
 
-static int functionCounter;
+static int symbolCounter;
 
 static Map types;
 
@@ -17,8 +17,6 @@ static ScopeNode* currentScope;
 static MemoryStream* tempStream;
 static MemoryStream* finalStream;
 static Array streamReadPoints;
-
-int GetFunctionCounter() { return functionCounter; }
 
 void Write(const void* buffer, const size_t length)
 {
@@ -166,15 +164,18 @@ static bool AddType(const char* name, const MetaType metaType)
     return true;
 }
 
-static Result AddSymbol(const char* name, const SymbolData data, const long errorLineNumber)
+static Result AddSymbol(const char* name, SymbolData data, const long errorLineNumber, int* outUniqueName)
 {
+    data.uniqueName = symbolCounter;
     if (!MapAdd(&currentScope->symbolTable, name, &data))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
 
+    if (outUniqueName != NULL) *outUniqueName = symbolCounter;
+    symbolCounter++;
     return SUCCESS_RESULT;
 }
 
-Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable)
+Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable, int* outUniqueName)
 {
     VariableSymbolData data;
     data.type = type;
@@ -184,40 +185,32 @@ Result RegisterVariable(const Token identifier, const Type type, const Map* symb
         data.symbolTable = *symbolTable;
     }
 
-    SymbolData symbolData;
-    symbolData.symbolType = VariableSymbol;
-    symbolData.variableData = data;
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
+    const SymbolData symbolData = {.symbolType = VariableSymbol, .variableData = data, .uniqueName = -1};
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams)
+Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams, int* outUniqueName)
 {
     FunctionSymbolData data;
     data.parameters = *funcParams;
     data.returnType = returnType;
-    data.uniqueName = functionCounter;
-    functionCounter++;
 
-    SymbolData symbolData;
-    symbolData.symbolType = FunctionSymbol;
-    symbolData.functionData = data;
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
+    const SymbolData symbolData = {.symbolType = FunctionSymbol, .functionData = data, .uniqueName = -1};
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterStruct(const Token identifier, const Array* members)
+Result RegisterStruct(const Token identifier, const Array* members, int* outUniqueName)
 {
     StructSymbolData data;
     data.members = members;
 
-    SymbolData symbolData;
-    symbolData.symbolType = StructSymbol;
-    symbolData.structData = data;
+    const SymbolData symbolData = {.symbolType = StructSymbol, .structData = data, .uniqueName = -1};
 
     if (!AddType(identifier.text, StructType))
         return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
                             identifier.lineNumber);
 
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber);
+    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
 }
 
 static ScopeNode* AllocateScopeNode()
@@ -276,7 +269,7 @@ ScopeNode* GetCurrentScope()
 
 void InitResources()
 {
-    functionCounter = 0;
+    symbolCounter = 0;
 
     streamReadPoints = AllocateArray(sizeof(size_t));
     tempStream = AllocateMemoryStream();

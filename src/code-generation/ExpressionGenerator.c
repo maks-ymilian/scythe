@@ -139,6 +139,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 
         WRITE_LITERAL(VARIABLE_PREFIX);
         WRITE_TEXT(in->value.text);
+        WriteInteger(symbol->uniqueName);
 
         Type type = symbol->variableData.type;
         const LiteralExpr* current = in;
@@ -272,7 +273,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
     }
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
-    WriteInteger(function.uniqueName);
+    WriteInteger(symbol->uniqueName);
     WRITE_LITERAL("(););");
 
     if (function.returnType.id != GetKnownType("void").id)

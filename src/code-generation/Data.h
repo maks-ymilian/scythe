@@ -33,7 +33,6 @@ typedef struct
 {
     Type returnType;
     Array parameters;
-    int uniqueName;
 } FunctionSymbolData;
 
 typedef struct
@@ -45,6 +44,7 @@ typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
 
 typedef struct
 {
+    int uniqueName;
     SymbolType symbolType;
 
     union
@@ -67,8 +67,6 @@ struct ScopeNode
 
 typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 
-int GetFunctionCounter();
-
 void Write(const void* buffer, size_t length);
 size_t GetStreamPosition();
 void SetStreamPosition(size_t pos);
@@ -82,9 +80,9 @@ Type GetKnownType(const char* name);
 
 Result GetSymbol(const char* name, long errorLineNumber, SymbolData** outSymbol);
 SymbolData* GetKnownSymbol(const char* name);
-Result RegisterVariable(Token identifier, Type type, const Map* symbolTable);
-Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams);
-Result RegisterStruct(Token identifier, const Array* members);
+Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, int* outUniqueName);
+Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams, int* outUniqueName);
+Result RegisterStruct(Token identifier, const Array* members, int* outUniqueName);
 
 void PushScope();
 void PopScope(Map* outSymbolTable);
