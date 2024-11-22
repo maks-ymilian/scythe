@@ -18,6 +18,7 @@ typedef struct
 {
     AST ast;
     Array dependencies;
+    bool searched;
 } ProgramNode;
 
 typedef struct
@@ -192,7 +193,32 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
                     "Import", path);
     }
 
+    programNode->searched = false;
     return programNode;
+}
+
+static void SortVisit(ProgramNode* node, Array* array)
+{
+    if (node->searched == true)
+        return;
+
+    for (int i = 0; i < node->dependencies.length; ++i)
+        SortVisit(*(ProgramNode**)node->dependencies.array[i], array);
+
+    node->searched = true;
+    ArrayAdd(array, &node);
+}
+
+static Array SortProgramTree()
+{
+    Array array = AllocateArray(sizeof(ProgramNode*));
+    for (int i = 0; i < programNodes.length; ++i)
+    {
+        const ProgramNodeEntry* node = programNodes.array[i];
+        if (node->programNode->searched == 0)
+            SortVisit(node->programNode, &array);
+    }
+    return array;
 }
 
 void Compile(const char* inputPath, const char* outputPath)
