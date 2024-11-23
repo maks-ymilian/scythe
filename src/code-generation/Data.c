@@ -8,7 +8,7 @@
 #include "Common.h"
 #include "StringUtils.h"
 
-static int symbolCounter;
+static int symbolCounter = 0;
 
 static Map types;
 
@@ -269,8 +269,6 @@ ScopeNode* GetCurrentScope()
 
 void InitResources()
 {
-    symbolCounter = 0;
-
     streamReadPoints = AllocateArray(sizeof(size_t));
     tempStream = AllocateMemoryStream();
     finalStream = AllocateMemoryStream();
