@@ -21,7 +21,7 @@ static void GenerateStructMemberNames(
     const bool reverseOrder)
 {
     const SymbolData* symbol = GetKnownSymbol(exprType.name);
-    assert(symbol->symbolType == StructSymbol);
+    assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData structSymbol = symbol->structData;
 
     for (int i = reverseOrder ? structSymbol.members->length - 1 : 0;
@@ -32,7 +32,7 @@ static void GenerateStructMemberNames(
 
         switch (node->type)
         {
-        case VariableDeclaration:
+        case Node_VariableDeclaration:
         {
             const VarDeclStmt* varDecl = node->ptr;
 
@@ -41,11 +41,11 @@ static void GenerateStructMemberNames(
             LiteralExpr* last = &literal;
             while (last->next != NULL) last = last->next;
             last->next = &next;
-            NodePtr node = (NodePtr){&literal, LiteralExpression};
+            NodePtr node = (NodePtr){&literal, Node_Literal};
 
             Type memberType;
             ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
-            if (memberType.metaType == StructType)
+            if (memberType.metaType == MetaType_Struct)
             {
                 GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
                 last->next = NULL;
@@ -72,22 +72,22 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
     PushScope();
 
     LiteralExpr variable;
-    if (expr.type == FunctionCallExpression)
+    if (expr.type == Node_FunctionCall)
     {
         const FuncCallExpr* funcCall = expr.ptr;
 
-        const Token typeToken = (Token){Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
-        const Token identifier = (Token){Identifier, funcCall->identifier.lineNumber, "temp"};
+        const Token typeToken = (Token){Token_Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
+        const Token identifier = (Token){Token_Identifier, funcCall->identifier.lineNumber, "temp"};
         const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
         ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL, NULL));
 
         variable = (LiteralExpr){identifier, NULL};
-        expr = (NodePtr){&variable, LiteralExpression};
+        expr = (NodePtr){&variable, Node_Literal};
     }
-    else if (expr.type == BinaryExpression)
+    else if (expr.type == Node_Binary)
     {
         const BinaryExpr* binary = expr.ptr;
-        assert(binary->operator.type == Equals);
+        assert(binary->operator.type == Token_Equals);
 
         Type _;
         ASSERT_ERROR(GenerateExpression(&expr, &_, true, false));
@@ -96,7 +96,7 @@ static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
         expr = binary->left;
     }
 
-    assert(expr.type == LiteralExpression);
+    assert(expr.type == Node_Literal);
     GenerateStructMemberNames(expr.ptr, exprType, "stack_push(", ");", false);
 
     PopScope(NULL);
@@ -113,7 +113,7 @@ Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long
 
     HANDLE_ERROR(CheckAssignmentCompatibility(expectedType, exprType, lineNumber));
 
-    if (exprType.metaType == StructType)
+    if (exprType.metaType == MetaType_Struct)
     {
         SetStreamPosition(pos);
         GeneratePushStructVariable(expr, exprType);
@@ -129,7 +129,7 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
 
     Type type;
     ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
-    if (type.metaType == StructType)
+    if (type.metaType == MetaType_Struct)
     {
         const LiteralExpr literal = (LiteralExpr){.value = varDecl->identifier, .next = NULL};
         GenerateStructMemberNames(&literal, type, NULL, "=stack_pop();", true);
@@ -155,7 +155,7 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
 
     const Type returnType = functionScope->functionReturnType;
     const bool isVoid = returnType.id == GetKnownType("void").id;
-    if (in->expr.type == NullNode)
+    if (in->expr.type == Node_Null)
     {
         if (!isVoid)
             return ERROR_RESULT(
@@ -186,26 +186,26 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     if (!globalScope && in->public)
         return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
-                                  in->identifier.lineNumber, Public);
+                                  in->identifier.lineNumber, Token_Public);
 
     if (globalScope) BeginRead();
 
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
-    if (type.metaType == StructType)
+    if (type.metaType == MetaType_Struct)
         return GenerateStructVariableDeclaration(in, type, prefix);
 
-    assert(in->identifier.type == Identifier);
+    assert(in->identifier.type == Token_Identifier);
     int uniqueName;
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, &uniqueName));
 
     NodePtr initializer;
-    LiteralExpr zero = (LiteralExpr){(Token){NumberLiteral, in->identifier.lineNumber, "0"}};
-    if (in->initializer.type == NullNode)
+    LiteralExpr zero = (LiteralExpr){(Token){Token_NumberLiteral, in->identifier.lineNumber, "0"}};
+    if (in->initializer.type == Node_Null)
     {
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
-            initializer = (NodePtr){&zero, LiteralExpression};
+            initializer = (NodePtr){&zero, Node_Literal};
         else
             return ERROR_RESULT(AllocateString1Str("Variable of type \"%s\" must be initialized", type.name),
                                 in->identifier.lineNumber);
@@ -239,7 +239,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
     const SymbolData* symbol = GetKnownSymbol(in->type.text);
-    assert(symbol->symbolType == StructSymbol);
+    assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData data = symbol->structData;
 
     PushScope();
@@ -249,7 +249,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         const NodePtr* node = data.members->array[i];
         switch (node->type)
         {
-        case VariableDeclaration:
+        case Node_VariableDeclaration:
         {
             if (prefix == NULL)
                 prefix = "";
@@ -267,16 +267,16 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
     PopScope(&symbolTable);
     HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, NULL));
 
-    if (in->initializer.type != NullNode)
+    if (in->initializer.type != Node_Null)
     {
         LiteralExpr left = (LiteralExpr){in->identifier, NULL};
         BinaryExpr expr = (BinaryExpr)
         {
-            (NodePtr){&left, LiteralExpression},
-            (Token){Equals, in->type.lineNumber, NULL},
+            (NodePtr){&left, Node_Literal},
+            (Token){Token_Equals, in->type.lineNumber, NULL},
             in->initializer
         };
-        const NodePtr node = (NodePtr){&expr, BinaryExpression};
+        const NodePtr node = (NodePtr){&expr, Node_Binary};
         Type outType;
         HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
         WRITE_LITERAL(";");
@@ -289,9 +289,9 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
 {
     switch (node.type)
     {
-    case ReturnStatement:
+    case Node_Return:
         return true;
-    case IfStatement:
+    case Node_If:
     {
         const IfStmt* ifStmt = node.ptr;
         const bool trueReturns = ControlPathsReturn(ifStmt->trueStmt, allPathsMustReturn);
@@ -301,7 +301,7 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
             return trueReturns && falseReturns;
         return trueReturns || falseReturns;
     }
-    case BlockStatement:
+    case Node_Block:
     {
         const BlockStmt* block = node.ptr;
         for (int i = 0; i < block->statements.length; ++i)
@@ -312,10 +312,10 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
         }
         return false;
     }
-    case ExpressionStatement:
-    case VariableDeclaration:
-    case FunctionDeclaration:
-    case NullNode:
+    case Node_ExpressionStatement:
+    case Node_VariableDeclaration:
+    case Node_FunctionDeclaration:
+    case Node_Null:
         return false;
     default: assert(0);
     }
@@ -358,7 +358,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     const bool globalScope = scope->parent == NULL;
     if (!globalScope && in->public)
         return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
-                                  in->identifier.lineNumber, Public);
+                                  in->identifier.lineNumber, Token_Public);
 
     BeginRead();
 
@@ -371,12 +371,12 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     currentScope->isFunction = true;
     currentScope->functionReturnType = returnType;
 
-    assert(in->block.type == BlockStatement);
+    assert(in->block.type == Node_Block);
 
     if (!ControlPathsReturn(in->block, true) && returnType.id != GetKnownType("void").id)
         return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
 
-    assert(in->identifier.type == Identifier);
+    assert(in->identifier.type == Token_Identifier);
 
     const size_t pos = GetStreamPosition();
     BeginRead();
@@ -386,7 +386,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     for (int i = 0; i < in->parameters.length; ++i)
     {
         const NodePtr* node = in->parameters.array[i];
-        assert(node->type == VariableDeclaration);
+        assert(node->type == Node_VariableDeclaration);
         const VarDeclStmt* varDecl = node->ptr;
 
         if (varDecl->initializer.ptr != NULL)
@@ -404,7 +404,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     for (int i = in->parameters.length - 1; i >= 0; --i)
     {
         const NodePtr* node = in->parameters.array[i];
-        assert(node->type == VariableDeclaration);
+        assert(node->type == Node_VariableDeclaration);
         const VarDeclStmt* varDecl = node->ptr;
 
         HANDLE_ERROR(GeneratePopValue(varDecl));
@@ -443,7 +443,7 @@ static Result GenerateStructDeclaration(const StructDeclStmt* in)
     for (int i = 0; i < in->members.length; ++i)
     {
         const NodePtr* node = in->members.array[i];
-        if (node->type != VariableDeclaration)
+        if (node->type != Node_VariableDeclaration)
             continue;
 
         const VarDeclStmt* varDecl = node->ptr;
@@ -486,7 +486,7 @@ static Result GenerateIfStatement(const IfStmt* in)
     WRITE_LITERAL("?(\n");
     HANDLE_ERROR(GenerateStatement(&in->trueStmt));
     WRITE_LITERAL(")");
-    if (in->falseStmt.type != NullNode)
+    if (in->falseStmt.type != Node_Null)
     {
         WRITE_LITERAL(":(\n");
         HANDLE_ERROR(GenerateStatement(&in->falseStmt));
@@ -499,12 +499,12 @@ static Result GenerateIfStatement(const IfStmt* in)
 
 static Result GenerateSectionStatement(const SectionStmt* in)
 {
-    if (in->type.type != Init &&
-        in->type.type != Slider &&
-        in->type.type != Block &&
-        in->type.type != Sample &&
-        in->type.type != Serialize &&
-        in->type.type != GFX)
+    if (in->type.type != Token_Init &&
+        in->type.type != Token_Slider &&
+        in->type.type != Token_Block &&
+        in->type.type != Token_Sample &&
+        in->type.type != Token_Serialize &&
+        in->type.type != Token_GFX)
         assert(0);
 
     BeginRead();
@@ -520,26 +520,26 @@ Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
-    case ImportStatement:
+    case Node_Import:
         return SUCCESS_RESULT;
-    case ExpressionStatement:
+    case Node_ExpressionStatement:
         return GenerateExpressionStatement(in->ptr);
-    case ReturnStatement:
+    case Node_Return:
         return GenerateReturnStatement(in->ptr);
-    case Section:
+    case Node_Section:
         return GenerateSectionStatement(in->ptr);
-    case VariableDeclaration:
+    case Node_VariableDeclaration:
         return GenerateVariableDeclaration(in->ptr, NULL, NULL);
-    case BlockStatement:
+    case Node_Block:
     {
         const ScopeNode* functionScope = GetFunctionScope();
         return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
     }
-    case FunctionDeclaration:
+    case Node_FunctionDeclaration:
         return GenerateFunctionDeclaration(in->ptr);
-    case StructDeclaration:
+    case Node_StructDeclaration:
         return GenerateStructDeclaration(in->ptr);
-    case IfStatement:
+    case Node_If:
         return GenerateIfStatement(in->ptr);
     default:
         assert(0);

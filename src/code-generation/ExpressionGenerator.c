@@ -31,7 +31,7 @@ static int CountCharacters(const char character, const char* string)
 
 static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* out)
 {
-    assert(token.type == NumberLiteral);
+    assert(token.type == Token_NumberLiteral);
     assert(token.text != NULL);
 
     const size_t length = strlen(token.text);
@@ -111,7 +111,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     const Token literal = in->value;
     switch (literal.type)
     {
-    case NumberLiteral:
+    case Token_NumberLiteral:
     {
         char number[strlen(literal.text) + 1];
         bool integer;
@@ -121,7 +121,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         WRITE_TEXT(number);
         return SUCCESS_RESULT;
     }
-    case StringLiteral:
+    case Token_StringLiteral:
     {
         WRITE_LITERAL("\"");
         if (literal.text[0] != '\0')
@@ -130,11 +130,11 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         *outType = GetKnownType("string");
         return SUCCESS_RESULT;
     }
-    case Identifier:
+    case Token_Identifier:
     {
         SymbolData* symbol;
         HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
-        if (symbol->symbolType != VariableSymbol)
+        if (symbol->symbolType != SymbolType_Variable)
             return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
         WRITE_LITERAL(VARIABLE_PREFIX);
@@ -147,7 +147,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         {
             WRITE_LITERAL(".");
 
-            if (type.metaType != StructType)
+            if (type.metaType != MetaType_Struct)
                 return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
 
             SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
@@ -157,7 +157,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
                         current->next->value.text, type.name),
                     current->next->value.lineNumber);
 
-            assert(memberSymbol->symbolType == VariableSymbol);
+            assert(memberSymbol->symbolType == SymbolType_Variable);
             type = memberSymbol->variableData.type;
             symbol = memberSymbol;
 
@@ -169,13 +169,13 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         *outType = type;
         return SUCCESS_RESULT;
     }
-    case True:
+    case Token_True:
     {
         WRITE_LITERAL("1");
         *outType = GetKnownType("bool");
         return SUCCESS_RESULT;
     }
-    case False:
+    case Token_False:
     {
         WRITE_LITERAL("0");
         *outType = GetKnownType("bool");
@@ -214,21 +214,21 @@ Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpres
 static long CountStructVariables(const Type structType)
 {
     const SymbolData* symbol = GetKnownSymbol(structType.name);
-    assert(symbol->symbolType == StructSymbol);
+    assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData* structData = &symbol->structData;
 
     long count = 0;
     for (int i = 0; i < structData->members->length; ++i)
     {
         const NodePtr* member = structData->members->array[i];
-        if (member->type != VariableDeclaration)
+        if (member->type != Node_VariableDeclaration)
             continue;
 
         const VarDeclStmt* varDecl = member->ptr;
         Type memberType;
         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
 
-        if (memberType.metaType == StructType)
+        if (memberType.metaType == MetaType_Struct)
         {
             count += CountStructVariables(memberType);
             continue;
@@ -243,7 +243,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 {
     SymbolData* symbol;
     HANDLE_ERROR(GetSymbol(in->identifier.text, in->identifier.lineNumber, &symbol));
-    if (symbol->symbolType != FunctionSymbol)
+    if (symbol->symbolType != SymbolType_Function)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
 
@@ -278,7 +278,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outTy
 
     if (function.returnType.id != GetKnownType("void").id)
     {
-        const long variableCount = function.returnType.metaType == StructType ? CountStructVariables(function.returnType) : 1;
+        const long variableCount = function.returnType.metaType == MetaType_Struct ? CountStructVariables(function.returnType) : 1;
         for (int i = 0; i < variableCount; ++i)
         {
             WRITE_LITERAL("__ret");
@@ -309,15 +309,15 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
     switch (in->operator.type)
     {
-    case Exclamation:
+    case Token_Exclamation:
         if (type.id != GetKnownType("bool").id)
             return UnaryOperatorErrorResult(in->operator, type);
         break;
-    case Minus:
+    case Token_Minus:
         if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
             return UnaryOperatorErrorResult(in->operator, type);
         break;
-    case Plus:
+    case Token_Plus:
         if (type.id != GetKnownType("int").id && type.id != GetKnownType("float").id)
             return UnaryOperatorErrorResult(in->operator, type);
         break;
@@ -339,7 +339,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
     for (int i = 0; i < structData.members->length; i++)
     {
         const NodePtr* node = structData.members->array[i];
-        if (node->type != VariableDeclaration)
+        if (node->type != Node_VariableDeclaration)
             continue;
         const VarDeclStmt* varDecl = node->ptr;
         LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
@@ -351,17 +351,17 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
 
         Type memberType;
         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
-        if (memberType.metaType == StructType)
+        if (memberType.metaType == MetaType_Struct)
         {
             const SymbolData* symbol = GetKnownSymbol(memberType.name);
-            assert(symbol->symbolType == StructSymbol);
+            assert(symbol->symbolType == SymbolType_Struct);
             const StructSymbolData* structData = &symbol->structData;
             GenerateFunctionStructAssignment(left, *structData, returnNumber);
             leftLast->next = NULL;
             continue;
         }
 
-        const NodePtr leftNode = (NodePtr){(void*)left, LiteralExpression};
+        const NodePtr leftNode = (NodePtr){(void*)left, Node_Literal};
         Type _;
         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
 
@@ -377,14 +377,14 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
 
 static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* right, const StructSymbolData structData)
 {
-    const Token equals = (Token){Equals, 0, NULL};
+    const Token equals = (Token){Token_Equals, 0, NULL};
 
     for (int i = 0; i < structData.members->length; ++i)
     {
         const NodePtr* node = structData.members->array[i];
         switch (node->type)
         {
-        case VariableDeclaration:
+        case Node_VariableDeclaration:
         {
             const VarDeclStmt* varDecl = node->ptr;
             LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
@@ -397,8 +397,8 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
             leftLast->next = &varDeclIdentifier;
             rightLast->next = &varDeclIdentifier;
 
-            BinaryExpr expr = (BinaryExpr){(NodePtr){left, LiteralExpression}, equals, (NodePtr){right, LiteralExpression}};
-            NodePtr node = (NodePtr){&expr, BinaryExpression};
+            BinaryExpr expr = (BinaryExpr){(NodePtr){left, Node_Literal}, equals, (NodePtr){right, Node_Literal}};
+            NodePtr node = (NodePtr){&expr, Node_Binary};
 
             Type outType;
             ASSERT_ERROR(GenerateExpression(&node, &outType, true, false));
@@ -416,15 +416,15 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
 
 static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
-    assert(left.type == LiteralExpression);
+    assert(left.type == Node_Literal);
 
     const SymbolData* symbol = GetKnownSymbol(structType.name);
-    assert(symbol->symbolType == StructSymbol);
+    assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData structData = symbol->structData;
 
-    if (right.type == LiteralExpression)
+    if (right.type == Node_Literal)
         GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
-    else if (right.type == FunctionCallExpression)
+    else if (right.type == Node_FunctionCall)
         GenerateFunctionStructAssignment(left.ptr, structData, NULL);
     else
         assert(0);
@@ -434,11 +434,11 @@ static bool IsAssignmentOperator(const TokenType token)
 {
     switch (token)
     {
-    case Equals:
-    case PlusEquals:
-    case MinusEquals:
-    case SlashEquals:
-    case AsteriskEquals:
+    case Token_Equals:
+    case Token_PlusEquals:
+    case Token_MinusEquals:
+    case Token_SlashEquals:
+    case Token_AsteriskEquals:
         return true;
     default: return false;
     }
@@ -447,7 +447,7 @@ static bool IsAssignmentOperator(const TokenType token)
 static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 {
     if (IsAssignmentOperator(in->operator.type) &&
-        in->right.type == BinaryExpression &&
+        in->right.type == Node_Binary &&
         IsAssignmentOperator(((BinaryExpr*)in->right.ptr)->operator.type))
         return ERROR_RESULT("Chained assignment is not allowed", in->operator.lineNumber);
 
@@ -480,18 +480,18 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
     switch (in->operator.type)
     {
-    case Equals:
-    case PlusEquals:
-    case MinusEquals:
-    case SlashEquals:
-    case AsteriskEquals:
+    case Token_Equals:
+    case Token_PlusEquals:
+    case Token_MinusEquals:
+    case Token_SlashEquals:
+    case Token_AsteriskEquals:
         // assignment
     {
         bool isLvalue = false;
-        if (in->left.type == LiteralExpression)
+        if (in->left.type == Node_Literal)
         {
             const LiteralExpr* literal = in->left.ptr;
-            if (literal->value.type == Identifier)
+            if (literal->value.type == Token_Identifier)
                 isLvalue = true;
         }
 
@@ -502,7 +502,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
         *outType = leftType;
 
-        if (in->operator.type == Equals)
+        if (in->operator.type == Token_Equals)
         {
             if (leftType.id == GetKnownType("int").id)
             {
@@ -513,12 +513,12 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 WRITE_LITERAL("|0)");
                 textWritten = true;
             }
-            else if (leftType.metaType == StructType)
+            else if (leftType.metaType == MetaType_Struct)
             {
-                assert(in->operator.type == Equals);
+                assert(in->operator.type == Token_Equals);
                 assert(leftType.id == rightType.id);
 
-                if (in->right.type == FunctionCallExpression)
+                if (in->right.type == Node_FunctionCall)
                     Write(right.buffer, right.length);
 
                 GenerateStructAssignment(in->left, in->right, leftType);
@@ -532,23 +532,23 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         TokenType arithmeticOperator;
         switch (in->operator.type)
         {
-        case PlusEquals:
-            arithmeticOperator = Plus;
+        case Token_PlusEquals:
+            arithmeticOperator = Token_Plus;
             break;
-        case MinusEquals:
-            arithmeticOperator = Minus;
+        case Token_MinusEquals:
+            arithmeticOperator = Token_Minus;
             break;
-        case AsteriskEquals:
-            arithmeticOperator = Asterisk;
+        case Token_AsteriskEquals:
+            arithmeticOperator = Token_Asterisk;
             break;
-        case SlashEquals:
-            arithmeticOperator = Slash;
+        case Token_SlashEquals:
+            arithmeticOperator = Token_Slash;
             break;
         default: assert(0);
         }
 
         Write(left.buffer, left.length);
-        WRITE_TEXT(GetTokenTypeString(Equals));
+        WRITE_TEXT(GetTokenTypeString(Token_Equals));
         WRITE_LITERAL("((");
         Write(left.buffer, left.length);
         WRITE_TEXT(GetTokenTypeString(arithmeticOperator));
@@ -563,10 +563,10 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         // fallthrough
     }
 
-    case Plus:
-    case Minus:
-    case Slash:
-    case Asterisk:
+    case Token_Plus:
+    case Token_Minus:
+    case Token_Slash:
+    case Token_Asterisk:
         // arithmetic
     {
         const Type intType = GetKnownType("int");
@@ -585,11 +585,11 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         break;
     }
 
-    case EqualsEquals:
-    case ExclamationEquals:
+    case Token_EqualsEquals:
+    case Token_ExclamationEquals:
         // equality
     {
-        if (leftType.metaType == StructType || rightType.metaType == StructType)
+        if (leftType.metaType == MetaType_Struct || rightType.metaType == MetaType_Struct)
             return operatorTypeError;
 
         if (!CheckAssignmentCompatibility(leftType, rightType, 69420).success)
@@ -598,10 +598,10 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         *outType = GetKnownType("bool");
         break;
     }
-    case LeftAngleBracket:
-    case RightAngleBracket:
-    case LeftAngleEquals:
-    case RightAngleEquals:
+    case Token_LeftAngleBracket:
+    case Token_RightAngleBracket:
+    case Token_LeftAngleEquals:
+    case Token_RightAngleEquals:
         // number comparison
     {
         const Type intType = GetKnownType("int");
@@ -615,8 +615,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         *outType = GetKnownType("bool");
         break;
     }
-    case AmpersandAmpersand:
-    case PipePipe:
+    case Token_AmpersandAmpersand:
+    case Token_PipePipe:
         // boolean operators
     {
         const Type boolType = GetKnownType("bool");
@@ -647,7 +647,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
 Result GenerateExpression(const NodePtr* in, Type* outType, const bool expectingExpression, const bool convertToInteger)
 {
-    if (in->type == NullNode)
+    if (in->type == Node_Null)
     {
         if (expectingExpression)
             assert(0);
@@ -661,16 +661,16 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
 
     switch (in->type)
     {
-    case BinaryExpression:
+    case Node_Binary:
         result = GenerateBinaryExpression(in->ptr, outType);
         break;
-    case UnaryExpression:
+    case Node_Unary:
         result = GenerateUnaryExpression(in->ptr, outType);
         break;
-    case LiteralExpression:
+    case Node_Literal:
         result = GenerateLiteralExpression(in->ptr, outType);
         break;
-    case FunctionCallExpression:
+    case Node_FunctionCall:
         result = GenerateFunctionCallExpression(in->ptr, outType);
         break;
     default:

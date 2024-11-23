@@ -82,7 +82,7 @@ static void ScanWord()
     if (tokenType != NULL)
         AddNewToken(*tokenType, NULL);
     else
-        AddNewToken(Identifier, lexeme);
+        AddNewToken(Token_Identifier, lexeme);
 }
 
 static Result ScanStringLiteral()
@@ -104,7 +104,7 @@ static Result ScanStringLiteral()
     if (!foundClosingCharacter)
         return ERROR_RESULT("String literal is never closed", currentLine);
 
-    AddNewToken(StringLiteral, AllocateSubstring(start, end));
+    AddNewToken(Token_StringLiteral, AllocateSubstring(start, end));
     return SUCCESS_RESULT;
 }
 
@@ -123,7 +123,7 @@ static void ScanNumberLiteral()
         }
     }
 
-    AddNewToken(NumberLiteral, AllocateCurrentLexeme());
+    AddNewToken(Token_NumberLiteral, AllocateCurrentLexeme());
 }
 
 typedef struct
@@ -150,27 +150,27 @@ static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol
 Result Scan(const char* const sourceCode, Array* outTokens)
 {
     keywords = AllocateMap(sizeof(TokenType));
-    ADD_KEYWORD(Init);
-    ADD_KEYWORD(Sample);
-    ADD_KEYWORD(Block);
-    ADD_KEYWORD(Serialize);
-    ADD_KEYWORD(GFX);
-    ADD_KEYWORD(Slider);
+    ADD_KEYWORD(Token_Init);
+    ADD_KEYWORD(Token_Sample);
+    ADD_KEYWORD(Token_Block);
+    ADD_KEYWORD(Token_Serialize);
+    ADD_KEYWORD(Token_GFX);
+    ADD_KEYWORD(Token_Slider);
 
-    ADD_KEYWORD(Void);
-    ADD_KEYWORD(Int);
-    ADD_KEYWORD(Float);
-    ADD_KEYWORD(String);
-    ADD_KEYWORD(Bool);
+    ADD_KEYWORD(Token_Void);
+    ADD_KEYWORD(Token_Int);
+    ADD_KEYWORD(Token_Float);
+    ADD_KEYWORD(Token_String);
+    ADD_KEYWORD(Token_Bool);
 
-    ADD_KEYWORD(If);
-    ADD_KEYWORD(Else);
-    ADD_KEYWORD(Struct);
-    ADD_KEYWORD(True);
-    ADD_KEYWORD(False);
-    ADD_KEYWORD(Return);
-    ADD_KEYWORD(Import);
-    ADD_KEYWORD(Public);
+    ADD_KEYWORD(Token_If);
+    ADD_KEYWORD(Token_Else);
+    ADD_KEYWORD(Token_Struct);
+    ADD_KEYWORD(Token_True);
+    ADD_KEYWORD(Token_False);
+    ADD_KEYWORD(Token_Return);
+    ADD_KEYWORD(Token_Import);
+    ADD_KEYWORD(Token_Public);
 
     tokens = AllocateArray(sizeof(Token));
 
@@ -226,46 +226,46 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
         switch (character)
         {
-            case '(': AddNewToken(LeftBracket, NULL);
+            case '(': AddNewToken(Token_LeftBracket, NULL);
                 continue;
-            case ')': AddNewToken(RightBracket, NULL);
+            case ')': AddNewToken(Token_RightBracket, NULL);
                 continue;
-            case '{': AddNewToken(LeftCurlyBracket, NULL);
+            case '{': AddNewToken(Token_LeftCurlyBracket, NULL);
                 continue;
-            case '}': AddNewToken(RightCurlyBracket, NULL);
+            case '}': AddNewToken(Token_RightCurlyBracket, NULL);
                 continue;
-            case '[': AddNewToken(LeftSquareBracket, NULL);
+            case '[': AddNewToken(Token_LeftSquareBracket, NULL);
                 continue;
-            case ']': AddNewToken(RightSquareBracket, NULL);
+            case ']': AddNewToken(Token_RightSquareBracket, NULL);
                 continue;
-            case '.': AddNewToken(Dot, NULL);
+            case '.': AddNewToken(Token_Dot, NULL);
                 continue;
-            case ',': AddNewToken(Comma, NULL);
+            case ',': AddNewToken(Token_Comma, NULL);
                 continue;
-            case ';': AddNewToken(Semicolon, NULL);
+            case ';': AddNewToken(Token_Semicolon, NULL);
                 continue;
-            case '@': AddNewToken(At, NULL);
+            case '@': AddNewToken(Token_At, NULL);
                 continue;
 
-            case '=': AddDoubleSymbolToken(Equals, (SecondSymbol[]){{'=', EqualsEquals}}, 1);
+            case '=': AddDoubleSymbolToken(Token_Equals, (SecondSymbol[]){{'=', Token_EqualsEquals}}, 1);
                 continue;
-            case '!': AddDoubleSymbolToken(Exclamation, (SecondSymbol[]){{'=', ExclamationEquals}}, 1);
+            case '!': AddDoubleSymbolToken(Token_Exclamation, (SecondSymbol[]){{'=', Token_ExclamationEquals}}, 1);
                 continue;
-            case '<': AddDoubleSymbolToken(LeftAngleBracket, (SecondSymbol[]){{'=', LeftAngleEquals}}, 1);
+            case '<': AddDoubleSymbolToken(Token_LeftAngleBracket, (SecondSymbol[]){{'=', Token_LeftAngleEquals}}, 1);
                 continue;
-            case '>': AddDoubleSymbolToken(RightAngleBracket, (SecondSymbol[]){{'=', RightAngleEquals}}, 1);
+            case '>': AddDoubleSymbolToken(Token_RightAngleBracket, (SecondSymbol[]){{'=', Token_RightAngleEquals}}, 1);
                 continue;
-            case '+': AddDoubleSymbolToken(Plus, (SecondSymbol[]){{'+', PlusPlus}, {'=', PlusEquals}}, 2);
+            case '+': AddDoubleSymbolToken(Token_Plus, (SecondSymbol[]){{'+', Token_PlusPlus}, {'=', Token_PlusEquals}}, 2);
                 continue;
-            case '-': AddDoubleSymbolToken(Minus, (SecondSymbol[]){{'-', MinusMinus}, {'=', MinusEquals}}, 2);
+            case '-': AddDoubleSymbolToken(Token_Minus, (SecondSymbol[]){{'-', Token_MinusMinus}, {'=', Token_MinusEquals}}, 2);
                 continue;
-            case '*': AddDoubleSymbolToken(Asterisk, (SecondSymbol[]){{'=', AsteriskEquals}}, 1);
+            case '*': AddDoubleSymbolToken(Token_Asterisk, (SecondSymbol[]){{'=', Token_AsteriskEquals}}, 1);
                 continue;
-            case '/': AddDoubleSymbolToken(Slash, (SecondSymbol[]){{'=', SlashEquals}}, 1);
+            case '/': AddDoubleSymbolToken(Token_Slash, (SecondSymbol[]){{'=', Token_SlashEquals}}, 1);
                 continue;
-            case '&': AddDoubleSymbolToken(Ampersand, (SecondSymbol[]){{'&', AmpersandAmpersand}}, 1);
+            case '&': AddDoubleSymbolToken(Token_Ampersand, (SecondSymbol[]){{'&', Token_AmpersandAmpersand}}, 1);
                 continue;
-            case '|': AddDoubleSymbolToken(Pipe, (SecondSymbol[]){{'|', PipePipe}}, 1);
+            case '|': AddDoubleSymbolToken(Token_Pipe, (SecondSymbol[]){{'|', Token_PipePipe}}, 1);
                 continue;
 
             default: break;
@@ -280,7 +280,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
         else // error
             return ERROR_RESULT("Unexpected character", currentLine);
     }
-    AddNewToken(EndOfFile, NULL);
+    AddNewToken(Token_EndOfFile, NULL);
 
     *outTokens = tokens;
 

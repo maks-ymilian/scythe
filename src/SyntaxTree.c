@@ -120,8 +120,8 @@ static void FreeNode(const NodePtr node)
     switch (node.type)
     {
     // expressions
-    case NullNode: return;
-    case BinaryExpression:
+    case Node_Null: return;
+    case Node_Binary:
     {
         const BinaryExpr* ptr = node.ptr;
 
@@ -133,7 +133,7 @@ static void FreeNode(const NodePtr node)
                 DEBUG_PRINT("Freeing BinaryExpr\n");
         return;
     }
-    case UnaryExpression:
+    case Node_Unary:
     {
         const UnaryExpr* ptr = node.ptr;
 
@@ -144,20 +144,20 @@ static void FreeNode(const NodePtr node)
                 DEBUG_PRINT("Freeing UnaryExpr\n");
         return;
     }
-    case LiteralExpression:
+    case Node_Literal:
     {
         const LiteralExpr* ptr = node.ptr;
 
         FreeToken(&ptr->value);
 
         if (ptr->next != NULL)
-            FreeNode((NodePtr){ptr->next, LiteralExpression});
+            FreeNode((NodePtr){ptr->next, Node_Literal});
 
         free(node.ptr)
                 DEBUG_PRINT("Freeing LiteralExpr\n");
         return;
     }
-    case FunctionCallExpression:
+    case Node_FunctionCall:
     {
         const FuncCallExpr* ptr = node.ptr;
 
@@ -172,7 +172,7 @@ static void FreeNode(const NodePtr node)
     }
 
     // statements
-    case ImportStatement:
+    case Node_Import:
     {
         DEBUG_PRINT("Freeing ImportStmt\n");
         const ImportStmt* ptr = node.ptr;
@@ -180,7 +180,7 @@ static void FreeNode(const NodePtr node)
         free(ptr->file);
         return;
     }
-    case Section:
+    case Node_Section:
     {
         DEBUG_PRINT("Freeing SectionStmt\n");
         const SectionStmt* ptr = node.ptr;
@@ -191,7 +191,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case ReturnStatement:
+    case Node_Return:
     {
         DEBUG_PRINT("Freeing ReturnStmt\n")
         const ReturnStmt* ptr = node.ptr;
@@ -201,7 +201,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case ExpressionStatement:
+    case Node_ExpressionStatement:
     {
         DEBUG_PRINT("Freeing ExpressionStmt\n")
         const ExpressionStmt* ptr = node.ptr;
@@ -211,7 +211,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case VariableDeclaration:
+    case Node_VariableDeclaration:
     {
         DEBUG_PRINT("Freeing VarDeclStmt\n");
         const VarDeclStmt* ptr = node.ptr;
@@ -223,7 +223,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case BlockStatement:
+    case Node_Block:
     {
         DEBUG_PRINT("Freeing BlockStatement\n");
         const BlockStmt* ptr = node.ptr;
@@ -235,7 +235,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case IfStatement:
+    case Node_If:
     {
         DEBUG_PRINT("Freeing IfStatement\n");
         const IfStmt* ptr = node.ptr;
@@ -247,7 +247,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case FunctionDeclaration:
+    case Node_FunctionDeclaration:
     {
         DEBUG_PRINT("Freeing FunctionDeclaration\n");
         const FuncDeclStmt* ptr = node.ptr;
@@ -259,7 +259,7 @@ static void FreeNode(const NodePtr node)
         free(node.ptr);
         return;
     }
-    case StructDeclaration:
+    case Node_StructDeclaration:
     {
         DEBUG_PRINT("Freeing StructDeclaration\n");
         const StructDeclStmt* ptr = node.ptr;

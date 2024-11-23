@@ -38,7 +38,7 @@ static Result functionName(NodePtr* out)\
             return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)\
 \
         BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});\
-        left = (NodePtr){binary, BinaryExpression};\
+        left = (NodePtr){binary, Node_Binary};\
 \
         operator = Match(validOperators, length);\
     }\
@@ -105,49 +105,49 @@ static Result ParsePrimary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* token = Match((TokenType[]){NumberLiteral, StringLiteral, Identifier, LeftBracket, True, False}, 6);
+    const Token* token = Match((TokenType[]){Token_NumberLiteral, Token_StringLiteral, Token_Identifier, Token_LeftBracket, Token_True, Token_False}, 6);
     if (token == NULL)
         return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
     switch (token->type)
     {
-    case LeftBracket:
+    case Token_LeftBracket:
     {
         HANDLE_ERROR(ParseExpression(out),
                      return ERROR_RESULT_LINE("Expected expression"));
 
-        const Token* closingBracket = MatchOne(RightBracket);
+        const Token* closingBracket = MatchOne(Token_RightBracket);
         if (closingBracket == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
         return result;
     }
-    case Identifier:
+    case Token_Identifier:
     {
         LiteralExpr* first = AllocLiteral((LiteralExpr){*token, NULL});
         LiteralExpr* prev = first;
-        while (MatchOne(Dot) != NULL)
+        while (MatchOne(Token_Dot) != NULL)
         {
             SET_LINE_NUMBER
-            const Token* identifier = MatchOne(Identifier);
+            const Token* identifier = MatchOne(Token_Identifier);
             if (identifier == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Dot);
+                return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_Dot);
 
             LiteralExpr* next = AllocLiteral((LiteralExpr){*identifier, NULL});
             prev->next = next;
             prev = next;
         }
 
-        *out = (NodePtr){first, LiteralExpression};
+        *out = (NodePtr){first, Node_Literal};
         return SUCCESS_RESULT;
     }
-    case NumberLiteral:
-    case StringLiteral:
-    case True:
-    case False:
+    case Token_NumberLiteral:
+    case Token_StringLiteral:
+    case Token_True:
+    case Token_False:
     {
         LiteralExpr* literal = AllocLiteral((LiteralExpr){*token, NULL});
-        *out = (NodePtr){literal, LiteralExpression};
+        *out = (NodePtr){literal, Node_Literal};
         return SUCCESS_RESULT;
     }
     default: assert(0);
@@ -171,12 +171,12 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
         while (true)
         {
             SET_LINE_NUMBER;
-            if (MatchOne(Comma) == NULL)
+            if (MatchOne(Token_Comma) == NULL)
                 break;
 
             NodePtr node;
             HANDLE_ERROR(function(&node),
-                         return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Comma))
+                         return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Token_Comma))
 
             ArrayAdd(outArray, &node);
         }
@@ -189,22 +189,22 @@ static Result ParseFunctionCall(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* identifier = PeekOne(Identifier, 0);
-    if (identifier == NULL || PeekOne(LeftBracket, 1) == NULL)
+    const Token* identifier = PeekOne(Token_Identifier, 0);
+    if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
         return ParsePrimary(out);
 
-    if (MatchOne(Identifier) == NULL) assert(0);
-    if (MatchOne(LeftBracket) == NULL) assert(0);
+    if (MatchOne(Token_Identifier) == NULL) assert(0);
+    if (MatchOne(Token_LeftBracket) == NULL) assert(0);
 
     Array params;
     HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression), assert(0));
 
     SET_LINE_NUMBER;
-    if (MatchOne(RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     FuncCallExpr* func = AllocFuncCall((FuncCallExpr){*identifier, params});
-    *out = (NodePtr){func, FunctionCallExpression};
+    *out = (NodePtr){func, Node_FunctionCall};
 
     return SUCCESS_RESULT;
 }
@@ -213,7 +213,7 @@ static Result ParseUnary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* operator = Match((TokenType[]){Plus, Minus, Exclamation, PlusPlus, MinusMinus}, 5);
+    const Token* operator = Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
     if (operator == NULL)
         return ParseFunctionCall(out);
 
@@ -224,16 +224,16 @@ static Result ParseUnary(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
     unary->expression = expr;
 
-    *out = (NodePtr){unary, UnaryExpression};
+    *out = (NodePtr){unary, Node_Unary};
     return SUCCESS_RESULT;
 }
 
-DEF_LEFT_BINARY_PRODUCTION(ParseFactor, ParseUnary, Asterisk COMMA Slash, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseTerm, ParseFactor, Plus COMMA Minus, 2)
+DEF_LEFT_BINARY_PRODUCTION(ParseFactor, ParseUnary, Token_Asterisk COMMA Token_Slash, 2)
+DEF_LEFT_BINARY_PRODUCTION(ParseTerm, ParseFactor, Token_Plus COMMA Token_Minus, 2)
 DEF_LEFT_BINARY_PRODUCTION(ParseNumberComparison, ParseTerm,
-                           RightAngleBracket COMMA RightAngleEquals COMMA LeftAngleBracket COMMA LeftAngleEquals, 4)
-DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseNumberComparison, EqualsEquals COMMA ExclamationEquals, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseBooleanOperators, ParseEquality, AmpersandAmpersand COMMA PipePipe, 2)
+                           Token_RightAngleBracket COMMA Token_RightAngleEquals COMMA Token_LeftAngleBracket COMMA Token_LeftAngleEquals, 4)
+DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseNumberComparison, Token_EqualsEquals COMMA Token_ExclamationEquals, 2)
+DEF_LEFT_BINARY_PRODUCTION(ParseBooleanOperators, ParseEquality, Token_AmpersandAmpersand COMMA Token_PipePipe, 2)
 
 static Result ParseAssignment(NodePtr* out)
 {
@@ -246,7 +246,7 @@ static Result ParseAssignment(NodePtr* out)
     Array exprArray = AllocateArray(sizeof(NodePtr));
     ArrayAdd(&exprArray, &left);
 
-    const TokenType validOperators[5] = {Equals, PlusEquals, MinusEquals, AsteriskEquals, SlashEquals};
+    const TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
     const Token* operator = Match(validOperators, 5);
     Array operatorArray = AllocateArray(sizeof(Token));
     while (operator != NULL)
@@ -271,7 +271,7 @@ static Result ParseAssignment(NodePtr* out)
         const NodePtr* expr2 = exprArray.array[i];
 
         BinaryExpr* binaryExpr = AllocBinary((BinaryExpr){*expr2, *operator, *expr1});
-        *expr1 = (NodePtr){binaryExpr, BinaryExpression};
+        *expr1 = (NodePtr){binaryExpr, Node_Binary};
     }
 
     *out = *expr1;
@@ -295,16 +295,16 @@ static Result ParseExpressionStatement(NodePtr* out)
     NodePtr expr;
     HANDLE_ERROR(ParseExpression(&expr),
                  {
-                 if (MatchOne(Semicolon) == NULL) return result;
+                 if (MatchOne(Token_Semicolon) == NULL) return result;
                  expr.ptr = NULL;
-                 expr.type = NullNode;
+                 expr.type = Node_Null;
                  });
 
-    if (MatchOne(Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
+    if (MatchOne(Token_Semicolon) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
 
     const ExpressionStmt* expressionStmt = AllocExpressionStmt((ExpressionStmt){expr});
-    *out = (NodePtr){(void*)expressionStmt, ExpressionStatement};
+    *out = (NodePtr){(void*)expressionStmt, Node_ExpressionStatement};
     return SUCCESS_RESULT;
 }
 
@@ -312,21 +312,21 @@ static Result ParseReturnStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* returnToken = MatchOne(Return);
+    const Token* returnToken = MatchOne(Token_Return);
     if (returnToken == NULL)
         return NOT_FOUND_RESULT;
 
     SET_LINE_NUMBER
     NodePtr expr;
     HANDLE_ERROR(ParseExpression(&expr),
-                 expr.type = NullNode;
+                 expr.type = Node_Null;
                  expr.ptr = NULL;)
 
-    if (MatchOne(Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Semicolon)
+    if (MatchOne(Token_Semicolon) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
 
     const ReturnStmt* returnStmt = AllocReturnStmt((ReturnStmt){expr, *returnToken});
-    *out = (NodePtr){(void*)returnStmt, ReturnStatement};
+    *out = (NodePtr){(void*)returnStmt, Node_Return};
 
     return SUCCESS_RESULT;
 }
@@ -337,13 +337,13 @@ static Result ParseIfStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER;
 
-    const Token* ifToken = MatchOne(If);
+    const Token* ifToken = MatchOne(Token_If);
     if (ifToken == NULL)
         return NOT_FOUND_RESULT;
 
     SET_LINE_NUMBER;
-    if (MatchOne(LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", LeftBracket);
+    if (MatchOne(Token_LeftBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
 
     SET_LINE_NUMBER;
     NodePtr expr; {
@@ -352,8 +352,8 @@ static Result ParseIfStatement(NodePtr* out)
     }
 
     SET_LINE_NUMBER;
-    if (MatchOne(RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     SET_LINE_NUMBER;
     NodePtr stmt;
@@ -362,16 +362,16 @@ static Result ParseIfStatement(NodePtr* out)
 
     SET_LINE_NUMBER;
     NodePtr elseStmt;
-    if (MatchOne(Else))
+    if (MatchOne(Token_Else))
     {
         HANDLE_ERROR(ParseStatement(&elseStmt),
-                     return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Else));
+                     return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else));
     }
     else
-        elseStmt = (NodePtr){NULL, NullNode};
+        elseStmt = (NodePtr){NULL, Node_Null};
 
     const IfStmt* ifStmt = AllocIfStmt((IfStmt){*ifToken, expr, stmt, elseStmt});
-    *out = (NodePtr){(void*)ifStmt, IfStatement};
+    *out = (NodePtr){(void*)ifStmt, Node_If};
 
     return SUCCESS_RESULT;
 }
@@ -380,7 +380,7 @@ static Result ParseBlockStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* openingBrace = MatchOne(LeftCurlyBracket);
+    const Token* openingBrace = MatchOne(Token_LeftCurlyBracket);
     if (openingBrace == NULL)
         return NOT_FOUND_RESULT;
 
@@ -401,17 +401,17 @@ static Result ParseBlockStatement(NodePtr* out)
         }
 
         SET_LINE_NUMBER
-        if (stmt.type == Section)
+        if (stmt.type == Node_Section)
             return ERROR_RESULT_LINE("Nested sections are not allowed");
 
         SET_LINE_NUMBER
-        if (stmt.type == StructDeclaration)
+        if (stmt.type == Node_StructDeclaration)
             return ERROR_RESULT_LINE("Struct declarations not allowed inside code blocks");
 
         ArrayAdd(&statements, &stmt);
     }
 
-    if (MatchOne(RightCurlyBracket) == NULL)
+    if (MatchOne(Token_RightCurlyBracket) == NULL)
     {
         if (exitResult.errorMessage != NULL)
             return ERROR_RESULT_LINE_TOKEN(exitResult.errorMessage, exitResult.tokenType);
@@ -420,16 +420,16 @@ static Result ParseBlockStatement(NodePtr* out)
     }
 
     BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
-    *out = (NodePtr){block, BlockStatement};
+    *out = (NodePtr){block, Node_Block};
     return SUCCESS_RESULT;
 }
 
 static Token* PeekType(const int offset)
 {
-    Token* type = PeekOne(Identifier, offset);
+    Token* type = PeekOne(Token_Identifier, offset);
     if (type == NULL)
     {
-        type = Peek((TokenType[]){Void, Int, Float, String, Bool}, 5, offset);
+        type = Peek((TokenType[]){Token_Void, Token_Int, Token_Float, Token_String, Token_Bool}, 5, offset);
         if (type == NULL)
             return NULL;
     }
@@ -448,17 +448,17 @@ static Result ParseSectionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* sectionType = Match((TokenType[]){Init, Slider, Block, Sample, Serialize, GFX}, 6);
+    const Token* sectionType = Match((TokenType[]){Token_Init, Token_Slider, Token_Block, Token_Sample, Token_Serialize, Token_GFX}, 6);
     if (sectionType == NULL)
         return NOT_FOUND_RESULT;
 
     NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected block after section statement"));
-    assert(block.type == BlockStatement);
+    assert(block.type == Node_Block);
 
     SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, block});
-    *out = (NodePtr){section, Section};
+    *out = (NodePtr){section, Node_Section};
     return SUCCESS_RESULT;
 }
 
@@ -466,9 +466,9 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
-    const bool publicFound = PeekOne(Public, 0);
+    const bool publicFound = PeekOne(Token_Public, 0);
     const Token* type = PeekType(0 + publicFound);
-    const Token* name = PeekOne(Identifier, 1 + publicFound);
+    const Token* name = PeekOne(Token_Identifier, 1 + publicFound);
 
     if (!(name && type))
         return NOT_FOUND_RESULT;
@@ -477,8 +477,8 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     Consume();
     Consume();
 
-    NodePtr initializer = {NULL, NullNode};
-    const Token* equals = MatchOne(Equals);
+    NodePtr initializer = {NULL, Node_Null};
+    const Token* equals = MatchOne(Token_Equals);
     if (equals != NULL)
     {
         HANDLE_ERROR(ParseExpression(&initializer),
@@ -487,7 +487,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 
     if (expectSemicolon)
     {
-        const Token* semicolon = MatchOne(Semicolon);
+        const Token* semicolon = MatchOne(Token_Semicolon);
         if (semicolon == NULL)
             return ERROR_RESULT_LINE("Expected \";\"");
     }
@@ -499,7 +499,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
         .initializer = initializer,
         .public = publicFound,
     });
-    *out = (NodePtr){varDecl, VariableDeclaration};
+    *out = (NodePtr){varDecl, Node_VariableDeclaration};
     return SUCCESS_RESULT;
 }
 
@@ -512,11 +512,11 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const bool publicFound = PeekOne(Public, 0) != NULL;
+    const bool publicFound = PeekOne(Token_Public, 0) != NULL;
     const Token* type = PeekType(0 + publicFound);
-    const Token* identifier = PeekOne(Identifier, 1 + publicFound);
+    const Token* identifier = PeekOne(Token_Identifier, 1 + publicFound);
 
-    if (!(identifier && type && PeekOne(LeftBracket, 2 + publicFound)))
+    if (!(identifier && type && PeekOne(Token_LeftBracket, 2 + publicFound)))
         return NOT_FOUND_RESULT;
 
     if (publicFound) Consume();
@@ -529,8 +529,8 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     }
 
     SET_LINE_NUMBER;
-    if (MatchOne(RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", RightBracket);
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
@@ -544,7 +544,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
         .block = block,
         .public = publicFound,
     });
-    *out = (NodePtr){funcDecl, FunctionDeclaration};
+    *out = (NodePtr){funcDecl, Node_FunctionDeclaration};
 
     return SUCCESS_RESULT;
 }
@@ -553,21 +553,21 @@ static Result ParseStructDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const bool publicFound = PeekOne(Public, 0) != NULL;
-    if (PeekOne(Struct, publicFound) == NULL)
+    const bool publicFound = PeekOne(Token_Public, 0) != NULL;
+    if (PeekOne(Token_Struct, publicFound) == NULL)
         return NOT_FOUND_RESULT;
 
     if (publicFound) Consume();
     Consume();
 
     SET_LINE_NUMBER
-    const Token* identifier = MatchOne(Identifier);
+    const Token* identifier = MatchOne(Token_Identifier);
     if (identifier == NULL)
         return ERROR_RESULT_LINE("Expected struct name");
 
     SET_LINE_NUMBER
-    if (MatchOne(LeftCurlyBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct name", LeftCurlyBracket);
+    if (MatchOne(Token_LeftCurlyBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct name", Token_LeftCurlyBracket);
 
     Array members = AllocateArray(sizeof(NodePtr));
     while (true)
@@ -579,7 +579,7 @@ static Result ParseStructDeclaration(NodePtr* out)
     }
 
     SET_LINE_NUMBER
-    if (MatchOne(RightCurlyBracket) == NULL)
+    if (MatchOne(Token_RightCurlyBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
     StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt)
@@ -588,7 +588,7 @@ static Result ParseStructDeclaration(NodePtr* out)
         .members = members,
         .public = publicFound,
     });
-    *out = (NodePtr){structDecl, StructDeclaration};
+    *out = (NodePtr){structDecl, Node_StructDeclaration};
 
     return SUCCESS_RESULT;
 }
@@ -597,16 +597,16 @@ static Result ParseImportStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* import = MatchOne(Import);
+    const Token* import = MatchOne(Token_Import);
     if (import == NULL)
         return NOT_FOUND_RESULT;
 
-    const Token* path = MatchOne(StringLiteral);
+    const Token* path = MatchOne(Token_StringLiteral);
     if (path == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Import);
+        return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Token_Import);
 
     ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text, .import = *import});
-    *out = (NodePtr){.ptr = importStmt, .type = ImportStatement};
+    *out = (NodePtr){.ptr = importStmt, .type = Node_Import};
     return SUCCESS_RESULT;
 }
 
@@ -659,7 +659,7 @@ static Result ParseProgram(AST* out)
     bool allowImportStatements = true;
     while (true)
     {
-        if (MatchOne(EndOfFile) != NULL)
+        if (MatchOne(Token_EndOfFile) != NULL)
             break;
 
         NodePtr stmt;
@@ -667,7 +667,7 @@ static Result ParseProgram(AST* out)
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement"))
 
-        if (stmt.type == ImportStatement)
+        if (stmt.type == Node_Import)
         {
             if (!allowImportStatements)
                 return ERROR_RESULT_LINE("Import statements must be at the top of the file");
@@ -677,11 +677,11 @@ static Result ParseProgram(AST* out)
             allowImportStatements = false;
         }
 
-        if (stmt.type != Section &&
-            stmt.type != FunctionDeclaration &&
-            stmt.type != StructDeclaration &&
-            stmt.type != VariableDeclaration &&
-            stmt.type != ImportStatement)
+        if (stmt.type != Node_Section &&
+            stmt.type != Node_FunctionDeclaration &&
+            stmt.type != Node_StructDeclaration &&
+            stmt.type != Node_VariableDeclaration &&
+            stmt.type != Node_Import)
             return ERROR_RESULT_LINE(
                 "Expected section statement, variable declaration, struct declaration, or function declaration");
 

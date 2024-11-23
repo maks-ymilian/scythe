@@ -184,7 +184,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
     for (int i = 0; i < programNode->ast.statements.length; ++i)
     {
         const NodePtr* node = programNode->ast.statements.array[i];
-        if (node->type != ImportStatement) break;
+        if (node->type != Node_Import) break;
         const ImportStmt* importStmt = node->ptr;
 
         ProgramNode* importedNode = GenerateProgramNode(importStmt->file, importStmt, path);

@@ -7,21 +7,20 @@
 
 typedef enum
 {
-    NullNode,
-    BinaryExpression,
-    UnaryExpression,
-    LiteralExpression,
-    FunctionCallExpression,
-
-    ImportStatement,
-    Section,
-    BlockStatement,
-    ExpressionStatement,
-    ReturnStatement,
-    IfStatement,
-    VariableDeclaration,
-    FunctionDeclaration,
-    StructDeclaration,
+    Node_Null,
+    Node_Binary,
+    Node_Unary,
+    Node_Literal,
+    Node_FunctionCall,
+    Node_Import,
+    Node_Section,
+    Node_Block,
+    Node_ExpressionStatement,
+    Node_Return,
+    Node_If,
+    Node_VariableDeclaration,
+    Node_FunctionDeclaration,
+    Node_StructDeclaration,
 } NodeType;
 
 typedef struct

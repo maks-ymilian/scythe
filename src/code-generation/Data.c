@@ -79,7 +79,7 @@ Buffer ReadAll()
 
 Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVoid)
 {
-    if (typeToken.type == Identifier)
+    if (typeToken.type == Token_Identifier)
     {
         const char* typeName = typeToken.text;
         const Type* get = MapGet(&types, typeName);
@@ -93,13 +93,13 @@ Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVo
     {
         switch (typeToken.type)
         {
-        case Void:
+        case Token_Void:
             if (!allowVoid)
-                return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Void);
-        case Int:
-        case Float:
-        case String:
-        case Bool:
+                return ERROR_RESULT_TOKEN("\"#t\" is not allowed here", typeToken.lineNumber, Token_Void);
+        case Token_Int:
+        case Token_Float:
+        case Token_String:
+        case Token_Bool:
             break;
 
         default: assert(0);
@@ -181,11 +181,11 @@ Result RegisterVariable(const Token identifier, const Type type, const Map* symb
     data.type = type;
     if (symbolTable != NULL)
     {
-        assert(type.metaType == StructType);
+        assert(type.metaType == MetaType_Struct);
         data.symbolTable = *symbolTable;
     }
 
-    const SymbolData symbolData = {.symbolType = VariableSymbol, .variableData = data, .uniqueName = -1};
+    const SymbolData symbolData = {.symbolType = SymbolType_Variable, .variableData = data, .uniqueName = -1};
     return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
 }
 
@@ -195,7 +195,7 @@ Result RegisterFunction(const Token identifier, const Type returnType, const Arr
     data.parameters = *funcParams;
     data.returnType = returnType;
 
-    const SymbolData symbolData = {.symbolType = FunctionSymbol, .functionData = data, .uniqueName = -1};
+    const SymbolData symbolData = {.symbolType = SymbolType_Function, .functionData = data, .uniqueName = -1};
     return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
 }
 
@@ -204,9 +204,9 @@ Result RegisterStruct(const Token identifier, const Array* members, int* outUniq
     StructSymbolData data;
     data.members = members;
 
-    const SymbolData symbolData = {.symbolType = StructSymbol, .structData = data, .uniqueName = -1};
+    const SymbolData symbolData = {.symbolType = SymbolType_Struct, .structData = data, .uniqueName = -1};
 
-    if (!AddType(identifier.text, StructType))
+    if (!AddType(identifier.text, MetaType_Struct))
         return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
                             identifier.lineNumber);
 
@@ -234,7 +234,7 @@ void PopScope(Map* outSymbolTable)
     for (MAP_ITERATE(i, &currentScope->symbolTable))
     {
         const SymbolData symbol = *(SymbolData*)i->value;
-        if (symbol.symbolType == FunctionSymbol)
+        if (symbol.symbolType == SymbolType_Function)
             FreeArray(&symbol.functionData.parameters);
     }
 
@@ -281,19 +281,19 @@ void InitResources()
 
     types = AllocateMap(sizeof(Type));
 
-    bool success = AddType("void", PrimitiveType);
+    bool success = AddType("void", MetaType_Primitive);
     assert(success);
 
-    success = AddType("int", PrimitiveType);
+    success = AddType("int", MetaType_Primitive);
     assert(success);
 
-    success = AddType("float", PrimitiveType);
+    success = AddType("float", MetaType_Primitive);
     assert(success);
 
-    success = AddType("string", PrimitiveType);
+    success = AddType("string", MetaType_Primitive);
     assert(success);
 
-    success = AddType("bool", PrimitiveType);
+    success = AddType("bool", MetaType_Primitive);
     assert(success);
 }
 

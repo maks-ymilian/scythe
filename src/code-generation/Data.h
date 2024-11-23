@@ -7,7 +7,7 @@
 #include "data-structures/MemoryStream.h"
 #include "Result.h"
 
-typedef enum { PrimitiveType, StructType, EnumType } MetaType;
+typedef enum { MetaType_Primitive, MetaType_Struct, MetaType_Enum } MetaType;
 
 typedef struct
 {
@@ -40,7 +40,7 @@ typedef struct
     const Array* members;
 } StructSymbolData;
 
-typedef enum { VariableSymbol, FunctionSymbol, StructSymbol } SymbolType;
+typedef enum { SymbolType_Variable, SymbolType_Function, SymbolType_Struct } SymbolType;
 
 typedef struct
 {
@@ -64,8 +64,6 @@ struct ScopeNode
     bool isFunction;
     Type functionReturnType;
 };
-
-typedef enum { MainStream, FunctionsStream, ExpressionStream } StreamType;
 
 void Write(const void* buffer, size_t length);
 size_t GetStreamPosition();
