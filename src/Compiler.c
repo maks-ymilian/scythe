@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <data-structures/MemoryStream.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -221,15 +222,40 @@ static Array SortProgramTree()
     return array;
 }
 
+void CompileProgramTree(char** outCode, size_t* outLength)
+{
+    MemoryStream* stream = AllocateMemoryStream();
+
+    const Array programNodes = SortProgramTree();
+    for (int i = 0; i < programNodes.length; ++i)
+    {
+        const ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+
+        char* code = NULL;
+        size_t codeLength = 0;
+        HandleError(GenerateCode(&node->ast, (uint8_t**)&code, &codeLength),
+                    "Code generation", NULL);
+
+        StreamWrite(stream, code, codeLength);
+        free(code);
+    }
+    FreeArray(&programNodes);
+
+    const Buffer buffer = StreamGetBuffer(stream);
+    FreeMemoryStream(stream, false);
+
+    *outCode = (char*)buffer.buffer;
+    *outLength = buffer.length;
+}
+
 void Compile(const char* inputPath, const char* outputPath)
 {
     programNodes = AllocateArray(sizeof(ProgramNodeEntry));
-    const ProgramNode* programTree = GenerateProgramNode(inputPath, NULL, NULL);
+    GenerateProgramNode(inputPath, NULL, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
-    HandleError(GenerateCode(&programTree->ast, (uint8_t**)&outputCode, &outputCodeLength),
-                "Code generation", NULL);
+    CompileProgramTree(&outputCode, &outputCodeLength);
 
     FreeProgramTree();
 
