@@ -194,7 +194,11 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
     if (type.metaType == MetaType_Struct)
-        return GenerateStructVariableDeclaration(in, type, prefix);
+    {
+        const Result result = GenerateStructVariableDeclaration(in, type, prefix);
+        if (globalScope) EndReadMove(SIZE_MAX);
+        return result;
+    }
 
     assert(in->identifier.type == Token_Identifier);
     int uniqueName;
@@ -279,7 +283,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         const NodePtr node = (NodePtr){&expr, Node_Binary};
         Type outType;
         HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
-        WRITE_LITERAL(";");
+        WRITE_LITERAL(";\n");
     }
 
     return SUCCESS_RESULT;
