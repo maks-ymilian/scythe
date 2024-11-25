@@ -168,7 +168,7 @@ SymbolData* GetKnownSymbol(const char* name, const char* module)
     return symbol;
 }
 
-static bool AddType(const char* name, const MetaType metaType)
+static bool AddType(const char* name, const MetaType metaType, const bool public)
 {
     Type type;
     type.name = name;
@@ -178,6 +178,12 @@ static bool AddType(const char* name, const MetaType metaType)
     const bool success = MapAdd(&types, name, &type);
     if (!success)
         return false;
+
+    if (public)
+    {
+        const bool success = MapAdd(&module.types, name, &type);
+        assert(success);
+    }
 
     return true;
 }
@@ -231,7 +237,7 @@ Result RegisterStruct(const Token identifier, const Array* members, const bool p
 
     const SymbolData symbolData = {.symbolType = SymbolType_Struct, .structData = data, .uniqueName = -1};
 
-    if (!AddType(identifier.text, MetaType_Struct))
+    if (!AddType(identifier.text, MetaType_Struct, public))
         return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
                             identifier.lineNumber);
 
@@ -316,19 +322,19 @@ void InitResources(Map* _modules)
 
     types = AllocateMap(sizeof(Type));
 
-    bool success = AddType("void", MetaType_Primitive);
+    bool success = AddType("void", MetaType_Primitive, false);
     assert(success);
 
-    success = AddType("int", MetaType_Primitive);
+    success = AddType("int", MetaType_Primitive, false);
     assert(success);
 
-    success = AddType("float", MetaType_Primitive);
+    success = AddType("float", MetaType_Primitive, false);
     assert(success);
 
-    success = AddType("string", MetaType_Primitive);
+    success = AddType("string", MetaType_Primitive, false);
     assert(success);
 
-    success = AddType("bool", MetaType_Primitive);
+    success = AddType("bool", MetaType_Primitive, false);
     assert(success);
 }
 
