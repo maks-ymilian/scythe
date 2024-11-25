@@ -80,12 +80,27 @@ Buffer ReadAll()
     return buffer;
 }
 
+static Type* GetType(const char* name)
+{
+    Type* type = MapGet(&types, name);
+    if (type != NULL) return type;
+
+    for (MAP_ITERATE(i, modules))
+    {
+        const Module* module = *(Module**)i->value;
+        type = MapGet(&module->types, name);
+        if (type != NULL) return type;
+    }
+
+    return NULL;
+}
+
 Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVoid)
 {
     if (typeToken.type == Token_Identifier)
     {
         const char* typeName = typeToken.text;
-        const Type* get = MapGet(&types, typeName);
+        const Type* get = GetType(typeName);
         if (get == NULL)
         {
             return ERROR_RESULT(AllocateString1Str("Unknown type \"%s\"", typeName), typeToken.lineNumber);
@@ -109,7 +124,7 @@ Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVo
         }
 
         const char* typeName = GetTokenTypeString(typeToken.type);
-        const Type* get = MapGet(&types, typeName);
+        const Type* get = GetType(typeName);
         assert(get != NULL);
         *outType = *get;
     }
@@ -119,7 +134,7 @@ Result GetTypeFromToken(const Token typeToken, Type* outType, const bool allowVo
 
 Type GetKnownType(const char* name)
 {
-    const Type* type = MapGet(&types, name);
+    const Type* type = GetType(name);
     assert(type != NULL);
     return *type;
 }
