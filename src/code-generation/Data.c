@@ -139,8 +139,31 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(const char* name, const char* moduleName, const long errorLineNumber, SymbolData** outSymbol)
+Result GetSymbol(
+    const char* name,
+    const bool searchAllModules,
+    const char* moduleName,
+    const long errorLineNumber,
+    SymbolData** outSymbol)
 {
+    if (searchAllModules)
+    {
+        assert(moduleName == NULL);
+
+        if (GetSymbol(name, false, NULL, errorLineNumber, outSymbol).success)
+            return SUCCESS_RESULT;
+        assert(*outSymbol == NULL);
+
+        for (MAP_ITERATE(i, modules))
+        {
+            const Module* module = *(Module**)i->value;
+            *outSymbol = MapGet(&module->symbolTable, name);
+            if (*outSymbol != NULL) return SUCCESS_RESULT;
+        }
+
+        return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), errorLineNumber);
+    }
+
     *outSymbol = NULL;
 
     if (moduleName != NULL)
@@ -176,10 +199,10 @@ Result GetSymbol(const char* name, const char* moduleName, const long errorLineN
     return SUCCESS_RESULT;
 }
 
-SymbolData* GetKnownSymbol(const char* name, const char* module)
+SymbolData* GetKnownSymbol(const char* name, const bool searchAllModules, const char* moduleName)
 {
     SymbolData* symbol;
-    ASSERT_ERROR(GetSymbol(name, module, 0, &symbol));
+    ASSERT_ERROR(GetSymbol(name, searchAllModules, moduleName, -1, &symbol));
     return symbol;
 }
 

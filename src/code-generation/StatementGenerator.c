@@ -20,7 +20,7 @@ static void GenerateStructMemberNames(
     const char* afterText,
     const bool reverseOrder)
 {
-    const SymbolData* symbol = GetKnownSymbol(exprType.name, NULL);
+    const SymbolData* symbol = GetKnownSymbol(exprType.name, true, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData structSymbol = symbol->structData;
 
@@ -238,7 +238,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
 static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
-    const SymbolData* symbol = GetKnownSymbol(in->type.text, NULL);
+    const SymbolData* symbol = GetKnownSymbol(in->type.text, true, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData data = symbol->structData;
 
