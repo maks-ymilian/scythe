@@ -78,9 +78,10 @@ Type GetKnownType(const char* name);
 
 Result GetSymbol(const char* name, long errorLineNumber, SymbolData** outSymbol);
 SymbolData* GetKnownSymbol(const char* name);
-Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, int* outUniqueName);
-Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams, int* outUniqueName);
-Result RegisterStruct(Token identifier, const Array* members, int* outUniqueName);
+Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, bool public, int* outUniqueName);
+Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams, bool public, int* outUniqueName);
+Result RegisterStruct(Token identifier, const Array* members, bool public, int* outUniqueName);
+Map GetPublicSymbolTable();
 
 void PushScope();
 void PopScope(Map* outSymbolTable);

@@ -13,6 +13,7 @@ static int symbolCounter = 0;
 static Map types;
 
 static ScopeNode* currentScope;
+static Map publicSymbolTable;
 
 static MemoryStream* tempStream;
 static MemoryStream* finalStream;
@@ -164,18 +165,25 @@ static bool AddType(const char* name, const MetaType metaType)
     return true;
 }
 
-static Result AddSymbol(const char* name, SymbolData data, const long errorLineNumber, int* outUniqueName)
+static Result AddSymbol(const char* name, SymbolData data, const bool public, const long errorLineNumber, int* outUniqueName)
 {
     data.uniqueName = symbolCounter;
+
     if (!MapAdd(&currentScope->symbolTable, name, &data))
         return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), errorLineNumber);
+
+    if (public)
+    {
+        const bool success = MapAdd(&publicSymbolTable, name, &data);
+        assert(success);
+    }
 
     if (outUniqueName != NULL) *outUniqueName = symbolCounter;
     symbolCounter++;
     return SUCCESS_RESULT;
 }
 
-Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable, int* outUniqueName)
+Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable, const bool public, int* outUniqueName)
 {
     VariableSymbolData data;
     data.type = type;
@@ -186,20 +194,20 @@ Result RegisterVariable(const Token identifier, const Type type, const Map* symb
     }
 
     const SymbolData symbolData = {.symbolType = SymbolType_Variable, .variableData = data, .uniqueName = -1};
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
+    return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams, int* outUniqueName)
+Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams, const bool public, int* outUniqueName)
 {
     FunctionSymbolData data;
     data.parameters = *funcParams;
     data.returnType = returnType;
 
     const SymbolData symbolData = {.symbolType = SymbolType_Function, .functionData = data, .uniqueName = -1};
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
+    return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterStruct(const Token identifier, const Array* members, int* outUniqueName)
+Result RegisterStruct(const Token identifier, const Array* members, const bool public, int* outUniqueName)
 {
     StructSymbolData data;
     data.members = members;
@@ -210,7 +218,12 @@ Result RegisterStruct(const Token identifier, const Array* members, int* outUniq
         return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
                             identifier.lineNumber);
 
-    return AddSymbol(identifier.text, symbolData, identifier.lineNumber, outUniqueName);
+    return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
+}
+
+Map GetPublicSymbolTable()
+{
+    return publicSymbolTable;
 }
 
 static ScopeNode* AllocateScopeNode()
@@ -278,6 +291,8 @@ void InitResources()
 
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
+
+    publicSymbolTable = AllocateMap(sizeof(SymbolData));
 
     types = AllocateMap(sizeof(Type));
 

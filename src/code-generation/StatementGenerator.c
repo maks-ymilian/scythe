@@ -198,7 +198,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     assert(in->identifier.type == Token_Identifier);
     int uniqueName;
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, &uniqueName));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, in->public, &uniqueName));
 
     NodePtr initializer;
     LiteralExpr zero = (LiteralExpr){(Token){Token_NumberLiteral, in->identifier.lineNumber, "0"}};
@@ -265,7 +265,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 
     Map symbolTable;
     PopScope(&symbolTable);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, NULL));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, in->public, NULL));
 
     if (in->initializer.type != Node_Null)
     {
@@ -418,7 +418,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     PopScope(NULL);
 
     int uniqueName;
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, &uniqueName));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, in->public, &uniqueName));
 
     WRITE_LITERAL("function ");
     WRITE_LITERAL("func_");
@@ -434,7 +434,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
 static Result GenerateStructDeclaration(const StructDeclStmt* in)
 {
-    HANDLE_ERROR(RegisterStruct(in->identifier, &in->members, NULL));
+    HANDLE_ERROR(RegisterStruct(in->identifier, &in->members, in->public, NULL));
 
     Type type;
     if (GetTypeFromToken(in->identifier, &type, false).success == false)

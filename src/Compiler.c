@@ -4,11 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <data-structures/MemoryStream.h>
+#include <libgen.h>
 
 #include "Scanner.h"
 #include "Parser.h"
 #include "data-structures/Array.h"
+#include "data-structures/MemoryStream.h"
 #include "code-generation/CodeGenerator.h"
 #include "StringUtils.h"
 #include "FileUtils.h"
@@ -19,14 +20,16 @@ typedef struct
 {
     AST ast;
     Array dependencies;
+    Map publicSymbolTable;
+    char* path;
     bool searched;
 } ProgramNode;
 
 typedef struct
 {
-    char* path;
-    ProgramNode* programNode;
-} ProgramNodeEntry;
+    ProgramNode* node;
+    int importLineNumber;
+} ProgramDependency;
 
 static char* GetFileString(const char* path)
 {
@@ -51,12 +54,12 @@ static void FreeProgramTree()
 {
     for (int i = 0; i < programNodes.length; ++i)
     {
-        const ProgramNodeEntry* node = programNodes.array[i];
+        ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+        FreeSyntaxTree(node->ast);
+        FreeArray(&node->dependencies);
+        FreeMap(&node->publicSymbolTable);
         free(node->path);
-
-        FreeSyntaxTree(node->programNode->ast);
-        FreeArray(&node->programNode->dependencies);
-        free(node->programNode);
+        free(node);
     }
     FreeArray(&programNodes);
 }
@@ -131,12 +134,12 @@ static Result CheckForCircularDependency(const ProgramNode* node, const ProgramN
 {
     for (int i = 0; i < importedNode->dependencies.length; ++i)
     {
-        const ProgramNode* dependency = *(ProgramNode**)importedNode->dependencies.array[i];
+        const ProgramDependency* dependency = importedNode->dependencies.array[i];
 
-        if (dependency == node)
+        if (dependency->node == node)
             return ERROR_RESULT("Circular dependency detected", lineNumber);
 
-        const Result result = CheckForCircularDependency(node, dependency, lineNumber);
+        const Result result = CheckForCircularDependency(node, dependency->node, lineNumber);
         if (result.hasError) return result;
     }
 
@@ -151,21 +154,21 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
     for (int i = 0; i < programNodes.length; ++i)
     {
-        const ProgramNodeEntry* currentRecord = programNodes.array[i];
+        ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
-        const int isSameFile = IsSameFile(path, currentRecord->path);
+        const int isSameFile = IsSameFile(path, node->path);
         if (isSameFile == -1)
             HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
                         "Import", containingPath);
 
         if (isSameFile)
-            return currentRecord->programNode;
+            return node;
     }
 
     ProgramNode* programNode = malloc(sizeof(ProgramNode));
+    ArrayAdd(&programNodes, &programNode);
 
-    const ProgramNodeEntry record = (ProgramNodeEntry){.programNode = programNode, .path = AllocateString(path)};
-    ArrayAdd(&programNodes, &record);
+    programNode->path = AllocateString(path);
 
     char* source = NULL;
     HandleError(GetSourceFromImportPath(path, lineNumber, &source),
@@ -180,17 +183,21 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
                 "Parse", path);
     FreeTokenArray(&tokens);
 
-    programNode->dependencies = AllocateArray(sizeof(ProgramNode*));
+    programNode->dependencies = AllocateArray(sizeof(ProgramDependency));
     for (int i = 0; i < programNode->ast.statements.length; ++i)
     {
         const NodePtr* node = programNode->ast.statements.array[i];
         if (node->type != Node_Import) break;
         const ImportStmt* importStmt = node->ptr;
 
-        ProgramNode* importedNode = GenerateProgramNode(importStmt->file, importStmt, path);
-        ArrayAdd(&programNode->dependencies, &importedNode);
+        ProgramDependency dependency =
+        {
+            .node = GenerateProgramNode(importStmt->file, importStmt, path),
+            .importLineNumber = importStmt->import.lineNumber
+        };
+        ArrayAdd(&programNode->dependencies, &dependency);
 
-        HandleError(CheckForCircularDependency(programNode, importedNode, importStmt->import.lineNumber),
+        HandleError(CheckForCircularDependency(programNode, dependency.node, importStmt->import.lineNumber),
                     "Import", path);
     }
 
@@ -204,7 +211,7 @@ static void SortVisit(ProgramNode* node, Array* array)
         return;
 
     for (int i = 0; i < node->dependencies.length; ++i)
-        SortVisit(*(ProgramNode**)node->dependencies.array[i], array);
+        SortVisit(((ProgramDependency*)node->dependencies.array[i])->node, array);
 
     node->searched = true;
     ArrayAdd(array, &node);
@@ -215,9 +222,9 @@ static Array SortProgramTree()
     Array array = AllocateArray(sizeof(ProgramNode*));
     for (int i = 0; i < programNodes.length; ++i)
     {
-        const ProgramNodeEntry* node = programNodes.array[i];
-        if (node->programNode->searched == 0)
-            SortVisit(node->programNode, &array);
+        ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+        if (node->searched == 0)
+            SortVisit(node, &array);
     }
     return array;
 }
@@ -229,12 +236,33 @@ void CompileProgramTree(char** outCode, size_t* outLength)
     const Array programNodes = SortProgramTree();
     for (int i = 0; i < programNodes.length; ++i)
     {
-        const ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+        ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+
+        Map publicSymbolTables = AllocateMap(sizeof(Map));
+
+        for (int i = 0; i < node->dependencies.length; ++i)
+        {
+            const ProgramDependency* dependency = node->dependencies.array[i];
+
+            char path[strlen(dependency->node->path) + 1];
+            memcpy(path, dependency->node->path, sizeof(path));
+            char* moduleName = basename(path);
+
+            const size_t baseNameLength = strlen(moduleName) + 1;
+            for (int i = 0; i < baseNameLength; ++i)
+                if (moduleName[i] == '.') moduleName[i] = '\0';
+
+            if (!MapAdd(&publicSymbolTables, moduleName, &dependency->node->publicSymbolTable))
+                HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
+                                         dependency->importLineNumber), "Import", node->path);
+        }
 
         char* code = NULL;
         size_t codeLength = 0;
-        HandleError(GenerateCode(&node->ast, (uint8_t**)&code, &codeLength),
+        HandleError(GenerateCode(&node->ast, &node->publicSymbolTable, (uint8_t**)&code, &codeLength),
                     "Code generation", NULL);
+
+        FreeMap(&publicSymbolTables);
 
         StreamWrite(stream, code, codeLength);
         free(code);
@@ -250,7 +278,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
 
 void Compile(const char* inputPath, const char* outputPath)
 {
-    programNodes = AllocateArray(sizeof(ProgramNodeEntry));
+    programNodes = AllocateArray(sizeof(ProgramNode*));
     GenerateProgramNode(inputPath, NULL, NULL);
 
     char* outputCode = NULL;
