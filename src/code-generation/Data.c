@@ -124,11 +124,26 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(const char* name, const long errorLineNumber, SymbolData** outSymbol)
+Result GetSymbol(const char* name, const char* module, const long errorLineNumber, SymbolData** outSymbol)
 {
-    SymbolData* symbol;
-    const ScopeNode* scope = currentScope;
+    *outSymbol = NULL;
 
+    if (module != NULL)
+    {
+        const Map* symbolTable = MapGet(modules, module);
+        if (symbolTable == NULL)
+            return ERROR_RESULT(AllocateString1Str("Could not find module \"%s\"", module), errorLineNumber);
+
+        *outSymbol = MapGet(symbolTable, name);
+        if (*outSymbol == NULL)
+            return ERROR_RESULT(
+                AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", name, module), errorLineNumber);
+
+        return SUCCESS_RESULT;
+    }
+
+    SymbolData* symbol = NULL;
+    const ScopeNode* scope = currentScope;
     while (true)
     {
         if (scope == NULL)
@@ -146,10 +161,10 @@ Result GetSymbol(const char* name, const long errorLineNumber, SymbolData** outS
     return SUCCESS_RESULT;
 }
 
-SymbolData* GetKnownSymbol(const char* name)
+SymbolData* GetKnownSymbol(const char* name, const char* module)
 {
     SymbolData* symbol;
-    ASSERT_ERROR(GetSymbol(name, 0, &symbol));
+    ASSERT_ERROR(GetSymbol(name, module, 0, &symbol));
     return symbol;
 }
 
@@ -226,6 +241,11 @@ Result RegisterStruct(const Token identifier, const Array* members, const bool p
 Map GetPublicSymbolTable()
 {
     return publicSymbolTable;
+}
+
+bool IsModuleName(const char* name)
+{
+    return MapGet(modules, name) != NULL;
 }
 
 static ScopeNode* AllocateScopeNode()

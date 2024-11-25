@@ -132,8 +132,16 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     }
     case Token_Identifier:
     {
-        SymbolData* symbol;
-        HANDLE_ERROR(GetSymbol(in->value.text, in->value.lineNumber, &symbol));
+        SymbolData* symbol = NULL;
+        if (IsModuleName(in->value.text))
+        {
+            HANDLE_ERROR(GetSymbol(in->next->value.text, in->value.text, in->value.lineNumber, &symbol));
+            in = in->next;
+        }
+        else
+            HANDLE_ERROR(GetSymbol(in->value.text, NULL, in->value.lineNumber, &symbol));
+        assert(symbol != NULL);
+
         if (symbol->symbolType != SymbolType_Variable)
             return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
@@ -213,7 +221,7 @@ Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpres
 
 static long CountStructVariables(const Type structType)
 {
-    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    const SymbolData* symbol = GetKnownSymbol(structType.name, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData* structData = &symbol->structData;
 
@@ -242,7 +250,7 @@ static long CountStructVariables(const Type structType)
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
 {
     SymbolData* symbol;
-    HANDLE_ERROR(GetSymbol(in->identifier.text, in->identifier.lineNumber, &symbol));
+    HANDLE_ERROR(GetSymbol(in->identifier.text, NULL, in->identifier.lineNumber, &symbol));
     if (symbol->symbolType != SymbolType_Function)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
@@ -353,7 +361,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
         if (memberType.metaType == MetaType_Struct)
         {
-            const SymbolData* symbol = GetKnownSymbol(memberType.name);
+            const SymbolData* symbol = GetKnownSymbol(memberType.name, NULL);
             assert(symbol->symbolType == SymbolType_Struct);
             const StructSymbolData* structData = &symbol->structData;
             GenerateFunctionStructAssignment(left, *structData, returnNumber);
@@ -418,7 +426,7 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
 {
     assert(left.type == Node_Literal);
 
-    const SymbolData* symbol = GetKnownSymbol(structType.name);
+    const SymbolData* symbol = GetKnownSymbol(structType.name, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData structData = symbol->structData;
 
