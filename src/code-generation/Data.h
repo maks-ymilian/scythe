@@ -5,6 +5,7 @@
 #include "SyntaxTree.h"
 #include "data-structures/Map.h"
 #include "data-structures/MemoryStream.h"
+#include "CodeGenerator.h"
 #include "Result.h"
 
 typedef enum { MetaType_Primitive, MetaType_Struct, MetaType_Enum } MetaType;
@@ -65,6 +66,8 @@ struct ScopeNode
     Type functionReturnType;
 };
 
+extern Module module;
+
 void Write(const void* buffer, size_t length);
 size_t GetStreamPosition();
 void SetStreamPosition(size_t pos);
@@ -76,12 +79,11 @@ Buffer ReadAll();
 Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);
 
-Result GetSymbol(const char* name, const char* module, long errorLineNumber, SymbolData** outSymbol);
+Result GetSymbol(const char* name, const char* moduleName, long errorLineNumber, SymbolData** outSymbol);
 SymbolData* GetKnownSymbol(const char* name, const char* module);
 Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, bool public, int* outUniqueName);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams, bool public, int* outUniqueName);
 Result RegisterStruct(Token identifier, const Array* members, bool public, int* outUniqueName);
-Map GetPublicSymbolTable();
 bool IsModuleName(const char* name);
 
 void PushScope();

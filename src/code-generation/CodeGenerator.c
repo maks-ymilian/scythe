@@ -14,7 +14,7 @@ static Result GenerateAST(const AST* in)
     return SUCCESS_RESULT;
 }
 
-Result GenerateCode(const AST* syntaxTree, Map* modules, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength)
+Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint8_t** outputCode, size_t* outputLength)
 {
     InitResources(modules);
 
@@ -30,7 +30,7 @@ Result GenerateCode(const AST* syntaxTree, Map* modules, Map* outPublicSymbols, 
         return result;
     }
 
-    *outPublicSymbols = GetPublicSymbolTable();
+    *outModule = module;
 
     *outputCode = outputBuffer.buffer;
     if (outputLength != NULL)

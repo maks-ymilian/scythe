@@ -1,5 +1,7 @@
 #include "ExpressionGenerator.h"
 
+#include <errno.h>
+
 #include "StatementGenerator.h"
 #include "StringUtils.h"
 

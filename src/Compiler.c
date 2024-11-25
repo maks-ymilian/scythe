@@ -20,7 +20,7 @@ typedef struct
 {
     AST ast;
     Array dependencies;
-    Map publicSymbolTable;
+    Module module;
     char* path;
     bool searched;
 } ProgramNode;
@@ -57,7 +57,8 @@ static void FreeProgramTree()
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
         FreeSyntaxTree(node->ast);
         FreeArray(&node->dependencies);
-        FreeMap(&node->publicSymbolTable);
+        FreeMap(&node->module.symbolTable);
+        FreeMap(&node->module.types);
         free(node->path);
         free(node);
     }
@@ -238,7 +239,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
     {
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
-        Map modules = AllocateMap(sizeof(Map));
+        Map modules = AllocateMap(sizeof(Module*));
 
         for (int i = 0; i < node->dependencies.length; ++i)
         {
@@ -252,14 +253,15 @@ void CompileProgramTree(char** outCode, size_t* outLength)
             for (int i = 0; i < baseNameLength; ++i)
                 if (moduleName[i] == '.') moduleName[i] = '\0';
 
-            if (!MapAdd(&modules, moduleName, &dependency->node->publicSymbolTable))
+            Module* _ = &dependency->node->module;
+            if (!MapAdd(&modules, moduleName, &_))
                 HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
                                          dependency->importLineNumber), "Import", node->path);
         }
 
         char* code = NULL;
         size_t codeLength = 0;
-        HandleError(GenerateCode(&node->ast, &modules, &node->publicSymbolTable, (uint8_t**)&code, &codeLength),
+        HandleError(GenerateCode(&node->ast, &modules, &node->module, (uint8_t**)&code, &codeLength),
                     "Code generation", NULL);
 
         FreeMap(&modules);

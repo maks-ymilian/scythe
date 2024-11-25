@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 static inline int IntCharCount(int number)
 {
     int minusSign = 0;

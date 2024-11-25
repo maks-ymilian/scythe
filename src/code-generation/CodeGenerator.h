@@ -6,4 +6,10 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result GenerateCode(const AST* syntaxTree, Map* modules, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength);
+typedef struct
+{
+    Map symbolTable;
+    Map types;
+} Module;
+
+Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint8_t** outputCode, size_t* outputLength);

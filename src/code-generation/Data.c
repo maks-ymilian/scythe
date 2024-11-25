@@ -8,12 +8,12 @@
 #include "Common.h"
 #include "StringUtils.h"
 
+Module module;
+
 static int symbolCounter = 0;
 
 static Map types;
-
 static ScopeNode* currentScope;
-static Map publicSymbolTable;
 
 static Map* modules;
 
@@ -124,20 +124,20 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(const char* name, const char* module, const long errorLineNumber, SymbolData** outSymbol)
+Result GetSymbol(const char* name, const char* moduleName, const long errorLineNumber, SymbolData** outSymbol)
 {
     *outSymbol = NULL;
 
-    if (module != NULL)
+    if (moduleName != NULL)
     {
-        const Map* symbolTable = MapGet(modules, module);
-        if (symbolTable == NULL)
-            return ERROR_RESULT(AllocateString1Str("Could not find module \"%s\"", module), errorLineNumber);
+        const Module* module = *(Module**)MapGet(modules, moduleName);
+        if (module == NULL)
+            return ERROR_RESULT(AllocateString1Str("Could not find module \"%s\"", moduleName), errorLineNumber);
 
-        *outSymbol = MapGet(symbolTable, name);
+        *outSymbol = MapGet(&module->symbolTable, name);
         if (*outSymbol == NULL)
             return ERROR_RESULT(
-                AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", name, module), errorLineNumber);
+                AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", name, moduleName), errorLineNumber);
 
         return SUCCESS_RESULT;
     }
@@ -191,7 +191,7 @@ static Result AddSymbol(const char* name, SymbolData data, const bool public, co
 
     if (public)
     {
-        const bool success = MapAdd(&publicSymbolTable, name, &data);
+        const bool success = MapAdd(&module.symbolTable, name, &data);
         assert(success);
     }
 
@@ -236,11 +236,6 @@ Result RegisterStruct(const Token identifier, const Array* members, const bool p
                             identifier.lineNumber);
 
     return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
-}
-
-Map GetPublicSymbolTable()
-{
-    return publicSymbolTable;
 }
 
 bool IsModuleName(const char* name)
@@ -316,7 +311,8 @@ void InitResources(Map* _modules)
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
 
-    publicSymbolTable = AllocateMap(sizeof(SymbolData));
+    module.symbolTable = AllocateMap(sizeof(SymbolData));
+    module.types = AllocateMap(sizeof(Type));
 
     types = AllocateMap(sizeof(Type));
 

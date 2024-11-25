@@ -1,14 +1,11 @@
 #pragma once
 
-#include <string.h>
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <string.h>
-#include <errno.h>
 
 #include "Data.h"
-#include "Result.h"
+#include "CodeGenerator.h"
 
 #define HANDLE_ERROR(function)\
 {const Result result = function;\
