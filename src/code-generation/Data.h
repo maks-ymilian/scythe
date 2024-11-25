@@ -88,5 +88,5 @@ void PopScope(Map* outSymbolTable);
 ScopeNode* GetFunctionScope();
 ScopeNode* GetCurrentScope();
 
-void InitResources();
+void InitResources(Map* _modules);
 void FreeResources();

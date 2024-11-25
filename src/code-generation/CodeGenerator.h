@@ -6,4 +6,4 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result GenerateCode(const AST* syntaxTree, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength);
+Result GenerateCode(const AST* syntaxTree, Map* modules, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength);

@@ -238,7 +238,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
     {
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
-        Map publicSymbolTables = AllocateMap(sizeof(Map));
+        Map modules = AllocateMap(sizeof(Map));
 
         for (int i = 0; i < node->dependencies.length; ++i)
         {
@@ -252,17 +252,17 @@ void CompileProgramTree(char** outCode, size_t* outLength)
             for (int i = 0; i < baseNameLength; ++i)
                 if (moduleName[i] == '.') moduleName[i] = '\0';
 
-            if (!MapAdd(&publicSymbolTables, moduleName, &dependency->node->publicSymbolTable))
+            if (!MapAdd(&modules, moduleName, &dependency->node->publicSymbolTable))
                 HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
                                          dependency->importLineNumber), "Import", node->path);
         }
 
         char* code = NULL;
         size_t codeLength = 0;
-        HandleError(GenerateCode(&node->ast, &node->publicSymbolTable, (uint8_t**)&code, &codeLength),
+        HandleError(GenerateCode(&node->ast, &modules, &node->publicSymbolTable, (uint8_t**)&code, &codeLength),
                     "Code generation", NULL);
 
-        FreeMap(&publicSymbolTables);
+        FreeMap(&modules);
 
         StreamWrite(stream, code, codeLength);
         free(code);

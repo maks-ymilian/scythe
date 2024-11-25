@@ -15,6 +15,8 @@ static Map types;
 static ScopeNode* currentScope;
 static Map publicSymbolTable;
 
+static Map* modules;
+
 static MemoryStream* tempStream;
 static MemoryStream* finalStream;
 static Array streamReadPoints;
@@ -280,8 +282,10 @@ ScopeNode* GetCurrentScope()
     return currentScope;
 }
 
-void InitResources()
+void InitResources(Map* _modules)
 {
+    modules = _modules;
+
     streamReadPoints = AllocateArray(sizeof(size_t));
     tempStream = AllocateMemoryStream();
     finalStream = AllocateMemoryStream();

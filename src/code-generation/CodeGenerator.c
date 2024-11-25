@@ -3,7 +3,7 @@
 #include "StatementGenerator.h"
 #include "Common.h"
 
-Result GenerateAST(const AST* in)
+static Result GenerateAST(const AST* in)
 {
     for (int i = 0; i < in->statements.length; ++i)
     {
@@ -14,9 +14,9 @@ Result GenerateAST(const AST* in)
     return SUCCESS_RESULT;
 }
 
-Result GenerateCode(const AST* syntaxTree, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength)
+Result GenerateCode(const AST* syntaxTree, Map* modules, Map* outPublicSymbols, uint8_t** outputCode, size_t* outputLength)
 {
-    InitResources();
+    InitResources(modules);
 
     const Result result = GenerateAST(syntaxTree);
 
