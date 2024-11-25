@@ -208,6 +208,8 @@ SymbolData* GetKnownSymbol(const char* name, const bool searchAllModules, const 
 
 static bool AddType(const char* name, const MetaType metaType, const bool public)
 {
+    if (GetType(name) != NULL) return false;
+
     Type type;
     type.name = name;
     type.id = types.elementCount;
