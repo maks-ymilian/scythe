@@ -128,9 +128,9 @@ void* MapGet(const Map* map, const char* key)
     }
 }
 
-static Node* NextBucket(const Map* map, const size_t currentIndex)
+static Node* NextBucket(const Map* map, const size_t startIndex)
 {
-    for (int i = currentIndex; i < map->bucketsCap; ++i)
+    for (int i = startIndex; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         if (node != NULL)
@@ -139,29 +139,22 @@ static Node* NextBucket(const Map* map, const size_t currentIndex)
     return NULL;
 }
 
-Node* MapBegin(const Map* map)
-{
-    return NextBucket(map, 0);
-}
-
 bool MapNext(const Map* map, Node** current)
 {
-    if (current == NULL)
-        return false;
+    assert(current != NULL);
+
     if (*current == NULL)
-        return false;
+    {
+        *current = NextBucket(map, 0);
+        return *current != NULL;
+    }
 
     const Node* currentNode = *current;
     Node* next = currentNode->next;
     if (next == NULL)
     {
-        const size_t index = currentNode->bucket + 1;
-        if (index >= map->bucketsCap)
-            return false;
-
-        next = NextBucket(map, index);
-        if (next == NULL)
-            return false;
+        next = NextBucket(map, currentNode->bucket + 1);
+        if (next == NULL) return false;
     }
 
     *current = next;

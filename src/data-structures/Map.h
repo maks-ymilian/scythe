@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#define MAP_ITERATE(name, map) Node* name = MapBegin(map); MapNext(map, &name);
+#define MAP_ITERATE(name, map) Node* name = NULL; MapNext(map, &name);
 
 typedef struct Node Node;
 struct Node
@@ -24,7 +24,6 @@ typedef struct
 Map AllocateMap(const size_t sizeOfValueType);
 void FreeMap(const Map* map);
 void* MapGet(const Map* map, const char* key);
-Node* MapBegin(const Map* map);
 bool MapNext(const Map* map, Node** current);
 bool MapAdd(Map* map, const char* key, const void* value);
 bool MapRemove(Map* map, const char* key);
