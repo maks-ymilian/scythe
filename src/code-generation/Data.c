@@ -314,13 +314,6 @@ void PushScope()
 
 void PopScope(Map* outSymbolTable)
 {
-    for (MAP_ITERATE(i, &currentScope->symbolTable))
-    {
-        const SymbolData symbol = *(SymbolData*)i->value;
-        if (symbol.symbolType == SymbolType_Function)
-            FreeArray(&symbol.functionData.parameters);
-    }
-
     ScopeNode* parent = currentScope->parent;
 
     if (outSymbolTable == NULL)
