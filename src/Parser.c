@@ -100,6 +100,7 @@ static Token* Peek(const TokenType* types, const int length, const int offset)
 static Token* PeekOne(const TokenType type, const int offset) { return Peek((TokenType[]){type}, 1, offset); }
 
 static Result ParseExpression(NodePtr* out);
+static Result ParseFunctionCall(NodePtr* out);
 
 static Result ParsePrimary(NodePtr* out)
 {
@@ -125,17 +126,26 @@ static Result ParsePrimary(NodePtr* out)
     case Token_Identifier:
     {
         LiteralExpr* first = AllocLiteral((LiteralExpr){.value = *token, .next = NULL_NODE});
-        LiteralExpr* prev = first;
+        LiteralExpr* current = first;
         while (MatchOne(Token_Dot) != NULL)
         {
+            bool funcCallFound = true;
+            NodePtr funcCall;
+            HANDLE_ERROR(ParseFunctionCall(&funcCall), funcCallFound = false);
+            if (funcCallFound)
+            {
+                current->next = funcCall;
+                break;
+            }
+
             SET_LINE_NUMBER
             const Token* identifier = MatchOne(Token_Identifier);
             if (identifier == NULL)
                 return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_Dot);
 
             LiteralExpr* next = AllocLiteral((LiteralExpr){.value = *identifier, .next = NULL_NODE});
-            prev->next = (NodePtr){.ptr = next, .type = Node_Literal};
-            prev = next;
+            current->next = (NodePtr){.ptr = next, .type = Node_Literal};
+            current = next;
         }
 
         *out = (NodePtr){first, Node_Literal};
