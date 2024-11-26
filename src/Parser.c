@@ -124,7 +124,7 @@ static Result ParsePrimary(NodePtr* out)
     }
     case Token_Identifier:
     {
-        LiteralExpr* first = AllocLiteral((LiteralExpr){.value = *token, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
+        LiteralExpr* first = AllocLiteral((LiteralExpr){.value = *token, .next = NULL_NODE});
         LiteralExpr* prev = first;
         while (MatchOne(Token_Dot) != NULL)
         {
@@ -133,7 +133,7 @@ static Result ParsePrimary(NodePtr* out)
             if (identifier == NULL)
                 return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_Dot);
 
-            LiteralExpr* next = AllocLiteral((LiteralExpr){.value = *identifier, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
+            LiteralExpr* next = AllocLiteral((LiteralExpr){.value = *identifier, .next = NULL_NODE});
             prev->next = (NodePtr){.ptr = next, .type = Node_Literal};
             prev = next;
         }
@@ -146,7 +146,7 @@ static Result ParsePrimary(NodePtr* out)
     case Token_True:
     case Token_False:
     {
-        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
+        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token, .next = NULL_NODE});
         *out = (NodePtr){literal, Node_Literal};
         return SUCCESS_RESULT;
     }
@@ -298,8 +298,7 @@ static Result ParseExpressionStatement(NodePtr* out)
     HANDLE_ERROR(ParseExpression(&expr),
                  {
                  if (MatchOne(Token_Semicolon) == NULL) return result;
-                 expr.ptr = NULL;
-                 expr.type = Node_Null;
+                 expr = NULL_NODE;
                  });
 
     if (MatchOne(Token_Semicolon) == NULL)
@@ -320,9 +319,7 @@ static Result ParseReturnStatement(NodePtr* out)
 
     SET_LINE_NUMBER
     NodePtr expr;
-    HANDLE_ERROR(ParseExpression(&expr),
-                 expr.type = Node_Null;
-                 expr.ptr = NULL;)
+    HANDLE_ERROR(ParseExpression(&expr), expr = NULL_NODE;)
 
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
@@ -370,7 +367,7 @@ static Result ParseIfStatement(NodePtr* out)
                      return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else));
     }
     else
-        elseStmt = (NodePtr){NULL, Node_Null};
+        elseStmt = NULL_NODE;
 
     const IfStmt* ifStmt = AllocIfStmt((IfStmt){*ifToken, expr, stmt, elseStmt});
     *out = (NodePtr){(void*)ifStmt, Node_If};
@@ -479,7 +476,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     Consume();
     Consume();
 
-    NodePtr initializer = {NULL, Node_Null};
+    NodePtr initializer = NULL_NODE;
     const Token* equals = MatchOne(Token_Equals);
     if (equals != NULL)
     {

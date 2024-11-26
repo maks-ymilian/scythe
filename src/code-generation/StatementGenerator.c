@@ -52,7 +52,7 @@ static void GenerateStructMemberNames(
             if (memberType.metaType == MetaType_Struct)
             {
                 GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
-                last->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+                last->next = NULL_NODE;
                 break;
             }
 
@@ -60,7 +60,7 @@ static void GenerateStructMemberNames(
                 WRITE_TEXT(beforeText);
             Type _;
             ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-            last->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+            last->next = NULL_NODE;
             if (afterText != NULL)
                 WRITE_TEXT(afterText);
             break;

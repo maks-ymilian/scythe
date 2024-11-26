@@ -377,7 +377,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
             assert(symbol->symbolType == SymbolType_Struct);
             const StructSymbolData* structData = &symbol->structData;
             GenerateFunctionStructAssignment(left, *structData, returnNumber);
-            leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+            leftLast->next = NULL_NODE;
             continue;
         }
 
@@ -385,7 +385,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
         Type _;
         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
 
-        leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+        leftLast->next = NULL_NODE;
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
@@ -431,8 +431,8 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
             Type outType;
             ASSERT_ERROR(GenerateExpression(&node, &outType, true, false));
 
-            leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
-            rightLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+            leftLast->next = NULL_NODE;
+            rightLast->next = NULL_NODE;
 
             WRITE_LITERAL(";");
             break;
