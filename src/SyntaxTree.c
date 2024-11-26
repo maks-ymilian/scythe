@@ -149,10 +149,7 @@ static void FreeNode(const NodePtr node)
         const LiteralExpr* ptr = node.ptr;
 
         FreeToken(&ptr->value);
-
-        if (ptr->next != NULL)
-            FreeNode((NodePtr){ptr->next, Node_Literal});
-
+        FreeNode(ptr->next);
         free(node.ptr)
                 DEBUG_PRINT("Freeing LiteralExpr\n");
         return;

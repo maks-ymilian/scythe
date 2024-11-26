@@ -137,8 +137,10 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         SymbolData* symbol = NULL;
         if (IsModuleName(in->value.text))
         {
-            HANDLE_ERROR(GetSymbol(in->next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
-            in = in->next;
+            assert(in->next.type == Node_Literal);
+            const LiteralExpr* next = in->next.ptr;
+            HANDLE_ERROR(GetSymbol(next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
+            in = next;
         }
         else
             HANDLE_ERROR(GetSymbol(in->value.text, false, NULL, in->value.lineNumber, &symbol));
@@ -153,27 +155,30 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 
         Type type = symbol->variableData.type;
         const LiteralExpr* current = in;
-        while (current->next != NULL)
+        while (current->next.ptr != NULL)
         {
+            assert(current->next.type == Node_Literal);
+            const LiteralExpr* next = current->next.ptr;
+
             WRITE_LITERAL(".");
 
             if (type.metaType != MetaType_Struct)
                 return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
 
-            SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, current->next->value.text);
+            SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, next->value.text);
             if (memberSymbol == NULL)
                 return ERROR_RESULT(
                     AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
-                        current->next->value.text, type.name),
-                    current->next->value.lineNumber);
+                        next->value.text, type.name),
+                    next->value.lineNumber);
 
             assert(memberSymbol->symbolType == SymbolType_Variable);
             type = memberSymbol->variableData.type;
             symbol = memberSymbol;
 
-            WRITE_TEXT(current->next->value.text);
+            WRITE_TEXT(next->value.text);
 
-            current = current->next;
+            current = next;
         }
 
         *outType = type;
@@ -343,6 +348,7 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
 
 static void GenerateFunctionStructAssignment(const LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
 {
+    //todo is this the same code
     long _returnNumber = returnCounter;
     if (returnNumber == NULL) returnNumber = &_returnNumber;
 
@@ -355,9 +361,13 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
         LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
 
         LiteralExpr* leftLast = (LiteralExpr*)left;
-        while (leftLast->next != NULL) leftLast = leftLast->next;
+        while (leftLast->next.ptr != NULL)
+        {
+            assert(leftLast->next.type == Node_Literal);
+            leftLast = leftLast->next.ptr;
+        }
 
-        leftLast->next = &varDeclIdentifier;
+        leftLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
 
         Type memberType;
         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
@@ -367,7 +377,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
             assert(symbol->symbolType == SymbolType_Struct);
             const StructSymbolData* structData = &symbol->structData;
             GenerateFunctionStructAssignment(left, *structData, returnNumber);
-            leftLast->next = NULL;
+            leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
             continue;
         }
 
@@ -375,7 +385,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Stru
         Type _;
         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
 
-        leftLast->next = NULL;
+        leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
@@ -400,12 +410,20 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
             LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
 
             LiteralExpr* leftLast = left;
-            while (leftLast->next != NULL) leftLast = leftLast->next;
+            while (leftLast->next.ptr != NULL)
+            {
+                assert(leftLast->next.type == Node_Literal);
+                leftLast = leftLast->next.ptr;
+            }
             LiteralExpr* rightLast = right;
-            while (rightLast->next != NULL) rightLast = rightLast->next;
+            while (rightLast->next.ptr != NULL)
+            {
+                assert(rightLast->next.type == Node_Literal);
+                rightLast = rightLast->next.ptr;
+            }
 
-            leftLast->next = &varDeclIdentifier;
-            rightLast->next = &varDeclIdentifier;
+            leftLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
+            rightLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
 
             BinaryExpr expr = (BinaryExpr){(NodePtr){left, Node_Literal}, equals, (NodePtr){right, Node_Literal}};
             NodePtr node = (NodePtr){&expr, Node_Binary};
@@ -413,8 +431,8 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
             Type outType;
             ASSERT_ERROR(GenerateExpression(&node, &outType, true, false));
 
-            leftLast->next = NULL;
-            rightLast->next = NULL;
+            leftLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
+            rightLast->next = (NodePtr){.ptr = NULL, .type = Node_Null};
 
             WRITE_LITERAL(";");
             break;

@@ -63,7 +63,7 @@ typedef struct LiteralExpr LiteralExpr;
 typedef struct LiteralExpr
 {
     Token value;
-    LiteralExpr* next;
+    NodePtr next;
 } LiteralExpr;
 
 LiteralExpr* AllocLiteral(LiteralExpr expr);

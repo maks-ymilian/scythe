@@ -124,7 +124,7 @@ static Result ParsePrimary(NodePtr* out)
     }
     case Token_Identifier:
     {
-        LiteralExpr* first = AllocLiteral((LiteralExpr){*token, NULL});
+        LiteralExpr* first = AllocLiteral((LiteralExpr){.value = *token, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
         LiteralExpr* prev = first;
         while (MatchOne(Token_Dot) != NULL)
         {
@@ -133,8 +133,8 @@ static Result ParsePrimary(NodePtr* out)
             if (identifier == NULL)
                 return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_Dot);
 
-            LiteralExpr* next = AllocLiteral((LiteralExpr){*identifier, NULL});
-            prev->next = next;
+            LiteralExpr* next = AllocLiteral((LiteralExpr){.value = *identifier, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
+            prev->next = (NodePtr){.ptr = next, .type = Node_Literal};
             prev = next;
         }
 
@@ -146,7 +146,7 @@ static Result ParsePrimary(NodePtr* out)
     case Token_True:
     case Token_False:
     {
-        LiteralExpr* literal = AllocLiteral((LiteralExpr){*token, NULL});
+        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token, .next = (NodePtr){.ptr = NULL, .type = Node_Null}});
         *out = (NodePtr){literal, Node_Literal};
         return SUCCESS_RESULT;
     }
@@ -193,8 +193,10 @@ static Result ParseFunctionCall(NodePtr* out)
     if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
         return ParsePrimary(out);
 
-    if (MatchOne(Token_Identifier) == NULL) assert(0);
-    if (MatchOne(Token_LeftBracket) == NULL) assert(0);
+    if (MatchOne(Token_Identifier) == NULL)
+        assert(0);
+    if (MatchOne(Token_LeftBracket) == NULL)
+        assert(0);
 
     Array params;
     HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression), assert(0));

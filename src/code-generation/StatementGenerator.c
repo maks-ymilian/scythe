@@ -39,8 +39,12 @@ static void GenerateStructMemberNames(
             LiteralExpr literal = *expr;
             LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
             LiteralExpr* last = &literal;
-            while (last->next != NULL) last = last->next;
-            last->next = &next;
+            while (last->next.ptr != NULL)
+            {
+                assert(last->next.type == Node_Literal);
+                last = last->next.ptr;
+            }
+            last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
             NodePtr node = (NodePtr){&literal, Node_Literal};
 
             Type memberType;
@@ -48,7 +52,7 @@ static void GenerateStructMemberNames(
             if (memberType.metaType == MetaType_Struct)
             {
                 GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
-                last->next = NULL;
+                last->next = (NodePtr){.ptr = NULL, .type = Node_Null};
                 break;
             }
 
@@ -56,7 +60,7 @@ static void GenerateStructMemberNames(
                 WRITE_TEXT(beforeText);
             Type _;
             ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-            last->next = NULL;
+            last->next = (NodePtr){.ptr = NULL, .type = Node_Null};
             if (afterText != NULL)
                 WRITE_TEXT(afterText);
             break;
