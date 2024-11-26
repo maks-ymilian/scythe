@@ -108,6 +108,8 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     return SUCCESS_RESULT;
 }
 
+static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType);
+
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
@@ -137,10 +139,18 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         SymbolData* symbol = NULL;
         if (IsModuleName(in->value.text))
         {
-            assert(in->next.type == Node_Literal);
-            const LiteralExpr* next = in->next.ptr;
-            HANDLE_ERROR(GetSymbol(next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
-            in = next;
+            assert(in->next.type == Node_Literal || in->next.type == Node_FunctionCall);
+            if (in->next.type == Node_Literal)
+            {
+                const LiteralExpr* next = in->next.ptr;
+                HANDLE_ERROR(GetSymbol(next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
+                in = in->next.ptr;
+            }
+            else if (in->next.type == Node_FunctionCall)
+            {
+                HANDLE_ERROR(GenerateFunctionCallExpression(in->next.ptr, in->value.text, outType));
+                return SUCCESS_RESULT;
+            }
         }
         else
             HANDLE_ERROR(GetSymbol(in->value.text, false, NULL, in->value.lineNumber, &symbol));
@@ -254,10 +264,10 @@ static long CountStructVariables(const Type structType)
     return count;
 }
 
-static Result GenerateFunctionCallExpression(const FuncCallExpr* in, Type* outType)
+static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType)
 {
     SymbolData* symbol;
-    HANDLE_ERROR(GetSymbol(in->identifier.text, false, NULL, in->identifier.lineNumber, &symbol));
+    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
     if (symbol->symbolType != SymbolType_Function)
         return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
     const FunctionSymbolData function = symbol->functionData;
@@ -699,7 +709,7 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         result = GenerateLiteralExpression(in->ptr, outType);
         break;
     case Node_FunctionCall:
-        result = GenerateFunctionCallExpression(in->ptr, outType);
+        result = GenerateFunctionCallExpression(in->ptr, NULL, outType);
         break;
     default:
         assert(0);
