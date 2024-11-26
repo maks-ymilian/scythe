@@ -153,6 +153,7 @@ typedef struct
 {
     Token import;
     char* file;
+    bool public;
 } ImportStmt;
 
 ImportStmt* AllocImportStmt(ImportStmt stmt);

@@ -606,15 +606,21 @@ static Result ParseImportStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* import = MatchOne(Token_Import);
+    const bool publicFound = PeekOne(Token_Public, 0) != NULL;
+
+    const Token* import = PeekOne(Token_Import, 0 + publicFound);
     if (import == NULL)
         return NOT_FOUND_RESULT;
 
-    const Token* path = MatchOne(Token_StringLiteral);
+    const Token* path = PeekOne(Token_StringLiteral, 1 + publicFound);
     if (path == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Token_Import);
 
-    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text, .import = *import});
+    if (publicFound) Consume();
+    Consume();
+    Consume();
+
+    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text, .import = *import, .public = publicFound});
     *out = (NodePtr){.ptr = importStmt, .type = Node_Import};
     return SUCCESS_RESULT;
 }
