@@ -8,7 +8,7 @@ It makes developing audio effects and instruments fast and immediate.
 Scythe uses C-like syntax and aims to make writing JSFX plugins easier and more readable by adding features such as:
 - Structs
 - Better scoping
-- Better control flow, including return and switch statements
+- Better control flow, including switch, return, break, and continue statements
 - For loops
 - Simplified memory management
 - Enforcing variable declaration before use
