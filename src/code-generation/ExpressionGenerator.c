@@ -452,6 +452,18 @@ static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* righ
     }
 }
 
+static bool LiteralHasFunctionCall(const LiteralExpr* literal)
+{
+    while (literal->next.ptr != NULL)
+    {
+        if (literal->next.type == Node_FunctionCall)
+            return true;
+        literal = literal->next.ptr;
+    }
+
+    return false;
+}
+
 static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
     assert(left.type == Node_Literal);
@@ -460,12 +472,15 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
     assert(symbol->symbolType == SymbolType_Struct);
     const StructSymbolData structData = symbol->structData;
 
-    if (right.type == Node_Literal)
-        GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
-    else if (right.type == Node_FunctionCall)
-        GenerateFunctionStructAssignment(left.ptr, structData, NULL);
-    else
-        assert(0);
+    bool isFunctionCall = right.type == Node_FunctionCall;
+    if (!isFunctionCall)
+    {
+        assert(right.type == Node_Literal);
+        isFunctionCall = LiteralHasFunctionCall(right.ptr);
+    }
+
+    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, structData, NULL);
+    else GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
 }
 
 static bool IsAssignmentOperator(const TokenType token)
@@ -556,7 +571,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(in->operator.type == Token_Equals);
                 assert(leftType.id == rightType.id);
 
-                if (in->right.type == Node_FunctionCall)
+                if (in->right.type == Node_FunctionCall ||
+                    in->right.type == Node_Literal && LiteralHasFunctionCall(in->right.ptr))
                     Write(right.buffer, right.length);
 
                 GenerateStructAssignment(in->left, in->right, leftType);
