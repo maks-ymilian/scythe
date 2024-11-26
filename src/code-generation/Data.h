@@ -14,7 +14,7 @@ typedef struct
 {
     const char* name;
     MetaType metaType;
-    uint32_t id;
+    int id;
 } Type;
 
 typedef struct

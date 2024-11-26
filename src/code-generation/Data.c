@@ -8,9 +8,12 @@
 #include "Common.h"
 #include "StringUtils.h"
 
+#define NUM_PRIMITIVE_TYPES 5
+
 Module module;
 
 static int symbolCounter = 0;
+static int typeCounter = NUM_PRIMITIVE_TYPES;
 
 static Map types;
 static ScopeNode* currentScope;
@@ -206,14 +209,18 @@ SymbolData* GetKnownSymbol(const char* name, const bool searchAllModules, const 
     return symbol;
 }
 
-static bool AddType(const char* name, const MetaType metaType, const bool public)
+static bool AddType(const char* name, const MetaType metaType, const bool public, const int primitiveId)
 {
     if (GetType(name) != NULL) return false;
 
-    Type type;
-    type.name = name;
-    type.id = types.elementCount;
-    type.metaType = metaType;
+    Type type = {.name = name, .metaType = metaType};
+    if (metaType == MetaType_Primitive)
+        type.id = primitiveId;
+    else
+    {
+        type.id = typeCounter;
+        typeCounter++;
+    }
 
     const bool success = MapAdd(&types, name, &type);
     if (!success)
@@ -277,7 +284,7 @@ Result RegisterStruct(const Token identifier, const Array* members, const bool p
 
     const SymbolData symbolData = {.symbolType = SymbolType_Struct, .structData = data, .uniqueName = -1};
 
-    if (!AddType(identifier.text, MetaType_Struct, public))
+    if (!AddType(identifier.text, MetaType_Struct, public, -1))
         return ERROR_RESULT(AllocateString1Str("Type \"%s\" is already defined", identifier.text),
                             identifier.lineNumber);
 
@@ -362,20 +369,22 @@ void InitResources(Map* _modules)
 
     types = AllocateMap(sizeof(Type));
 
-    bool success = AddType("void", MetaType_Primitive, false);
+    bool success = AddType("void", MetaType_Primitive, false, 0);
     assert(success);
 
-    success = AddType("int", MetaType_Primitive, false);
+    success = AddType("int", MetaType_Primitive, false, 1);
     assert(success);
 
-    success = AddType("float", MetaType_Primitive, false);
+    success = AddType("float", MetaType_Primitive, false, 2);
     assert(success);
 
-    success = AddType("string", MetaType_Primitive, false);
+    success = AddType("string", MetaType_Primitive, false, 3);
     assert(success);
 
-    success = AddType("bool", MetaType_Primitive, false);
+    success = AddType("bool", MetaType_Primitive, false, 4);
     assert(success);
+
+    assert(types.elementCount == NUM_PRIMITIVE_TYPES);
 }
 
 void FreeResources()
