@@ -232,20 +232,25 @@ static Array SortProgramTree()
     return array;
 }
 
-void GetModule(Map* modules, const ProgramDependency* dependency, const ProgramNode* parentNode)
+void GetModules(Map* modules, const ProgramNode* node)
 {
-    char path[strlen(dependency->node->path) + 1];
-    memcpy(path, dependency->node->path, sizeof(path));
-    char* moduleName = basename(path);
+    for (int i = 0; i < node->dependencies.length; ++i)
+    {
+        const ProgramDependency* dependency = node->dependencies.array[i];
 
-    const size_t baseNameLength = strlen(moduleName) + 1;
-    for (int i = 0; i < baseNameLength; ++i)
-        if (moduleName[i] == '.') moduleName[i] = '\0';
+        char path[strlen(dependency->node->path) + 1];
+        memcpy(path, dependency->node->path, sizeof(path));
+        char* moduleName = basename(path);
 
-    Module* _ = &dependency->node->module;
-    if (!MapAdd(modules, moduleName, &_))
-        HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
-                                 dependency->importLineNumber), "Import", parentNode->path);
+        const size_t baseNameLength = strlen(moduleName) + 1;
+        for (int i = 0; i < baseNameLength; ++i)
+            if (moduleName[i] == '.') moduleName[i] = '\0';
+
+        Module* _ = &dependency->node->module;
+        if (!MapAdd(modules, moduleName, &_))
+            HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
+                                     dependency->importLineNumber), "Import", node->path);
+    }
 }
 
 void CompileProgramTree(char** outCode, size_t* outLength)
@@ -258,11 +263,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
         Map modules = AllocateMap(sizeof(Module*));
-        for (int i = 0; i < node->dependencies.length; ++i)
-        {
-            const ProgramDependency* dependency = node->dependencies.array[i];
-            GetModule(&modules, dependency, node);
-        }
+        GetModules(&modules, node);
 
         char* code = NULL;
         size_t codeLength = 0;
