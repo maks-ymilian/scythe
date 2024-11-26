@@ -369,12 +369,17 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
                                   in->identifier.lineNumber, Token_Public);
 
+    Type returnType;
+    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
+
+    if (returnType.metaType != MetaType_Primitive && in->public && !returnType.public)
+        return ERROR_RESULT(
+            AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", returnType.name),
+            in->identifier.lineNumber);
+
     BeginRead();
 
     PushScope();
-
-    Type returnType;
-    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
 
     ScopeNode* currentScope = GetCurrentScope();
     currentScope->isFunction = true;
