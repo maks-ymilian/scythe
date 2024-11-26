@@ -232,11 +232,12 @@ static Array SortProgramTree()
     return array;
 }
 
-void GetModules(Map* modules, const ProgramNode* node)
+void GetModules(Map* modules, const ProgramNode* node, const bool publicOnly)
 {
     for (int i = 0; i < node->dependencies.length; ++i)
     {
         const ProgramDependency* dependency = node->dependencies.array[i];
+        if (publicOnly && !dependency->publicImport) continue;
 
         char path[strlen(dependency->node->path) + 1];
         memcpy(path, dependency->node->path, sizeof(path));
@@ -250,6 +251,8 @@ void GetModules(Map* modules, const ProgramNode* node)
         if (!MapAdd(modules, moduleName, &_))
             HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
                                      dependency->importLineNumber), "Import", node->path);
+
+        GetModules(modules, dependency->node, true);
     }
 }
 
@@ -263,7 +266,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
         Map modules = AllocateMap(sizeof(Module*));
-        GetModules(&modules, node);
+        GetModules(&modules, node, false);
 
         char* code = NULL;
         size_t codeLength = 0;
