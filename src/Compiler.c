@@ -29,6 +29,7 @@ typedef struct
 {
     ProgramNode* node;
     int importLineNumber;
+    bool publicImport;
 } ProgramDependency;
 
 static char* GetFileString(const char* path)
@@ -194,7 +195,8 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
         ProgramDependency dependency =
         {
             .node = GenerateProgramNode(importStmt->file, importStmt, path),
-            .importLineNumber = importStmt->import.lineNumber
+            .importLineNumber = importStmt->import.lineNumber,
+            .publicImport = importStmt->public,
         };
         ArrayAdd(&programNode->dependencies, &dependency);
 
@@ -230,6 +232,22 @@ static Array SortProgramTree()
     return array;
 }
 
+void GetModule(Map* modules, const ProgramDependency* dependency, const ProgramNode* parentNode)
+{
+    char path[strlen(dependency->node->path) + 1];
+    memcpy(path, dependency->node->path, sizeof(path));
+    char* moduleName = basename(path);
+
+    const size_t baseNameLength = strlen(moduleName) + 1;
+    for (int i = 0; i < baseNameLength; ++i)
+        if (moduleName[i] == '.') moduleName[i] = '\0';
+
+    Module* _ = &dependency->node->module;
+    if (!MapAdd(modules, moduleName, &_))
+        HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
+                                 dependency->importLineNumber), "Import", parentNode->path);
+}
+
 void CompileProgramTree(char** outCode, size_t* outLength)
 {
     MemoryStream* stream = AllocateMemoryStream();
@@ -240,23 +258,10 @@ void CompileProgramTree(char** outCode, size_t* outLength)
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
         Map modules = AllocateMap(sizeof(Module*));
-
         for (int i = 0; i < node->dependencies.length; ++i)
         {
             const ProgramDependency* dependency = node->dependencies.array[i];
-
-            char path[strlen(dependency->node->path) + 1];
-            memcpy(path, dependency->node->path, sizeof(path));
-            char* moduleName = basename(path);
-
-            const size_t baseNameLength = strlen(moduleName) + 1;
-            for (int i = 0; i < baseNameLength; ++i)
-                if (moduleName[i] == '.') moduleName[i] = '\0';
-
-            Module* _ = &dependency->node->module;
-            if (!MapAdd(&modules, moduleName, &_))
-                HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
-                                         dependency->importLineNumber), "Import", node->path);
+            GetModule(&modules, dependency, node);
         }
 
         char* code = NULL;
