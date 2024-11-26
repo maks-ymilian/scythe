@@ -193,6 +193,11 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
+    if (type.metaType != MetaType_Primitive && in->public && !type.public)
+        return ERROR_RESULT(
+            AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", type.name),
+            in->identifier.lineNumber);
+
     if (type.metaType == MetaType_Struct)
     {
         const Result result = GenerateStructVariableDeclaration(in, type, prefix);

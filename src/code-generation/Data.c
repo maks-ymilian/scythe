@@ -213,7 +213,7 @@ static bool AddType(const char* name, const MetaType metaType, const bool public
 {
     if (GetType(name) != NULL) return false;
 
-    Type type = {.name = name, .metaType = metaType};
+    Type type = {.name = name, .metaType = metaType, .public = public};
     if (metaType == MetaType_Primitive)
         type.id = primitiveId;
     else

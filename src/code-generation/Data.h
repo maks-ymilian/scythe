@@ -15,6 +15,7 @@ typedef struct
     const char* name;
     MetaType metaType;
     int id;
+    bool public;
 } Type;
 
 typedef struct
