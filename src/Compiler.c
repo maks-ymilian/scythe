@@ -262,7 +262,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
         char* code = NULL;
         size_t codeLength = 0;
         HandleError(GenerateCode(&node->ast, &modules, &node->module, (uint8_t**)&code, &codeLength),
-                    "Code generation", NULL);
+                    "Code generation", node->path);
 
         FreeMap(&modules);
 
