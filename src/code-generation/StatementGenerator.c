@@ -214,14 +214,18 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, in->public, &uniqueName));
 
     NodePtr initializer;
-    LiteralExpr zero = (LiteralExpr){(Token){Token_NumberLiteral, in->identifier.lineNumber, "0"}};
+    LiteralExpr defaultLiteral;
     if (in->initializer.type == Node_Null)
     {
         if (type.id == GetKnownType("int").id || type.id == GetKnownType("float").id)
-            initializer = (NodePtr){&zero, Node_Literal};
+            defaultLiteral = (LiteralExpr){(Token){Token_NumberLiteral, in->identifier.lineNumber, "0"}};
+        else if (type.id == GetKnownType("bool").id)
+            defaultLiteral = (LiteralExpr){(Token){Token_False, in->identifier.lineNumber, NULL}};
         else
             return ERROR_RESULT(AllocateString1Str("Variable of type \"%s\" must be initialized", type.name),
                                 in->identifier.lineNumber);
+
+        initializer = (NodePtr){&defaultLiteral, Node_Literal};
     }
     else
         initializer = in->initializer;
