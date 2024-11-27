@@ -362,20 +362,16 @@ void InitResources(Map* _modules)
 
     types = AllocateMap(sizeof(Type));
 
-    bool success = AddType("void", MetaType_Primitive, false, 0);
-    assert(success);
-
-    success = AddType("int", MetaType_Primitive, false, 1);
-    assert(success);
-
-    success = AddType("float", MetaType_Primitive, false, 2);
-    assert(success);
-
-    success = AddType("string", MetaType_Primitive, false, 3);
-    assert(success);
-
-    success = AddType("bool", MetaType_Primitive, false, 4);
-    assert(success);
+    if (!AddType("void", MetaType_Primitive, false, 0))
+        assert(0);
+    if (!AddType("int", MetaType_Primitive, false, 1))
+        assert(0);
+    if (!AddType("float", MetaType_Primitive, false, 2))
+        assert(0);
+    if (!AddType("string", MetaType_Primitive, false, 3))
+        assert(0);
+    if (!AddType("bool", MetaType_Primitive, false, 4))
+        assert(0);
 
     assert(types.elementCount == NUM_PRIMITIVE_TYPES);
 }
