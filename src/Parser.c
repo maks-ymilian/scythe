@@ -475,14 +475,20 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
 
-    const bool publicFound = PeekOne(Token_Public, 0);
-    const Token* type = PeekType(0 + publicFound);
-    const Token* name = PeekOne(Token_Identifier, 1 + publicFound);
+    int modifierCount = 0;
+
+    const bool publicFound = PeekOne(Token_Public, 0 + modifierCount) != NULL;
+    if (publicFound) modifierCount++;
+    const bool externalFound = PeekOne(Token_External, 0 + modifierCount) != NULL;
+    if (externalFound) modifierCount++;
+
+    const Token* type = PeekType(0 + modifierCount);
+    const Token* name = PeekOne(Token_Identifier, 1 + modifierCount);
 
     if (!(name && type))
         return NOT_FOUND_RESULT;
 
-    if (publicFound) Consume();
+    for (int i = 0; i < modifierCount; ++i) Consume();
     Consume();
     Consume();
 
@@ -490,6 +496,9 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     const Token* equals = MatchOne(Token_Equals);
     if (equals != NULL)
     {
+        if (externalFound)
+            return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
+
         HANDLE_ERROR(ParseExpression(&initializer),
                      return ERROR_RESULT_LINE("Expected expression"))
     }
@@ -507,6 +516,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
         .identifier = *name,
         .initializer = initializer,
         .public = publicFound,
+        .external = externalFound,
     });
     *out = (NodePtr){varDecl, Node_VariableDeclaration};
     return SUCCESS_RESULT;

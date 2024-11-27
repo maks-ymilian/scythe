@@ -122,6 +122,7 @@ typedef struct
     Token identifier;
     NodePtr initializer;
     bool public;
+    bool external;
 } VarDeclStmt;
 
 VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
