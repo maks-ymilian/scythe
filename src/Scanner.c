@@ -171,6 +171,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     ADD_KEYWORD(Token_Return);
     ADD_KEYWORD(Token_Import);
     ADD_KEYWORD(Token_Public);
+    ADD_KEYWORD(Token_External);
 
     tokens = AllocateArray(sizeof(Token));
 

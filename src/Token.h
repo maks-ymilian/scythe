@@ -65,6 +65,7 @@ typedef enum
     Token_Return,
     Token_Import,
     Token_Public,
+    Token_External,
 
     //end of file
     Token_EndOfFile,

@@ -62,6 +62,7 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Token_Return: return "return";
     case Token_Import: return "import";
     case Token_Public: return "public";
+    case Token_External: return "external";
 
     case Token_Void: return "void";
     case Token_Int: return "int";
