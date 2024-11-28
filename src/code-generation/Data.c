@@ -253,10 +253,15 @@ static Result AddSymbol(const char* name, SymbolData data, const bool public, co
     return SUCCESS_RESULT;
 }
 
-Result RegisterVariable(const Token identifier, const Type type, const Map* symbolTable, const bool public, int* outUniqueName)
+Result RegisterVariable(
+    const Token identifier,
+    const Type type,
+    const Map* symbolTable,
+    const bool external,
+    const bool public,
+    int* outUniqueName)
 {
-    VariableSymbolData data;
-    data.type = type;
+    VariableSymbolData data = { .type = type, .symbolTable = NULL, .external = external };
     if (symbolTable != NULL)
     {
         assert(type.metaType == MetaType_Struct);
@@ -267,21 +272,25 @@ Result RegisterVariable(const Token identifier, const Type type, const Map* symb
     return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterFunction(const Token identifier, const Type returnType, const Array* funcParams, const bool public, int* outUniqueName)
+Result RegisterFunction(
+    const Token identifier,
+    const Type returnType,
+    const Array* funcParams,
+    const bool public,
+    int* outUniqueName)
 {
-    FunctionSymbolData data;
-    data.parameters = *funcParams;
-    data.returnType = returnType;
-
+    const FunctionSymbolData data = {.parameters = *funcParams, .returnType = returnType};
     const SymbolData symbolData = {.symbolType = SymbolType_Function, .functionData = data, .uniqueName = -1};
     return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
 }
 
-Result RegisterStruct(const Token identifier, const Array* members, const bool public, int* outUniqueName)
+Result RegisterStruct(
+    const Token identifier,
+    const Array* members,
+    const bool public,
+    int* outUniqueName)
 {
-    StructSymbolData data;
-    data.members = members;
-
+    const StructSymbolData data = {.members = members};
     const SymbolData symbolData = {.symbolType = SymbolType_Struct, .structData = data, .uniqueName = -1};
 
     if (!AddType(identifier.text, MetaType_Struct, public, -1))

@@ -159,6 +159,16 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         if (symbol->symbolType != SymbolType_Variable)
             return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
 
+        if (symbol->variableData.external)
+        {
+            if (in->next.ptr != NULL)
+                return ERROR_RESULT("Cannot use access operator on external variable", in->value.lineNumber);
+
+            WRITE_TEXT(in->value.text);
+            *outType = symbol->variableData.type;
+            return SUCCESS_RESULT;
+        }
+
         WRITE_LITERAL(VARIABLE_PREFIX);
         WRITE_TEXT(in->value.text);
 
