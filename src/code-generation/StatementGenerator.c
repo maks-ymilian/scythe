@@ -391,40 +391,8 @@ static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
+static Result ParseParameterArray(const FuncDeclStmt* in, Array* outArray)
 {
-    const ScopeNode* scope = GetCurrentScope();
-    const bool globalScope = scope->parent == NULL;
-    if (!globalScope && in->public)
-        return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
-                                  in->identifier.lineNumber, Token_Public);
-
-    Type returnType;
-    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
-
-    if (returnType.metaType != MetaType_Primitive && in->public && !returnType.public)
-        return ERROR_RESULT(
-            AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", returnType.name),
-            in->identifier.lineNumber);
-
-    BeginRead();
-
-    PushScope();
-
-    ScopeNode* currentScope = GetCurrentScope();
-    currentScope->isFunction = true;
-    currentScope->functionReturnType = returnType;
-
-    assert(in->block.type == Node_Block);
-
-    if (!ControlPathsReturn(in->block, true) && returnType.id != GetKnownType("void").id)
-        return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
-
-    assert(in->identifier.type == Token_Identifier);
-
-    const size_t pos = GetStreamPosition();
-    BeginRead();
-    WRITE_LITERAL("(0;");
     Array params = AllocateArray(sizeof(FunctionParameter));
     bool hasOptionalParams = false;
     for (int i = 0; i < in->parameters.length; ++i)
@@ -445,6 +413,66 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         ArrayAdd(&params, &param);
     }
 
+    *outArray = params;
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateExternalFunctionDeclaration(const FuncDeclStmt* in, const Type returnType)
+{
+    assert(in->block.type == Node_Null);
+    assert(in->identifier.type == Token_Identifier);
+
+    Array params;
+    HANDLE_ERROR(ParseParameterArray(in, &params));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, true, in->public, NULL));
+
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
+{
+    const ScopeNode* scope = GetCurrentScope();
+    const bool globalScope = scope->parent == NULL;
+    if (!globalScope && in->public)
+        return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
+                                  in->identifier.lineNumber, Token_Public);
+    if (!globalScope && in->external)
+        return ERROR_RESULT_TOKEN("Functions with the \"#t\" modifier are only allowed in global scope",
+                                  in->identifier.lineNumber, Token_External);
+
+    Type returnType;
+    HANDLE_ERROR(GetTypeFromToken(in->type, &returnType, true));
+
+    if (returnType.metaType != MetaType_Primitive && in->public && !returnType.public)
+        return ERROR_RESULT(
+            AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", returnType.name),
+            in->identifier.lineNumber);
+
+    if (in->external)
+        return GenerateExternalFunctionDeclaration(in, returnType);
+
+    BeginRead();
+
+    PushScope();
+
+    ScopeNode* currentScope = GetCurrentScope();
+    currentScope->isFunction = true;
+    currentScope->functionReturnType = returnType;
+
+    assert(in->block.type == Node_Block);
+
+    if (!ControlPathsReturn(in->block, true) && returnType.id != GetKnownType("void").id)
+        return ERROR_RESULT("Not all control paths return a value", in->identifier.lineNumber);
+
+    assert(in->identifier.type == Token_Identifier);
+
+    const size_t pos = GetStreamPosition();
+    BeginRead();
+    WRITE_LITERAL("(0;");
+
+    Array params;
+    HANDLE_ERROR(ParseParameterArray(in, &params));
+
     for (int i = in->parameters.length - 1; i >= 0; --i)
     {
         const NodePtr* node = in->parameters.array[i];
@@ -462,7 +490,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     PopScope(NULL);
 
     int uniqueName;
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, in->public, &uniqueName));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, false, in->public, &uniqueName));
 
     WRITE_LITERAL("function ");
     WRITE_LITERAL("func_");
