@@ -181,17 +181,57 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in)
+static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
-    const ScopeNode* scope = GetCurrentScope();
-    const bool globalScope = scope->parent == NULL;
-    if (!globalScope && in->external)
-        return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
-                                  in->identifier.lineNumber, Token_External);
+    const SymbolData* symbol = GetKnownSymbol(in->type.text, true, NULL);
+    assert(symbol->symbolType == SymbolType_Struct);
+    const StructSymbolData data = symbol->structData;
 
-    Type type;
-    HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
+    PushScope();
 
+    for (int i = 0; i < data.members->length; ++i)
+    {
+        const NodePtr* node = data.members->array[i];
+        switch (node->type)
+        {
+        case Node_VariableDeclaration:
+        {
+            if (prefix == NULL)
+                prefix = "";
+            char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
+            if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0)
+                assert(0);
+            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix, NULL));
+            break;
+        }
+        default: assert(0);
+        }
+    }
+
+    Map symbolTable;
+    PopScope(&symbolTable);
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, false, in->public, NULL));
+
+    if (in->initializer.type != Node_Null)
+    {
+        LiteralExpr left = (LiteralExpr){in->identifier, NULL};
+        BinaryExpr expr = (BinaryExpr)
+        {
+            (NodePtr){&left, Node_Literal},
+            (Token){Token_Equals, in->type.lineNumber, NULL},
+            in->initializer
+        };
+        const NodePtr node = (NodePtr){&expr, Node_Binary};
+        Type outType;
+        HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
+        WRITE_LITERAL(";\n");
+    }
+
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const Type type)
+{
     if (type.metaType != MetaType_Primitive)
         return ERROR_RESULT("Only primitive types are allowed for external variable declarations", in->type.lineNumber);
 
@@ -200,24 +240,25 @@ static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, Type type, const char* prefix);
-
 static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName)
 {
-    if (in->external)
-        return GenerateExternalVariableDeclaration(in);
-
     const ScopeNode* scope = GetCurrentScope();
     const bool globalScope = scope->parent == NULL;
 
     if (!globalScope && in->public)
         return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
                                   in->identifier.lineNumber, Token_Public);
-
-    if (globalScope) BeginRead();
+    if (!globalScope && in->external)
+        return ERROR_RESULT_TOKEN("Variables with the \"#t\" modifier are only allowed in global scope",
+                                  in->identifier.lineNumber, Token_External);
 
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
+
+    if (in->external)
+        return GenerateExternalVariableDeclaration(in, type);
+
+    if (globalScope) BeginRead();
 
     if (type.metaType != MetaType_Primitive && in->public && !type.public)
         return ERROR_RESULT(
@@ -272,55 +313,6 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     if (globalScope) EndReadMove(SIZE_MAX);
 
     if (outUniqueName != NULL) *outUniqueName = uniqueName;
-    return SUCCESS_RESULT;
-}
-
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
-{
-    const SymbolData* symbol = GetKnownSymbol(in->type.text, true, NULL);
-    assert(symbol->symbolType == SymbolType_Struct);
-    const StructSymbolData data = symbol->structData;
-
-    PushScope();
-
-    for (int i = 0; i < data.members->length; ++i)
-    {
-        const NodePtr* node = data.members->array[i];
-        switch (node->type)
-        {
-        case Node_VariableDeclaration:
-        {
-            if (prefix == NULL)
-                prefix = "";
-            char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
-            if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0)
-                assert(0);
-            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix, NULL));
-            break;
-        }
-        default: assert(0);
-        }
-    }
-
-    Map symbolTable;
-    PopScope(&symbolTable);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, false, in->public, NULL));
-
-    if (in->initializer.type != Node_Null)
-    {
-        LiteralExpr left = (LiteralExpr){in->identifier, NULL};
-        BinaryExpr expr = (BinaryExpr)
-        {
-            (NodePtr){&left, Node_Literal},
-            (Token){Token_Equals, in->type.lineNumber, NULL},
-            in->initializer
-        };
-        const NodePtr node = (NodePtr){&expr, Node_Binary};
-        Type outType;
-        HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
-        WRITE_LITERAL(";\n");
-    }
-
     return SUCCESS_RESULT;
 }
 
