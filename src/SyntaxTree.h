@@ -135,6 +135,7 @@ typedef struct
     Array parameters;
     NodePtr block;
     bool public;
+    bool external;
 } FuncDeclStmt;
 
 FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);

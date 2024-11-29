@@ -507,7 +507,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     {
         const Token* semicolon = MatchOne(Token_Semicolon);
         if (semicolon == NULL)
-            return ERROR_RESULT_LINE("Expected \";\"");
+            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
     }
 
     VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt)
@@ -531,14 +531,20 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const bool publicFound = PeekOne(Token_Public, 0) != NULL;
-    const Token* type = PeekType(0 + publicFound);
-    const Token* identifier = PeekOne(Token_Identifier, 1 + publicFound);
+    int modifierCount = 0;
 
-    if (!(identifier && type && PeekOne(Token_LeftBracket, 2 + publicFound)))
+    const bool publicFound = PeekOne(Token_Public, 0 + modifierCount) != NULL;
+    if (publicFound) modifierCount++;
+    const bool externalFound = PeekOne(Token_External, 0 + modifierCount) != NULL;
+    if (externalFound) modifierCount++;
+
+    const Token* type = PeekType(0 + modifierCount);
+    const Token* identifier = PeekOne(Token_Identifier, 1 + modifierCount);
+
+    if (!(identifier && type && PeekOne(Token_LeftBracket, 2 + modifierCount)))
         return NOT_FOUND_RESULT;
 
-    if (publicFound) Consume();
+    for (int i = 0; i < modifierCount; ++i) Consume();
     Consume();
     Consume();
     Consume();
@@ -551,9 +557,14 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
-    NodePtr block;
-    HANDLE_ERROR(ParseBlockStatement(&block),
-                 return ERROR_RESULT_LINE("Expected code block after function declaration"));
+    NodePtr block = NULL_NODE;
+    bool blockFound = true;
+    HANDLE_ERROR(ParseBlockStatement(&block), blockFound = false);
+    if (!blockFound && !externalFound) return ERROR_RESULT_LINE("Expected code block after function declaration");
+    if (blockFound && externalFound) return ERROR_RESULT_LINE("External functions cannot have code blocks");
+
+    if (externalFound)
+        if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
 
     FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt)
     {
@@ -562,6 +573,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
         .parameters = params,
         .block = block,
         .public = publicFound,
+        .external = externalFound,
     });
     *out = (NodePtr){funcDecl, Node_FunctionDeclaration};
 
