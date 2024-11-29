@@ -304,13 +304,11 @@ static Result ParseExpressionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    NodePtr expr;
-    HANDLE_ERROR(ParseExpression(&expr),
-                 {
-                 if (MatchOne(Token_Semicolon) == NULL) return result;
-                 expr = NULL_NODE;
-                 });
+    NodePtr expr = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&expr),);
 
+    if (expr.type == Node_Null)
+        return NOT_FOUND_RESULT;
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
 
@@ -424,8 +422,8 @@ static Result ParseBlockStatement(NodePtr* out)
     {
         if (exitResult.errorMessage != NULL)
             return ERROR_RESULT_LINE_TOKEN(exitResult.errorMessage, exitResult.tokenType);
-
-        assert(0);
+        const Token* token = CurrentToken(0);
+        return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", token->lineNumber, token->type);
     }
 
     BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
@@ -684,7 +682,10 @@ static Result ParseStatement(NodePtr* out)
         return result;
 
     result = ParseExpressionStatement(out);
-    return result;
+    if (result.success || result.hasError)
+        return result;
+
+    return NOT_FOUND_RESULT;
 }
 
 static Result ParseProgram(AST* out)
@@ -702,7 +703,8 @@ static Result ParseProgram(AST* out)
         NodePtr stmt;
         SET_LINE_NUMBER
         HANDLE_ERROR(ParseStatement(&stmt),
-                     return ERROR_RESULT_LINE("Expected statement"))
+                     const Token* token = CurrentToken(0);
+                     return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", token->lineNumber, token->type));
 
         if (stmt.type == Node_Import)
         {
