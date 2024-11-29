@@ -403,6 +403,11 @@ static Result ParseParameterArray(const FuncDeclStmt* in, Array* outArray)
         param.defaultValue = varDecl->initializer;
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type, false));
         ArrayAdd(&params, &param);
+
+        if (param.type.metaType != MetaType_Primitive && !param.type.public && in->public)
+            return ERROR_RESULT(
+                AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", param.type.name),
+                varDecl->identifier.lineNumber);
     }
 
     *outArray = params;
@@ -414,8 +419,20 @@ static Result GenerateExternalFunctionDeclaration(const FuncDeclStmt* in, const 
     assert(in->block.type == Node_Null);
     assert(in->identifier.type == Token_Identifier);
 
+    if (returnType.metaType != MetaType_Primitive)
+        return ERROR_RESULT("External function declarations must return a primitive type", in->type.lineNumber);
+
     Array params;
     HANDLE_ERROR(ParseParameterArray(in, &params));
+
+    for (int i = 0; i < params.length; ++i)
+    {
+        const FunctionParameter* funcParam = params.array[i];
+        if (funcParam->type.metaType != MetaType_Primitive)
+            return ERROR_RESULT("External function declarations can only have parameters of primitive types",
+                                in->identifier.lineNumber);
+    }
+
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, true, in->public, NULL));
 
     return SUCCESS_RESULT;
