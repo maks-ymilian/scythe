@@ -275,16 +275,15 @@ static long CountStructVariables(const Type structType)
     return count;
 }
 
-static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType)
-{
-    SymbolData* symbol;
-    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
-    if (symbol->symbolType != SymbolType_Function)
-        return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
-    const FunctionSymbolData function = symbol->functionData;
+typedef Result (*FuncParamGenerator)(NodePtr callExpr, Type paramType, bool lastParam, int lineNumber);
 
-    WRITE_LITERAL("(");
-    for (int i = 0; i < Max(function.parameters.length, in->parameters.length); ++i)
+static Result GenerateFunctionCallParams(
+    const FuncCallExpr* in,
+    const FunctionSymbolData function,
+    const FuncParamGenerator paramFunc)
+{
+    const int paramCount = Max(function.parameters.length, in->parameters.length);
+    for (int i = 0; i < paramCount; ++i)
     {
         const FunctionParameter* funcParam = NULL;
         if (i < function.parameters.length)
@@ -300,13 +299,59 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
                                     function.parameters.length, in->parameters.length), in->identifier.lineNumber);
 
         const NodePtr* writeExpr;
-        if (callExpr != NULL)
-            writeExpr = callExpr;
-        else
-            writeExpr = &funcParam->defaultValue;
+        if (callExpr != NULL) writeExpr = callExpr;
+        else writeExpr = &funcParam->defaultValue;
 
-        HANDLE_ERROR(GeneratePushValue(*writeExpr, funcParam->type, in->identifier.lineNumber));
+        assert(funcParam != NULL);
+        HANDLE_ERROR(paramFunc(*writeExpr, funcParam->type, i == paramCount - 1, in->identifier.lineNumber));
     }
+
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateFuncParam(const NodePtr callExpr, const Type paramType, const bool lastParam, const int lineNumber)
+{
+    Type type;
+    HANDLE_ERROR(GenerateExpression(&callExpr, &type, true, paramType.id == GetKnownType("int").id));
+    HANDLE_ERROR(CheckAssignmentCompatibility(paramType, type, lineNumber));
+    if (!lastParam) WRITE_LITERAL(",");
+
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateExternalFunctionCallExpression(const FuncCallExpr* in, const FunctionSymbolData function)
+{
+    assert(function.returnType.metaType == MetaType_Primitive);
+
+    WRITE_TEXT(in->identifier.text);
+    WRITE_LITERAL("(");
+    HANDLE_ERROR(GenerateFunctionCallParams(in, function, GenerateFuncParam));
+    WRITE_LITERAL(")");
+
+    return SUCCESS_RESULT;
+}
+
+static Result GeneratePushFuncParam(const NodePtr callExpr, const Type paramType, const bool lastParam, const int lineNumber)
+{
+    HANDLE_ERROR(GeneratePushValue(callExpr, paramType, lineNumber));
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType)
+{
+    SymbolData* symbol;
+    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
+    if (symbol->symbolType != SymbolType_Function)
+        return ERROR_RESULT("Identifier must be the name of a function", in->identifier.lineNumber);
+    const FunctionSymbolData function = symbol->functionData;
+
+    *outType = function.returnType;
+
+    if (function.external)
+        return GenerateExternalFunctionCallExpression(in, function);
+
+    WRITE_LITERAL("(");
+    HANDLE_ERROR(GenerateFunctionCallParams(in, function, GeneratePushFuncParam));
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WriteInteger(symbol->uniqueName);
@@ -324,7 +369,6 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
         }
     }
 
-    *outType = function.returnType;
     return SUCCESS_RESULT;
 }
 
