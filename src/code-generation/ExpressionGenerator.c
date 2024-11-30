@@ -227,17 +227,18 @@ Result CheckAssignmentCompatibility(const Type left, const Type right, const lon
     if (left.id == right.id)
         return SUCCESS_RESULT;
 
-    const Type convertableTypes[] =
-    {
-        GetKnownType("int"),
-        GetKnownType("float"),
-        GetKnownType("bool"),
-    };
+    const Type intType = GetKnownType("int");
+    const Type floatType = GetKnownType("float");
+    const Type boolType = GetKnownType("bool");
+    const Type convertableTypes[] = {intType, floatType, boolType};
     const size_t convertableTypesSize = sizeof(convertableTypes) / sizeof(Type);
 
     for (int i = 0; i < convertableTypesSize; ++i)
     {
         if (left.id != convertableTypes[i].id)
+            continue;
+
+        if (left.id == boolType.id)
             continue;
 
         for (int j = 0; j < convertableTypesSize; ++j)
