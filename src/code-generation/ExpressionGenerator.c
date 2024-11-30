@@ -227,16 +227,31 @@ Result CheckAssignmentCompatibility(const Type left, const Type right, const lon
     if (left.id == right.id)
         return SUCCESS_RESULT;
 
-    const Type intType = GetKnownType("int");
-    const Type floatType = GetKnownType("float");
-    if ((left.id == intType.id || left.id == floatType.id) &&
-        (right.id == intType.id || right.id == floatType.id))
-        return SUCCESS_RESULT;
+    const Type convertableTypes[] =
+    {
+        GetKnownType("int"),
+        GetKnownType("float"),
+        GetKnownType("bool"),
+    };
+    const size_t convertableTypesSize = sizeof(convertableTypes) / sizeof(Type);
 
-    const char* message = AllocateString2Str(
-        "Cannot convert from type \"%s\" to type \"%s\"",
-        right.name, left.name);
-    return ERROR_RESULT(message, lineNumber);
+    for (int i = 0; i < convertableTypesSize; ++i)
+    {
+        if (left.id != convertableTypes[i].id)
+            continue;
+
+        for (int j = 0; j < convertableTypesSize; ++j)
+        {
+            if (right.id != convertableTypes[j].id)
+                continue;
+
+            return SUCCESS_RESULT;
+        }
+    }
+
+    return ERROR_RESULT(
+        AllocateString2Str("Cannot convert from type \"%s\" to type \"%s\"", right.name, left.name),
+        lineNumber);
 }
 
 static int Max(const int a, const int b)
@@ -314,7 +329,8 @@ static Result GenerateFuncParam(const NodePtr callExpr, const Type paramType, co
     Type type;
     HANDLE_ERROR(GenerateExpression(&callExpr, &type, true, paramType.id == GetKnownType("int").id));
     HANDLE_ERROR(CheckAssignmentCompatibility(paramType, type, lineNumber));
-    if (!lastParam) WRITE_LITERAL(",");
+    if (!lastParam)
+        WRITE_LITERAL(",");
 
     return SUCCESS_RESULT;
 }
