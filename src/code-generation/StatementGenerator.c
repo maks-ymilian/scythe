@@ -404,6 +404,15 @@ static Result ParseParameterArray(const FuncDeclStmt* in, Array* outArray)
         HANDLE_ERROR(GetTypeFromToken(varDecl->type, &param.type, false));
         ArrayAdd(&params, &param);
 
+        if (varDecl->initializer.ptr != NULL)
+        {
+            Type initializerType;
+            const size_t pos = GetStreamPosition();
+            HANDLE_ERROR(GenerateExpression(&varDecl->initializer, &initializerType, true, false));
+            SetStreamPosition(pos);
+            HANDLE_ERROR(CheckAssignmentCompatibility(param.type, initializerType, varDecl->identifier.lineNumber));
+        }
+
         if (param.type.metaType != MetaType_Primitive && !param.type.public && in->public)
             return ERROR_RESULT(
                 AllocateString1Str("The type \"%s\" is declared private and cannot be used in a public context", param.type.name),
