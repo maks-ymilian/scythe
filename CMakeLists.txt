@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(PROJECT_NAME scythe)
-
-project(${PROJECT_NAME} C)
-
 set(SOURCES
         "src/Main.c"
         "src/Scanner.c"
@@ -20,7 +17,10 @@ set(SOURCES
         "src/code-generation/StatementGenerator.c"
         "src/Compiler.c"
         "src/FileUtils.c"
+        "src/BuiltInImports.c"
 )
+
+project(${PROJECT_NAME} C)
 
 add_compile_options(-fsanitize=address,undefined -g)
 add_link_options(-fsanitize=address,undefined)
