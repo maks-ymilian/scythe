@@ -247,10 +247,15 @@ void GetModules(Map* modules, const ProgramNode* node, const bool publicOnly)
         for (int i = 0; i < baseNameLength; ++i)
             if (moduleName[i] == '.') moduleName[i] = '\0';
 
-        Module* _ = &dependency->node->module;
-        if (!MapAdd(modules, moduleName, &_))
-            HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
-                                     dependency->importLineNumber), "Import", node->path);
+        Module* module = &dependency->node->module;
+        if (!MapAdd(modules, moduleName, &module))
+        {
+            const void* get = MapGet(modules, moduleName);
+            assert(get != NULL);
+            if (module != *(Module**)get)
+                HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName),
+                                         dependency->importLineNumber), "Import", node->path);
+        }
 
         GetModules(modules, dependency->node, true);
     }
