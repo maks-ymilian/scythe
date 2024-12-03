@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <StringUtils.h>
 
 #define SET_LINE_NUMBER lineNumber = ((Token*)tokens.array[pointer])->lineNumber;
 
@@ -455,16 +457,59 @@ static Result ParseSectionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* sectionType = Match((TokenType[]){Token_Init, Token_Slider, Token_Block, Token_Sample, Token_Serialize, Token_GFX}, 6);
-    if (sectionType == NULL)
+    if (MatchOne(Token_At) == NULL)
         return NOT_FOUND_RESULT;
+
+    SET_LINE_NUMBER;
+
+    const Token* identifier = MatchOne(Token_Identifier);
+    if (identifier == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_At);
+
+    const char sectionNames[6][10] =
+    {
+        "init",
+        "slider",
+        "block",
+        "sample",
+        "serialize",
+        "gfx",
+    };
+    const SectionType sectionTypes[] =
+    {
+        Section_Init,
+        Section_Slider,
+        Section_Block,
+        Section_Sample,
+        Section_Serialize,
+        Section_GFX,
+    };
+
+    SectionType sectionType = -1;
+    bool sectionFound = false;
+    for (int i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
+    {
+        if (strcmp(identifier->text, sectionNames[i]) == 0)
+        {
+            sectionType = sectionTypes[i];
+            sectionFound = true;
+            break;
+        }
+    }
+    if (!sectionFound)
+        return ERROR_RESULT_LINE(AllocateString1Str("Unknown section type \"%s\"", identifier->text));
 
     NodePtr block;
     HANDLE_ERROR(ParseBlockStatement(&block),
                  return ERROR_RESULT_LINE("Expected block after section statement"));
     assert(block.type == Node_Block);
 
-    SectionStmt* section = AllocSectionStmt((SectionStmt){*sectionType, block});
+    SectionStmt* section = AllocSectionStmt((SectionStmt)
+    {
+        .identifier = *identifier,
+        .sectionType = sectionType,
+        .block = block
+    });
     *out = (NodePtr){section, Node_Section};
     return SUCCESS_RESULT;
 }

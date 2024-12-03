@@ -56,7 +56,7 @@ BlockStmt* AllocBlockStmt(const BlockStmt stmt)
 SectionStmt* AllocSectionStmt(const SectionStmt stmt)
 {
     ALLOCATE(SectionStmt, stmt);
-    new->type = CopyToken(stmt.type);
+    new->identifier = CopyToken(stmt.identifier);
     return new;
 }
 
@@ -182,7 +182,7 @@ static void FreeNode(const NodePtr node)
         DEBUG_PRINT("Freeing SectionStmt\n");
         const SectionStmt* ptr = node.ptr;
 
-        FreeToken(&ptr->type);
+        FreeToken(&ptr->identifier);
         FreeNode(ptr->block);
 
         free(node.ptr);

@@ -79,9 +79,20 @@ typedef struct
 BlockStmt* AllocBlockStmt(BlockStmt stmt);
 
 
+typedef enum
+{
+    Section_Init,
+    Section_Slider,
+    Section_Block,
+    Section_Sample,
+    Section_Serialize,
+    Section_GFX,
+} SectionType;
+
 typedef struct
 {
-    Token type;
+    SectionType sectionType;
+    Token identifier;
     NodePtr block;
 } SectionStmt;
 

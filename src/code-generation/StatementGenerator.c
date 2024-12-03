@@ -589,17 +589,9 @@ static Result GenerateIfStatement(const IfStmt* in)
 
 static Result GenerateSectionStatement(const SectionStmt* in)
 {
-    if (in->type.type != Token_Init &&
-        in->type.type != Token_Slider &&
-        in->type.type != Token_Block &&
-        in->type.type != Token_Sample &&
-        in->type.type != Token_Serialize &&
-        in->type.type != Token_GFX)
-        assert(0);
-
     BeginRead();
     WRITE_LITERAL("\n@");
-    WRITE_TEXT(GetTokenTypeString(in->type.type));
+    WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("\n");
     const Result result = GenerateBlockStatement(in->block.ptr);
     EndReadMove(SIZE_MAX);

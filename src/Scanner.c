@@ -150,13 +150,6 @@ static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol
 Result Scan(const char* const sourceCode, Array* outTokens)
 {
     keywords = AllocateMap(sizeof(TokenType));
-    ADD_KEYWORD(Token_Init);
-    ADD_KEYWORD(Token_Sample);
-    ADD_KEYWORD(Token_Block);
-    ADD_KEYWORD(Token_Serialize);
-    ADD_KEYWORD(Token_GFX);
-    ADD_KEYWORD(Token_Slider);
-
     ADD_KEYWORD(Token_Void);
     ADD_KEYWORD(Token_Int);
     ADD_KEYWORD(Token_Float);

@@ -49,13 +49,6 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Token_True: return "true";
     case Token_False: return "false";
 
-    case Token_Init: return "init";
-    case Token_Sample: return "sample";
-    case Token_Serialize: return "serialize";
-    case Token_Block: return "block";
-    case Token_GFX: return "gfx";
-    case Token_Slider: return "slider";
-
     case Token_If: return "if";
     case Token_Else: return "else";
     case Token_Struct: return "struct";

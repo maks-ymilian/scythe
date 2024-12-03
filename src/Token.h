@@ -48,12 +48,6 @@ typedef enum
     Token_False,
 
     // keywords
-    Token_Init,
-    Token_Slider,
-    Token_Block,
-    Token_Sample,
-    Token_Serialize,
-    Token_GFX,
     Token_Void,
     Token_Int,
     Token_Float,
