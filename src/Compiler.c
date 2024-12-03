@@ -169,7 +169,7 @@ static bool IsSameFileOrBuiltInPath(
 
 static ProgramNode* GenerateProgramNode(const char* path, const int importLineNumber, const char* containingPath)
 {
-    char* builtInSource = GetBuiltInSource(path);
+    const char* builtInSource = GetBuiltInSource(path);
     const bool isBuiltIn = builtInSource != NULL;
 
     if (!isBuiltIn)
@@ -190,9 +190,9 @@ static ProgramNode* GenerateProgramNode(const char* path, const int importLineNu
     programNode->path = AllocateString(path);
     programNode->builtIn = isBuiltIn;
 
-    char* source = NULL;
+    const char* source = NULL;
     if (!isBuiltIn)
-        HandleError(GetSourceFromImportPath(path, importLineNumber, &source),
+        HandleError(GetSourceFromImportPath(path, importLineNumber, (char**)&source),
                     "Read", containingPath);
     else
         source = builtInSource;
@@ -200,7 +200,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const int importLineNu
     Array tokens;
     HandleError(Scan(source, &tokens),
                 "Scan", path);
-    if (!isBuiltIn) free(source);
+    if (!isBuiltIn) free((char*)source);
 
     HandleError(Parse(&tokens, &programNode->ast),
                 "Parse", path);

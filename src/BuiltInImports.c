@@ -276,7 +276,7 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //public external void gfx_setcursor(resource_id[,"custom cursor name"]);
 );
 
-char* GetBuiltInSource(const char* path)
+const char* GetBuiltInSource(const char* path)
 {
     if (strcmp(path, "jsfx") == 0) return jsfx;
     if (strcmp(path, "math") == 0) return math;
