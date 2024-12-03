@@ -23,6 +23,7 @@ typedef struct
     Array dependencies;
     Module module;
     char* path;
+    bool builtIn;
     bool searched;
 } ProgramNode;
 
@@ -150,13 +151,13 @@ static Result CheckForCircularDependency(const ProgramNode* node, const ProgramN
 }
 
 static bool IsSameFileOrBuiltInPath(
-    const bool isFile,
+    const bool isBuiltIn,
     const char* path,
     const ProgramNode* otherNode,
     const int lineNumber,
     const char* containingPath)
 {
-    if (!isFile)
+    if (isBuiltIn || otherNode->builtIn)
         return strcmp(path, otherNode->path) == 0;
 
     const int isSameFile = IsSameFile(path, otherNode->path);
@@ -166,21 +167,19 @@ static bool IsSameFileOrBuiltInPath(
     return isSameFile;
 }
 
-static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
+static ProgramNode* GenerateProgramNode(const char* path, const int importLineNumber, const char* containingPath)
 {
     char* builtInSource = GetBuiltInSource(path);
-    const bool isFile = builtInSource == NULL;
+    const bool isBuiltIn = builtInSource != NULL;
 
-    const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-
-    if (isFile)
-        HandleError(IsFileOpenable(path, lineNumber),
+    if (!isBuiltIn)
+        HandleError(IsFileOpenable(path, importLineNumber),
                     "Import", containingPath);
 
     for (int i = 0; i < programNodes.length; ++i)
     {
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
-        const bool isSameNode = IsSameFileOrBuiltInPath(isFile, path, node, lineNumber, containingPath);
+        const bool isSameNode = IsSameFileOrBuiltInPath(isBuiltIn, path, node, importLineNumber, containingPath);
         if (isSameNode)
             return node;
     }
@@ -189,10 +188,11 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
     ArrayAdd(&programNodes, &programNode);
 
     programNode->path = AllocateString(path);
+    programNode->builtIn = isBuiltIn;
 
     char* source = NULL;
-    if (isFile)
-        HandleError(GetSourceFromImportPath(path, lineNumber, &source),
+    if (!isBuiltIn)
+        HandleError(GetSourceFromImportPath(path, importLineNumber, &source),
                     "Read", containingPath);
     else
         source = builtInSource;
@@ -200,7 +200,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
     Array tokens;
     HandleError(Scan(source, &tokens),
                 "Scan", path);
-    if (isFile) free(source);
+    if (!isBuiltIn) free(source);
 
     HandleError(Parse(&tokens, &programNode->ast),
                 "Parse", path);
@@ -215,7 +215,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
         ProgramDependency dependency =
         {
-            .node = GenerateProgramNode(importStmt->file, importStmt, path),
+            .node = GenerateProgramNode(importStmt->file, importStmt->import.lineNumber, path),
             .importLineNumber = importStmt->import.lineNumber,
             .publicImport = importStmt->public,
         };
@@ -223,6 +223,17 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
 
         HandleError(CheckForCircularDependency(programNode, dependency.node, importStmt->import.lineNumber),
                     "Import", path);
+    }
+
+    if (!isBuiltIn)
+    {
+        const ProgramDependency builtIn =
+        {
+            .node = GenerateProgramNode("jsfx", -1, path),
+            .importLineNumber = -1,
+            .publicImport = false,
+        };
+        ArrayAdd(&programNode->dependencies, &builtIn);
     }
 
     programNode->searched = false;
@@ -316,7 +327,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
 void Compile(const char* inputPath, const char* outputPath)
 {
     programNodes = AllocateArray(sizeof(ProgramNode*));
-    GenerateProgramNode(inputPath, NULL, NULL);
+    GenerateProgramNode(inputPath, -1, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;
