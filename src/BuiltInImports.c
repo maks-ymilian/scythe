@@ -9,7 +9,7 @@
 static const char jsfx[] = RAW_STRING_LITERAL(
     public import "math"
     public import "str"
-    public import "GFX"
+    public import "gfx"
 
     public external int time();
     public external float time_precise();
@@ -281,6 +281,6 @@ char* GetBuiltInSource(const char* path)
     if (strcmp(path, "jsfx") == 0) return jsfx;
     if (strcmp(path, "math") == 0) return math;
     if (strcmp(path, "str") == 0) return string;
-    if (strcmp(path, "GFX") == 0) return gfx;
+    if (strcmp(path, "gfx") == 0) return gfx;
     return NULL;
 }
