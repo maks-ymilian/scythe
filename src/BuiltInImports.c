@@ -219,6 +219,8 @@ static const char string[] = RAW_STRING_LITERAL(
 );
 
 static const char gfx[] = RAW_STRING_LITERAL(
+    public import "mouse"
+
     public external float r gfx_r;
     public external float g gfx_g;
     public external float b gfx_b;
@@ -235,12 +237,6 @@ static const char gfx[] = RAW_STRING_LITERAL(
     public external int texth gfx_texth;
     public external float ext_retina gfx_ext_retina;
     public external int ext_flags gfx_ext_flags;
-
-    public external int mouse_x;
-    public external int mouse_y;
-    public external int mouse_cap;
-    public external int mouse_wheel;
-    public external int mouse_hwheel;
 
     //public external void gfx_set(r[g,b,a,mode,dest]);
     //public external void gfx_lineto(x,y,aa);
@@ -276,11 +272,21 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //public external void gfx_setcursor(resource_id[,"custom cursor name"]);
 );
 
+static const char mouse[] = RAW_STRING_LITERAL(
+
+    public external int x mouse_x;
+    public external int y mouse_y;
+    public external int cap mouse_cap;
+    public external int wheel mouse_wheel;
+    public external int hwheel mouse_hwheel;
+);
+
 const char* GetBuiltInSource(const char* path)
 {
     if (strcmp(path, "jsfx") == 0) return jsfx;
     if (strcmp(path, "math") == 0) return math;
     if (strcmp(path, "str") == 0) return string;
     if (strcmp(path, "gfx") == 0) return gfx;
+    if (strcmp(path, "mouse") == 0) return mouse;
     return NULL;
 }
