@@ -1,3 +1,3 @@
 #pragma once
 
-char* GetBuiltInSource(const char* path);
+const char* GetBuiltInSource(const char* path);
