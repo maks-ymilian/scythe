@@ -442,7 +442,7 @@ static Result GenerateExternalFunctionDeclaration(const FuncDeclStmt* in, const 
                                 in->identifier.lineNumber);
     }
 
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, true, in->public, NULL));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, in->externalIdentifier.text, true, in->public, NULL));
 
     return SUCCESS_RESULT;
 }
@@ -508,7 +508,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     PopScope(NULL);
 
     int uniqueName;
-    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, false, in->public, &uniqueName));
+    HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, NULL, false, in->public, &uniqueName));
 
     WRITE_LITERAL("function ");
     WRITE_LITERAL("func_");

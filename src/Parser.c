@@ -615,13 +615,21 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     if (!blockFound && !externalFound) return ERROR_RESULT_LINE("Expected code block after function declaration");
     if (blockFound && externalFound) return ERROR_RESULT_LINE("External functions cannot have code blocks");
 
+    Token externalIdentifier = {};
     if (externalFound)
+    {
+        const Token* token = MatchOne(Token_Identifier);
+        if (token != NULL) externalIdentifier = *token;
+        else externalIdentifier = *identifier;
+
         if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+    }
 
     FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt)
     {
         .type = *type,
         .identifier = *identifier,
+        .externalIdentifier = externalIdentifier,
         .parameters = params,
         .block = block,
         .public = publicFound,

@@ -277,11 +277,12 @@ Result RegisterFunction(
     const Token identifier,
     const Type returnType,
     const Array* funcParams,
+    char* externalName,
     const bool external,
     const bool public,
     int* outUniqueName)
 {
-    const FunctionSymbolData data = {.parameters = *funcParams, .returnType = returnType, .external = external};
+    const FunctionSymbolData data = {.parameters = *funcParams, .returnType = returnType, .external = external, .externalName = externalName};
     const SymbolData symbolData = {.symbolType = SymbolType_Function, .functionData = data, .uniqueName = -1};
     return AddSymbol(identifier.text, symbolData, public, identifier.lineNumber, outUniqueName);
 }

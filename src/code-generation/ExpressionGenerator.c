@@ -340,7 +340,7 @@ static Result GenerateExternalFunctionCallExpression(const FuncCallExpr* in, con
 {
     assert(function.returnType.metaType == MetaType_Primitive);
 
-    WRITE_TEXT(in->identifier.text);
+    WRITE_TEXT(function.externalName);
     WRITE_LITERAL("(");
     HANDLE_ERROR(GenerateFunctionCallParams(in, function, GenerateFuncParam));
     WRITE_LITERAL(")");

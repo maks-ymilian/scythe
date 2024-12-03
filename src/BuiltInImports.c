@@ -246,9 +246,9 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //public external void gfx_lineto(x,y,aa);
     //public external void gfx_line(x,y,x2,y2[,aa]);
     //public external void gfx_rectto(x,y);
-    public external void gfx_rect(int x, int y, int w, int h);
+    public external void rect(int x, int y, int w, int h) gfx_rect;
     //public external void gfx_setpixel(r,g,b);
-    public external void gfx_getpixel(float r, float g, float b); // dfkjdfsjdfs
+    public external void getpixel(float r, float g, float b) gfx_getpixel; // dfkjdfsjdfs
     //public external void gfx_drawnumber(n,ndigits);
     //public external void gfx_drawchar($'c');
     //public external void gfx_drawstr(str[,flags,right,bottom]);

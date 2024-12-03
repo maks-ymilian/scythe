@@ -91,6 +91,7 @@ FuncDeclStmt* AllocFuncDeclStmt(const FuncDeclStmt stmt)
 {
     ALLOCATE(FuncDeclStmt, stmt);
     new->identifier = CopyToken(stmt.identifier);
+    new->externalIdentifier = CopyToken(stmt.externalIdentifier);
     new->type = CopyToken(stmt.type);
     return new;
 }
@@ -254,6 +255,9 @@ static void FreeNode(const NodePtr node)
         for (int i = 0; i < ptr->parameters.length; ++i)
             FreeNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
+
+        FreeToken(&ptr->identifier);
+        FreeToken(&ptr->externalIdentifier);
 
         free(node.ptr);
         return;

@@ -146,6 +146,7 @@ typedef struct
     Token identifier;
     Array parameters;
     NodePtr block;
+    Token externalIdentifier;
     bool public;
     bool external;
 } FuncDeclStmt;
