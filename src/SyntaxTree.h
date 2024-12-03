@@ -132,6 +132,7 @@ typedef struct
     Token type;
     Token identifier;
     NodePtr initializer;
+    Token externalIdentifier;
     bool public;
     bool external;
 } VarDeclStmt;

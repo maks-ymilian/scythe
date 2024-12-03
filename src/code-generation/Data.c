@@ -257,11 +257,12 @@ Result RegisterVariable(
     const Token identifier,
     const Type type,
     const Map* symbolTable,
+    char* externalName,
     const bool external,
     const bool public,
     int* outUniqueName)
 {
-    VariableSymbolData data = { .type = type, .symbolTable = NULL, .external = external };
+    VariableSymbolData data = { .type = type, .symbolTable = NULL, .external = external, .externalName = externalName};
     if (symbolTable != NULL)
     {
         assert(type.metaType == MetaType_Struct);

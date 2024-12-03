@@ -219,22 +219,22 @@ static const char string[] = RAW_STRING_LITERAL(
 );
 
 static const char gfx[] = RAW_STRING_LITERAL(
-    public external float gfx_r;
-    public external float gfx_g;
-    public external float gfx_b;
-    public external float gfx_a;
+    public external float r gfx_r;
+    public external float g gfx_g;
+    public external float b gfx_b;
+    public external float a gfx_a;
 
-    public external int gfx_w;
-    public external int gfx_h;
-    public external int gfx_x;
-    public external int gfx_y;
+    public external int w gfx_w;
+    public external int h gfx_h;
+    public external int x gfx_x;
+    public external int y gfx_y;
 
-    public external int gfx_mode;
-    public external int gfx_clear;
-    public external int gfx_dest;
-    public external int gfx_texth;
-    public external float gfx_ext_retina;
-    public external int gfx_ext_flags;
+    public external int mode gfx_mode;
+    public external int clear gfx_clear;
+    public external int dest gfx_dest;
+    public external int texth gfx_texth;
+    public external float ext_retina gfx_ext_retina;
+    public external int ext_flags gfx_ext_flags;
 
     public external int mouse_x;
     public external int mouse_y;

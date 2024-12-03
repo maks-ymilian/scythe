@@ -526,9 +526,9 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     if (externalFound) modifierCount++;
 
     const Token* type = PeekType(0 + modifierCount);
-    const Token* name = PeekOne(Token_Identifier, 1 + modifierCount);
+    const Token* identifier = PeekOne(Token_Identifier, 1 + modifierCount);
 
-    if (!(name && type))
+    if (!(identifier && type))
         return NOT_FOUND_RESULT;
 
     for (int i = 0; i < modifierCount; ++i) Consume();
@@ -546,6 +546,14 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
                      return ERROR_RESULT_LINE("Expected expression"))
     }
 
+    Token externalIdentifier = {};
+    if (externalFound)
+    {
+        const Token* token = MatchOne(Token_Identifier);
+        if (token != NULL) externalIdentifier = *token;
+        else externalIdentifier = *identifier;
+    }
+
     if (expectSemicolon)
     {
         const Token* semicolon = MatchOne(Token_Semicolon);
@@ -556,7 +564,8 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt)
     {
         .type = *type,
-        .identifier = *name,
+        .identifier = *identifier,
+        .externalIdentifier = externalIdentifier,
         .initializer = initializer,
         .public = publicFound,
         .external = externalFound,

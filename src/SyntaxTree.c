@@ -82,6 +82,7 @@ VarDeclStmt* AllocVarDeclStmt(const VarDeclStmt stmt)
 {
     ALLOCATE(VarDeclStmt, stmt);
     new->identifier = CopyToken(stmt.identifier);
+    new->externalIdentifier = CopyToken(stmt.externalIdentifier);
     new->type = CopyToken(stmt.type);
     return new;
 }
@@ -214,6 +215,7 @@ static void FreeNode(const NodePtr node)
         const VarDeclStmt* ptr = node.ptr;
 
         FreeToken(&ptr->identifier);
+        FreeToken(&ptr->externalIdentifier);
         FreeToken(&ptr->type);
         FreeNode(ptr->initializer);
 

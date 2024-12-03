@@ -30,6 +30,7 @@ typedef struct
     Type type;
     Map symbolTable;
     bool external;
+    char* externalName;
 } VariableSymbolData;
 
 typedef struct
@@ -84,7 +85,7 @@ Type GetKnownType(const char* name);
 
 Result GetSymbol(const char* name, bool searchAllModules, const char* moduleName, long errorLineNumber, SymbolData** outSymbol);
 SymbolData* GetKnownSymbol(const char* name, bool searchAllModules, const char* moduleName);
-Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, bool external, bool public, int* outUniqueName);
+Result RegisterVariable(Token identifier, Type type, const Map* symbolTable, char* externalName, bool external, bool public, int* outUniqueName);
 Result RegisterFunction(Token identifier, Type returnType, const Array* funcParams, bool external, bool public, int* outUniqueName);
 Result RegisterStruct(Token identifier, const Array* members, bool public, int* outUniqueName);
 bool IsModuleName(const char* name);

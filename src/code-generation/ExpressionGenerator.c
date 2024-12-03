@@ -164,7 +164,7 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
             if (in->next.ptr != NULL)
                 return ERROR_RESULT("Cannot use access operator on external variable", in->value.lineNumber);
 
-            WRITE_TEXT(in->value.text);
+            WRITE_TEXT(symbol->variableData.externalName);
             *outType = symbol->variableData.type;
             return SUCCESS_RESULT;
         }
