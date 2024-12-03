@@ -117,6 +117,12 @@ ImportStmt* AllocImportStmt(const ImportStmt stmt)
     return new;
 }
 
+WhileStmt* AllocWhileStmt(const WhileStmt stmt)
+{
+    ALLOCATE(WhileStmt, stmt);
+    return new;
+}
+
 static void FreeNode(const NodePtr node)
 {
     switch (node.type)
@@ -270,6 +276,17 @@ static void FreeNode(const NodePtr node)
         for (int i = 0; i < ptr->members.length; ++i)
             FreeNode(*(NodePtr*)ptr->members.array[i]);
         FreeArray(&ptr->members);
+
+        free(node.ptr);
+        return;
+    }
+    case Node_While:
+    {
+        DEBUG_PRINT("Freeing WhileStmt\n");
+        const WhileStmt* ptr = node.ptr;
+
+        FreeNode(ptr->expr);
+        FreeNode(ptr->stmt);
 
         free(node.ptr);
         return;

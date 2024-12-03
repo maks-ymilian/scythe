@@ -707,6 +707,42 @@ static Result ParseImportStatement(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParseWhileStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* whileToken = MatchOne(Token_While);
+    if (whileToken == NULL) return NOT_FOUND_RESULT;
+
+    if (MatchOne(Token_LeftBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
+    SET_LINE_NUMBER
+
+    NodePtr expr;
+    HANDLE_ERROR(ParseExpression(&expr),
+                 return ERROR_RESULT_LINE("Expected expression"));
+    SET_LINE_NUMBER
+
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+    SET_LINE_NUMBER
+
+    NodePtr stmt; {
+        HANDLE_ERROR(ParseStatement(&stmt),
+                     return ERROR_RESULT_LINE("Expected statement after while statement"));
+    }
+
+    WhileStmt* whileStmt = AllocWhileStmt((WhileStmt)
+    {
+        .whileToken = *whileToken,
+        .expr = expr,
+        .stmt = stmt,
+    });
+    *out = (NodePtr){.ptr = whileStmt, .type = Node_While};
+
+    return SUCCESS_RESULT;
+}
+
 static Result ParseStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
@@ -724,6 +760,10 @@ static Result ParseStatement(NodePtr* out)
         return result;
 
     result = ParseIfStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseWhileStatement(out);
     if (result.success || result.hasError)
         return result;
 

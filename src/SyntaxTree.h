@@ -10,19 +10,26 @@
 typedef enum
 {
     Node_Null,
+
     Node_Binary,
     Node_Unary,
     Node_Literal,
     Node_FunctionCall,
+
+    Node_ExpressionStatement,
+
     Node_Import,
     Node_Section,
-    Node_Block,
-    Node_ExpressionStatement,
-    Node_Return,
-    Node_If,
     Node_VariableDeclaration,
     Node_FunctionDeclaration,
     Node_StructDeclaration,
+
+    Node_Block,
+
+    Node_If,
+    Node_While,
+
+    Node_Return,
 } NodeType;
 
 typedef struct
@@ -172,6 +179,17 @@ typedef struct
 } ImportStmt;
 
 ImportStmt* AllocImportStmt(ImportStmt stmt);
+
+
+typedef struct
+{
+    Token whileToken;
+    NodePtr expr;
+    NodePtr stmt;
+} WhileStmt;
+
+WhileStmt* AllocWhileStmt(WhileStmt stmt);
+
 
 typedef struct
 {

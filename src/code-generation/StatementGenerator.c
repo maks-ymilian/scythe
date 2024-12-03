@@ -563,6 +563,17 @@ static Result GenerateBlockStatement(const BlockStmt* in)
     return SUCCESS_RESULT;
 }
 
+static Result GenerateSectionStatement(const SectionStmt* in)
+{
+    BeginRead();
+    WRITE_LITERAL("\n@");
+    WRITE_TEXT(in->identifier.text);
+    WRITE_LITERAL("\n");
+    const Result result = GenerateBlockStatement(in->block.ptr);
+    EndReadMove(SIZE_MAX);
+    return result;
+}
+
 static Result GenerateIfStatement(const IfStmt* in)
 {
     Type exprType;
@@ -587,15 +598,21 @@ static Result GenerateIfStatement(const IfStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateSectionStatement(const SectionStmt* in)
+Result GenerateWhileStatement(const WhileStmt* in)
 {
-    BeginRead();
-    WRITE_LITERAL("\n@");
-    WRITE_TEXT(in->identifier.text);
-    WRITE_LITERAL("\n");
-    const Result result = GenerateBlockStatement(in->block.ptr);
-    EndReadMove(SIZE_MAX);
-    return result;
+    WRITE_LITERAL("while(");
+    Type exprType;
+    HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
+    WRITE_LITERAL(")\n");
+
+    if (exprType.id != GetKnownType("bool").id)
+        return ERROR_RESULT("Expression inside while block must evaluate to a bool type", );
+
+    WRITE_LITERAL("(0;");
+    HANDLE_ERROR(GenerateStatement(&in->stmt));
+    WRITE_LITERAL(");");
+
+    return SUCCESS_RESULT;
 }
 
 Result GenerateStatement(const NodePtr* in)
@@ -623,6 +640,8 @@ Result GenerateStatement(const NodePtr* in)
         return GenerateStructDeclaration(in->ptr);
     case Node_If:
         return GenerateIfStatement(in->ptr);
+    case Node_While:
+        return GenerateWhileStatement(in->ptr);
     default:
         assert(0);
     }
