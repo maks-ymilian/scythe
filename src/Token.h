@@ -53,13 +53,21 @@ typedef enum
     Token_Float,
     Token_String,
     Token_Bool,
-    Token_If,
-    Token_Else,
+
     Token_Struct,
-    Token_Return,
     Token_Import,
     Token_Public,
     Token_External,
+
+    Token_If,
+    Token_Else,
+    Token_While,
+    Token_For,
+    Token_Switch,
+
+    Token_Return,
+    Token_Break,
+    Token_Continue,
 
     //end of file
     Token_EndOfFile,

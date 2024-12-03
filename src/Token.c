@@ -15,6 +15,8 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Token_RightCurlyBracket: return "}";
     case Token_LeftSquareBracket: return "[";
     case Token_RightSquareBracket: return "]";
+    case Token_LeftAngleBracket: return "<";
+    case Token_RightAngleBracket: return ">";
     case Token_Dot: return ".";
     case Token_Comma: return ",";
     case Token_Semicolon: return ";";
@@ -24,11 +26,9 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Token_Slash: return "/";
     case Token_Exclamation: return "!";
     case Token_Equals: return "=";
-    case Token_At: return "@";
-    case Token_LeftAngleBracket: return "<";
-    case Token_RightAngleBracket: return ">";
     case Token_Ampersand: return "&";
     case Token_Pipe: return "|";
+    case Token_At: return "@";
 
     case Token_EqualsEquals: return "==";
     case Token_ExclamationEquals: return "!=";
@@ -49,19 +49,26 @@ const char* GetTokenTypeString(const TokenType tokenType)
     case Token_True: return "true";
     case Token_False: return "false";
 
-    case Token_If: return "if";
-    case Token_Else: return "else";
-    case Token_Struct: return "struct";
-    case Token_Return: return "return";
-    case Token_Import: return "import";
-    case Token_Public: return "public";
-    case Token_External: return "external";
-
     case Token_Void: return "void";
     case Token_Int: return "int";
     case Token_Float: return "float";
     case Token_String: return "string";
     case Token_Bool: return "bool";
+
+    case Token_Struct: return "struct";
+    case Token_Import: return "import";
+    case Token_Public: return "public";
+    case Token_External: return "external";
+
+    case Token_If: return "if";
+    case Token_Else: return "else";
+    case Token_While: return "while";
+    case Token_For: return "for";
+    case Token_Switch: return "switch";
+
+    case Token_Return: return "return";
+    case Token_Break: return "break";
+    case Token_Continue: return "continue";
 
     case Token_EndOfFile: return "EndOfFile";
 
