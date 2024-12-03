@@ -13,6 +13,7 @@
 #include "code-generation/CodeGenerator.h"
 #include "StringUtils.h"
 #include "FileUtils.h"
+#include "BuiltInImports.h"
 
 static Array programNodes;
 
@@ -148,22 +149,39 @@ static Result CheckForCircularDependency(const ProgramNode* node, const ProgramN
     return SUCCESS_RESULT;
 }
 
+static bool IsSameFileOrBuiltInPath(
+    const bool isFile,
+    const char* path,
+    const ProgramNode* otherNode,
+    const int lineNumber,
+    const char* containingPath)
+{
+    if (!isFile)
+        return strcmp(path, otherNode->path) == 0;
+
+    const int isSameFile = IsSameFile(path, otherNode->path);
+    if (isSameFile == -1)
+        HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
+                    "Import", containingPath);
+    return isSameFile;
+}
+
 static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* importStmt, const char* containingPath)
 {
+    char* builtInSource = GetBuiltInSource(path);
+    const bool isFile = builtInSource == NULL;
+
     const int lineNumber = importStmt != NULL ? importStmt->import.lineNumber : -1;
-    HandleError(IsFileOpenable(path, lineNumber),
-                "Import", containingPath);
+
+    if (isFile)
+        HandleError(IsFileOpenable(path, lineNumber),
+                    "Import", containingPath);
 
     for (int i = 0; i < programNodes.length; ++i)
     {
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
-
-        const int isSameFile = IsSameFile(path, node->path);
-        if (isSameFile == -1)
-            HandleError(ERROR_RESULT("Could not compare file paths", lineNumber),
-                        "Import", containingPath);
-
-        if (isSameFile)
+        const bool isSameNode = IsSameFileOrBuiltInPath(isFile, path, node, lineNumber, containingPath);
+        if (isSameNode)
             return node;
     }
 
@@ -173,13 +191,16 @@ static ProgramNode* GenerateProgramNode(const char* path, const ImportStmt* impo
     programNode->path = AllocateString(path);
 
     char* source = NULL;
-    HandleError(GetSourceFromImportPath(path, lineNumber, &source),
-                "Read", containingPath);
+    if (isFile)
+        HandleError(GetSourceFromImportPath(path, lineNumber, &source),
+                    "Read", containingPath);
+    else
+        source = builtInSource;
 
     Array tokens;
     HandleError(Scan(source, &tokens),
                 "Scan", path);
-    free(source);
+    if (isFile) free(source);
 
     HandleError(Parse(&tokens, &programNode->ast),
                 "Parse", path);
