@@ -689,10 +689,6 @@ Result GenerateWhileStatement(const WhileStmt* in)
     WriteInteger(scope->depth);
     WRITE_LITERAL("= 0;");
 
-    WRITE_LITERAL("__continue");
-    WriteInteger(scope->depth);
-    WRITE_LITERAL("= 0;");
-
     WRITE_LITERAL("while(__break");
     WriteInteger(scope->depth);
     WRITE_LITERAL("== 0");
@@ -706,8 +702,16 @@ Result GenerateWhileStatement(const WhileStmt* in)
     if (exprType.id != GetKnownType("bool").id)
         return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
 
+    WRITE_LITERAL("(0;");
+
+    WRITE_LITERAL("__continue");
+    WriteInteger(scope->depth);
+    WRITE_LITERAL("= 0;");
+
     assert(in->stmt.type == Node_Block);
     HANDLE_ERROR(GenerateWhileBlock(in->stmt.ptr));
+
+    WRITE_LITERAL(");");
 
     PopScope(NULL);
 
