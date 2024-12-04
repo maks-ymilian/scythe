@@ -625,6 +625,7 @@ static bool ControlPathsContainLoopControl(const NodePtr node) // todo merge fun
     case Node_ExpressionStatement:
     case Node_VariableDeclaration:
     case Node_FunctionDeclaration:
+    case Node_While:
     case Node_Null:
         return false;
     default: assert(0);
@@ -633,6 +634,9 @@ static bool ControlPathsContainLoopControl(const NodePtr node) // todo merge fun
 
 static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
 {
+    const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
+    assert(loopScope != NULL);
+
     WRITE_LITERAL("(0;\n");
 
     long controlStatementCount = 0;
@@ -647,7 +651,9 @@ static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
             if (statementsLeft == 0)
                 continue;
 
-            WRITE_LITERAL("(!__continue) ? (\n");
+            WRITE_LITERAL("(!__continue");
+            WriteInteger(loopScope->depth);
+            WRITE_LITERAL(") ? (\n");
             controlStatementCount++;
         }
     }
@@ -661,19 +667,27 @@ static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
 
 Result GenerateWhileStatement(const WhileStmt* in)
 {
-    WRITE_LITERAL("__break = 0;");
-    WRITE_LITERAL("__continue = 0;");
-    WRITE_LITERAL("while(__break == 0 && (");
+    PushScope();
+    ScopeNode* scope = GetCurrentScope();
+    scope->scopeType = ScopeType_Loop;
+
+    WRITE_LITERAL("__break");
+    WriteInteger(scope->depth);
+    WRITE_LITERAL("= 0;");
+
+    WRITE_LITERAL("__continue");
+    WriteInteger(scope->depth);
+    WRITE_LITERAL("= 0;");
+
+    WRITE_LITERAL("while(__break");
+    WriteInteger(scope->depth);
+    WRITE_LITERAL(" == 0 && (");
     Type exprType;
     HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
     WRITE_LITERAL("))\n");
 
     if (exprType.id != GetKnownType("bool").id)
         return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
-
-    PushScope();
-    ScopeNode* scope = GetCurrentScope();
-    scope->scopeType = ScopeType_Loop;
 
     assert(in->stmt.type == Node_Block);
     HANDLE_ERROR(GenerateWhileBlock(in->stmt.ptr));
@@ -693,8 +707,15 @@ Result GenerateLoopControlStatement(const LoopControlStmt* in)
     }
 
     WRITE_LITERAL("(");
-    if (in->type == LoopControl_Break) WRITE_LITERAL("__break = 1;");
-    WRITE_LITERAL("__continue = 1;");
+    if (in->type == LoopControl_Break)
+    {
+        WRITE_LITERAL("__break");
+        WriteInteger(loopScope->depth);
+        WRITE_LITERAL("= 1;");
+    }
+    WRITE_LITERAL("__continue");
+    WriteInteger(loopScope->depth);
+    WRITE_LITERAL("= 1;");
     WRITE_LITERAL(");");
 
     return SUCCESS_RESULT;
