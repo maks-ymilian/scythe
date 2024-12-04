@@ -718,25 +718,35 @@ static Result ParseWhileStatement(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
     SET_LINE_NUMBER
 
-    NodePtr expr;
-    HANDLE_ERROR(ParseExpression(&expr),
-                 return ERROR_RESULT_LINE("Expected expression"));
+    NodePtr expr; {
+        HANDLE_ERROR(ParseExpression(&expr),
+                     return ERROR_RESULT_LINE("Expected expression"));
+    }
     SET_LINE_NUMBER
 
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
     SET_LINE_NUMBER
 
-    NodePtr stmt; {
+    NodePtr block = NULL_NODE;
+    HANDLE_ERROR(ParseBlockStatement(&block),);
+    if (block.ptr == NULL)
+    {
+        NodePtr stmt;
         HANDLE_ERROR(ParseStatement(&stmt),
                      return ERROR_RESULT_LINE("Expected statement after while statement"));
+
+        Array statements = AllocateArray(sizeof(NodePtr));
+        ArrayAdd(&statements, &stmt);
+        BlockStmt* blockPtr = AllocBlockStmt((BlockStmt){.statements = statements,});
+        block = (NodePtr){.ptr = blockPtr, .type = Node_Block};
     }
 
     WhileStmt* whileStmt = AllocWhileStmt((WhileStmt)
     {
         .whileToken = *whileToken,
         .expr = expr,
-        .stmt = stmt,
+        .stmt = block,
     });
     *out = (NodePtr){.ptr = whileStmt, .type = Node_While};
     return SUCCESS_RESULT;

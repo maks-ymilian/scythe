@@ -596,7 +596,7 @@ static Result GenerateIfStatement(const IfStmt* in)
     return SUCCESS_RESULT;
 }
 
-static bool ControlPathsContainLoopControl(const NodePtr node)
+static bool ControlPathsContainLoopControl(const NodePtr node) // todo merge function
 {
     switch (node.type)
     {
@@ -631,7 +631,7 @@ static bool ControlPathsContainLoopControl(const NodePtr node)
     }
 }
 
-static Result GenerateWhileBlock(const BlockStmt* in)
+static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
 {
     WRITE_LITERAL("(0;\n");
 
@@ -675,7 +675,7 @@ Result GenerateWhileStatement(const WhileStmt* in)
     ScopeNode* scope = GetCurrentScope();
     scope->scopeType = ScopeType_Loop;
 
-    assert(in->stmt.type == Node_Block); // todo add parsing to make this not trigger ever
+    assert(in->stmt.type == Node_Block);
     HANDLE_ERROR(GenerateWhileBlock(in->stmt.ptr));
 
     PopScope(NULL);
