@@ -695,7 +695,10 @@ Result GenerateWhileStatement(const WhileStmt* in)
 
     WRITE_LITERAL("while(__break");
     WriteInteger(scope->depth);
-    WRITE_LITERAL(" == 0 && (");
+    WRITE_LITERAL("== 0");
+    if (GetScopeType(ScopeType_Function) != NULL)
+        WRITE_LITERAL("&& __hasReturned == 0");
+    WRITE_LITERAL("&& (");
     Type exprType;
     HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
     WRITE_LITERAL("))\n");
