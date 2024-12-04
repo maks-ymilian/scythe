@@ -741,11 +741,24 @@ Result GenerateStatement(const NodePtr* in)
     {
     case Node_Block:
     {
+        int functionDepth = -1;
         const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
-        if (functionScope != NULL) return GenerateFunctionBlock(in->ptr);
+        if (functionScope != NULL) functionDepth = functionScope->depth;
 
+        int loopDepth = -1;
         const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
-        if (loopScope != NULL) return GenerateWhileBlock(in->ptr);
+        if (loopScope != NULL) loopDepth = loopScope->depth;
+
+        if (loopDepth > functionDepth)
+        {
+            if (loopScope != NULL)
+                return GenerateWhileBlock(in->ptr);
+        }
+        else
+        {
+            if (functionScope != NULL)
+                return GenerateFunctionBlock(in->ptr);
+        }
 
         return GenerateBlockStatement(in->ptr);
     }
