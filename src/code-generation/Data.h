@@ -67,8 +67,11 @@ struct ScopeNode
 {
     ScopeNode* parent;
     Map symbolTable;
+
     bool isFunction;
     Type functionReturnType;
+
+    bool isLoop;
 };
 
 extern Module module;
@@ -93,7 +96,7 @@ bool IsModuleName(const char* name);
 
 void PushScope();
 void PopScope(Map* outSymbolTable);
-ScopeNode* GetFunctionScope();
+ScopeNode* GetSpecialScope(bool function, bool loop);
 ScopeNode* GetCurrentScope();
 
 void InitResources(Map* _modules);

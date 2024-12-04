@@ -262,7 +262,7 @@ Result RegisterVariable(
     const bool public,
     int* outUniqueName)
 {
-    VariableSymbolData data = { .type = type, .symbolTable = NULL, .external = external, .externalName = externalName};
+    VariableSymbolData data = {.type = type, .symbolTable = NULL, .external = external, .externalName = externalName};
     if (symbolTable != NULL)
     {
         assert(type.metaType == MetaType_Struct);
@@ -313,6 +313,7 @@ static ScopeNode* AllocateScopeNode()
     ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
     scopeNode->parent = NULL;
     scopeNode->isFunction = false;
+    scopeNode->isLoop = false;
     scopeNode->symbolTable = AllocateMap(sizeof(SymbolData));
     return scopeNode;
 }
@@ -337,13 +338,14 @@ void PopScope(Map* outSymbolTable)
     currentScope = parent;
 }
 
-ScopeNode* GetFunctionScope()
+ScopeNode* GetSpecialScope(const bool function, const bool loop)
 {
     ScopeNode* scope = currentScope;
     while (scope != NULL)
     {
-        if (scope->isFunction)
-            break;
+        if (function && loop && scope->isFunction && scope->isLoop) break;
+        if (function && scope->isFunction) break;
+        if (loop && scope->isLoop) break;
 
         scope = scope->parent;
     }

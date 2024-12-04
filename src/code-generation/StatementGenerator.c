@@ -150,7 +150,7 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
-    const ScopeNode* functionScope = GetFunctionScope();
+    const ScopeNode* functionScope = GetSpecialScope(true, false);
     if (functionScope == NULL)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
@@ -608,15 +608,28 @@ Result GenerateWhileStatement(const WhileStmt* in)
     if (exprType.id != GetKnownType("bool").id)
         return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
 
+    PushScope();
+    ScopeNode* scope = GetCurrentScope();
+    scope->isLoop = true;
+
     WRITE_LITERAL("(0;");
     HANDLE_ERROR(GenerateStatement(&in->stmt));
     WRITE_LITERAL(");");
+
+    PopScope(NULL);
 
     return SUCCESS_RESULT;
 }
 
 Result GenerateLoopControlStatement(const LoopControlStmt* in)
 {
+    const ScopeNode* loopScope = GetSpecialScope(false, true);
+    if (loopScope == NULL)
+    {
+        const TokenType token = in->type == LoopControl_Break ? Token_Break : Token_Continue;
+        return ERROR_RESULT_TOKEN("Cannot use \"#t\" statement outside of a loop", in->lineNumber, token);
+    }
+
     return SUCCESS_RESULT;
 }
 
@@ -636,7 +649,7 @@ Result GenerateStatement(const NodePtr* in)
         return GenerateVariableDeclaration(in->ptr, NULL, NULL);
     case Node_Block:
     {
-        const ScopeNode* functionScope = GetFunctionScope();
+        const ScopeNode* functionScope = GetSpecialScope(true, false);
         return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
     }
     case Node_FunctionDeclaration:
