@@ -312,6 +312,7 @@ static ScopeNode* AllocateScopeNode()
 {
     ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
     scopeNode->parent = NULL;
+    scopeNode->depth = 0;
     scopeNode->scopeType = ScopeType_Normal;
     scopeNode->symbolTable = AllocateMap(sizeof(SymbolData));
     return scopeNode;
@@ -320,6 +321,7 @@ static ScopeNode* AllocateScopeNode()
 void PushScope()
 {
     ScopeNode* newScope = AllocateScopeNode();
+    newScope->depth = currentScope->depth + 1;
     newScope->parent = currentScope;
     currentScope = newScope;
 }
