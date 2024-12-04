@@ -606,12 +606,17 @@ Result GenerateWhileStatement(const WhileStmt* in)
     WRITE_LITERAL(")\n");
 
     if (exprType.id != GetKnownType("bool").id)
-        return ERROR_RESULT("Expression inside while block must evaluate to a bool type", );
+        return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
 
     WRITE_LITERAL("(0;");
     HANDLE_ERROR(GenerateStatement(&in->stmt));
     WRITE_LITERAL(");");
 
+    return SUCCESS_RESULT;
+}
+
+Result GenerateLoopControlStatement(const LoopControlStmt* in)
+{
     return SUCCESS_RESULT;
 }
 
@@ -642,6 +647,8 @@ Result GenerateStatement(const NodePtr* in)
         return GenerateIfStatement(in->ptr);
     case Node_While:
         return GenerateWhileStatement(in->ptr);
+    case Node_LoopControl:
+        return GenerateLoopControlStatement(in->ptr);
     default:
         assert(0);
     }

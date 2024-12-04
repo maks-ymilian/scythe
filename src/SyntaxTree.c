@@ -123,6 +123,12 @@ WhileStmt* AllocWhileStmt(const WhileStmt stmt)
     return new;
 }
 
+LoopControlStmt* AllocLoopControlStmt(LoopControlStmt stmt)
+{
+    ALLOCATE(LoopControlStmt, stmt);
+    return new;
+}
+
 static void FreeNode(const NodePtr node)
 {
     switch (node.type)
@@ -288,6 +294,12 @@ static void FreeNode(const NodePtr node)
         FreeNode(ptr->expr);
         FreeNode(ptr->stmt);
 
+        free(node.ptr);
+        return;
+    }
+    case Node_LoopControl:
+    {
+        DEBUG_PRINT("Freeing LoopControl\n");
         free(node.ptr);
         return;
     }

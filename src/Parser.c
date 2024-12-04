@@ -739,7 +739,26 @@ static Result ParseWhileStatement(NodePtr* out)
         .stmt = stmt,
     });
     *out = (NodePtr){.ptr = whileStmt, .type = Node_While};
+    return SUCCESS_RESULT;
+}
 
+static Result ParseLoopControlStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* token = MatchOne(Token_Break);
+    if (token == NULL) token = MatchOne(Token_Continue);
+    if (token == NULL) return NOT_FOUND_RESULT;
+
+    if (MatchOne(Token_Semicolon) == NULL)
+        return ERROR_RESULT_LINE("Expected \";\"");
+
+    LoopControlStmt* loopControlStmt = AllocLoopControlStmt((LoopControlStmt)
+    {
+        .type = token->type == Token_Break ? LoopControl_Break : LoopControl_Continue,
+        .lineNumber = token->lineNumber,
+    });
+    *out = (NodePtr){.ptr = loopControlStmt, .type = Node_LoopControl};
     return SUCCESS_RESULT;
 }
 
@@ -760,6 +779,10 @@ static Result ParseStatement(NodePtr* out)
         return result;
 
     result = ParseIfStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseLoopControlStatement(out);
     if (result.success || result.hasError)
         return result;
 

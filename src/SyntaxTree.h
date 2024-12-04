@@ -28,6 +28,7 @@ typedef enum
 
     Node_If,
     Node_While,
+    Node_LoopControl,
 
     Node_Return,
 } NodeType;
@@ -189,6 +190,20 @@ typedef struct
 } WhileStmt;
 
 WhileStmt* AllocWhileStmt(WhileStmt stmt);
+
+
+typedef struct
+{
+    enum
+    {
+        LoopControl_Break,
+        LoopControl_Continue,
+    } type;
+
+    int lineNumber;
+} LoopControlStmt;
+
+LoopControlStmt* AllocLoopControlStmt(LoopControlStmt stmt);
 
 
 typedef struct
