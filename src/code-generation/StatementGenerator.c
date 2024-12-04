@@ -150,7 +150,7 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
 
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
-    const ScopeNode* functionScope = GetSpecialScope(true, false);
+    const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
     if (functionScope == NULL)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
@@ -474,7 +474,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     PushScope();
 
     ScopeNode* currentScope = GetCurrentScope();
-    currentScope->isFunction = true;
+    currentScope->scopeType = ScopeType_Function;
     currentScope->functionReturnType = returnType;
 
     assert(in->block.type == Node_Block);
@@ -610,7 +610,7 @@ Result GenerateWhileStatement(const WhileStmt* in)
 
     PushScope();
     ScopeNode* scope = GetCurrentScope();
-    scope->isLoop = true;
+    scope->scopeType = ScopeType_Loop;
 
     WRITE_LITERAL("(0;");
     HANDLE_ERROR(GenerateStatement(&in->stmt));
@@ -623,7 +623,7 @@ Result GenerateWhileStatement(const WhileStmt* in)
 
 Result GenerateLoopControlStatement(const LoopControlStmt* in)
 {
-    const ScopeNode* loopScope = GetSpecialScope(false, true);
+    const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
     if (loopScope == NULL)
     {
         const TokenType token = in->type == LoopControl_Break ? Token_Break : Token_Continue;
@@ -649,8 +649,13 @@ Result GenerateStatement(const NodePtr* in)
         return GenerateVariableDeclaration(in->ptr, NULL, NULL);
     case Node_Block:
     {
-        const ScopeNode* functionScope = GetSpecialScope(true, false);
-        return functionScope == NULL ? GenerateBlockStatement(in->ptr) : GenerateFunctionBlock(in->ptr, false);
+        const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
+        if (functionScope != NULL) return GenerateFunctionBlock(in->ptr, false);
+
+        const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
+        if (loopScope != NULL) assert(0);
+
+        return GenerateBlockStatement(in->ptr);
     }
     case Node_FunctionDeclaration:
         return GenerateFunctionDeclaration(in->ptr);

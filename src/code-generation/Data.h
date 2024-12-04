@@ -61,17 +61,21 @@ typedef struct
     };
 } SymbolData;
 
+typedef enum
+{
+    ScopeType_Normal,
+    ScopeType_Function,
+    ScopeType_Loop,
+} ScopeType;
+
 typedef struct ScopeNode ScopeNode;
 
 struct ScopeNode
 {
     ScopeNode* parent;
     Map symbolTable;
-
-    bool isFunction;
+    ScopeType scopeType;
     Type functionReturnType;
-
-    bool isLoop;
 };
 
 extern Module module;
@@ -96,7 +100,7 @@ bool IsModuleName(const char* name);
 
 void PushScope();
 void PopScope(Map* outSymbolTable);
-ScopeNode* GetSpecialScope(bool function, bool loop);
+ScopeNode* GetScopeType(ScopeType type);
 ScopeNode* GetCurrentScope();
 
 void InitResources(Map* _modules);
