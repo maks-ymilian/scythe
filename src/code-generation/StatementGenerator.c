@@ -352,12 +352,9 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
     }
 }
 
-static Result GenerateFunctionBlock(const BlockStmt* in, const bool topLevel)
+static Result GenerateFunctionBlock(const BlockStmt* in)
 {
     WRITE_LITERAL("(0;\n");
-
-    if (topLevel)
-        WRITE_LITERAL("__hasReturned = 0;\n");
 
     long returnIfStatementCount = 0;
     for (int i = 0; i < in->statements.length; ++i)
@@ -487,6 +484,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
     const size_t pos = GetStreamPosition();
     BeginRead();
     WRITE_LITERAL("(0;");
+    WRITE_LITERAL("__hasReturned = 0;");
 
     Array params;
     HANDLE_ERROR(ParseParameterArray(in, &params));
@@ -500,7 +498,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         HANDLE_ERROR(GeneratePopValue(varDecl));
     }
 
-    HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr, true));
+    HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr));
     WRITE_LITERAL(");\n");
     const Buffer functionBlock = EndRead();
     SetStreamPosition(pos);
@@ -598,12 +596,77 @@ static Result GenerateIfStatement(const IfStmt* in)
     return SUCCESS_RESULT;
 }
 
+static bool ControlPathsContainLoopControl(const NodePtr node)
+{
+    switch (node.type)
+    {
+    case Node_LoopControl:
+        return true;
+    case Node_Return:
+        assert(0);
+    case Node_If:
+    {
+        const IfStmt* ifStmt = node.ptr;
+        const bool trueReturns = ControlPathsContainLoopControl(ifStmt->trueStmt);
+        const bool falseReturns = ControlPathsContainLoopControl(ifStmt->falseStmt);
+        return trueReturns || falseReturns;
+    }
+    case Node_Block:
+    {
+        const BlockStmt* block = node.ptr;
+        for (int i = 0; i < block->statements.length; ++i)
+        {
+            const NodePtr* statement = block->statements.array[i];
+            if (ControlPathsContainLoopControl(*statement))
+                return true;
+        }
+        return false;
+    }
+    case Node_ExpressionStatement:
+    case Node_VariableDeclaration:
+    case Node_FunctionDeclaration:
+    case Node_Null:
+        return false;
+    default: assert(0);
+    }
+}
+
+static Result GenerateWhileBlock(const BlockStmt* in)
+{
+    WRITE_LITERAL("(0;\n");
+
+    long controlStatementCount = 0;
+    for (int i = 0; i < in->statements.length; ++i)
+    {
+        const NodePtr* node = in->statements.array[i];
+        HANDLE_ERROR(GenerateStatement(node));
+
+        if (ControlPathsContainLoopControl(*node))
+        {
+            const size_t statementsLeft = in->statements.length - (i + 1);
+            if (statementsLeft == 0)
+                continue;
+
+            WRITE_LITERAL("(!__continue) ? (\n");
+            controlStatementCount++;
+        }
+    }
+    for (int i = 0; i < controlStatementCount; ++i)
+        WRITE_LITERAL(");");
+
+    WRITE_LITERAL(");\n");
+
+    return SUCCESS_RESULT;
+}
+
 Result GenerateWhileStatement(const WhileStmt* in)
 {
-    WRITE_LITERAL("while(");
+    WRITE_LITERAL("__break = 0;");
+    WRITE_LITERAL("__continue = 0;");
+    WRITE_LITERAL("while(__break == 0 && (");
     Type exprType;
     HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
-    WRITE_LITERAL(")\n");
+    WRITE_LITERAL("))\n");
 
     if (exprType.id != GetKnownType("bool").id)
         return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
@@ -612,9 +675,8 @@ Result GenerateWhileStatement(const WhileStmt* in)
     ScopeNode* scope = GetCurrentScope();
     scope->scopeType = ScopeType_Loop;
 
-    WRITE_LITERAL("(0;");
-    HANDLE_ERROR(GenerateStatement(&in->stmt));
-    WRITE_LITERAL(");");
+    assert(in->stmt.type == Node_Block); // todo add parsing to make this not trigger ever
+    HANDLE_ERROR(GenerateWhileBlock(in->stmt.ptr));
 
     PopScope(NULL);
 
@@ -629,6 +691,11 @@ Result GenerateLoopControlStatement(const LoopControlStmt* in)
         const TokenType token = in->type == LoopControl_Break ? Token_Break : Token_Continue;
         return ERROR_RESULT_TOKEN("Cannot use \"#t\" statement outside of a loop", in->lineNumber, token);
     }
+
+    WRITE_LITERAL("(");
+    if (in->type == LoopControl_Break) WRITE_LITERAL("__break = 1;");
+    WRITE_LITERAL("__continue = 1;");
+    WRITE_LITERAL(");");
 
     return SUCCESS_RESULT;
 }
@@ -650,10 +717,10 @@ Result GenerateStatement(const NodePtr* in)
     case Node_Block:
     {
         const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
-        if (functionScope != NULL) return GenerateFunctionBlock(in->ptr, false);
+        if (functionScope != NULL) return GenerateFunctionBlock(in->ptr);
 
         const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
-        if (loopScope != NULL) assert(0);
+        if (loopScope != NULL) return GenerateWhileBlock(in->ptr);
 
         return GenerateBlockStatement(in->ptr);
     }
