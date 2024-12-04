@@ -355,6 +355,7 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
     {
         return !allPathsMustReturn;
     }
+    case Node_LoopControl:
     case Node_ExpressionStatement:
     case Node_VariableDeclaration:
     case Node_FunctionDeclaration:

@@ -344,6 +344,12 @@ ScopeNode* GetScopeType(const ScopeType type)
     ScopeNode* scope = currentScope;
     while (scope != NULL)
     {
+        if (type == ScopeType_Loop)
+        {
+           if (scope->scopeType == ScopeType_Function)
+               return NULL;
+        }
+
         if (scope->scopeType == type)
             break;
 
