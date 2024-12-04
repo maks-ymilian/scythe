@@ -75,6 +75,7 @@ struct ScopeNode
     ScopeNode* parent;
     Map symbolTable;
     int depth;
+    int uniqueName;
 
     ScopeType scopeType;
     Type functionReturnType;

@@ -14,6 +14,7 @@ Module module;
 
 static int symbolCounter = 0;
 static int typeCounter = NUM_PRIMITIVE_TYPES;
+static int scopeCounter = 0;
 
 static Map types;
 static ScopeNode* currentScope;
@@ -313,8 +314,10 @@ static ScopeNode* AllocateScopeNode()
     ScopeNode* scopeNode = malloc(sizeof(ScopeNode));
     scopeNode->parent = NULL;
     scopeNode->depth = 0;
+    scopeNode->uniqueName = scopeCounter;
     scopeNode->scopeType = ScopeType_Normal;
     scopeNode->symbolTable = AllocateMap(sizeof(SymbolData));
+    scopeCounter++;
     return scopeNode;
 }
 

@@ -665,7 +665,7 @@ static Result GenerateWhileBlock(const BlockStmt* in)
                 continue;
 
             WRITE_LITERAL("(!__continue");
-            WriteInteger(loopScope->depth);
+            WriteInteger(loopScope->uniqueName);
             if (GetScopeType(ScopeType_Function) != NULL)
                 WRITE_LITERAL("&& !__hasReturned");
             WRITE_LITERAL(") ? (\n");
@@ -687,11 +687,11 @@ Result GenerateWhileStatement(const WhileStmt* in)
     scope->scopeType = ScopeType_Loop;
 
     WRITE_LITERAL("__break");
-    WriteInteger(scope->depth);
+    WriteInteger(scope->uniqueName);
     WRITE_LITERAL("= 0;");
 
     WRITE_LITERAL("while(__break");
-    WriteInteger(scope->depth);
+    WriteInteger(scope->uniqueName);
     WRITE_LITERAL("== 0");
     if (GetScopeType(ScopeType_Function) != NULL)
         WRITE_LITERAL("&& __hasReturned == 0");
@@ -706,7 +706,7 @@ Result GenerateWhileStatement(const WhileStmt* in)
     WRITE_LITERAL("(0;");
 
     WRITE_LITERAL("__continue");
-    WriteInteger(scope->depth);
+    WriteInteger(scope->uniqueName);
     WRITE_LITERAL("= 0;");
 
     assert(in->stmt.type == Node_Block);
@@ -732,11 +732,11 @@ Result GenerateLoopControlStatement(const LoopControlStmt* in)
     if (in->type == LoopControl_Break)
     {
         WRITE_LITERAL("__break");
-        WriteInteger(loopScope->depth);
+        WriteInteger(loopScope->uniqueName);
         WRITE_LITERAL("= 1;");
     }
     WRITE_LITERAL("__continue");
-    WriteInteger(loopScope->depth);
+    WriteInteger(loopScope->uniqueName);
     WRITE_LITERAL("= 1;");
     WRITE_LITERAL(");");
 
