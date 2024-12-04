@@ -148,6 +148,8 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
     return SUCCESS_RESULT;
 }
 
+Result GenerateLoopControlStatement(const LoopControlStmt* in);
+
 static Result GenerateReturnStatement(const ReturnStmt* in)
 {
     const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
@@ -156,6 +158,12 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
 
     WRITE_LITERAL("(");
     WRITE_LITERAL("__hasReturned = 1;");
+
+    if (GetScopeType(ScopeType_Loop) != NULL)
+    {
+        const LoopControlStmt stmt = {.type = LoopControl_Break, .lineNumber = in->returnToken.lineNumber};
+        ASSERT_ERROR(GenerateLoopControlStatement(&stmt));
+    }
 
     const Type returnType = functionScope->functionReturnType;
     const bool isVoid = returnType.id == GetKnownType("void").id;
@@ -342,6 +350,10 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
                 return true;
         }
         return false;
+    }
+    case Node_While:
+    {
+        return !allPathsMustReturn;
     }
     case Node_ExpressionStatement:
     case Node_VariableDeclaration:
@@ -596,14 +608,13 @@ static Result GenerateIfStatement(const IfStmt* in)
     return SUCCESS_RESULT;
 }
 
-static bool ControlPathsContainLoopControl(const NodePtr node) // todo merge function
+static bool ControlPathsContainLoopControl(const NodePtr node)
 {
     switch (node.type)
     {
     case Node_LoopControl:
-        return true;
     case Node_Return:
-        assert(0);
+        return true;
     case Node_If:
     {
         const IfStmt* ifStmt = node.ptr;
@@ -622,17 +633,18 @@ static bool ControlPathsContainLoopControl(const NodePtr node) // todo merge fun
         }
         return false;
     }
+    case Node_While:
+        return true;
     case Node_ExpressionStatement:
     case Node_VariableDeclaration:
     case Node_FunctionDeclaration:
-    case Node_While:
     case Node_Null:
         return false;
     default: assert(0);
     }
 }
 
-static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
+static Result GenerateWhileBlock(const BlockStmt* in)
 {
     const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
     assert(loopScope != NULL);
@@ -653,6 +665,8 @@ static Result GenerateWhileBlock(const BlockStmt* in) // todo merge function
 
             WRITE_LITERAL("(!__continue");
             WriteInteger(loopScope->depth);
+            if (GetScopeType(ScopeType_Function) != NULL)
+                WRITE_LITERAL("&& !__hasReturned");
             WRITE_LITERAL(") ? (\n");
             controlStatementCount++;
         }
@@ -725,16 +739,6 @@ Result GenerateStatement(const NodePtr* in)
 {
     switch (in->type)
     {
-    case Node_Import:
-        return SUCCESS_RESULT;
-    case Node_ExpressionStatement:
-        return GenerateExpressionStatement(in->ptr);
-    case Node_Return:
-        return GenerateReturnStatement(in->ptr);
-    case Node_Section:
-        return GenerateSectionStatement(in->ptr);
-    case Node_VariableDeclaration:
-        return GenerateVariableDeclaration(in->ptr, NULL, NULL);
     case Node_Block:
     {
         const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
@@ -745,17 +749,16 @@ Result GenerateStatement(const NodePtr* in)
 
         return GenerateBlockStatement(in->ptr);
     }
-    case Node_FunctionDeclaration:
-        return GenerateFunctionDeclaration(in->ptr);
-    case Node_StructDeclaration:
-        return GenerateStructDeclaration(in->ptr);
-    case Node_If:
-        return GenerateIfStatement(in->ptr);
-    case Node_While:
-        return GenerateWhileStatement(in->ptr);
-    case Node_LoopControl:
-        return GenerateLoopControlStatement(in->ptr);
-    default:
-        assert(0);
+    case Node_Import: return SUCCESS_RESULT;
+    case Node_ExpressionStatement: return GenerateExpressionStatement(in->ptr);
+    case Node_Return: return GenerateReturnStatement(in->ptr);
+    case Node_Section: return GenerateSectionStatement(in->ptr);
+    case Node_VariableDeclaration: return GenerateVariableDeclaration(in->ptr, NULL, NULL);
+    case Node_FunctionDeclaration: return GenerateFunctionDeclaration(in->ptr);
+    case Node_StructDeclaration: return GenerateStructDeclaration(in->ptr);
+    case Node_If: return GenerateIfStatement(in->ptr);
+    case Node_While: return GenerateWhileStatement(in->ptr);
+    case Node_LoopControl: return GenerateLoopControlStatement(in->ptr);
+    default: assert(0);
     }
 }
