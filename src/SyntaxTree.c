@@ -123,6 +123,12 @@ WhileStmt* AllocWhileStmt(const WhileStmt stmt)
     return new;
 }
 
+ForStmt* AllocForStmt(ForStmt stmt)
+{
+    ALLOCATE(ForStmt, stmt);
+    return new;
+}
+
 LoopControlStmt* AllocLoopControlStmt(LoopControlStmt stmt)
 {
     ALLOCATE(LoopControlStmt, stmt);
@@ -292,6 +298,19 @@ static void FreeNode(const NodePtr node)
         const WhileStmt* ptr = node.ptr;
 
         FreeNode(ptr->expr);
+        FreeNode(ptr->stmt);
+
+        free(node.ptr);
+        return;
+    }
+    case Node_For:
+    {
+        DEBUG_PRINT("Freeing ForStmt\n");
+        const ForStmt* ptr = node.ptr;
+
+        FreeNode(ptr->condition);
+        FreeNode(ptr->initialization);
+        FreeNode(ptr->increment);
         FreeNode(ptr->stmt);
 
         free(node.ptr);

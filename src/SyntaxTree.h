@@ -28,6 +28,7 @@ typedef enum
 
     Node_If,
     Node_While,
+    Node_For,
     Node_LoopControl,
 
     Node_Return,
@@ -190,6 +191,17 @@ typedef struct
 } WhileStmt;
 
 WhileStmt* AllocWhileStmt(WhileStmt stmt);
+
+typedef struct
+{
+    Token forToken;
+    NodePtr initialization;
+    NodePtr condition;
+    NodePtr increment;
+    NodePtr stmt;
+} ForStmt;
+
+ForStmt* AllocForStmt(ForStmt stmt);
 
 
 typedef struct
