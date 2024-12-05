@@ -372,7 +372,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
     WRITE_LITERAL("func_");
     WRITE_TEXT(in->identifier.text);
     WriteInteger(symbol->uniqueName);
-    WRITE_LITERAL("(););");
+    WRITE_LITERAL("();");
 
     if (function.returnType.id != GetKnownType("void").id)
     {
@@ -385,6 +385,8 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
             WRITE_LITERAL("=stack_pop();");
         }
     }
+
+    WRITE_LITERAL(");");
 
     return SUCCESS_RESULT;
 }
