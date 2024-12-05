@@ -752,6 +752,72 @@ static Result ParseWhileStatement(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParseForStatement(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* forToken = MatchOne(Token_For);
+    if (forToken == NULL)
+        return NOT_FOUND_RESULT;
+    SET_LINE_NUMBER
+
+    if (MatchOne(Token_LeftBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
+    SET_LINE_NUMBER
+
+    NodePtr initializer = NULL_NODE; {
+        HANDLE_ERROR(ParseStatement(&initializer),);
+        SET_LINE_NUMBER
+
+        if (initializer.type != Node_Null &&
+            initializer.type != Node_VariableDeclaration &&
+            initializer.type != Node_ExpressionStatement)
+            return ERROR_RESULT_LINE(
+                "Only expression and variable declaration statements are allowed inside for loop initializers");
+    }
+
+    NodePtr condition = NULL_NODE; {
+        HANDLE_ERROR(ParseExpression(&condition),);
+        SET_LINE_NUMBER
+        if (MatchOne(Token_Semicolon) == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+        SET_LINE_NUMBER
+    }
+
+    NodePtr increment = NULL_NODE; {
+        HANDLE_ERROR(ParseExpression(&increment),);
+        SET_LINE_NUMBER
+    }
+
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+
+    NodePtr block = NULL_NODE;
+    HANDLE_ERROR(ParseBlockStatement(&block),);
+    if (block.ptr == NULL)
+    {
+        NodePtr stmt;
+        HANDLE_ERROR(ParseStatement(&stmt),
+                     return ERROR_RESULT_LINE("Expected statement after for statement"));
+
+        Array statements = AllocateArray(sizeof(NodePtr));
+        ArrayAdd(&statements, &stmt);
+        BlockStmt* blockPtr = AllocBlockStmt((BlockStmt){.statements = statements,});
+        block = (NodePtr){.ptr = blockPtr, .type = Node_Block};
+    }
+
+    ForStmt* forStmt = AllocForStmt((ForStmt)
+    {
+        .forToken = *forToken,
+        .initialization = initializer,
+        .condition = condition,
+        .increment = increment,
+        .stmt = block,
+    });
+    *out = (NodePtr){.ptr = forStmt, .type = Node_For};
+    return SUCCESS_RESULT;
+}
+
 static Result ParseLoopControlStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
@@ -797,6 +863,10 @@ static Result ParseStatement(NodePtr* out)
         return result;
 
     result = ParseWhileStatement(out);
+    if (result.success || result.hasError)
+        return result;
+
+    result = ParseForStatement(out);
     if (result.success || result.hasError)
         return result;
 
