@@ -680,11 +680,30 @@ static Result GenerateWhileBlock(const BlockStmt* in)
     return SUCCESS_RESULT;
 }
 
-Result GenerateWhileStatement(const WhileStmt* in)
+static Result GenerateLoopStatement(const NodePtr in)
 {
+    const WhileStmt* whileStmt = in.ptr;
+    const ForStmt* forStmt = in.ptr;
+
     PushScope();
     ScopeNode* scope = GetCurrentScope();
     scope->scopeType = ScopeType_Loop;
+
+    if (in.type == Node_For)
+        HANDLE_ERROR(GenerateStatement(&forStmt->initialization));
+
+    const NodePtr* condition = NULL;
+    const NodePtr* stmt = NULL;
+    if (in.type == Node_For)
+    {
+        condition = &forStmt->condition;
+        stmt = &forStmt->stmt;
+    }
+    else if (in.type == Node_While)
+    {
+        condition = &whileStmt->expr;
+        stmt = &whileStmt->stmt;
+    }
 
     WRITE_LITERAL("__break");
     WriteInteger(scope->uniqueName);
@@ -697,7 +716,7 @@ Result GenerateWhileStatement(const WhileStmt* in)
         WRITE_LITERAL("&& __hasReturned == 0");
     WRITE_LITERAL("&& (");
     Type exprType;
-    HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
+    HANDLE_ERROR(GenerateExpression(condition, &exprType, true, false));
     WRITE_LITERAL("))\n");
 
     if (exprType.id != GetKnownType("bool").id)
@@ -709,8 +728,12 @@ Result GenerateWhileStatement(const WhileStmt* in)
     WriteInteger(scope->uniqueName);
     WRITE_LITERAL("= 0;");
 
-    assert(in->stmt.type == Node_Block);
-    HANDLE_ERROR(GenerateWhileBlock(in->stmt.ptr));
+    assert(stmt->type == Node_Block);
+    HANDLE_ERROR(GenerateWhileBlock(stmt->ptr));
+
+    Type _;
+    if (in.type == Node_For)
+        HANDLE_ERROR(GenerateExpression(&forStmt->increment, &_, false, false));
 
     WRITE_LITERAL(");");
 
@@ -778,7 +801,8 @@ Result GenerateStatement(const NodePtr* in)
     case Node_FunctionDeclaration: return GenerateFunctionDeclaration(in->ptr);
     case Node_StructDeclaration: return GenerateStructDeclaration(in->ptr);
     case Node_If: return GenerateIfStatement(in->ptr);
-    case Node_While: return GenerateWhileStatement(in->ptr);
+    case Node_While: return GenerateLoopStatement(*in);
+    case Node_For: return GenerateLoopStatement(*in);
     case Node_LoopControl: return GenerateLoopControlStatement(in->ptr);
     default: assert(0);
     }
