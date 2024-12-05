@@ -6,6 +6,15 @@
 
 //@formatter:off
 
+// optional parameters
+// out parameters
+// passing in parameters as reference
+// variadic parameters
+// assigning to r-value
+// special behaviour with slider variables
+// buffers as parameters
+// could be implemented differently
+
 static const char jsfx[] = RAW_STRING_LITERAL(
     public import "math"
     public import "str"
@@ -221,6 +230,13 @@ static const char string[] = RAW_STRING_LITERAL(
 static const char gfx[] = RAW_STRING_LITERAL(
     public import "mouse"
 
+    public struct Color
+    {
+        float r;
+        float g;
+        float b;
+    }
+
     public external float r gfx_r;
     public external float g gfx_g;
     public external float b gfx_b;
@@ -228,6 +244,7 @@ static const char gfx[] = RAW_STRING_LITERAL(
 
     public external int w gfx_w;
     public external int h gfx_h;
+
     public external int x gfx_x;
     public external int y gfx_y;
 
@@ -241,10 +258,9 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //public external void gfx_set(r[g,b,a,mode,dest]);
     //public external void gfx_lineto(x,y,aa);
     //public external void gfx_line(x,y,x2,y2[,aa]);
-    //public external void gfx_rectto(x,y);
+    public external void gfx_rectto(x,y);
     public external void rect(int x, int y, int w, int h) gfx_rect;
     //public external void gfx_setpixel(r,g,b);
-    public external void getpixel(float r, float g, float b) gfx_getpixel; // dfkjdfsjdfs
     //public external void gfx_drawnumber(n,ndigits);
     //public external void gfx_drawchar($'c');
     //public external void gfx_drawstr(str[,flags,right,bottom]);
@@ -270,6 +286,22 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //gfx_getchar([char, unicodechar]);
     //gfx_showmenu("str");
     //public external void gfx_setcursor(resource_id[,"custom cursor name"]);
+
+    external int gfx_x;
+    external int gfx_y;
+    public void set_pos(int x, int y)
+    {
+        gfx_x = x;
+        gfx_y = y;
+    }
+
+    external void gfx_getpixel(float r, float g, float b);
+    public Color getpixel()
+    {
+        Color color;
+        gfx_getpixel(color.r, color.g, color.b);
+        return color;
+    }
 );
 
 static const char mouse[] = RAW_STRING_LITERAL(
