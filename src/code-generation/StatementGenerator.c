@@ -635,6 +635,7 @@ static bool ControlPathsContainLoopControl(const NodePtr node)
         return false;
     }
     case Node_While:
+    case Node_For:
         return true;
     case Node_ExpressionStatement:
     case Node_VariableDeclaration:
