@@ -774,6 +774,13 @@ static Result ParseForStatement(NodePtr* out)
             initializer.type != Node_ExpressionStatement)
             return ERROR_RESULT_LINE(
                 "Only expression and variable declaration statements are allowed inside for loop initializers");
+
+        if (initializer.type == Node_Null)
+        {
+            if (MatchOne(Token_Semicolon) == NULL)
+                return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+            SET_LINE_NUMBER
+        }
     }
 
     NodePtr condition = NULL_NODE; {

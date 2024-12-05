@@ -689,7 +689,7 @@ static Result GenerateLoopStatement(const NodePtr in)
     ScopeNode* scope = GetCurrentScope();
     scope->scopeType = ScopeType_Loop;
 
-    if (in.type == Node_For)
+    if (in.type == Node_For && forStmt->initialization.type != Node_Null)
         HANDLE_ERROR(GenerateStatement(&forStmt->initialization));
 
     const NodePtr* condition = NULL;
@@ -704,6 +704,8 @@ static Result GenerateLoopStatement(const NodePtr in)
         condition = &whileStmt->expr;
         stmt = &whileStmt->stmt;
     }
+    else
+        assert(0);
 
     WRITE_LITERAL("__break");
     WriteInteger(scope->uniqueName);
@@ -716,6 +718,22 @@ static Result GenerateLoopStatement(const NodePtr in)
         WRITE_LITERAL("&& __hasReturned == 0");
     WRITE_LITERAL("&& (");
     Type exprType;
+    NodePtr trueExpr;
+    if (condition->type == Node_Null)
+    {
+        int lineNumber;
+        if (in.type == Node_For) lineNumber = forStmt->forToken.lineNumber;
+        else if (in.type == Node_While) lineNumber = whileStmt->whileToken.lineNumber;
+        else
+            assert(0);
+        LiteralExpr* literal = AllocLiteral((LiteralExpr)
+        {
+            .value = (Token){.text = NULL, .type = Token_True, .lineNumber = lineNumber},
+            .next = NULL,
+        });
+        trueExpr = (NodePtr){.ptr = literal, .type = Node_Literal};
+        condition = &trueExpr;
+    }
     HANDLE_ERROR(GenerateExpression(condition, &exprType, true, false));
     WRITE_LITERAL("))\n");
 
