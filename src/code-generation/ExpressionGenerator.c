@@ -386,7 +386,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
         }
     }
 
-    WRITE_LITERAL(");");
+    WRITE_LITERAL(")");
 
     return SUCCESS_RESULT;
 }
@@ -649,6 +649,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                     in->right.type == Node_Literal && LiteralHasFunctionCall(in->right.ptr))
                     Write(right.buffer, right.length);
 
+                WRITE_LITERAL(";"); // semicolon after generated function call
                 GenerateStructAssignment(in->left, in->right, leftType);
                 WRITE_LITERAL("0");
 
