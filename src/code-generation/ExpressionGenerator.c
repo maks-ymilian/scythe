@@ -576,7 +576,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         IsAssignmentOperator(((BinaryExpr*)in->right.ptr)->operator.type))
         return ERROR_RESULT("Chained assignment is not allowed", in->operator.lineNumber);
 
-    WRITE_LITERAL("(");
+    WRITE_LITERAL("((");
 
     const size_t pos = GetStreamPosition();
 
@@ -762,6 +762,10 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         Write(operator.buffer, operator.length);
         Write(right.buffer, right.length);
     }
+
+    WRITE_LITERAL(")");
+    if (outType->id == GetKnownType("int").id)
+        WRITE_LITERAL("|0");
 
     free(left.buffer);
     free(operator.buffer);
