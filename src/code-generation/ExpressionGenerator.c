@@ -647,9 +647,11 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
 
                 if (in->right.type == Node_FunctionCall ||
                     in->right.type == Node_Literal && LiteralHasFunctionCall(in->right.ptr))
+                {
                     Write(right.buffer, right.length);
+                    WRITE_LITERAL(";"); // semicolon after generated function call
+                }
 
-                WRITE_LITERAL(";"); // semicolon after generated function call
                 GenerateStructAssignment(in->left, in->right, leftType);
                 WRITE_LITERAL("0");
 
