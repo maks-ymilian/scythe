@@ -6,15 +6,6 @@
 
 //@formatter:off
 
-// optional parameters
-// out parameters
-// passing in parameters as reference
-// variadic parameters
-// assigning to r-value
-// special behaviour with slider variables
-// buffers as parameters
-// could be implemented differently
-
 static const char jsfx[] = RAW_STRING_LITERAL(
     public import "math"
     public import "str"
@@ -255,12 +246,9 @@ static const char gfx[] = RAW_STRING_LITERAL(
     public external float ext_retina gfx_ext_retina;
     public external int ext_flags gfx_ext_flags;
 
-    //public external void gfx_set(r[g,b,a,mode,dest]);
-    //public external void gfx_lineto(x,y,aa);
-    //public external void gfx_line(x,y,x2,y2[,aa]);
     public external void gfx_rectto(int x, int y);
     public external void rect(int x, int y, int w, int h) gfx_rect;
-    //public external void gfx_setpixel(r,g,b);
+    public external void gfx_setpixel(float r, float g, float b);
     //public external void gfx_drawnumber(n,ndigits);
     //public external void gfx_drawchar($'c');
     //public external void gfx_drawstr(str[,flags,right,bottom]);
@@ -287,21 +275,53 @@ static const char gfx[] = RAW_STRING_LITERAL(
     //gfx_showmenu("str");
     //public external void gfx_setcursor(resource_id[,"custom cursor name"]);
 
+    external float gfx_r;
+    external float gfx_g;
+    external float gfx_b;
+    external float gfx_a;
+
+    external int gfx_mode;
+    external int gfx_dest;
+
     external int gfx_x;
     external int gfx_y;
+
+    external void gfx_getpixel(float r, float g, float b);
+    external void gfx_lineto(int x, int y, bool aa);
+    external void gfx_line(int x, int y, int x2, int y2, bool aa);
+
+    public void set(float r, float g = -1, float b = -1, float a = -1, int mode = -1, int dest = -1)
+    {
+        if (dest != -1) gfx_dest = dest;
+        if (mode != -1) gfx_mode = mode;
+        if (a != -1) gfx_a = a;
+        if (b != -1) gfx_b = b;
+        if (g != -1) gfx_g = g;
+
+        gfx_r = r;
+
+        if (g == -1 && b == -1)
+        {
+            gfx_g = r;
+            gfx_b = r;
+        }
+    }
+
     public void set_pos(int x, int y)
     {
         gfx_x = x;
         gfx_y = y;
     }
 
-    external void gfx_getpixel(float r, float g, float b);
     public Color getpixel()
     {
         Color color;
         gfx_getpixel(color.r, color.g, color.b);
         return color;
     }
+
+    public void lineto(int x, int y, bool aa = true) { gfx_lineto(x, y, aa); }
+    public void line(int x, int y, int x2, int y2, bool aa = true) { gfx_line(x, y, x2, y2, aa); }
 );
 
 static const char mouse[] = RAW_STRING_LITERAL(
