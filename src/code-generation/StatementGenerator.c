@@ -28,46 +28,38 @@ static void GenerateStructMemberNames(
          reverseOrder ? i >= 0 : i < structSymbol.members->length;
          reverseOrder ? --i : ++i)
     {
-        const NodePtr* node = structSymbol.members->array[i];
+        const NodePtr* memberNode = structSymbol.members->array[i];
 
-        switch (node->type)
+        assert(memberNode->type == Node_VariableDeclaration);
+        const VarDeclStmt* varDecl = memberNode->ptr;
+
+        LiteralExpr literal = *expr;
+        LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
+        LiteralExpr* last = &literal;
+        while (last->next.ptr != NULL)
         {
-        case Node_VariableDeclaration:
+            assert(last->next.type == Node_Literal);
+            last = last->next.ptr;
+        }
+        last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
+        NodePtr node = (NodePtr){&literal, Node_Literal};
+
+        Type memberType;
+        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
+        if (memberType.metaType == MetaType_Struct)
         {
-            const VarDeclStmt* varDecl = node->ptr;
-
-            LiteralExpr literal = *expr;
-            LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
-            LiteralExpr* last = &literal;
-            while (last->next.ptr != NULL)
-            {
-                assert(last->next.type == Node_Literal);
-                last = last->next.ptr;
-            }
-            last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
-            NodePtr node = (NodePtr){&literal, Node_Literal};
-
-            Type memberType;
-            ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
-            if (memberType.metaType == MetaType_Struct)
-            {
-                GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
-                last->next = NULL_NODE;
-                break;
-            }
-
-            if (beforeText != NULL)
-                WRITE_TEXT(beforeText);
-            Type _;
-            ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+            GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
             last->next = NULL_NODE;
-            if (afterText != NULL)
-                WRITE_TEXT(afterText);
             break;
         }
-        default:
-            assert(0);
-        }
+
+        if (beforeText != NULL)
+            WRITE_TEXT(beforeText);
+        Type _;
+        ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+        last->next = NULL_NODE;
+        if (afterText != NULL)
+            WRITE_TEXT(afterText);
     }
 }
 
