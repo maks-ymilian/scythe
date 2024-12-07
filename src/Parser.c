@@ -684,6 +684,47 @@ static Result ParseStructDeclaration(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParseArrayDeclaration(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* type = PeekType(0);
+    if (type == NULL) return NOT_FOUND_RESULT;
+
+    const Token* identifier = PeekOne(Token_Identifier, 1);
+    if (identifier == NULL) return NOT_FOUND_RESULT;
+
+    if (PeekOne(Token_LeftSquareBracket, 2) == NULL)
+        return NOT_FOUND_RESULT;
+
+    Consume();
+    Consume();
+    Consume();
+    SET_LINE_NUMBER;
+
+    NodePtr length;
+    HANDLE_ERROR(ParseExpression(&length),
+        return ERROR_RESULT_LINE("Expected array length"));
+    SET_LINE_NUMBER;
+
+    if (MatchOne(Token_RightSquareBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
+    SET_LINE_NUMBER;
+
+    if (MatchOne(Token_Semicolon) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+
+    ArrayDeclStmt* arrayDecl = AllocArrayDeclStmt((ArrayDeclStmt)
+    {
+        .identifier = *identifier,
+        .type = *type,
+        .length = NULL_NODE,
+        .public = false,
+    });
+    *out = (NodePtr){.ptr = arrayDecl, .type = Node_ArrayDeclaration};
+    return SUCCESS_RESULT;
+}
+
 static Result ParseImportStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
@@ -877,6 +918,10 @@ static Result ParseStatement(NodePtr* out)
     if (result.success || result.hasError)
         return result;
 
+    result = ParseArrayDeclaration(out);
+    if (result.success || result.hasError)
+        return result;
+
     result = ParseVariableDeclaration(out, true);
     if (result.success || result.hasError)
         return result;
@@ -932,6 +977,7 @@ static Result ParseProgram(AST* out)
             stmt.type != Node_FunctionDeclaration &&
             stmt.type != Node_StructDeclaration &&
             stmt.type != Node_VariableDeclaration &&
+            stmt.type != Node_ArrayDeclaration &&
             stmt.type != Node_Import)
             return ERROR_RESULT_LINE(
                 "Expected section statement, variable declaration, struct declaration, or function declaration");
