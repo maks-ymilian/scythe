@@ -40,6 +40,13 @@ FuncCallExpr* AllocFuncCall(const FuncCallExpr expr)
     return new;
 }
 
+ArrayAccessExpr* AllocArrayAccessExpr(const ArrayAccessExpr expr)
+{
+    ALLOCATE(ArrayAccessExpr, expr);
+    new->identifier = CopyToken(expr.identifier);
+    return new;
+}
+
 LiteralExpr* AllocLiteral(const LiteralExpr expr)
 {
     ALLOCATE(LiteralExpr, expr);
@@ -185,6 +192,17 @@ static void FreeNode(const NodePtr node)
 
         free(node.ptr);
         DEBUG_PRINT("Freeing FunctionCallExpression\n");
+        return;
+    }
+    case Node_ArrayAccess:
+    {
+        const ArrayAccessExpr* ptr = node.ptr;
+
+        FreeToken(&ptr->identifier);
+        FreeNode(ptr->subscript);
+
+        free(node.ptr);
+        DEBUG_PRINT("Freeing ArrayAccessExpr\n");
         return;
     }
 

@@ -15,6 +15,7 @@ typedef enum
     Node_Unary,
     Node_Literal,
     Node_FunctionCall,
+    Node_ArrayAccess,
 
     Node_ExpressionStatement,
 
@@ -67,6 +68,15 @@ typedef struct
 } FuncCallExpr;
 
 FuncCallExpr* AllocFuncCall(FuncCallExpr expr);
+
+
+typedef struct
+{
+    Token identifier;
+    NodePtr subscript;
+} ArrayAccessExpr;
+
+ArrayAccessExpr* AllocArrayAccessExpr(ArrayAccessExpr expr);
 
 
 typedef struct LiteralExpr LiteralExpr;
