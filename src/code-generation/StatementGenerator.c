@@ -230,14 +230,18 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
     return SUCCESS_RESULT;
 }
 
-static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type type)
+static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type type, const ScopeNode* scope)
 {
+    const bool globalScope = scope->parent == NULL;
+    if (globalScope) BeginRead();
+
     int uniqueName;
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, true, false, in->public, &uniqueName));
 
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(in->identifier.text);
     WriteInteger(uniqueName);
+    WRITE_LITERAL("_length");
     WRITE_LITERAL("=");
     Type lengthType;
     HANDLE_ERROR(GenerateExpression(&in->arrayLength, &lengthType, true, true));
@@ -245,6 +249,7 @@ static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type
 
     HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), lengthType, in->identifier.lineNumber));
 
+    if (globalScope) EndReadMove(SIZE_MAX);
     return SUCCESS_RESULT;
 }
 
@@ -276,7 +281,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
-    if (in->array) return GenerateArrayVariableDeclaration(in, type);
+    if (in->array) return GenerateArrayVariableDeclaration(in, type, scope);
     if (in->external) return GenerateExternalVariableDeclaration(in, type);
 
     if (globalScope) BeginRead();
