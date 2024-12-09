@@ -230,6 +230,24 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
     return SUCCESS_RESULT;
 }
 
+static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type type)
+{
+    int uniqueName;
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, false, in->public, &uniqueName));
+
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(uniqueName);
+    WRITE_LITERAL("=");
+    Type lengthType;
+    HANDLE_ERROR(GenerateExpression(&in->arrayLength, &lengthType, true, true));
+    WRITE_LITERAL(";\n");
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), lengthType, in->identifier.lineNumber));
+
+    return SUCCESS_RESULT;
+}
+
 static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const Type type)
 {
     if (type.metaType != MetaType_Primitive)
@@ -255,8 +273,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
-    if (in->external)
-        return GenerateExternalVariableDeclaration(in, type);
+    if (in->array) return GenerateArrayVariableDeclaration(in, type);
+    if (in->external) return GenerateExternalVariableDeclaration(in, type);
 
     if (globalScope) BeginRead();
 
