@@ -210,7 +210,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 
     Map symbolTable;
     PopScope(&symbolTable);
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, NULL, false, in->public, NULL));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, &symbolTable, NULL, false, false, in->public, NULL));
 
     if (in->initializer.type != Node_Null)
     {
@@ -233,7 +233,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type type)
 {
     int uniqueName;
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, false, in->public, &uniqueName));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, true, false, in->public, &uniqueName));
 
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(in->identifier.text);
@@ -253,7 +253,7 @@ static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const T
     if (type.metaType != MetaType_Primitive)
         return ERROR_RESULT("Only primitive types are allowed for external variable declarations", in->type.lineNumber);
 
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, in->externalIdentifier.text, true, in->public, NULL));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, in->externalIdentifier.text, false, true, in->public, NULL));
 
     return SUCCESS_RESULT;
 }
@@ -293,7 +293,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     assert(in->identifier.type == Token_Identifier);
     int uniqueName;
-    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, false, in->public, &uniqueName));
+    HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, false, false, in->public, &uniqueName));
 
     NodePtr initializer;
     LiteralExpr defaultLiteral;

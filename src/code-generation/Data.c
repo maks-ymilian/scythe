@@ -259,11 +259,19 @@ Result RegisterVariable(
     const Type type,
     const Map* symbolTable,
     char* externalName,
+    const bool array,
     const bool external,
     const bool public,
     int* outUniqueName)
 {
-    VariableSymbolData data = {.type = type, .symbolTable = NULL, .external = external, .externalName = externalName};
+    VariableSymbolData data =
+    {
+        .type = type,
+        .symbolTable = NULL,
+        .external = external,
+        .externalName = externalName,
+        .array = array,
+    };
     if (symbolTable != NULL)
     {
         assert(type.metaType == MetaType_Struct);
@@ -349,8 +357,8 @@ ScopeNode* GetScopeType(const ScopeType type)
     {
         if (type == ScopeType_Loop)
         {
-           if (scope->scopeType == ScopeType_Function)
-               return NULL;
+            if (scope->scopeType == ScopeType_Function)
+                return NULL;
         }
 
         if (scope->scopeType == type)
