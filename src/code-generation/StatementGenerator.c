@@ -253,6 +253,9 @@ static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const T
     if (type.metaType != MetaType_Primitive)
         return ERROR_RESULT("Only primitive types are allowed for external variable declarations", in->type.lineNumber);
 
+    if (in->array)
+        return ERROR_RESULT("Arrays are not allowed for external variable declarations", in->type.lineNumber);
+
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, in->externalIdentifier.text, false, true, in->public, NULL));
 
     return SUCCESS_RESULT;
