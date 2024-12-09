@@ -172,6 +172,30 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         WRITE_LITERAL(VARIABLE_PREFIX);
         WRITE_TEXT(in->value.text);
 
+        if (symbol->variableData.array)
+        {
+            if (in->next.ptr != NULL)
+            {
+                if (in->next.type == Node_FunctionCall)
+                    return ERROR_RESULT("Arrays do not support function calls", in->value.lineNumber);
+                assert(in->next.type == Node_Literal);
+                const LiteralExpr* literal = in->next.ptr;
+
+                if (strcmp(literal->value.text, "size") != 0 &&
+                    strcmp(literal->value.text, "length") != 0 &&
+                    strcmp(literal->value.text, "count") != 0)
+                    return ERROR_RESULT("Invalid member access", literal->value.lineNumber);
+
+                WriteInteger(symbol->uniqueName);
+                WRITE_LITERAL("_length");
+
+                *outType = GetKnownType("int");
+                return SUCCESS_RESULT;
+            }
+            else // todo
+                assert(0);
+        }
+
         Type type = symbol->variableData.type;
         const LiteralExpr* current = in;
         while (current->next.ptr != NULL)
