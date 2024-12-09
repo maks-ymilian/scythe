@@ -238,6 +238,8 @@ static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type
     int uniqueName;
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, true, false, in->public, &uniqueName));
 
+    WRITE_LITERAL("(");
+
     WRITE_LITERAL(VARIABLE_PREFIX);
     WRITE_TEXT(in->identifier.text);
     WriteInteger(uniqueName);
@@ -248,6 +250,22 @@ static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type
     WRITE_LITERAL(";\n");
 
     HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), lengthType, in->identifier.lineNumber));
+
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(uniqueName);
+    WRITE_LITERAL("=");
+    WRITE_LITERAL("__nextArrayOffset");
+    WRITE_LITERAL(";");
+
+    WRITE_LITERAL("__nextArrayOffset");
+    WRITE_LITERAL("+=");
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(uniqueName);
+    WRITE_LITERAL("_length");
+
+    WRITE_LITERAL(");");
 
     if (globalScope) EndReadMove(SIZE_MAX);
     return SUCCESS_RESULT;
