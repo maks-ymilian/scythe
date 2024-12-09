@@ -197,13 +197,42 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
     return SUCCESS_RESULT;
 }
 
+static Result ParseArrayAccess(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* identifier = PeekOne(Token_Identifier, 0);
+    if (identifier == NULL || PeekOne(Token_LeftSquareBracket, 1) == NULL)
+        return ParsePrimary(out);
+
+    Consume();
+    SET_LINE_NUMBER
+    Consume();
+
+    NodePtr subscript = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&subscript),
+        return ERROR_RESULT_LINE("Expected subscript"));
+    SET_LINE_NUMBER
+
+    if (MatchOne(Token_RightSquareBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
+
+    ArrayAccessExpr* arrayAccess = AllocArrayAccessExpr((ArrayAccessExpr)
+    {
+        .identifier = *identifier,
+        .subscript = subscript,
+    });
+    *out = (NodePtr){arrayAccess, Node_ArrayAccess};
+    return SUCCESS_RESULT;
+}
+
 static Result ParseFunctionCall(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     const Token* identifier = PeekOne(Token_Identifier, 0);
     if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
-        return ParsePrimary(out);
+        return ParseArrayAccess(out);
 
     if (MatchOne(Token_Identifier) == NULL)
         assert(0);
@@ -706,7 +735,7 @@ static Result ParseArrayDeclaration(NodePtr* out)
 
     NodePtr length;
     HANDLE_ERROR(ParseExpression(&length),
-        return ERROR_RESULT_LINE("Expected array length"));
+                 return ERROR_RESULT_LINE("Expected array length"));
     SET_LINE_NUMBER;
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
