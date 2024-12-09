@@ -23,7 +23,6 @@ typedef enum
     Node_VariableDeclaration,
     Node_FunctionDeclaration,
     Node_StructDeclaration,
-    Node_ArrayDeclaration,
 
     Node_Block,
 
@@ -142,7 +141,9 @@ typedef struct
     Token type;
     Token identifier;
     NodePtr initializer;
+    NodePtr arrayLength;
     Token externalIdentifier;
+    bool array;
     bool public;
     bool external;
 } VarDeclStmt;
@@ -172,17 +173,6 @@ typedef struct
 } StructDeclStmt;
 
 StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
-
-
-typedef struct
-{
-    Token type;
-    Token identifier;
-    NodePtr length;
-    bool public;
-} ArrayDeclStmt;
-
-ArrayDeclStmt* AllocArrayDeclStmt(ArrayDeclStmt stmt);
 
 
 typedef struct

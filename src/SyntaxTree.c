@@ -103,14 +103,6 @@ StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
     return new;
 }
 
-ArrayDeclStmt* AllocArrayDeclStmt(ArrayDeclStmt stmt)
-{
-    ALLOCATE(ArrayDeclStmt, stmt);
-    new->identifier = CopyToken(stmt.identifier);
-    new->type = CopyToken(stmt.type);
-    return new;
-}
-
 ImportStmt* AllocImportStmt(const ImportStmt stmt)
 {
     ALLOCATE(ImportStmt, stmt);
@@ -245,6 +237,7 @@ static void FreeNode(const NodePtr node)
         FreeToken(&ptr->externalIdentifier);
         FreeToken(&ptr->type);
         FreeNode(ptr->initializer);
+        FreeNode(ptr->arrayLength);
 
         free(node.ptr);
         return;
@@ -299,15 +292,6 @@ static void FreeNode(const NodePtr node)
 
         FreeToken(&ptr->identifier);
 
-        free(node.ptr);
-        return;
-    }
-    case Node_ArrayDeclaration:
-    {
-        DEBUG_PRINT("Freeing ArrayDeclaration\n");
-        const ArrayDeclStmt* ptr = node.ptr;
-        FreeToken(&ptr->identifier);
-        FreeToken(&ptr->type);
         free(node.ptr);
         return;
     }

@@ -567,6 +567,8 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
         .identifier = *identifier,
         .externalIdentifier = externalIdentifier,
         .initializer = initializer,
+        .arrayLength = NULL_NODE,
+        .array = false,
         .public = publicFound,
         .external = externalFound,
     });
@@ -714,14 +716,17 @@ static Result ParseArrayDeclaration(NodePtr* out)
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
 
-    ArrayDeclStmt* arrayDecl = AllocArrayDeclStmt((ArrayDeclStmt)
+    VarDeclStmt* arrayDecl = AllocVarDeclStmt((VarDeclStmt)
     {
         .identifier = *identifier,
         .type = *type,
-        .length = NULL_NODE,
+        .arrayLength = length,
+        .initializer = NULL_NODE,
+        .array = true,
         .public = false,
+        .external = false,
     });
-    *out = (NodePtr){.ptr = arrayDecl, .type = Node_ArrayDeclaration};
+    *out = (NodePtr){.ptr = arrayDecl, .type = Node_VariableDeclaration};
     return SUCCESS_RESULT;
 }
 
@@ -977,7 +982,6 @@ static Result ParseProgram(AST* out)
             stmt.type != Node_FunctionDeclaration &&
             stmt.type != Node_StructDeclaration &&
             stmt.type != Node_VariableDeclaration &&
-            stmt.type != Node_ArrayDeclaration &&
             stmt.type != Node_Import)
             return ERROR_RESULT_LINE(
                 "Expected section statement, variable declaration, struct declaration, or function declaration");
