@@ -109,6 +109,7 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
 }
 
 static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType);
+static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const char* moduleName, Type* outType);
 
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
@@ -149,6 +150,11 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
             else if (in->next.type == Node_FunctionCall)
             {
                 HANDLE_ERROR(GenerateFunctionCallExpression(in->next.ptr, in->value.text, outType));
+                return SUCCESS_RESULT;
+            }
+            else if (in->next.type == Node_ArrayAccess)
+            {
+                HANDLE_ERROR(GenerateArrayAccessExpression(in->next.ptr, in->value.text, outType));
                 return SUCCESS_RESULT;
             }
         }
@@ -192,8 +198,8 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
                 *outType = GetKnownType("int");
                 return SUCCESS_RESULT;
             }
-            else // todo
-                assert(0);
+            else
+                return ERROR_RESULT("Cannot assign to array variable", in->value.lineNumber);
         }
 
         Type type = symbol->variableData.type;
@@ -244,6 +250,27 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
     default:
         assert(0);
     }
+}
+
+static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const char* moduleName, Type* outType)
+{
+    SymbolData* symbol;
+    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
+    if (symbol->symbolType != SymbolType_Variable || !symbol->variableData.array)
+        return ERROR_RESULT("Identifier must be the name of an array", in->identifier.lineNumber);
+
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(symbol->uniqueName);
+    WRITE_LITERAL("[");
+    Type subscriptType;
+    HANDLE_ERROR(GenerateExpression(&in->subscript, &subscriptType, true, false));
+    WRITE_LITERAL("]");
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), subscriptType, in->identifier.lineNumber));
+
+    *outType = symbol->variableData.type;
+    return SUCCESS_RESULT;
 }
 
 Result CheckAssignmentCompatibility(const Type left, const Type right, const long lineNumber)
@@ -642,8 +669,13 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         if (in->left.type == Node_Literal)
         {
             const LiteralExpr* literal = in->left.ptr;
-            if (literal->value.type == Token_Identifier)
+            if (literal->value.type == Token_Identifier) // todo why is this here
                 isLvalue = true;
+            else assert(0);
+        }
+        else if (in->left.type == Node_ArrayAccess)
+        {
+            isLvalue = true;
         }
 
         if (!isLvalue)
@@ -831,6 +863,9 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
         break;
     case Node_FunctionCall:
         result = GenerateFunctionCallExpression(in->ptr, NULL, outType);
+        break;
+    case Node_ArrayAccess:
+        result = GenerateArrayAccessExpression(in->ptr, NULL, outType);
         break;
     default:
         assert(0);
