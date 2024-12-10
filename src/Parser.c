@@ -20,35 +20,6 @@ if (result.hasError)\
 if (!result.success)\
 {unsuccessfulCode;}
 
-#define COMMA ,
-#define DEF_LEFT_BINARY_PRODUCTION(functionName, nextFunction, operators, length)\
-static Result functionName(NodePtr* out)\
-{\
-    long SET_LINE_NUMBER\
-\
-    NodePtr left;\
-    HANDLE_ERROR(nextFunction(&left),\
-        return result;);\
-\
-    const TokenType validOperators[length] = {operators};\
-    const Token* operator = Match(validOperators, length);\
-    while (operator != NULL)\
-    {\
-        NodePtr right;\
-        SET_LINE_NUMBER\
-        HANDLE_ERROR(nextFunction(&right),\
-            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)\
-\
-        BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});\
-        left = (NodePtr){binary, Node_Binary};\
-\
-        operator = Match(validOperators, length);\
-    }\
-\
-    *out = left;\
-    return SUCCESS_RESULT;\
-}
-
 static Array tokens;
 static long pointer;
 
@@ -211,7 +182,7 @@ static Result ParseArrayAccess(NodePtr* out)
 
     NodePtr subscript = NULL_NODE;
     HANDLE_ERROR(ParseExpression(&subscript),
-        return ERROR_RESULT_LINE("Expected subscript"));
+                 return ERROR_RESULT_LINE("Expected subscript"));
     SET_LINE_NUMBER
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
@@ -271,12 +242,68 @@ static Result ParseUnary(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
-DEF_LEFT_BINARY_PRODUCTION(ParseFactor, ParseUnary, Token_Asterisk COMMA Token_Slash, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseTerm, ParseFactor, Token_Plus COMMA Token_Minus, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseNumberComparison, ParseTerm,
-                           Token_RightAngleBracket COMMA Token_RightAngleEquals COMMA Token_LeftAngleBracket COMMA Token_LeftAngleEquals, 4)
-DEF_LEFT_BINARY_PRODUCTION(ParseEquality, ParseNumberComparison, Token_EqualsEquals COMMA Token_ExclamationEquals, 2)
-DEF_LEFT_BINARY_PRODUCTION(ParseBooleanOperators, ParseEquality, Token_AmpersandAmpersand COMMA Token_PipePipe, 2)
+typedef Result (*ParseFunc)(NodePtr* out);
+
+static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const TokenType operators[], const size_t operatorsLength)
+{
+    long SET_LINE_NUMBER
+
+    NodePtr left;
+    HANDLE_ERROR(parseFunc(&left),
+                 return result);
+
+    const Token* operator = Match(operators, operatorsLength);
+    while (operator != NULL)
+    {
+        NodePtr right;
+        SET_LINE_NUMBER
+        HANDLE_ERROR(parseFunc(&right),
+                     return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)
+
+        BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});
+        left = (NodePtr){binary, Node_Binary};
+
+        operator = Match(operators, operatorsLength);
+    }
+
+    *out = left;
+    return SUCCESS_RESULT;
+}
+
+static Result ParseFactor(NodePtr* out)
+{
+    return ParseLeftBinary(out, ParseUnary, (TokenType[]){Token_Asterisk, Token_Slash}, 2);
+}
+
+static Result ParseTerm(NodePtr* out)
+{
+    return ParseLeftBinary(out, ParseFactor, (TokenType[]){Token_Plus, Token_Minus}, 2);
+}
+
+static Result ParseNumberComparison(NodePtr* out)
+{
+    return ParseLeftBinary(
+        out,
+        ParseTerm,
+        (TokenType[])
+        {
+            Token_RightAngleBracket,
+            Token_RightAngleEquals,
+            Token_LeftAngleBracket,
+            Token_LeftAngleEquals
+        },
+        4);
+}
+
+static Result ParseEquality(NodePtr* out)
+{
+    return ParseLeftBinary(out, ParseNumberComparison, (TokenType[]){Token_EqualsEquals, Token_ExclamationEquals}, 2);
+}
+
+static Result ParseBooleanOperators(NodePtr* out)
+{
+    return ParseLeftBinary(out, ParseEquality, (TokenType[]){Token_AmpersandAmpersand, Token_PipePipe}, 2);
+}
 
 static Result ParseAssignment(NodePtr* out)
 {
