@@ -311,10 +311,9 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     if (type.metaType == MetaType_Struct)
     {
-        const Result r = GenerateStructVariableDeclaration(in, type, prefix);
-        HANDLE_ERROR(r);
+        HANDLE_ERROR(GenerateStructVariableDeclaration(in, type, prefix));
         if (globalScope) EndReadMove(SIZE_MAX);
-        return r;
+        return SUCCESS_RESULT;
     }
 
     assert(in->identifier.type == Token_Identifier);
@@ -614,14 +613,17 @@ static Result GenerateBlockStatement(const BlockStmt* in)
 static Result GenerateSectionStatement(const SectionStmt* in)
 {
     BeginRead();
+
     WRITE_LITERAL("\n@");
     WRITE_TEXT(in->identifier.text);
     WRITE_LITERAL("\n");
-    const Result r = GenerateBlockStatement(in->block.ptr);
-    HANDLE_ERROR(r);
+    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr));
+
     WRITE_LITERAL("\n@init\n");
+
     EndReadMove(SIZE_MAX);
-    return r;
+
+    return SUCCESS_RESULT;
 }
 
 static Result GenerateIfStatement(const IfStmt* in)
