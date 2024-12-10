@@ -619,6 +619,7 @@ static Result GenerateSectionStatement(const SectionStmt* in)
     WRITE_LITERAL("\n");
     const Result r = GenerateBlockStatement(in->block.ptr);
     HANDLE_ERROR(r);
+    WRITE_LITERAL("\n@init\n");
     EndReadMove(SIZE_MAX);
     return r;
 }
