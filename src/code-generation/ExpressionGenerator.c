@@ -558,9 +558,10 @@ static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr righ
     assert(left.type == Node_Literal && right.type == Node_ArrayAccess ||
         right.type == Node_Literal && left.type == Node_ArrayAccess);
     const ArrayAccessExpr* arrayAccess = right.type == Node_ArrayAccess ? right.ptr : left.ptr;
+    const LiteralExpr* literal = right.type == Node_Literal ? right.ptr : left.ptr;
 
     Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left.ptr, structType, &literals);
+    AllocateStructMemberLiterals(literal, structType, &literals);
 
     const SymbolData* arraySymbol = GetKnownSymbol(arrayAccess->identifier.text, false, NULL);
     assert(arraySymbol->symbolType == SymbolType_Variable);
@@ -570,7 +571,7 @@ static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr righ
         Type _;
         if (left.type == Node_Literal)
         {
-            const NodePtr literal = (NodePtr){.ptr = left.ptr, .type = Node_Literal};
+            const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
             ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
             WRITE_LITERAL("=");
         }
@@ -590,7 +591,7 @@ static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr righ
         if (right.type == Node_Literal)
         {
             WRITE_LITERAL("=");
-            const NodePtr literal = (NodePtr){.ptr = right.ptr, .type = Node_Literal};
+            const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
             ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
         }
 
