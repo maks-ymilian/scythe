@@ -75,6 +75,16 @@ LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr)
     return newStart;
 }
 
+static void FreeNode(NodePtr node);
+
+void FreeLiteral(LiteralExpr* expr)
+{
+    FreeToken(&expr->value);
+    FreeNode(expr->next);
+    free(expr);
+    DEBUG_PRINT("Freeing LiteralExpr\n");
+}
+
 BlockStmt* AllocBlockStmt(const BlockStmt stmt)
 {
     ALLOCATE(BlockStmt, stmt);
@@ -194,12 +204,7 @@ static void FreeNode(const NodePtr node)
     }
     case Node_Literal:
     {
-        const LiteralExpr* ptr = node.ptr;
-
-        FreeToken(&ptr->value);
-        FreeNode(ptr->next);
-        free(node.ptr)
-                DEBUG_PRINT("Freeing LiteralExpr\n");
+        FreeLiteral(node.ptr);
         return;
     }
     case Node_FunctionCall:
