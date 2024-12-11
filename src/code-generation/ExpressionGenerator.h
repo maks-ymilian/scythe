@@ -8,5 +8,6 @@ Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpres
 
 Result CheckAssignmentCompatibility(Type left, Type right, long lineNumber);
 
+long CountStructVariables(Type structType);
 void AllocateStructMemberLiterals(const LiteralExpr* expr, Type structType, Array* outArray);
 void FreeStructMemberLiterals(const Array* array);

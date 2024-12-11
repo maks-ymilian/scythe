@@ -223,6 +223,11 @@ static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type
     WriteInteger(uniqueName);
     WRITE_LITERAL("_length");
     WRITE_LITERAL("=");
+    if (type.metaType == MetaType_Struct)
+    {
+        WriteInteger(CountStructVariables(type));
+        WRITE_LITERAL("*");
+    }
     Type lengthType;
     HANDLE_ERROR(GenerateExpression(&in->arrayLength, &lengthType, true, true));
     WRITE_LITERAL(";\n");

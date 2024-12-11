@@ -312,7 +312,7 @@ static int Max(const int a, const int b)
 
 Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpression, bool convertToInteger);
 
-static long CountStructVariables(const Type structType)
+long CountStructVariables(const Type structType)
 {
     const SymbolData* symbol = GetKnownSymbol(structType.name, true, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
