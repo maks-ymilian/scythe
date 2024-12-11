@@ -665,9 +665,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         if (in->left.type == Node_Literal)
         {
             const LiteralExpr* literal = in->left.ptr;
-            if (literal->value.type == Token_Identifier) // todo why is this here
+            if (literal->value.type == Token_Identifier)
                 isLvalue = true;
-            else assert(0);
         }
         else if (in->left.type == Node_ArrayAccess)
         {
