@@ -551,6 +551,42 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Node
     FreeStructMemberLiterals(&literals);
 }
 
+static void GenerateArrayStructAssignment(LiteralExpr* left, const NodePtr right, const Type structType)
+{
+    assert(right.type == Node_ArrayAccess);
+    const ArrayAccessExpr* arrayAccess = right.ptr;
+
+    Array literals = AllocateArray(sizeof(LiteralExpr*));
+    AllocateStructMemberLiterals(left, structType, &literals);
+
+    const SymbolData* arraySymbol = GetKnownSymbol(arrayAccess->identifier.text, false, NULL);
+    assert(arraySymbol->symbolType == SymbolType_Variable);
+
+    for (int i = 0; i < literals.length; ++i)
+    {
+        Type _;
+        const NodePtr literal = (NodePtr){.ptr = left, .type = Node_Literal};
+        ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
+        WRITE_LITERAL("=");
+
+        WRITE_LITERAL(VARIABLE_PREFIX);
+        WRITE_TEXT(arrayAccess->identifier.text);
+        WriteInteger(arraySymbol->uniqueName);
+
+        WRITE_LITERAL("[");
+        WriteInteger(i);
+        WRITE_LITERAL("+");
+        WriteInteger(literals.length);
+        WRITE_LITERAL("*(");
+        ASSERT_ERROR(GenerateExpression(&arrayAccess->subscript, &_, true, true));
+        WRITE_LITERAL(")]");
+
+        WRITE_LITERAL(";");
+    }
+
+    FreeStructMemberLiterals(&literals);
+}
+
 static void GenerateLiteralStructAssignment(const LiteralExpr* left, const LiteralExpr* right, const Type structType)
 {
     Array leftLiterals = AllocateArray(sizeof(LiteralExpr*));
@@ -577,36 +613,32 @@ static void GenerateLiteralStructAssignment(const LiteralExpr* left, const Liter
     FreeStructMemberLiterals(&rightLiterals);
 }
 
-static bool LiteralEndsWith(const LiteralExpr* literal, const NodeType nodeType)
+static NodeType GetLiteralType(const LiteralExpr* literal)
 {
-    while (literal->next.ptr != NULL)
-    {
-        if (literal->next.type == nodeType)
-            return true;
+    assert(literal != NULL);
 
+    while (literal->next.type != Node_Null)
+    {
         if (literal->next.type != Node_Literal)
-            break;
+            return literal->next.type;
 
         literal = literal->next.ptr;
     }
 
-    return false;
+    return Node_Literal;
 }
 
 static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
     assert(left.type == Node_Literal);
 
-    bool isFunctionCall;
-    if (right.type == Node_FunctionCall) isFunctionCall = true;
-    else isFunctionCall = LiteralEndsWith(right.ptr, Node_FunctionCall);
+    const NodeType type = right.type == Node_Literal ? GetLiteralType(right.ptr) : right.type;
 
-    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, right, structType);
+    if (type == Node_FunctionCall) GenerateFunctionStructAssignment(left.ptr, right, structType);
+    else if (type == Node_ArrayAccess) GenerateArrayStructAssignment(left.ptr, right, structType);
+    else if (type == Node_Literal) GenerateLiteralStructAssignment(left.ptr, right.ptr, structType);
     else
-    {
-        assert(right.type == Node_Literal);
-        GenerateLiteralStructAssignment(left.ptr, right.ptr, structType);
-    }
+        assert(0);
 }
 
 static bool IsAssignmentOperator(const TokenType token)
