@@ -20,47 +20,25 @@ static void GenerateStructMemberNames(
     const char* afterText,
     const bool reverseOrder)
 {
-    const SymbolData* symbol = GetKnownSymbol(exprType.name, true, NULL);
-    assert(symbol->symbolType == SymbolType_Struct);
-    const StructSymbolData structSymbol = symbol->structData;
+    Array literals = AllocateArray(sizeof(LiteralExpr*));
+    AllocateStructMemberLiterals(expr, exprType, &literals);
 
-    for (int i = reverseOrder ? structSymbol.members->length - 1 : 0;
-         reverseOrder ? i >= 0 : i < structSymbol.members->length;
+    for (int i = reverseOrder ? literals.length - 1 : 0;
+         reverseOrder ? i >= 0 : i < literals.length;
          reverseOrder ? --i : ++i)
     {
-        const NodePtr* memberNode = structSymbol.members->array[i];
-
-        assert(memberNode->type == Node_VariableDeclaration);
-        const VarDeclStmt* varDecl = memberNode->ptr;
-
-        LiteralExpr literal = *expr;
-        LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
-        LiteralExpr* last = &literal;
-        while (last->next.ptr != NULL)
-        {
-            assert(last->next.type == Node_Literal);
-            last = last->next.ptr;
-        }
-        last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
-        NodePtr node = (NodePtr){&literal, Node_Literal};
-
-        Type memberType;
-        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
-        if (memberType.metaType == MetaType_Struct)
-        {
-            GenerateStructMemberNames(&literal, memberType, beforeText, afterText, reverseOrder);
-            last->next = NULL_NODE;
-            break;
-        }
-
         if (beforeText != NULL)
             WRITE_TEXT(beforeText);
+
         Type _;
+        NodePtr node = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
         ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-        last->next = NULL_NODE;
+
         if (afterText != NULL)
             WRITE_TEXT(afterText);
     }
+
+    FreeStructMemberLiterals(&literals);
 }
 
 static void GeneratePushStructVariable(NodePtr expr, const Type exprType)

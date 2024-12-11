@@ -481,107 +481,106 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-static void GenerateFunctionStructAssignment(const LiteralExpr* left, const StructSymbolData structData, long* returnNumber)
+void AllocateStructMemberLiterals(const LiteralExpr* expr, const Type structType, Array* outArray)
 {
-    //todo is this the same code
-    long _returnNumber = returnCounter;
-    if (returnNumber == NULL) returnNumber = &_returnNumber;
+    const SymbolData* symbol = GetKnownSymbol(structType.name, true, NULL);
+    assert(symbol->symbolType == SymbolType_Struct);
+    const StructSymbolData structData = symbol->structData;
 
-    for (int i = 0; i < structData.members->length; i++)
+    for (int i = 0; i < structData.members->length; ++i)
     {
-        const NodePtr* node = structData.members->array[i];
-        if (node->type != Node_VariableDeclaration)
-            continue;
-        const VarDeclStmt* varDecl = node->ptr;
-        LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
+        const NodePtr* memberNode = structData.members->array[i];
 
-        LiteralExpr* leftLast = (LiteralExpr*)left;
-        while (leftLast->next.ptr != NULL)
+        assert(memberNode->type == Node_VariableDeclaration);
+        const VarDeclStmt* varDecl = memberNode->ptr;
+
+        LiteralExpr literal = *expr;
+        LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
+        LiteralExpr* last = &literal;
+        while (last->next.ptr != NULL)
         {
-            assert(leftLast->next.type == Node_Literal);
-            leftLast = leftLast->next.ptr;
+            assert(last->next.type == Node_Literal);
+            last = last->next.ptr;
         }
-
-        leftLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
+        last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
 
         Type memberType;
         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
         if (memberType.metaType == MetaType_Struct)
         {
-            const SymbolData* symbol = GetKnownSymbol(memberType.name, true, NULL);
-            assert(symbol->symbolType == SymbolType_Struct);
-            const StructSymbolData* structData = &symbol->structData;
-            GenerateFunctionStructAssignment(left, *structData, returnNumber);
-            leftLast->next = NULL_NODE;
-            continue;
+            AllocateStructMemberLiterals(&literal, memberType, outArray);
+            last->next = NULL_NODE;
+            break;
         }
 
-        const NodePtr leftNode = (NodePtr){(void*)left, Node_Literal};
-        Type _;
-        ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
+        const LiteralExpr* copy = DeepCopyLiteral(&literal);
+        ArrayAdd(outArray, &copy);
 
-        leftLast->next = NULL_NODE;
+        last->next = NULL_NODE;
+    }
+}
+
+void FreeStructMemberLiterals(const Array* array)
+{
+    for (int i = 0; i < array->length; ++i)
+    {
+        LiteralExpr* expr = *(LiteralExpr**)array->array[i];
+        FreeLiteral(expr);
+    }
+    FreeArray(array);
+}
+
+static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Type structType)
+{
+    Array literals = AllocateArray(sizeof(LiteralExpr*));
+    AllocateStructMemberLiterals(left, structType, &literals);
+
+    for (int i = 0; i < literals.length; i++)
+    {
+        Type _;
+        const NodePtr leftNode = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
+        ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
-        WriteInteger(*returnNumber);
-        --*returnNumber;
+        WriteInteger(returnCounter - i);
         WRITE_LITERAL(";");
     }
+
+    FreeStructMemberLiterals(&literals);
 }
 
-static void GenerateLiteralStructAssignment(LiteralExpr* left, LiteralExpr* right, const StructSymbolData structData)
+static void GenerateLiteralStructAssignment(const LiteralExpr* left, const LiteralExpr* right, const Type structType)
 {
-    const Token equals = (Token){Token_Equals, 0, NULL};
+    Array leftLiterals = AllocateArray(sizeof(LiteralExpr*));
+    AllocateStructMemberLiterals(left, structType, &leftLiterals);
+    Array rightLiterals = AllocateArray(sizeof(LiteralExpr*));
+    AllocateStructMemberLiterals(right, structType, &rightLiterals);
 
-    for (int i = 0; i < structData.members->length; ++i)
+    assert(leftLiterals.length == rightLiterals.length);
+    for (int i = 0; i < leftLiterals.length; ++i)
     {
-        const NodePtr* node = structData.members->array[i];
-        switch (node->type)
+        BinaryExpr expr = (BinaryExpr)
         {
-        case Node_VariableDeclaration:
-        {
-            const VarDeclStmt* varDecl = node->ptr;
-            LiteralExpr varDeclIdentifier = (LiteralExpr){varDecl->identifier, NULL};
-
-            LiteralExpr* leftLast = left;
-            while (leftLast->next.ptr != NULL)
-            {
-                assert(leftLast->next.type == Node_Literal);
-                leftLast = leftLast->next.ptr;
-            }
-            LiteralExpr* rightLast = right;
-            while (rightLast->next.ptr != NULL)
-            {
-                assert(rightLast->next.type == Node_Literal);
-                rightLast = rightLast->next.ptr;
-            }
-
-            leftLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
-            rightLast->next = (NodePtr){.ptr = &varDeclIdentifier, .type = Node_Literal};
-
-            BinaryExpr expr = (BinaryExpr){(NodePtr){left, Node_Literal}, equals, (NodePtr){right, Node_Literal}};
-            NodePtr node = (NodePtr){&expr, Node_Binary};
-
-            Type outType;
-            ASSERT_ERROR(GenerateExpression(&node, &outType, true, false));
-
-            leftLast->next = NULL_NODE;
-            rightLast->next = NULL_NODE;
-
-            WRITE_LITERAL(";");
-            break;
-        }
-        default: assert(0);
-        }
+            (NodePtr){*(LiteralExpr**)leftLiterals.array[i], Node_Literal},
+            (Token){.type = Token_Equals, .lineNumber = -1, .text = NULL},
+            (NodePtr){*(LiteralExpr**)rightLiterals.array[i], Node_Literal}
+        };
+        Type _;
+        NodePtr node = (NodePtr){&expr, Node_Binary};
+        ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+        WRITE_LITERAL(";");
     }
+
+    FreeStructMemberLiterals(&leftLiterals);
+    FreeStructMemberLiterals(&rightLiterals);
 }
 
-static bool LiteralHasFunctionCall(const LiteralExpr* literal)
+static bool LiteralEndsWith(const LiteralExpr* literal, const NodeType nodeType)
 {
     while (literal->next.ptr != NULL)
     {
-        if (literal->next.type == Node_FunctionCall)
+        if (literal->next.type == nodeType)
             return true;
         literal = literal->next.ptr;
     }
@@ -593,19 +592,16 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
 {
     assert(left.type == Node_Literal);
 
-    const SymbolData* symbol = GetKnownSymbol(structType.name, true, NULL);
-    assert(symbol->symbolType == SymbolType_Struct);
-    const StructSymbolData structData = symbol->structData;
+    bool isFunctionCall;
+    if (right.type == Node_FunctionCall) isFunctionCall = true;
+    else isFunctionCall = LiteralEndsWith(right.ptr, Node_FunctionCall);
 
-    bool isFunctionCall = right.type == Node_FunctionCall;
-    if (!isFunctionCall)
+    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, structType);
+    else
     {
         assert(right.type == Node_Literal);
-        isFunctionCall = LiteralHasFunctionCall(right.ptr);
+        GenerateLiteralStructAssignment(left.ptr, right.ptr, structType);
     }
-
-    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, structData, NULL);
-    else GenerateLiteralStructAssignment(left.ptr, right.ptr, structData);
 }
 
 static bool IsAssignmentOperator(const TokenType token)
@@ -702,7 +698,7 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(leftType.id == rightType.id);
 
                 if (in->right.type == Node_FunctionCall ||
-                    in->right.type == Node_Literal && LiteralHasFunctionCall(in->right.ptr))
+                    in->right.type == Node_Literal && LiteralEndsWith(in->right.ptr, Node_FunctionCall))
                 {
                     Write(right.buffer, right.length);
                     WRITE_LITERAL(";"); // semicolon after generated function call
