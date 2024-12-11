@@ -555,9 +555,9 @@ static void GenerateFunctionStructAssignment(const NodePtr left, const NodePtr r
 
 static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
-    assert(left.type == Node_Literal);
-    assert(right.type == Node_ArrayAccess);
-    const ArrayAccessExpr* arrayAccess = right.ptr;
+    assert(left.type == Node_Literal && right.type == Node_ArrayAccess ||
+        right.type == Node_Literal && left.type == Node_ArrayAccess);
+    const ArrayAccessExpr* arrayAccess = right.type == Node_ArrayAccess ? right.ptr : left.ptr;
 
     Array literals = AllocateArray(sizeof(LiteralExpr*));
     AllocateStructMemberLiterals(left.ptr, structType, &literals);
@@ -568,9 +568,12 @@ static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr righ
     for (int i = 0; i < literals.length; ++i)
     {
         Type _;
-        const NodePtr literal = (NodePtr){.ptr = left.ptr, .type = Node_Literal};
-        ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
-        WRITE_LITERAL("=");
+        if (left.type == Node_Literal)
+        {
+            const NodePtr literal = (NodePtr){.ptr = left.ptr, .type = Node_Literal};
+            ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
+            WRITE_LITERAL("=");
+        }
 
         WRITE_LITERAL(VARIABLE_PREFIX);
         WRITE_TEXT(arrayAccess->identifier.text);
@@ -583,6 +586,13 @@ static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr righ
         WRITE_LITERAL("*(");
         ASSERT_ERROR(GenerateExpression(&arrayAccess->subscript, &_, true, true));
         WRITE_LITERAL(")]");
+
+        if (right.type == Node_Literal)
+        {
+            WRITE_LITERAL("=");
+            const NodePtr literal = (NodePtr){.ptr = right.ptr, .type = Node_Literal};
+            ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
+        }
 
         WRITE_LITERAL(";");
     }
@@ -643,7 +653,7 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
 
     if (rightType == Node_FunctionCall)
         GenerateFunctionStructAssignment(left, right, structType);
-    else if (leftType == Node_ArrayAccess ||rightType == Node_ArrayAccess)
+    else if (leftType == Node_ArrayAccess || rightType == Node_ArrayAccess)
         GenerateArrayStructAssignment(left, right, structType);
     else
     {
