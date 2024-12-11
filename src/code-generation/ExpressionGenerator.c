@@ -582,6 +582,10 @@ static bool LiteralEndsWith(const LiteralExpr* literal, const NodeType nodeType)
     {
         if (literal->next.type == nodeType)
             return true;
+
+        if (literal->next.type != Node_Literal)
+            break;
+
         literal = literal->next.ptr;
     }
 
