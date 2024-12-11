@@ -527,14 +527,16 @@ void FreeStructMemberLiterals(const Array* array)
     FreeArray(array);
 }
 
-static void GenerateFunctionStructAssignment(const LiteralExpr* left, const NodePtr right, const Type structType)
+static void GenerateFunctionStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
+    assert(left.type == Node_Literal);
+
     Type _;
     ASSERT_ERROR(GenerateExpression(&right, &_, true, false));
     WRITE_LITERAL(";");
 
     Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left, structType, &literals);
+    AllocateStructMemberLiterals(left.ptr, structType, &literals);
 
     for (int i = 0; i < literals.length; i++)
     {
@@ -551,13 +553,14 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Node
     FreeStructMemberLiterals(&literals);
 }
 
-static void GenerateArrayStructAssignment(LiteralExpr* left, const NodePtr right, const Type structType)
+static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
+    assert(left.type == Node_Literal);
     assert(right.type == Node_ArrayAccess);
     const ArrayAccessExpr* arrayAccess = right.ptr;
 
     Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left, structType, &literals);
+    AllocateStructMemberLiterals(left.ptr, structType, &literals);
 
     const SymbolData* arraySymbol = GetKnownSymbol(arrayAccess->identifier.text, false, NULL);
     assert(arraySymbol->symbolType == SymbolType_Variable);
@@ -565,7 +568,7 @@ static void GenerateArrayStructAssignment(LiteralExpr* left, const NodePtr right
     for (int i = 0; i < literals.length; ++i)
     {
         Type _;
-        const NodePtr literal = (NodePtr){.ptr = left, .type = Node_Literal};
+        const NodePtr literal = (NodePtr){.ptr = left.ptr, .type = Node_Literal};
         ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
         WRITE_LITERAL("=");
 
@@ -587,12 +590,15 @@ static void GenerateArrayStructAssignment(LiteralExpr* left, const NodePtr right
     FreeStructMemberLiterals(&literals);
 }
 
-static void GenerateLiteralStructAssignment(const LiteralExpr* left, const LiteralExpr* right, const Type structType)
+static void GenerateLiteralStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
+    assert(left.type == Node_Literal);
+    assert(right.type == Node_Literal);
+
     Array leftLiterals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left, structType, &leftLiterals);
+    AllocateStructMemberLiterals(left.ptr, structType, &leftLiterals);
     Array rightLiterals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(right, structType, &rightLiterals);
+    AllocateStructMemberLiterals(right.ptr, structType, &rightLiterals);
 
     assert(leftLiterals.length == rightLiterals.length);
     for (int i = 0; i < leftLiterals.length; ++i)
@@ -630,15 +636,20 @@ static NodeType GetLiteralType(const LiteralExpr* literal)
 
 static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
-    assert(left.type == Node_Literal);
+    const NodeType rightType = right.type == Node_Literal ? GetLiteralType(right.ptr) : right.type;
+    const NodeType leftType = left.type == Node_Literal ? GetLiteralType(left.ptr) : left.type;
 
-    const NodeType type = right.type == Node_Literal ? GetLiteralType(right.ptr) : right.type;
+    assert(leftType != Node_FunctionCall);
 
-    if (type == Node_FunctionCall) GenerateFunctionStructAssignment(left.ptr, right, structType);
-    else if (type == Node_ArrayAccess) GenerateArrayStructAssignment(left.ptr, right, structType);
-    else if (type == Node_Literal) GenerateLiteralStructAssignment(left.ptr, right.ptr, structType);
+    if (rightType == Node_FunctionCall)
+        GenerateFunctionStructAssignment(left, right, structType);
+    else if (leftType == Node_ArrayAccess ||rightType == Node_ArrayAccess)
+        GenerateArrayStructAssignment(left, right, structType);
     else
-        assert(0);
+    {
+        assert(leftType == Node_Literal && rightType == Node_Literal);
+        GenerateLiteralStructAssignment(left, right, structType);
+    }
 }
 
 static bool IsAssignmentOperator(const TokenType token)
