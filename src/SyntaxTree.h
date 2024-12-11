@@ -88,6 +88,7 @@ typedef struct LiteralExpr
 } LiteralExpr;
 
 LiteralExpr* AllocLiteral(LiteralExpr expr);
+LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr);
 
 
 typedef struct

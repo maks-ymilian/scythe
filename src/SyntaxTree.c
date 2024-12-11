@@ -54,6 +54,27 @@ LiteralExpr* AllocLiteral(const LiteralExpr expr)
     return new;
 }
 
+LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr)
+{
+    LiteralExpr* new = AllocLiteral(*expr);
+    LiteralExpr* newStart = new;
+
+    while (expr->next.ptr != NULL)
+    {
+        assert(expr->next.type == Node_Literal);
+        new->next = (NodePtr)
+        {
+            .type = Node_Literal,
+            .ptr = AllocLiteral(*(LiteralExpr*)expr->next.ptr),
+        };
+
+        new = new->next.ptr;
+        expr = expr->next.ptr;
+    }
+
+    return newStart;
+}
+
 BlockStmt* AllocBlockStmt(const BlockStmt stmt)
 {
     ALLOCATE(BlockStmt, stmt);
