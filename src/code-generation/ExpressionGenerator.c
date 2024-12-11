@@ -5,8 +5,6 @@
 #include "StatementGenerator.h"
 #include "StringUtils.h"
 
-static long returnCounter = 0;
-
 static bool IsDigitBase(const char c, const int base)
 {
     if (base == 10) return isdigit(c);
@@ -431,8 +429,7 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
         for (int i = 0; i < variableCount; ++i)
         {
             WRITE_LITERAL("__ret");
-            returnCounter++;
-            WriteInteger(returnCounter);
+            WriteInteger(i);
             WRITE_LITERAL("=stack_pop();");
         }
     }
@@ -530,8 +527,12 @@ void FreeStructMemberLiterals(const Array* array)
     FreeArray(array);
 }
 
-static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Type structType)
+static void GenerateFunctionStructAssignment(const LiteralExpr* left, const NodePtr right, const Type structType)
 {
+    Type _;
+    ASSERT_ERROR(GenerateExpression(&right, &_, true, false));
+    WRITE_LITERAL(";");
+
     Array literals = AllocateArray(sizeof(LiteralExpr*));
     AllocateStructMemberLiterals(left, structType, &literals);
 
@@ -543,7 +544,7 @@ static void GenerateFunctionStructAssignment(const LiteralExpr* left, const Type
 
         WRITE_LITERAL("=");
         WRITE_LITERAL("__ret");
-        WriteInteger(returnCounter - i);
+        WriteInteger(i);
         WRITE_LITERAL(";");
     }
 
@@ -600,7 +601,7 @@ static void GenerateStructAssignment(const NodePtr left, const NodePtr right, co
     if (right.type == Node_FunctionCall) isFunctionCall = true;
     else isFunctionCall = LiteralEndsWith(right.ptr, Node_FunctionCall);
 
-    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, structType);
+    if (isFunctionCall) GenerateFunctionStructAssignment(left.ptr, right, structType);
     else
     {
         assert(right.type == Node_Literal);
@@ -700,15 +701,8 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
                 assert(in->operator.type == Token_Equals);
                 assert(leftType.id == rightType.id);
 
-                if (in->right.type == Node_FunctionCall ||
-                    in->right.type == Node_Literal && LiteralEndsWith(in->right.ptr, Node_FunctionCall))
-                {
-                    Write(right.buffer, right.length);
-                    WRITE_LITERAL(";"); // semicolon after generated function call
-                }
-
+                WRITE_LITERAL("0;");
                 GenerateStructAssignment(in->left, in->right, leftType);
-                WRITE_LITERAL("0");
 
                 textWritten = true;
             }
