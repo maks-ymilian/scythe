@@ -510,7 +510,7 @@ void AllocateStructMemberLiterals(const LiteralExpr* expr, const Type structType
         {
             AllocateStructMemberLiterals(&literal, memberType, outArray);
             last->next = NULL_NODE;
-            break;
+            continue;
         }
 
         const LiteralExpr* copy = DeepCopyLiteral(&literal);
