@@ -54,36 +54,43 @@ LiteralExpr* AllocLiteral(const LiteralExpr expr)
     return new;
 }
 
-LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr)
+MemberAccessExpr* AllocMemberAccess(MemberAccessExpr expr)
 {
-    LiteralExpr* new = AllocLiteral(*expr);
-    LiteralExpr* newStart = new;
-
-    while (expr->next.ptr != NULL)
-    {
-        assert(expr->next.type == Node_Literal);
-        new->next = (NodePtr)
-        {
-            .type = Node_Literal,
-            .ptr = AllocLiteral(*(LiteralExpr*)expr->next.ptr),
-        };
-
-        new = new->next.ptr;
-        expr = expr->next.ptr;
-    }
-
-    return newStart;
+    ALLOCATE(MemberAccessExpr, expr);
+    return new;
 }
 
-static void FreeNode(NodePtr node);
-
-void FreeLiteral(LiteralExpr* expr)
-{
-    FreeToken(&expr->value);
-    FreeNode(expr->next);
-    free(expr);
-    DEBUG_PRINT("Freeing LiteralExpr\n");
-}
+//
+// LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr)
+// {
+//     LiteralExpr* new = AllocLiteral(*expr);
+//     LiteralExpr* newStart = new;
+//
+//     while (expr->next.ptr != NULL)
+//     {
+//         assert(expr->next.type == Node_Literal);
+//         new->next = (NodePtr)
+//         {
+//             .type = Node_Literal,
+//             .ptr = AllocLiteral(*(LiteralExpr*)expr->next.ptr),
+//         };
+//
+//         new = new->next.ptr;
+//         expr = expr->next.ptr;
+//     }
+//
+//     return newStart;
+// }
+//
+// static void FreeNode(NodePtr node);
+//
+// void FreeLiteral(LiteralExpr* expr)
+// {
+//     FreeToken(&expr->value);
+//     FreeNode(expr->next);
+//     free(expr);
+//     DEBUG_PRINT("Freeing LiteralExpr\n");
+// }
 
 BlockStmt* AllocBlockStmt(const BlockStmt stmt)
 {
@@ -204,7 +211,12 @@ static void FreeNode(const NodePtr node)
     }
     case Node_Literal:
     {
-        FreeLiteral(node.ptr);
+        const LiteralExpr* ptr = node.ptr;
+
+        FreeToken(&ptr->value);
+        free(node.ptr);
+
+        DEBUG_PRINT("Freeing LiteralExpr\n");
         return;
     }
     case Node_FunctionCall:
@@ -229,6 +241,17 @@ static void FreeNode(const NodePtr node)
 
         free(node.ptr);
         DEBUG_PRINT("Freeing ArrayAccessExpr\n");
+        return;
+    }
+    case Node_MemberAccess:
+    {
+        const MemberAccessExpr* ptr = node.ptr;
+
+        FreeNode(ptr->value);
+        FreeNode(ptr->next);
+
+        free(node.ptr);
+        DEBUG_PRINT("Freeing MemberAccess\n");
         return;
     }
 

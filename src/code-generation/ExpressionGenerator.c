@@ -106,9 +106,6 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
     return SUCCESS_RESULT;
 }
 
-static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char* moduleName, Type* outType);
-static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const char* moduleName, Type* outType);
-
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
     const Token literal = in->value;
@@ -133,106 +130,6 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         *outType = GetKnownType("string");
         return SUCCESS_RESULT;
     }
-    case Token_Identifier:
-    {
-        SymbolData* symbol = NULL;
-        if (IsModuleName(in->value.text))
-        {
-            assert(in->next.type == Node_Literal || in->next.type == Node_FunctionCall);
-            if (in->next.type == Node_Literal)
-            {
-                const LiteralExpr* next = in->next.ptr;
-                HANDLE_ERROR(GetSymbol(next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
-                in = in->next.ptr;
-            }
-            else if (in->next.type == Node_FunctionCall)
-            {
-                HANDLE_ERROR(GenerateFunctionCallExpression(in->next.ptr, in->value.text, outType));
-                return SUCCESS_RESULT;
-            }
-            else if (in->next.type == Node_ArrayAccess)
-            {
-                HANDLE_ERROR(GenerateArrayAccessExpression(in->next.ptr, in->value.text, outType));
-                return SUCCESS_RESULT;
-            }
-        }
-        else
-            HANDLE_ERROR(GetSymbol(in->value.text, false, NULL, in->value.lineNumber, &symbol));
-        assert(symbol != NULL);
-
-        if (symbol->symbolType != SymbolType_Variable)
-            return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
-
-        if (symbol->variableData.external)
-        {
-            if (in->next.ptr != NULL)
-                return ERROR_RESULT("Cannot use access operator on external variable", in->value.lineNumber);
-
-            WRITE_TEXT(symbol->variableData.externalName);
-            *outType = symbol->variableData.type;
-            return SUCCESS_RESULT;
-        }
-
-        WRITE_LITERAL(VARIABLE_PREFIX);
-        WRITE_TEXT(in->value.text);
-
-        if (symbol->variableData.array)
-        {
-            if (in->next.ptr != NULL)
-            {
-                if (in->next.type == Node_FunctionCall)
-                    return ERROR_RESULT("Arrays do not support function calls", in->value.lineNumber);
-                assert(in->next.type == Node_Literal);
-                const LiteralExpr* literal = in->next.ptr;
-
-                if (strcmp(literal->value.text, "size") != 0 &&
-                    strcmp(literal->value.text, "length") != 0 &&
-                    strcmp(literal->value.text, "count") != 0)
-                    return ERROR_RESULT("Invalid member access", literal->value.lineNumber);
-
-                WriteInteger(symbol->uniqueName);
-                WRITE_LITERAL("_length");
-
-                *outType = GetKnownType("int");
-                return SUCCESS_RESULT;
-            }
-            else
-                return ERROR_RESULT("Cannot assign to array variable", in->value.lineNumber);
-        }
-
-        Type type = symbol->variableData.type;
-        const LiteralExpr* current = in;
-        while (current->next.ptr != NULL)
-        {
-            assert(current->next.type == Node_Literal);
-            const LiteralExpr* next = current->next.ptr;
-
-            WRITE_LITERAL(".");
-
-            if (type.metaType != MetaType_Struct)
-                return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
-
-            SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, next->value.text);
-            if (memberSymbol == NULL)
-                return ERROR_RESULT(
-                    AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
-                        next->value.text, type.name),
-                    next->value.lineNumber);
-
-            assert(memberSymbol->symbolType == SymbolType_Variable);
-            type = memberSymbol->variableData.type;
-            symbol = memberSymbol;
-
-            WRITE_TEXT(next->value.text);
-
-            current = next;
-        }
-
-        WriteInteger(symbol->uniqueName);
-
-        *outType = type;
-        return SUCCESS_RESULT;
-    }
     case Token_True:
     {
         WRITE_LITERAL("1");
@@ -249,68 +146,6 @@ static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
         assert(0);
     }
 }
-
-static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const char* moduleName, Type* outType)
-{
-    SymbolData* symbol;
-    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
-    if (symbol->symbolType != SymbolType_Variable || !symbol->variableData.array)
-        return ERROR_RESULT("Identifier must be the name of an array", in->identifier.lineNumber);
-
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(symbol->uniqueName);
-    WRITE_LITERAL("[");
-    Type subscriptType;
-    HANDLE_ERROR(GenerateExpression(&in->subscript, &subscriptType, true, false));
-    WRITE_LITERAL("]");
-
-    HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), subscriptType, in->identifier.lineNumber));
-
-    *outType = symbol->variableData.type;
-    return SUCCESS_RESULT;
-}
-
-Result CheckAssignmentCompatibility(const Type left, const Type right, const long lineNumber)
-{
-    if (left.id == right.id)
-        return SUCCESS_RESULT;
-
-    const Type intType = GetKnownType("int");
-    const Type floatType = GetKnownType("float");
-    const Type boolType = GetKnownType("bool");
-    const Type convertableTypes[] = {intType, floatType, boolType};
-    const size_t convertableTypesSize = sizeof(convertableTypes) / sizeof(Type);
-
-    for (int i = 0; i < convertableTypesSize; ++i)
-    {
-        if (left.id != convertableTypes[i].id)
-            continue;
-
-        if (left.id == boolType.id)
-            continue;
-
-        for (int j = 0; j < convertableTypesSize; ++j)
-        {
-            if (right.id != convertableTypes[j].id)
-                continue;
-
-            return SUCCESS_RESULT;
-        }
-    }
-
-    return ERROR_RESULT(
-        AllocateString2Str("Cannot convert from type \"%s\" to type \"%s\"", right.name, left.name),
-        lineNumber);
-}
-
-static int Max(const int a, const int b)
-{
-    if (a > b) return a;
-    return b;
-};
-
-Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpression, bool convertToInteger);
 
 long CountStructVariables(const Type structType)
 {
@@ -339,6 +174,12 @@ long CountStructVariables(const Type structType)
     }
     return count;
 }
+
+static int Max(const int a, const int b)
+{
+    if (a > b) return a;
+    return b;
+};
 
 typedef Result (*FuncParamGenerator)(NodePtr callExpr, Type paramType, bool lastParam, int lineNumber);
 
@@ -439,6 +280,164 @@ static Result GenerateFunctionCallExpression(const FuncCallExpr* in, const char*
     return SUCCESS_RESULT;
 }
 
+static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const char* moduleName, Type* outType)
+{
+    SymbolData* symbol;
+    HANDLE_ERROR(GetSymbol(in->identifier.text, false, moduleName, in->identifier.lineNumber, &symbol));
+    if (symbol->symbolType != SymbolType_Variable || !symbol->variableData.array)
+        return ERROR_RESULT("Identifier must be the name of an array", in->identifier.lineNumber);
+
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(in->identifier.text);
+    WriteInteger(symbol->uniqueName);
+    WRITE_LITERAL("[");
+    Type subscriptType;
+    HANDLE_ERROR(GenerateExpression(&in->subscript, &subscriptType, true, false));
+    WRITE_LITERAL("]");
+
+    HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), subscriptType, in->identifier.lineNumber));
+
+    *outType = symbol->variableData.type;
+    return SUCCESS_RESULT;
+}
+
+static Result GenerateMemberAccessExpression(const MemberAccessExpr* in, Type* outType)
+{
+    assert(0);
+//     SymbolData* symbol = NULL;
+//     if (IsModuleName(in->value.text))
+//     {
+//         assert(in->next.type == Node_Literal || in->next.type == Node_FunctionCall);
+//         if (in->next.type == Node_Literal)
+//         {
+//             const LiteralExpr* next = in->next.ptr;
+//             HANDLE_ERROR(GetSymbol(next->value.text, false, in->value.text, in->value.lineNumber, &symbol));
+//             in = in->next.ptr;
+//         }
+//         else if (in->next.type == Node_FunctionCall)
+//         {
+//             HANDLE_ERROR(GenerateFunctionCallExpression(in->next.ptr, in->value.text, outType));
+//             return SUCCESS_RESULT;
+//         }
+//         else if (in->next.type == Node_ArrayAccess)
+//         {
+//             HANDLE_ERROR(GenerateArrayAccessExpression(in->next.ptr, in->value.text, outType));
+//             return SUCCESS_RESULT;
+//         }
+//     }
+//     else
+//         HANDLE_ERROR(GetSymbol(in->value.text, false, NULL, in->value.lineNumber, &symbol));
+//     assert(symbol != NULL);
+//
+//     if (symbol->symbolType != SymbolType_Variable)
+//         return ERROR_RESULT("Identifier must be the name of a variable", in->value.lineNumber);
+//
+//     if (symbol->variableData.external)
+//     {
+//         if (in->next.ptr != NULL)
+//             return ERROR_RESULT("Cannot use access operator on external variable", in->value.lineNumber);
+//
+//         WRITE_TEXT(symbol->variableData.externalName);
+//         *outType = symbol->variableData.type;
+//         return SUCCESS_RESULT;
+//     }
+//
+//     WRITE_LITERAL(VARIABLE_PREFIX);
+//     WRITE_TEXT(in->value.text);
+//
+//     if (symbol->variableData.array)
+//     {
+//         if (in->next.ptr != NULL)
+//         {
+//             if (in->next.type == Node_FunctionCall)
+//                 return ERROR_RESULT("Arrays do not support function calls", in->value.lineNumber);
+//             assert(in->next.type == Node_Literal);
+//             const LiteralExpr* literal = in->next.ptr;
+//
+//             if (strcmp(literal->value.text, "size") != 0 &&
+//                 strcmp(literal->value.text, "length") != 0 &&
+//                 strcmp(literal->value.text, "count") != 0)
+//                 return ERROR_RESULT("Invalid member access", literal->value.lineNumber);
+//
+//             WriteInteger(symbol->uniqueName);
+//             WRITE_LITERAL("_length");
+//
+//             *outType = GetKnownType("int");
+//             return SUCCESS_RESULT;
+//         }
+//         else
+//             return ERROR_RESULT("Cannot assign to array variable", in->value.lineNumber);
+//     }
+//
+//     Type type = symbol->variableData.type;
+//     const LiteralExpr* current = in;
+//     while (current->next.ptr != NULL)
+//     {
+//         assert(current->next.type == Node_Literal);
+//         const LiteralExpr* next = current->next.ptr;
+//
+//         WRITE_LITERAL(".");
+//
+//         if (type.metaType != MetaType_Struct)
+//             return ERROR_RESULT("Cannot access member of a non-struct type", in->value.lineNumber);
+//
+//         SymbolData* memberSymbol = MapGet(&symbol->variableData.symbolTable, next->value.text);
+//         if (memberSymbol == NULL)
+//             return ERROR_RESULT(
+//                 AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
+//                     next->value.text, type.name),
+//                 next->value.lineNumber);
+//
+//         assert(memberSymbol->symbolType == SymbolType_Variable);
+//         type = memberSymbol->variableData.type;
+//         symbol = memberSymbol;
+//
+//         WRITE_TEXT(next->value.text);
+//
+//         current = next;
+//     }
+//
+//     WriteInteger(symbol->uniqueName);
+//
+//     *outType = type;
+//     return SUCCESS_RESULT;
+}
+
+Result CheckAssignmentCompatibility(const Type left, const Type right, const long lineNumber)
+{
+    if (left.id == right.id)
+        return SUCCESS_RESULT;
+
+    const Type intType = GetKnownType("int");
+    const Type floatType = GetKnownType("float");
+    const Type boolType = GetKnownType("bool");
+    const Type convertableTypes[] = {intType, floatType, boolType};
+    const size_t convertableTypesSize = sizeof(convertableTypes) / sizeof(Type);
+
+    for (int i = 0; i < convertableTypesSize; ++i)
+    {
+        if (left.id != convertableTypes[i].id)
+            continue;
+
+        if (left.id == boolType.id)
+            continue;
+
+        for (int j = 0; j < convertableTypesSize; ++j)
+        {
+            if (right.id != convertableTypes[j].id)
+                continue;
+
+            return SUCCESS_RESULT;
+        }
+    }
+
+    return ERROR_RESULT(
+        AllocateString2Str("Cannot convert from type \"%s\" to type \"%s\"", right.name, left.name),
+        lineNumber);
+}
+
+Result GenerateExpression(const NodePtr* in, Type* outType, bool expectingExpression, bool convertToInteger);
+
 static Result UnaryOperatorErrorResult(const Token operator, const Type type)
 {
     return ERROR_RESULT_TOKEN(AllocateString1Str("Cannot use operator \"#t\" on type \"%s\"", type.name),
@@ -478,189 +477,190 @@ static Result GenerateUnaryExpression(const UnaryExpr* in, Type* outType)
     return SUCCESS_RESULT;
 }
 
-void AllocateStructMemberLiterals(const LiteralExpr* expr, const Type structType, Array* outArray)
-{
-    const SymbolData* symbol = GetKnownSymbol(structType.name, true, NULL);
-    assert(symbol->symbolType == SymbolType_Struct);
-    const StructSymbolData structData = symbol->structData;
-
-    for (int i = 0; i < structData.members->length; ++i)
-    {
-        const NodePtr* memberNode = structData.members->array[i];
-
-        assert(memberNode->type == Node_VariableDeclaration);
-        const VarDeclStmt* varDecl = memberNode->ptr;
-
-        LiteralExpr literal = *expr;
-        LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
-        LiteralExpr* last = &literal;
-        while (last->next.ptr != NULL)
-        {
-            assert(last->next.type == Node_Literal);
-            last = last->next.ptr;
-        }
-        last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
-
-        Type memberType;
-        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
-        if (memberType.metaType == MetaType_Struct)
-        {
-            AllocateStructMemberLiterals(&literal, memberType, outArray);
-            last->next = NULL_NODE;
-            continue;
-        }
-
-        const LiteralExpr* copy = DeepCopyLiteral(&literal);
-        ArrayAdd(outArray, &copy);
-
-        last->next = NULL_NODE;
-    }
-}
-
-void FreeStructMemberLiterals(const Array* array)
-{
-    for (int i = 0; i < array->length; ++i)
-    {
-        LiteralExpr* expr = *(LiteralExpr**)array->array[i];
-        FreeLiteral(expr);
-    }
-    FreeArray(array);
-}
-
-static void GenerateFunctionStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
-{
-    assert(left.type == Node_Literal);
-
-    Type _;
-    ASSERT_ERROR(GenerateExpression(&right, &_, true, false));
-    WRITE_LITERAL(";");
-
-    Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left.ptr, structType, &literals);
-
-    for (int i = 0; i < literals.length; i++)
-    {
-        Type _;
-        const NodePtr leftNode = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
-        ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
-
-        WRITE_LITERAL("=");
-        WRITE_LITERAL("__ret");
-        WriteInteger(i);
-        WRITE_LITERAL(";");
-    }
-
-    FreeStructMemberLiterals(&literals);
-}
-
-static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
-{
-    assert(left.type == Node_Literal && right.type == Node_ArrayAccess ||
-        right.type == Node_Literal && left.type == Node_ArrayAccess);
-    const ArrayAccessExpr* arrayAccess = right.type == Node_ArrayAccess ? right.ptr : left.ptr;
-    const LiteralExpr* literal = right.type == Node_Literal ? right.ptr : left.ptr;
-
-    Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(literal, structType, &literals);
-
-    const SymbolData* arraySymbol = GetKnownSymbol(arrayAccess->identifier.text, false, NULL);
-    assert(arraySymbol->symbolType == SymbolType_Variable);
-
-    for (int i = 0; i < literals.length; ++i)
-    {
-        Type _;
-        if (left.type == Node_Literal)
-        {
-            const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
-            ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
-            WRITE_LITERAL("=");
-        }
-
-        WRITE_LITERAL(VARIABLE_PREFIX);
-        WRITE_TEXT(arrayAccess->identifier.text);
-        WriteInteger(arraySymbol->uniqueName);
-
-        WRITE_LITERAL("[");
-        WriteInteger(i);
-        WRITE_LITERAL("+");
-        WriteInteger(literals.length);
-        WRITE_LITERAL("*(");
-        ASSERT_ERROR(GenerateExpression(&arrayAccess->subscript, &_, true, true));
-        WRITE_LITERAL(")]");
-
-        if (right.type == Node_Literal)
-        {
-            WRITE_LITERAL("=");
-            const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
-            ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
-        }
-
-        WRITE_LITERAL(";");
-    }
-
-    FreeStructMemberLiterals(&literals);
-}
-
-static void GenerateLiteralStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
-{
-    assert(left.type == Node_Literal);
-    assert(right.type == Node_Literal);
-
-    Array leftLiterals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(left.ptr, structType, &leftLiterals);
-    Array rightLiterals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(right.ptr, structType, &rightLiterals);
-
-    assert(leftLiterals.length == rightLiterals.length);
-    for (int i = 0; i < leftLiterals.length; ++i)
-    {
-        BinaryExpr expr = (BinaryExpr)
-        {
-            (NodePtr){*(LiteralExpr**)leftLiterals.array[i], Node_Literal},
-            (Token){.type = Token_Equals, .lineNumber = -1, .text = NULL},
-            (NodePtr){*(LiteralExpr**)rightLiterals.array[i], Node_Literal}
-        };
-        Type _;
-        NodePtr node = (NodePtr){&expr, Node_Binary};
-        ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-        WRITE_LITERAL(";");
-    }
-
-    FreeStructMemberLiterals(&leftLiterals);
-    FreeStructMemberLiterals(&rightLiterals);
-}
-
-static NodeType GetLiteralType(const LiteralExpr* literal)
-{
-    assert(literal != NULL);
-
-    while (literal->next.type != Node_Null)
-    {
-        if (literal->next.type != Node_Literal)
-            return literal->next.type;
-
-        literal = literal->next.ptr;
-    }
-
-    return Node_Literal;
-}
-
+// void AllocateStructMemberLiterals(const LiteralExpr* expr, const Type structType, Array* outArray)
+// {
+//     const SymbolData* symbol = GetKnownSymbol(structType.name, true, NULL);
+//     assert(symbol->symbolType == SymbolType_Struct);
+//     const StructSymbolData structData = symbol->structData;
+//
+//     for (int i = 0; i < structData.members->length; ++i)
+//     {
+//         const NodePtr* memberNode = structData.members->array[i];
+//
+//         assert(memberNode->type == Node_VariableDeclaration);
+//         const VarDeclStmt* varDecl = memberNode->ptr;
+//
+//         LiteralExpr literal = *expr;
+//         LiteralExpr next = (LiteralExpr){varDecl->identifier, NULL};
+//         LiteralExpr* last = &literal;
+//         while (last->next.ptr != NULL)
+//         {
+//             assert(last->next.type == Node_Literal);
+//             last = last->next.ptr;
+//         }
+//         last->next = (NodePtr){.ptr = &next, .type = Node_Literal};
+//
+//         Type memberType;
+//         ASSERT_ERROR(GetTypeFromToken(varDecl->type, &memberType, false));
+//         if (memberType.metaType == MetaType_Struct)
+//         {
+//             AllocateStructMemberLiterals(&literal, memberType, outArray);
+//             last->next = NULL_NODE;
+//             continue;
+//         }
+//
+//         const LiteralExpr* copy = DeepCopyLiteral(&literal);
+//         ArrayAdd(outArray, &copy);
+//
+//         last->next = NULL_NODE;
+//     }
+// }
+//
+// void FreeStructMemberLiterals(const Array* array)
+// {
+//     for (int i = 0; i < array->length; ++i)
+//     {
+//         LiteralExpr* expr = *(LiteralExpr**)array->array[i];
+//         FreeLiteral(expr);
+//     }
+//     FreeArray(array);
+// }
+//
+// static void GenerateFunctionStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
+// {
+//     assert(left.type == Node_Literal);
+//
+//     Type _;
+//     ASSERT_ERROR(GenerateExpression(&right, &_, true, false));
+//     WRITE_LITERAL(";");
+//
+//     Array literals = AllocateArray(sizeof(LiteralExpr*));
+//     AllocateStructMemberLiterals(left.ptr, structType, &literals);
+//
+//     for (int i = 0; i < literals.length; i++)
+//     {
+//         Type _;
+//         const NodePtr leftNode = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
+//         ASSERT_ERROR(GenerateExpression(&leftNode, &_, true, false));
+//
+//         WRITE_LITERAL("=");
+//         WRITE_LITERAL("__ret");
+//         WriteInteger(i);
+//         WRITE_LITERAL(";");
+//     }
+//
+//     FreeStructMemberLiterals(&literals);
+// }
+//
+// static void GenerateArrayStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
+// {
+//     assert(left.type == Node_Literal && right.type == Node_ArrayAccess ||
+//         right.type == Node_Literal && left.type == Node_ArrayAccess);
+//     const ArrayAccessExpr* arrayAccess = right.type == Node_ArrayAccess ? right.ptr : left.ptr;
+//     const LiteralExpr* literal = right.type == Node_Literal ? right.ptr : left.ptr;
+//
+//     Array literals = AllocateArray(sizeof(LiteralExpr*));
+//     AllocateStructMemberLiterals(literal, structType, &literals);
+//
+//     const SymbolData* arraySymbol = GetKnownSymbol(arrayAccess->identifier.text, false, NULL);
+//     assert(arraySymbol->symbolType == SymbolType_Variable);
+//
+//     for (int i = 0; i < literals.length; ++i)
+//     {
+//         Type _;
+//         if (left.type == Node_Literal)
+//         {
+//             const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
+//             ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
+//             WRITE_LITERAL("=");
+//         }
+//
+//         WRITE_LITERAL(VARIABLE_PREFIX);
+//         WRITE_TEXT(arrayAccess->identifier.text);
+//         WriteInteger(arraySymbol->uniqueName);
+//
+//         WRITE_LITERAL("[");
+//         WriteInteger(i);
+//         WRITE_LITERAL("+");
+//         WriteInteger(literals.length);
+//         WRITE_LITERAL("*(");
+//         ASSERT_ERROR(GenerateExpression(&arrayAccess->subscript, &_, true, true));
+//         WRITE_LITERAL(")]");
+//
+//         if (right.type == Node_Literal)
+//         {
+//             WRITE_LITERAL("=");
+//             const NodePtr literal = (NodePtr){.ptr = *(LiteralExpr**)literals.array[i], .type = Node_Literal};
+//             ASSERT_ERROR(GenerateExpression(&literal, &_, true, false));
+//         }
+//
+//         WRITE_LITERAL(";");
+//     }
+//
+//     FreeStructMemberLiterals(&literals);
+// }
+//
+// static void GenerateLiteralStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
+// {
+//     assert(left.type == Node_Literal);
+//     assert(right.type == Node_Literal);
+//
+//     Array leftLiterals = AllocateArray(sizeof(LiteralExpr*));
+//     AllocateStructMemberLiterals(left.ptr, structType, &leftLiterals);
+//     Array rightLiterals = AllocateArray(sizeof(LiteralExpr*));
+//     AllocateStructMemberLiterals(right.ptr, structType, &rightLiterals);
+//
+//     assert(leftLiterals.length == rightLiterals.length);
+//     for (int i = 0; i < leftLiterals.length; ++i)
+//     {
+//         BinaryExpr expr = (BinaryExpr)
+//         {
+//             (NodePtr){*(LiteralExpr**)leftLiterals.array[i], Node_Literal},
+//             (Token){.type = Token_Equals, .lineNumber = -1, .text = NULL},
+//             (NodePtr){*(LiteralExpr**)rightLiterals.array[i], Node_Literal}
+//         };
+//         Type _;
+//         NodePtr node = (NodePtr){&expr, Node_Binary};
+//         ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+//         WRITE_LITERAL(";");
+//     }
+//
+//     FreeStructMemberLiterals(&leftLiterals);
+//     FreeStructMemberLiterals(&rightLiterals);
+// }
+//
+// static NodeType GetLiteralType(const LiteralExpr* literal)
+// {
+//     assert(literal != NULL);
+//
+//     while (literal->next.type != Node_Null)
+//     {
+//         if (literal->next.type != Node_Literal)
+//             return literal->next.type;
+//
+//         literal = literal->next.ptr;
+//     }
+//
+//     return Node_Literal;
+// }
+//
 static void GenerateStructAssignment(const NodePtr left, const NodePtr right, const Type structType)
 {
-    const NodeType rightType = right.type == Node_Literal ? GetLiteralType(right.ptr) : right.type;
-    const NodeType leftType = left.type == Node_Literal ? GetLiteralType(left.ptr) : left.type;
-
-    assert(leftType != Node_FunctionCall);
-
-    if (rightType == Node_FunctionCall)
-        GenerateFunctionStructAssignment(left, right, structType);
-    else if (leftType == Node_ArrayAccess || rightType == Node_ArrayAccess)
-        GenerateArrayStructAssignment(left, right, structType);
-    else
-    {
-        assert(leftType == Node_Literal && rightType == Node_Literal);
-        GenerateLiteralStructAssignment(left, right, structType);
-    }
+    assert(0);
+    // const NodeType rightType = right.type == Node_Literal ? GetLiteralType(right.ptr) : right.type;
+    // const NodeType leftType = left.type == Node_Literal ? GetLiteralType(left.ptr) : left.type;
+    //
+    // assert(leftType != Node_FunctionCall);
+    //
+    // if (rightType == Node_FunctionCall)
+    //     GenerateFunctionStructAssignment(left, right, structType);
+    // else if (leftType == Node_ArrayAccess || rightType == Node_ArrayAccess)
+    //     GenerateArrayStructAssignment(left, right, structType);
+    // else
+    // {
+    //     assert(leftType == Node_Literal && rightType == Node_Literal);
+    //     GenerateLiteralStructAssignment(left, right, structType);
+    // }
 }
 
 static bool IsAssignmentOperator(const TokenType token)
@@ -908,11 +908,8 @@ Result GenerateExpression(const NodePtr* in, Type* outType, const bool expecting
     case Node_Literal:
         result = GenerateLiteralExpression(in->ptr, outType);
         break;
-    case Node_FunctionCall:
-        result = GenerateFunctionCallExpression(in->ptr, NULL, outType);
-        break;
-    case Node_ArrayAccess:
-        result = GenerateArrayAccessExpression(in->ptr, NULL, outType);
+    case Node_MemberAccess:
+        result = GenerateMemberAccessExpression(in->ptr, outType);
         break;
     default:
         assert(0);

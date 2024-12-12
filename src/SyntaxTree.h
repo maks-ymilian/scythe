@@ -16,6 +16,7 @@ typedef enum
     Node_Literal,
     Node_FunctionCall,
     Node_ArrayAccess,
+    Node_MemberAccess,
 
     Node_ExpressionStatement,
 
@@ -79,17 +80,22 @@ typedef struct
 ArrayAccessExpr* AllocArrayAccessExpr(ArrayAccessExpr expr);
 
 
-typedef struct LiteralExpr LiteralExpr;
-
-typedef struct LiteralExpr
+typedef struct
 {
     Token value;
-    NodePtr next;
 } LiteralExpr;
 
 LiteralExpr* AllocLiteral(LiteralExpr expr);
-LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr);
-void FreeLiteral(LiteralExpr* expr);
+
+
+typedef struct
+{
+    NodePtr value;
+    NodePtr next;
+} MemberAccessExpr;
+MemberAccessExpr* AllocMemberAccess(MemberAccessExpr expr);
+// LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr);
+// void FreeLiteral(LiteralExpr* expr);
 
 
 typedef struct

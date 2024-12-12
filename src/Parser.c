@@ -71,69 +71,35 @@ static Token* Peek(const TokenType* types, const int length, const int offset)
 static Token* PeekOne(const TokenType type, const int offset) { return Peek((TokenType[]){type}, 1, offset); }
 
 static Result ParseExpression(NodePtr* out);
-static Result ParseFunctionCall(NodePtr* out);
 
-static Result ParsePrimary(NodePtr* out)
+static Result ParseArrayAccess(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    const Token* token = Match((TokenType[]){Token_NumberLiteral, Token_StringLiteral, Token_Identifier, Token_LeftBracket, Token_True, Token_False}, 6);
-    if (token == NULL)
-        return NOT_FOUND_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
+    const Token* identifier = PeekOne(Token_Identifier, 0);
+    if (identifier == NULL || PeekOne(Token_LeftSquareBracket, 1) == NULL)
+        return NOT_FOUND_RESULT;
 
-    switch (token->type)
+    Consume();
+    SET_LINE_NUMBER
+    Consume();
+
+    NodePtr subscript = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&subscript));
+    if (subscript.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected subscript");
+    SET_LINE_NUMBER
+
+    if (MatchOne(Token_RightSquareBracket) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
+
+    ArrayAccessExpr* arrayAccess = AllocArrayAccessExpr((ArrayAccessExpr)
     {
-    case Token_LeftBracket:
-    {
-        *out = NULL_NODE;
-        HANDLE_ERROR(ParseExpression(out));
-        if (out->ptr == NULL)
-            return ERROR_RESULT_LINE("Expected expression");
-
-        const Token* closingBracket = MatchOne(Token_RightBracket);
-        if (closingBracket == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
-
-        return SUCCESS_RESULT;
-    }
-    case Token_Identifier:
-    {
-        LiteralExpr* first = AllocLiteral((LiteralExpr){.value = *token, .next = NULL_NODE});
-        LiteralExpr* current = first;
-        while (MatchOne(Token_Dot) != NULL)
-        {
-            NodePtr funcCall = NULL_NODE;
-            HANDLE_ERROR(ParseFunctionCall(&funcCall));
-            if (funcCall.ptr != NULL)
-            {
-                current->next = funcCall;
-                break;
-            }
-
-            SET_LINE_NUMBER
-            const Token* identifier = MatchOne(Token_Identifier);
-            if (identifier == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_Dot);
-
-            LiteralExpr* next = AllocLiteral((LiteralExpr){.value = *identifier, .next = NULL_NODE});
-            current->next = (NodePtr){.ptr = next, .type = Node_Literal};
-            current = next;
-        }
-
-        *out = (NodePtr){first, Node_Literal};
-        return SUCCESS_RESULT;
-    }
-    case Token_NumberLiteral:
-    case Token_StringLiteral:
-    case Token_True:
-    case Token_False:
-    {
-        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token, .next = NULL_NODE});
-        *out = (NodePtr){literal, Node_Literal};
-        return SUCCESS_RESULT;
-    }
-    default: assert(0);
-    }
+        .identifier = *identifier,
+        .subscript = subscript,
+    });
+    *out = (NodePtr){arrayAccess, Node_ArrayAccess};
+    return SUCCESS_RESULT;
 }
 
 typedef Result (*ParseFunction)(NodePtr*);
@@ -167,43 +133,13 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
     return SUCCESS_RESULT;
 }
 
-static Result ParseArrayAccess(NodePtr* out)
-{
-    long SET_LINE_NUMBER
-
-    const Token* identifier = PeekOne(Token_Identifier, 0);
-    if (identifier == NULL || PeekOne(Token_LeftSquareBracket, 1) == NULL)
-        return ParsePrimary(out);
-
-    Consume();
-    SET_LINE_NUMBER
-    Consume();
-
-    NodePtr subscript = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&subscript));
-    if (subscript.ptr == NULL)
-        return ERROR_RESULT_LINE("Expected subscript");
-    SET_LINE_NUMBER
-
-    if (MatchOne(Token_RightSquareBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
-
-    ArrayAccessExpr* arrayAccess = AllocArrayAccessExpr((ArrayAccessExpr)
-    {
-        .identifier = *identifier,
-        .subscript = subscript,
-    });
-    *out = (NodePtr){arrayAccess, Node_ArrayAccess};
-    return SUCCESS_RESULT;
-}
-
 static Result ParseFunctionCall(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     const Token* identifier = PeekOne(Token_Identifier, 0);
     if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
-        return ParseArrayAccess(out);
+        return NOT_FOUND_RESULT;
 
     if (MatchOne(Token_Identifier) == NULL)
         assert(0);
@@ -223,13 +159,96 @@ static Result ParseFunctionCall(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static Result ParsePrimary(NodePtr* out)
+{
+    long SET_LINE_NUMBER
+
+    const Token* token = Peek(
+        (TokenType[])
+        {
+            Token_NumberLiteral,
+            Token_StringLiteral,
+            Token_Identifier,
+            Token_LeftBracket,
+            Token_True,
+            Token_False,
+        }, 6, 0);
+    if (token == NULL)
+        return NOT_FOUND_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
+
+    switch (token->type)
+    {
+    case Token_LeftBracket:
+    {
+        Consume();
+        *out = NULL_NODE;
+        HANDLE_ERROR(ParseExpression(out));
+        if (out->ptr == NULL)
+            return ERROR_RESULT_LINE("Expected expression");
+
+        const Token* closingBracket = MatchOne(Token_RightBracket);
+        if (closingBracket == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+
+        return SUCCESS_RESULT;
+    }
+    case Token_Identifier:
+    {
+        MemberAccessExpr* start = NULL;
+        MemberAccessExpr* current = NULL;
+        while (true)
+        {
+            NodePtr value = NULL_NODE;
+            HANDLE_ERROR(ParseFunctionCall(&value));
+            if (value.ptr == NULL)
+                HANDLE_ERROR(ParseArrayAccess(&value));
+            if (value.ptr == NULL)
+            {
+                Consume();
+                value = (NodePtr){.ptr = AllocLiteral((LiteralExpr){.value = *token}), .type = Node_Literal};
+            }
+
+            assert(value.ptr != NULL);
+            MemberAccessExpr* memberAccess = AllocMemberAccess((MemberAccessExpr)
+            {
+                .value = value,
+                .next = NULL_NODE,
+            });
+            if (current != NULL)
+                current->next = (NodePtr){.ptr = memberAccess, .type = Node_MemberAccess};
+            current = memberAccess;
+
+            if (start == NULL)
+                start = memberAccess;
+
+            if (MatchOne(Token_Dot) == NULL)
+                break;
+        }
+
+        *out = (NodePtr){.ptr = start, .type = Node_MemberAccess};
+        return SUCCESS_RESULT;
+    }
+    case Token_NumberLiteral:
+    case Token_StringLiteral:
+    case Token_True:
+    case Token_False:
+    {
+        Consume();
+        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token});
+        *out = (NodePtr){literal, Node_Literal};
+        return SUCCESS_RESULT;
+    }
+    default: assert(0);
+    }
+}
+
 static Result ParseUnary(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
     const Token* operator = Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
     if (operator == NULL)
-        return ParseFunctionCall(out);
+        return ParsePrimary(out);
 
     UnaryExpr* unary = AllocUnary((UnaryExpr){*operator});
     NodePtr expr;

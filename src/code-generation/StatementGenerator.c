@@ -13,68 +13,68 @@ static Result GenerateExpressionStatement(const ExpressionStmt* in)
 
 static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName);
 
-static void GenerateStructMemberNames(
-    const LiteralExpr* expr,
-    const Type exprType,
-    const char* beforeText,
-    const char* afterText,
-    const bool reverseOrder)
-{
-    Array literals = AllocateArray(sizeof(LiteralExpr*));
-    AllocateStructMemberLiterals(expr, exprType, &literals);
-
-    for (int i = reverseOrder ? literals.length - 1 : 0;
-         reverseOrder ? i >= 0 : i < literals.length;
-         reverseOrder ? --i : ++i)
-    {
-        if (beforeText != NULL)
-            WRITE_TEXT(beforeText);
-
-        Type _;
-        NodePtr node = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
-        ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-
-        if (afterText != NULL)
-            WRITE_TEXT(afterText);
-    }
-
-    FreeStructMemberLiterals(&literals);
-}
-
-static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
-{
-    PushScope();
-
-    LiteralExpr variable;
-    if (expr.type == Node_FunctionCall)
-    {
-        const FuncCallExpr* funcCall = expr.ptr;
-
-        const Token typeToken = (Token){Token_Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
-        const Token identifier = (Token){Token_Identifier, funcCall->identifier.lineNumber, "temp"};
-        const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
-        ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL, NULL));
-
-        variable = (LiteralExpr){identifier, NULL};
-        expr = (NodePtr){&variable, Node_Literal};
-    }
-    else if (expr.type == Node_Binary)
-    {
-        const BinaryExpr* binary = expr.ptr;
-        assert(binary->operator.type == Token_Equals);
-
-        Type _;
-        ASSERT_ERROR(GenerateExpression(&expr, &_, true, false));
-        WRITE_LITERAL(";");
-
-        expr = binary->left;
-    }
-
-    assert(expr.type == Node_Literal);
-    GenerateStructMemberNames(expr.ptr, exprType, "stack_push(", ");", false);
-
-    PopScope(NULL);
-}
+// static void GenerateStructMemberNames(
+//     const LiteralExpr* expr,
+//     const Type exprType,
+//     const char* beforeText,
+//     const char* afterText,
+//     const bool reverseOrder)
+// {
+//     Array literals = AllocateArray(sizeof(LiteralExpr*));
+//     AllocateStructMemberLiterals(expr, exprType, &literals);
+//
+//     for (int i = reverseOrder ? literals.length - 1 : 0;
+//          reverseOrder ? i >= 0 : i < literals.length;
+//          reverseOrder ? --i : ++i)
+//     {
+//         if (beforeText != NULL)
+//             WRITE_TEXT(beforeText);
+//
+//         Type _;
+//         NodePtr node = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
+//         ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
+//
+//         if (afterText != NULL)
+//             WRITE_TEXT(afterText);
+//     }
+//
+//     FreeStructMemberLiterals(&literals);
+// }
+//
+// static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
+// {
+//     PushScope();
+//
+//     LiteralExpr variable;
+//     if (expr.type == Node_FunctionCall)
+//     {
+//         const FuncCallExpr* funcCall = expr.ptr;
+//
+//         const Token typeToken = (Token){Token_Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
+//         const Token identifier = (Token){Token_Identifier, funcCall->identifier.lineNumber, "temp"};
+//         const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
+//         ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL, NULL));
+//
+//         variable = (LiteralExpr){identifier, NULL};
+//         expr = (NodePtr){&variable, Node_Literal};
+//     }
+//     else if (expr.type == Node_Binary)
+//     {
+//         const BinaryExpr* binary = expr.ptr;
+//         assert(binary->operator.type == Token_Equals);
+//
+//         Type _;
+//         ASSERT_ERROR(GenerateExpression(&expr, &_, true, false));
+//         WRITE_LITERAL(";");
+//
+//         expr = binary->left;
+//     }
+//
+//     assert(expr.type == Node_Literal);
+//     GenerateStructMemberNames(expr.ptr, exprType, "stack_push(", ");", false);
+//
+//     PopScope(NULL);
+// }
 
 Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long lineNumber)
 {
@@ -89,8 +89,9 @@ Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long
 
     if (exprType.metaType == MetaType_Struct)
     {
-        SetStreamPosition(pos);
-        GeneratePushStructVariable(expr, exprType);
+        assert(0);
+        // SetStreamPosition(pos);
+        // GeneratePushStructVariable(expr, exprType);
     }
 
     return SUCCESS_RESULT;
@@ -105,9 +106,10 @@ Result GeneratePopValue(const VarDeclStmt* varDecl)
     ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
     if (type.metaType == MetaType_Struct)
     {
-        const LiteralExpr literal = (LiteralExpr){.value = varDecl->identifier, .next = NULL};
-        GenerateStructMemberNames(&literal, type, NULL, "=stack_pop();", true);
-        return SUCCESS_RESULT;
+        assert(0);
+        // const LiteralExpr literal = (LiteralExpr){.value = varDecl->identifier, .next = NULL};
+        // GenerateStructMemberNames(&literal, type, NULL, "=stack_pop();", true);
+        // return SUCCESS_RESULT;
     }
 
     WRITE_LITERAL(VARIABLE_PREFIX);
@@ -192,10 +194,9 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
 
     if (in->initializer.type != Node_Null)
     {
-        LiteralExpr left = (LiteralExpr){in->identifier, NULL};
         BinaryExpr expr = (BinaryExpr)
         {
-            (NodePtr){&left, Node_Literal},
+            (NodePtr){&(LiteralExpr){in->identifier}, Node_Literal},
             (Token){Token_Equals, in->type.lineNumber, NULL},
             in->initializer
         };
@@ -751,12 +752,14 @@ static Result GenerateLoopStatement(const NodePtr in)
         else if (in.type == Node_While) lineNumber = whileStmt->whileToken.lineNumber;
         else
             assert(0);
-        LiteralExpr* literal = AllocLiteral((LiteralExpr)
+        trueExpr = (NodePtr)
         {
-            .value = (Token){.text = NULL, .type = Token_True, .lineNumber = lineNumber},
-            .next = NULL,
-        });
-        trueExpr = (NodePtr){.ptr = literal, .type = Node_Literal};
+            .ptr = AllocLiteral((LiteralExpr)
+            {
+                .value = (Token){.type = Token_True, .lineNumber = lineNumber, .text = NULL}
+            }),
+            .type = Node_Literal
+        };
         condition = &trueExpr;
     }
     HANDLE_ERROR(GenerateExpression(condition, &exprType, true, false));
