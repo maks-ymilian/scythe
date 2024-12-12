@@ -310,22 +310,45 @@ static Result GenerateMemberAccessExpression(const MemberAccessExpr* in, Type* o
     HANDLE_ERROR(GetSymbol(value->token.text, false, NULL, value->token.lineNumber, &symbol));
     assert(symbol->symbolType == SymbolType_Variable);
 
-    switch (symbol->variableData.type.metaType)
-    {
-    case MetaType_Primitive:
-    {
-        if (in->next.ptr != NULL)
-            return ERROR_RESULT("Cannot use access operator on this variable", value->token.lineNumber);
+    WRITE_LITERAL(VARIABLE_PREFIX);
+    WRITE_TEXT(value->token.text);
 
-        WRITE_LITERAL(VARIABLE_PREFIX);
-        WRITE_TEXT(value->token.text);
-        WriteInteger(symbol->uniqueName);
+    const SymbolData* currentSymbol = symbol;
+    const MemberAccessExpr* current = in;
+    while (current->next.ptr != NULL)
+    {
+        if (currentSymbol->variableData.type.metaType != MetaType_Struct)
+        {
+            assert(current->value.type == Node_Literal);
+            return ERROR_RESULT("Cannot use access operator on this variable",
+                                ((LiteralExpr*)current->value.ptr)->token.lineNumber);
+        }
 
-        *outType = symbol->variableData.type;
-        return SUCCESS_RESULT;
+        assert(current->next.type == Node_MemberAccess);
+        current = current->next.ptr;
+
+        WRITE_LITERAL(".");
+
+        assert(current->value.type == Node_Literal);
+        const LiteralExpr* memberValue = current->value.ptr;
+
+        const SymbolData* memberSymbol = MapGet(&currentSymbol->variableData.symbolTable, memberValue->token.text);
+        if (memberSymbol == NULL)
+            return ERROR_RESULT(
+                AllocateString2Str("Could not find member \"%s\" in struct \"%s\"",
+                    memberValue->token.text, currentSymbol->variableData.type.name),
+                memberValue->token.lineNumber);
+        assert(memberSymbol->symbolType == SymbolType_Variable);
+        currentSymbol = memberSymbol;
+
+        WRITE_TEXT(memberValue->token.text);
     }
-    default: assert(0);
-    }
+
+    WriteInteger(currentSymbol->uniqueName);
+
+    assert(currentSymbol->symbolType == SymbolType_Variable);
+    *outType = currentSymbol->variableData.type;
+    return SUCCESS_RESULT;
 }
 
 //     SymbolData* symbol = NULL;
