@@ -11,14 +11,12 @@
 #define NOT_FOUND_RESULT (Result){false, false, NULL, 0}
 #define ERROR_RESULT_LINE(message) ERROR_RESULT(message, lineNumber);
 #define ERROR_RESULT_LINE_TOKEN(message, tokenType) ERROR_RESULT_TOKEN(message, lineNumber, tokenType)
-#define UNSUCCESSFUL_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
+#define NOT_FOUND_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
 
-#define HANDLE_ERROR(parseFunction, unsuccessfulCode)\
-const Result result = parseFunction;\
-if (result.hasError)\
-    return result;\
-if (!result.success)\
-{unsuccessfulCode;}
+#define HANDLE_ERROR(func)\
+{const Result _r = func;\
+if (_r.hasError)\
+    return _r;}
 
 static Array tokens;
 static long pointer;
@@ -81,20 +79,22 @@ static Result ParsePrimary(NodePtr* out)
 
     const Token* token = Match((TokenType[]){Token_NumberLiteral, Token_StringLiteral, Token_Identifier, Token_LeftBracket, Token_True, Token_False}, 6);
     if (token == NULL)
-        return UNSUCCESSFUL_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
+        return NOT_FOUND_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
     switch (token->type)
     {
     case Token_LeftBracket:
     {
-        HANDLE_ERROR(ParseExpression(out),
-                     return ERROR_RESULT_LINE("Expected expression"));
+        *out = NULL_NODE;
+        HANDLE_ERROR(ParseExpression(out));
+        if (out->ptr == NULL)
+            return ERROR_RESULT_LINE("Expected expression");
 
         const Token* closingBracket = MatchOne(Token_RightBracket);
         if (closingBracket == NULL)
             return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
-        return result;
+        return SUCCESS_RESULT;
     }
     case Token_Identifier:
     {
@@ -102,10 +102,9 @@ static Result ParsePrimary(NodePtr* out)
         LiteralExpr* current = first;
         while (MatchOne(Token_Dot) != NULL)
         {
-            bool funcCallFound = true;
-            NodePtr funcCall;
-            HANDLE_ERROR(ParseFunctionCall(&funcCall), funcCallFound = false);
-            if (funcCallFound)
+            NodePtr funcCall = NULL_NODE;
+            HANDLE_ERROR(ParseFunctionCall(&funcCall));
+            if (funcCall.ptr != NULL)
             {
                 current->next = funcCall;
                 break;
@@ -145,10 +144,9 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
 
     *outArray = AllocateArray(sizeof(NodePtr));
 
-    NodePtr firstNode;
-    bool found = true;
-    HANDLE_ERROR(function(&firstNode), found = false);
-    if (found)
+    NodePtr firstNode = NULL_NODE;
+    HANDLE_ERROR(function(&firstNode));
+    if (firstNode.ptr != NULL)
     {
         ArrayAdd(outArray, &firstNode);
         while (true)
@@ -157,9 +155,10 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
             if (MatchOne(Token_Comma) == NULL)
                 break;
 
-            NodePtr node;
-            HANDLE_ERROR(function(&node),
-                         return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Token_Comma))
+            NodePtr node = NULL_NODE;
+            HANDLE_ERROR(function(&node));
+            if (node.ptr == NULL)
+                return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Token_Comma);
 
             ArrayAdd(outArray, &node);
         }
@@ -181,8 +180,9 @@ static Result ParseArrayAccess(NodePtr* out)
     Consume();
 
     NodePtr subscript = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&subscript),
-                 return ERROR_RESULT_LINE("Expected subscript"));
+    HANDLE_ERROR(ParseExpression(&subscript));
+    if (subscript.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected subscript");
     SET_LINE_NUMBER
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
@@ -211,7 +211,7 @@ static Result ParseFunctionCall(NodePtr* out)
         assert(0);
 
     Array params;
-    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression), assert(0));
+    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
 
     SET_LINE_NUMBER;
     if (MatchOne(Token_RightBracket) == NULL)
@@ -248,17 +248,19 @@ static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const Tok
 {
     long SET_LINE_NUMBER
 
-    NodePtr left;
-    HANDLE_ERROR(parseFunc(&left),
-                 return result);
+    NodePtr left = NULL_NODE;
+    HANDLE_ERROR(parseFunc(&left));
+    if (left.ptr == NULL)
+        return NOT_FOUND_RESULT;
 
     const Token* operator = Match(operators, operatorsLength);
     while (operator != NULL)
     {
-        NodePtr right;
         SET_LINE_NUMBER
-        HANDLE_ERROR(parseFunc(&right),
-                     return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);)
+        NodePtr right = NULL_NODE;
+        HANDLE_ERROR(parseFunc(&right));
+        if (right.ptr == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
 
         BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});
         left = (NodePtr){binary, Node_Binary};
@@ -309,9 +311,10 @@ static Result ParseAssignment(NodePtr* out)
 {
     long SET_LINE_NUMBER
 
-    NodePtr left;
-    HANDLE_ERROR(ParseBooleanOperators(&left),
-                 return result);
+    NodePtr left = NULL_NODE;
+    HANDLE_ERROR(ParseBooleanOperators(&left));
+    if (left.ptr == NULL)
+        return NOT_FOUND_RESULT;
 
     Array exprArray = AllocateArray(sizeof(NodePtr));
     ArrayAdd(&exprArray, &left);
@@ -323,10 +326,11 @@ static Result ParseAssignment(NodePtr* out)
     {
         ArrayAdd(&operatorArray, operator);
 
-        NodePtr right;
         SET_LINE_NUMBER
-        HANDLE_ERROR(ParseEquality(&right),
-                     return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type));
+        NodePtr right = NULL_NODE;
+        HANDLE_ERROR(ParseEquality(&right));
+        if (right.ptr == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
 
         ArrayAdd(&exprArray, &right);
 
@@ -363,7 +367,7 @@ static Result ParseExpressionStatement(NodePtr* out)
     long SET_LINE_NUMBER
 
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr),);
+    HANDLE_ERROR(ParseExpression(&expr));
 
     if (expr.type == Node_Null)
         return NOT_FOUND_RESULT;
@@ -384,8 +388,8 @@ static Result ParseReturnStatement(NodePtr* out)
         return NOT_FOUND_RESULT;
 
     SET_LINE_NUMBER
-    NodePtr expr;
-    HANDLE_ERROR(ParseExpression(&expr), expr = NULL_NODE;)
+    NodePtr expr = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&expr))
 
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
@@ -411,29 +415,29 @@ static Result ParseIfStatement(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
 
     SET_LINE_NUMBER;
-    NodePtr expr; {
-        HANDLE_ERROR(ParseExpression(&expr),
-                     return ERROR_RESULT_LINE("Expected expression in if statement"));
-    }
+    NodePtr expr = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&expr));
+    if (expr.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected expression in if statement");
 
     SET_LINE_NUMBER;
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     SET_LINE_NUMBER;
-    NodePtr stmt;
-    HANDLE_ERROR(ParseStatement(&stmt),
-                 return ERROR_RESULT_LINE("Expected statement"));
+    NodePtr stmt = NULL_NODE;
+    HANDLE_ERROR(ParseStatement(&stmt));
+    if (stmt.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected statement");
 
     SET_LINE_NUMBER;
-    NodePtr elseStmt;
+    NodePtr elseStmt = NULL_NODE;
     if (MatchOne(Token_Else))
     {
-        HANDLE_ERROR(ParseStatement(&elseStmt),
-                     return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else));
+        HANDLE_ERROR(ParseStatement(&elseStmt));
+        if (elseStmt.ptr == NULL)
+            return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else);
     }
-    else
-        elseStmt = NULL_NODE;
 
     const IfStmt* ifStmt = AllocIfStmt((IfStmt){*ifToken, expr, stmt, elseStmt});
     *out = (NodePtr){(void*)ifStmt, Node_If};
@@ -453,12 +457,11 @@ static Result ParseBlockStatement(NodePtr* out)
     Result exitResult = {0, 0, NULL};
     while (true)
     {
-        NodePtr stmt;
         SET_LINE_NUMBER
-        bool noStatement = false;
-        HANDLE_ERROR(ParseStatement(&stmt),
-                     noStatement = true);
-        if (noStatement)
+        NodePtr stmt = NULL_NODE;
+        const Result result = ParseStatement(&stmt);
+        HANDLE_ERROR(result);
+        if (stmt.ptr == NULL)
         {
             if (result.errorMessage != NULL)
                 exitResult = result;
@@ -480,8 +483,7 @@ static Result ParseBlockStatement(NodePtr* out)
     {
         if (exitResult.errorMessage != NULL)
             return ERROR_RESULT_LINE_TOKEN(exitResult.errorMessage, exitResult.tokenType);
-        const Token* token = CurrentToken(0);
-        return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", token->lineNumber, token->type);
+        return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->lineNumber, CurrentToken(0)->type);
     }
 
     BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
@@ -555,9 +557,10 @@ static Result ParseSectionStatement(NodePtr* out)
     if (!sectionFound)
         return ERROR_RESULT_LINE(AllocateString1Str("Unknown section type \"%s\"", identifier->text));
 
-    NodePtr block;
-    HANDLE_ERROR(ParseBlockStatement(&block),
-                 return ERROR_RESULT_LINE("Expected block after section statement"));
+    NodePtr block = NULL_NODE;
+    HANDLE_ERROR(ParseBlockStatement(&block));
+    if (block.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected block after section statement");
     assert(block.type == Node_Block);
 
     SectionStmt* section = AllocSectionStmt((SectionStmt)
@@ -598,8 +601,9 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
         if (externalFound)
             return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
 
-        HANDLE_ERROR(ParseExpression(&initializer),
-                     return ERROR_RESULT_LINE("Expected expression"))
+        HANDLE_ERROR(ParseExpression(&initializer));
+        if (initializer.ptr == NULL)
+            return ERROR_RESULT_LINE("Expected expression");
     }
 
     Token externalIdentifier = {};
@@ -659,19 +663,17 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     Consume();
     Consume();
 
-    Array params; {
-        HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon), assert(0));
-    }
+    Array params;
+    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon));
 
     SET_LINE_NUMBER;
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     NodePtr block = NULL_NODE;
-    bool blockFound = true;
-    HANDLE_ERROR(ParseBlockStatement(&block), blockFound = false);
-    if (!blockFound && !externalFound) return ERROR_RESULT_LINE("Expected code block after function declaration");
-    if (blockFound && externalFound) return ERROR_RESULT_LINE("External functions cannot have code blocks");
+    HANDLE_ERROR(ParseBlockStatement(&block));
+    if (block.ptr == NULL && !externalFound) return ERROR_RESULT_LINE("Expected code block after function declaration");
+    if (block.ptr != NULL && externalFound) return ERROR_RESULT_LINE("External functions cannot have code blocks");
 
     Token externalIdentifier = {};
     if (externalFound)
@@ -721,9 +723,9 @@ static Result ParseStructDeclaration(NodePtr* out)
     Array members = AllocateArray(sizeof(NodePtr));
     while (true)
     {
-        NodePtr member;
-        HANDLE_ERROR(ParseVariableDeclaration(&member, true),
-                     break);
+        NodePtr member = NULL_NODE;
+        HANDLE_ERROR(ParseVariableDeclaration(&member, true));
+        if (member.ptr == NULL) break;
         ArrayAdd(&members, &member);
     }
 
@@ -760,9 +762,10 @@ static Result ParseArrayDeclaration(NodePtr* out)
     Consume();
     SET_LINE_NUMBER;
 
-    NodePtr length;
-    HANDLE_ERROR(ParseExpression(&length),
-                 return ERROR_RESULT_LINE("Expected array length"));
+    NodePtr length = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&length));
+    if (length.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected array length");
     SET_LINE_NUMBER;
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
@@ -820,10 +823,10 @@ static Result ParseWhileStatement(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
     SET_LINE_NUMBER
 
-    NodePtr expr; {
-        HANDLE_ERROR(ParseExpression(&expr),
-                     return ERROR_RESULT_LINE("Expected expression"));
-    }
+    NodePtr expr = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&expr));
+    if (expr.ptr == NULL)
+        return ERROR_RESULT_LINE("Expected expression");
     SET_LINE_NUMBER
 
     if (MatchOne(Token_RightBracket) == NULL)
@@ -831,12 +834,13 @@ static Result ParseWhileStatement(NodePtr* out)
     SET_LINE_NUMBER
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block),);
+    HANDLE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL)
     {
-        NodePtr stmt;
-        HANDLE_ERROR(ParseStatement(&stmt),
-                     return ERROR_RESULT_LINE("Expected statement after while statement"));
+        NodePtr stmt = NULL_NODE;
+        HANDLE_ERROR(ParseStatement(&stmt));
+        if (stmt.ptr == NULL)
+            return ERROR_RESULT_LINE("Expected statement after while statement");
 
         Array statements = AllocateArray(sizeof(NodePtr));
         ArrayAdd(&statements, &stmt);
@@ -867,47 +871,45 @@ static Result ParseForStatement(NodePtr* out)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
     SET_LINE_NUMBER
 
-    NodePtr initializer = NULL_NODE; {
-        HANDLE_ERROR(ParseStatement(&initializer),);
-        SET_LINE_NUMBER
+    NodePtr initializer = NULL_NODE;
+    HANDLE_ERROR(ParseStatement(&initializer));
+    SET_LINE_NUMBER
 
-        if (initializer.type != Node_Null &&
-            initializer.type != Node_VariableDeclaration &&
-            initializer.type != Node_ExpressionStatement)
-            return ERROR_RESULT_LINE(
-                "Only expression and variable declaration statements are allowed inside for loop initializers");
+    if (initializer.type != Node_Null &&
+        initializer.type != Node_VariableDeclaration &&
+        initializer.type != Node_ExpressionStatement)
+        return ERROR_RESULT_LINE(
+            "Only expression and variable declaration statements are allowed inside for loop initializers");
 
-        if (initializer.type == Node_Null)
-        {
-            if (MatchOne(Token_Semicolon) == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
-            SET_LINE_NUMBER
-        }
-    }
-
-    NodePtr condition = NULL_NODE; {
-        HANDLE_ERROR(ParseExpression(&condition),);
-        SET_LINE_NUMBER
+    if (initializer.type == Node_Null)
+    {
         if (MatchOne(Token_Semicolon) == NULL)
             return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
         SET_LINE_NUMBER
     }
 
-    NodePtr increment = NULL_NODE; {
-        HANDLE_ERROR(ParseExpression(&increment),);
-        SET_LINE_NUMBER
-    }
+    NodePtr condition = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&condition));
+    SET_LINE_NUMBER
+    if (MatchOne(Token_Semicolon) == NULL)
+        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+    SET_LINE_NUMBER
+
+    NodePtr increment = NULL_NODE;
+    HANDLE_ERROR(ParseExpression(&increment));
+    SET_LINE_NUMBER
 
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block),);
+    HANDLE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL)
     {
-        NodePtr stmt;
-        HANDLE_ERROR(ParseStatement(&stmt),
-                     return ERROR_RESULT_LINE("Expected statement after for statement"));
+        NodePtr stmt = NULL_NODE;
+        HANDLE_ERROR(ParseStatement(&stmt));
+        if (stmt.ptr == NULL)
+            return ERROR_RESULT_LINE("Expected statement after for statement");
 
         Array statements = AllocateArray(sizeof(NodePtr));
         ArrayAdd(&statements, &stmt);
@@ -1018,11 +1020,11 @@ static Result ParseProgram(AST* out)
         if (MatchOne(Token_EndOfFile) != NULL)
             break;
 
-        NodePtr stmt;
+        NodePtr stmt = NULL_NODE;
         SET_LINE_NUMBER
-        HANDLE_ERROR(ParseStatement(&stmt),
-                     const Token* token = CurrentToken(0);
-                     return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", token->lineNumber, token->type));
+        HANDLE_ERROR(ParseStatement(&stmt));
+        if (stmt.ptr == NULL)
+            return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->lineNumber, CurrentToken(0)->type);
 
         if (stmt.type == Node_Import)
         {
