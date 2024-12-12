@@ -204,7 +204,9 @@ static Result ParsePrimary(NodePtr* out)
                 HANDLE_ERROR(ParseArrayAccess(&value));
             if (value.ptr == NULL)
             {
-                Consume();
+                const Token* token = MatchOne(Token_Identifier);
+                if (token == NULL)
+                    return ERROR_RESULT_LINE("Expected identifier");
                 value = (NodePtr){.ptr = AllocLiteral((LiteralExpr){.token = *token}), .type = Node_Literal};
             }
 
@@ -221,6 +223,7 @@ static Result ParsePrimary(NodePtr* out)
             if (start == NULL)
                 start = memberAccess;
 
+            SET_LINE_NUMBER
             if (MatchOne(Token_Dot) == NULL)
                 break;
         }
