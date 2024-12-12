@@ -143,7 +143,7 @@ Type GetKnownType(const char* name)
     return *type;
 }
 
-Result GetSymbol(
+Result GetSymbol( // todo split this into 3 functions
     const char* name,
     const bool searchAllModules,
     const char* moduleName,

@@ -756,7 +756,7 @@ static Result GenerateLoopStatement(const NodePtr in)
         {
             .ptr = AllocLiteral((LiteralExpr)
             {
-                .value = (Token){.type = Token_True, .lineNumber = lineNumber, .text = NULL}
+                .token = (Token){.type = Token_True, .lineNumber = lineNumber, .text = NULL}
             }),
             .type = Node_Literal
         };

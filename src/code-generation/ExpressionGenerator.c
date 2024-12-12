@@ -108,7 +108,7 @@ static Result EvaluateNumberLiteral(const Token token, bool* outInteger, char* o
 
 static Result GenerateLiteralExpression(const LiteralExpr* in, Type* outType)
 {
-    const Token literal = in->value;
+    const Token literal = in->token;
     switch (literal.type)
     {
     case Token_NumberLiteral:
@@ -303,7 +303,31 @@ static Result GenerateArrayAccessExpression(const ArrayAccessExpr* in, const cha
 
 static Result GenerateMemberAccessExpression(const MemberAccessExpr* in, Type* outType)
 {
-    assert(0);
+    assert(in->value.type == Node_Literal);
+    const LiteralExpr* value = in->value.ptr;
+
+    SymbolData* symbol;
+    HANDLE_ERROR(GetSymbol(value->token.text, false, NULL, value->token.lineNumber, &symbol));
+    assert(symbol->symbolType == SymbolType_Variable);
+
+    switch (symbol->variableData.type.metaType)
+    {
+    case MetaType_Primitive:
+    {
+        if (in->next.ptr != NULL)
+            return ERROR_RESULT("Cannot use access operator on this variable", value->token.lineNumber);
+
+        WRITE_LITERAL(VARIABLE_PREFIX);
+        WRITE_TEXT(value->token.text);
+        WriteInteger(symbol->uniqueName);
+
+        *outType = symbol->variableData.type;
+        return SUCCESS_RESULT;
+    }
+    default: assert(0);
+    }
+}
+
 //     SymbolData* symbol = NULL;
 //     if (IsModuleName(in->value.text))
 //     {
@@ -401,7 +425,6 @@ static Result GenerateMemberAccessExpression(const MemberAccessExpr* in, Type* o
 //
 //     *outType = type;
 //     return SUCCESS_RESULT;
-}
 
 Result CheckAssignmentCompatibility(const Type left, const Type right, const long lineNumber)
 {
@@ -721,16 +744,17 @@ static Result GenerateBinaryExpression(const BinaryExpr* in, Type* outType)
         // assignment
     {
         bool isLvalue = false;
-        if (in->left.type == Node_Literal)
-        {
-            const LiteralExpr* literal = in->left.ptr;
-            if (literal->value.type == Token_Identifier)
-                isLvalue = true;
-        }
-        else if (in->left.type == Node_ArrayAccess)
-        {
-            isLvalue = true;
-        }
+        // if (in->left.type == Node_Literal)
+        // {
+        //     const LiteralExpr* literal = in->left.ptr;
+        //     if (literal->token.type == Token_Identifier)
+        //         isLvalue = true;
+        // }
+        // else if (in->left.type == Node_ArrayAccess)
+        // {
+        isLvalue = true;
+        // }
+        // todo make this check for rvalue
 
         if (!isLvalue)
             return ERROR_RESULT("Cannot assign to r-value", in->operator.lineNumber);

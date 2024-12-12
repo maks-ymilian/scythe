@@ -50,7 +50,7 @@ ArrayAccessExpr* AllocArrayAccessExpr(const ArrayAccessExpr expr)
 LiteralExpr* AllocLiteral(const LiteralExpr expr)
 {
     ALLOCATE(LiteralExpr, expr);
-    new->value = CopyToken(expr.value);
+    new->token = CopyToken(expr.token);
     return new;
 }
 
@@ -213,7 +213,7 @@ static void FreeNode(const NodePtr node)
     {
         const LiteralExpr* ptr = node.ptr;
 
-        FreeToken(&ptr->value);
+        FreeToken(&ptr->token);
         free(node.ptr);
 
         DEBUG_PRINT("Freeing LiteralExpr\n");

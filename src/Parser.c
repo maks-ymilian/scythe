@@ -205,7 +205,7 @@ static Result ParsePrimary(NodePtr* out)
             if (value.ptr == NULL)
             {
                 Consume();
-                value = (NodePtr){.ptr = AllocLiteral((LiteralExpr){.value = *token}), .type = Node_Literal};
+                value = (NodePtr){.ptr = AllocLiteral((LiteralExpr){.token = *token}), .type = Node_Literal};
             }
 
             assert(value.ptr != NULL);
@@ -234,7 +234,7 @@ static Result ParsePrimary(NodePtr* out)
     case Token_False:
     {
         Consume();
-        LiteralExpr* literal = AllocLiteral((LiteralExpr){.value = *token});
+        LiteralExpr* literal = AllocLiteral((LiteralExpr){.token = *token});
         *out = (NodePtr){literal, Node_Literal};
         return SUCCESS_RESULT;
     }

@@ -82,7 +82,7 @@ ArrayAccessExpr* AllocArrayAccessExpr(ArrayAccessExpr expr);
 
 typedef struct
 {
-    Token value;
+    Token token;
 } LiteralExpr;
 
 LiteralExpr* AllocLiteral(LiteralExpr expr);
