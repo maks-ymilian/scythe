@@ -320,7 +320,8 @@ static Result GenerateMemberAccessExpression(const MemberAccessExpr* in, Type* o
         if (currentSymbol->variableData.type.metaType != MetaType_Struct)
         {
             assert(current->value.type == Node_Literal);
-            return ERROR_RESULT("Cannot use access operator on this variable",
+            return ERROR_RESULT(AllocateString1Str("Cannot use access operator on variable \"%s\"",
+                                    ((LiteralExpr*)current->value.ptr)->token.text),
                                 ((LiteralExpr*)current->value.ptr)->token.lineNumber);
         }
 
