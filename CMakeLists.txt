@@ -18,6 +18,7 @@ set(SOURCES
         "src/Compiler.c"
         "src/FileUtils.c"
         "src/BuiltInImports.c"
+        "src/code-generation/writer/Writer.c"
 )
 
 project(${PROJECT_NAME} C)

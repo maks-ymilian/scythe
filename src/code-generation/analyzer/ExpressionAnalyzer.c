@@ -399,19 +399,18 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
 
 Result AnalyzeExpression(const NodePtr* in, Type* outType, const bool expectingExpression)
 {
-    if (in->type == Node_Null)
-    {
-        if (expectingExpression)
-            assert(0);
-        return SUCCESS_RESULT;
-    }
-
     switch (in->type)
     {
     case Node_Binary: return AnalyzeBinaryExpression(in->ptr, outType);
     case Node_Unary: return AnalyzeUnaryExpression(in->ptr, outType);
     case Node_Literal: return AnalyzeLiteralExpression(in->ptr, outType);
     case Node_MemberAccess: return AnalyzeMemberAccessExpression(in->ptr, outType);
+    case Node_Null:
+    {
+        if (expectingExpression)
+            assert(0);
+        return SUCCESS_RESULT;
+    }
     default:
         assert(0);
     }
