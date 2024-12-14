@@ -116,23 +116,23 @@ static Result AnalyzeLiteralExpression(const LiteralExpr* in, Type* outType)
         char number[strlen(literal.text) + 1];
         bool integer;
         HANDLE_ERROR(EvaluateNumberLiteral(literal, &integer, number));
-        *outType = integer ? GetKnownType("int") : GetKnownType("float");
+        if (outType) *outType = integer ? GetKnownType("int") : GetKnownType("float");
 
         return SUCCESS_RESULT;
     }
     case Token_StringLiteral:
     {
-        *outType = GetKnownType("string");
+        if (outType) *outType = GetKnownType("string");
         return SUCCESS_RESULT;
     }
     case Token_True:
     {
-        *outType = GetKnownType("bool");
+        if (outType) *outType = GetKnownType("bool");
         return SUCCESS_RESULT;
     }
     case Token_False:
     {
-        *outType = GetKnownType("bool");
+        if (outType) *outType = GetKnownType("bool");
         return SUCCESS_RESULT;
     }
     default:
@@ -203,11 +203,10 @@ static Result AnalyzeMemberAccessExpression(const MemberAccessExpr* in, Type* ou
                 memberValue->token.lineNumber);
         assert(memberSymbol->symbolType == SymbolType_Variable);
         currentSymbol = memberSymbol;
-
     }
 
     assert(currentSymbol->symbolType == SymbolType_Variable);
-    *outType = currentSymbol->variableData.type;
+    if (outType) *outType = currentSymbol->variableData.type;
     return SUCCESS_RESULT;
 }
 
@@ -275,7 +274,7 @@ static Result AnalyzeUnaryExpression(const UnaryExpr* in, Type* outType)
         assert(0);
     }
 
-    *outType = type;
+    if (outType) *outType = type;
 
     return SUCCESS_RESULT;
 }
@@ -320,7 +319,7 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
 
         HANDLE_ERROR(CheckAssignmentCompatibility(leftType, rightType, in->operator.lineNumber));
 
-        *outType = leftType;
+        if (outType) *outType = leftType;
 
         // fallthrough
     }
@@ -339,10 +338,13 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
              rightType.id != floatType.id))
             return operatorTypeError;
 
-        if (leftType.id == floatType.id || rightType.id == floatType.id)
-            *outType = floatType;
-        else
-            *outType = intType;
+        if (outType)
+        {
+            if (leftType.id == floatType.id || rightType.id == floatType.id)
+                *outType = floatType;
+            else
+                *outType = intType;
+        }
 
         break;
     }
@@ -357,7 +359,7 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
         if (!CheckAssignmentCompatibility(leftType, rightType, 69420).success)
             return operatorTypeError;
 
-        *outType = GetKnownType("bool");
+        if (outType) *outType = GetKnownType("bool");
         break;
     }
     case Token_LeftAngleBracket:
@@ -374,7 +376,7 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
              rightType.id != floatType.id))
             return operatorTypeError;
 
-        *outType = GetKnownType("bool");
+        if (outType) *outType = GetKnownType("bool");
         break;
     }
     case Token_AmpersandAmpersand:
@@ -385,7 +387,7 @@ static Result AnalyzeBinaryExpression(const BinaryExpr* in, Type* outType)
         if (leftType.id != boolType.id || rightType.id != boolType.id)
             return operatorTypeError;
 
-        *outType = GetKnownType("bool");
+        if (outType) *outType = GetKnownType("bool");
         break;
     }
 

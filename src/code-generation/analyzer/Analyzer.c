@@ -85,8 +85,7 @@ static Result AnalyzeStructVariableDeclaration(const VarDeclStmt* in, const Type
             in->initializer
         };
         const NodePtr node = (NodePtr){&expr, Node_Binary};
-        Type outType;
-        HANDLE_ERROR(AnalyzeExpression(&node, &outType, true));
+        HANDLE_ERROR(AnalyzeExpression(&node, NULL, true));
     }
 
     return SUCCESS_RESULT;
@@ -168,7 +167,6 @@ static Result AnalyzeVariableDeclaration(const VarDeclStmt* in, const char* pref
 
     Type initializerType;
     HANDLE_ERROR(AnalyzeExpression(&initializer, &initializerType, true));
-
     HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->identifier.lineNumber));
 
     if (outUniqueName != NULL) *outUniqueName = uniqueName;
@@ -508,7 +506,6 @@ static Result AnalyzeLoopStatement(const NodePtr in)
     else
         assert(0);
 
-    Type exprType;
     NodePtr trueExpr;
     if (condition->type == Node_Null)
     {
@@ -527,6 +524,7 @@ static Result AnalyzeLoopStatement(const NodePtr in)
         };
         condition = &trueExpr;
     }
+    Type exprType;
     HANDLE_ERROR(AnalyzeExpression(condition, &exprType, true));
 
     if (exprType.id != GetKnownType("bool").id)
@@ -586,8 +584,7 @@ static Result AnalyzeStatement(const NodePtr* in)
     case Node_Import: return SUCCESS_RESULT;
     case Node_ExpressionStatement:
     {
-        Type _;
-        return AnalyzeExpression(&((ExpressionStmt*)in->ptr)->expr, &_, false);
+        return AnalyzeExpression(&((ExpressionStmt*)in->ptr)->expr, NULL, false);
     }
     case Node_Return: return AnalyzeReturnStatement(in->ptr);
     case Node_Section: return AnalyzeSectionStatement(in->ptr);
