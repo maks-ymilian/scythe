@@ -1,6 +1,7 @@
 #include "CodeGenerator.h"
 
 #include "analyzer/Analyzer.h"
+#include "writer/Writer.h"
 #include "Common.h"
 
 Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint8_t** outputCode, size_t* outputLength)
@@ -8,6 +9,7 @@ Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint
     InitResources(modules);
 
     HANDLE_ERROR(Analyze(syntaxTree));
+    HANDLE_ERROR(WriteAST(syntaxTree));
 
     const Buffer outputBuffer = AllocateStreamBuffer();
     FreeResources();

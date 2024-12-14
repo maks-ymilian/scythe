@@ -533,9 +533,8 @@ static Result AnalyzeLoopStatement(const NodePtr in)
     assert(stmt->type == Node_Block);
     HANDLE_ERROR(AnalyzeWhileBlock(stmt->ptr));
 
-    Type _;
     if (in.type == Node_For)
-        HANDLE_ERROR(AnalyzeExpression(&forStmt->increment, &_, false));
+        HANDLE_ERROR(AnalyzeExpression(&forStmt->increment, NULL, false));
 
     PopScope(NULL);
 
@@ -582,10 +581,7 @@ static Result AnalyzeStatement(const NodePtr* in)
         return AnalyzeBlockStatement(in->ptr);
     }
     case Node_Import: return SUCCESS_RESULT;
-    case Node_ExpressionStatement:
-    {
-        return AnalyzeExpression(&((ExpressionStmt*)in->ptr)->expr, NULL, false);
-    }
+    case Node_ExpressionStatement: return AnalyzeExpression(&((ExpressionStmt*)in->ptr)->expr, NULL, false);
     case Node_Return: return AnalyzeReturnStatement(in->ptr);
     case Node_Section: return AnalyzeSectionStatement(in->ptr);
     case Node_VariableDeclaration: return AnalyzeVariableDeclaration(in->ptr, NULL, NULL);
@@ -599,13 +595,10 @@ static Result AnalyzeStatement(const NodePtr* in)
     }
 }
 
-Result Analyze(const AST* in)
+Result Analyze(const AST* ast)
 {
-    for (int i = 0; i < in->statements.length; ++i)
-    {
-        const NodePtr* node = in->statements.array[i];
-        HANDLE_ERROR(AnalyzeStatement(node));
-    }
+    for (int i = 0; i < ast->statements.length; ++i)
+        HANDLE_ERROR(AnalyzeStatement(ast->statements.array[i]));
 
     return SUCCESS_RESULT;
 }
