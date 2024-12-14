@@ -7,17 +7,10 @@ Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint
 {
     InitResources(modules);
 
-    const Result result = Analyze(syntaxTree);
+    HANDLE_ERROR(Analyze(syntaxTree));
 
     const Buffer outputBuffer = AllocateStreamBuffer();
-
     FreeResources();
-
-    if (result.hasError)
-    {
-        free(outputBuffer.buffer);
-        return result;
-    }
 
     *outModule = module;
 
