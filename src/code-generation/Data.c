@@ -21,63 +21,16 @@ static ScopeNode* currentScope;
 
 static Map* modules;
 
-static MemoryStream* tempStream;
-static MemoryStream* finalStream;
-static Array streamReadPoints;
+static MemoryStream* stream;
 
 void Write(const void* buffer, const size_t length)
 {
-    StreamWrite(tempStream, buffer, length);
+    StreamWrite(stream, buffer, length);
 }
 
-size_t GetStreamPosition()
+Buffer AllocateStreamBuffer()
 {
-    return StreamGetPosition(tempStream);
-}
-
-void SetStreamPosition(const size_t pos)
-{
-    StreamSetPosition(tempStream, pos);
-}
-
-void BeginRead()
-{
-    const size_t readPoint = StreamGetPosition(tempStream);
-    ArrayAdd(&streamReadPoints, &readPoint);
-}
-
-Buffer EndRead()
-{
-    assert(streamReadPoints.length != 0);
-    const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
-    ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
-
-    const size_t length = StreamGetPosition(tempStream) - readPoint;
-    Buffer buffer = StreamRewindRead(tempStream, length);
-
-    uint8_t* new = malloc(buffer.length);
-    memcpy(new, buffer.buffer, buffer.length);
-    buffer.buffer = new;
-    return buffer;
-}
-
-void EndReadMove(const size_t pos)
-{
-    assert(streamReadPoints.length != 0);
-    const size_t readPoint = *(size_t*)streamReadPoints.array[streamReadPoints.length - 1];
-    ArrayRemove(&streamReadPoints, streamReadPoints.length - 1);
-
-    const size_t length = StreamGetPosition(tempStream) - readPoint;
-    const Buffer buffer = StreamRewindRead(tempStream, length);
-
-    StreamSetPosition(tempStream, readPoint);
-
-    StreamInsert(finalStream, buffer.buffer, buffer.length, pos);
-}
-
-Buffer ReadAll()
-{
-    Buffer buffer = StreamGetBuffer(finalStream);
+    Buffer buffer = StreamGetBuffer(stream);
     uint8_t* new = malloc(buffer.length);
     memcpy(new, buffer.buffer, buffer.length);
     buffer.buffer = new;
@@ -378,9 +331,7 @@ void InitResources(Map* _modules)
 {
     modules = _modules;
 
-    streamReadPoints = AllocateArray(sizeof(size_t));
-    tempStream = AllocateMemoryStream();
-    finalStream = AllocateMemoryStream();
+    stream = AllocateMemoryStream();
 
     ScopeNode* globalScope = AllocateScopeNode();
     currentScope = globalScope;
@@ -411,7 +362,5 @@ void FreeResources()
     while (currentScope != NULL)
         PopScope(NULL);
 
-    FreeArray(&streamReadPoints);
-    FreeMemoryStream(tempStream, true);
-    FreeMemoryStream(finalStream, true);
+    FreeMemoryStream(stream, true);
 }

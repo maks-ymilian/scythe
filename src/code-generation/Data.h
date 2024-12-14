@@ -85,12 +85,7 @@ struct ScopeNode
 extern Module module;
 
 void Write(const void* buffer, size_t length);
-size_t GetStreamPosition();
-void SetStreamPosition(size_t pos);
-void BeginRead();
-Buffer EndRead();
-void EndReadMove(size_t pos);
-Buffer ReadAll();
+Buffer AllocateStreamBuffer();
 
 Result GetTypeFromToken(Token typeToken, Type* outType, bool allowVoid);
 Type GetKnownType(const char* name);

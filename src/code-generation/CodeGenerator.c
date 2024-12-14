@@ -9,7 +9,7 @@ Result GenerateCode(const AST* syntaxTree, Map* modules, Module* outModule, uint
 
     const Result result = Analyze(syntaxTree);
 
-    const Buffer outputBuffer = ReadAll();
+    const Buffer outputBuffer = AllocateStreamBuffer();
 
     FreeResources();
 
