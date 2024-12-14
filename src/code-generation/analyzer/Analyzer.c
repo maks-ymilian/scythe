@@ -1,140 +1,23 @@
-#include "StatementGenerator.h"
+#include "Analyzer.h"
 
-#include "ExpressionGenerator.h"
+#include "ExpressionAnalyzer.h"
 #include "StringUtils.h"
 
-static Result GenerateExpressionStatement(const ExpressionStmt* in)
-{
-    Type type;
-    const Result result = GenerateExpression(&in->expr, &type, false, false);
-    WRITE_LITERAL(";\n");
-    return result;
-}
+static Result AnalyzeVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName);
+Result AnalyzeLoopControlStatement(const LoopControlStmt* in);
+static Result AnalyzeStatement(const NodePtr* in);
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName);
-
-// static void GenerateStructMemberNames(
-//     const LiteralExpr* expr,
-//     const Type exprType,
-//     const char* beforeText,
-//     const char* afterText,
-//     const bool reverseOrder)
-// {
-//     Array literals = AllocateArray(sizeof(LiteralExpr*));
-//     AllocateStructMemberLiterals(expr, exprType, &literals);
-//
-//     for (int i = reverseOrder ? literals.length - 1 : 0;
-//          reverseOrder ? i >= 0 : i < literals.length;
-//          reverseOrder ? --i : ++i)
-//     {
-//         if (beforeText != NULL)
-//             WRITE_TEXT(beforeText);
-//
-//         Type _;
-//         NodePtr node = (NodePtr){*(LiteralExpr**)literals.array[i], Node_Literal};
-//         ASSERT_ERROR(GenerateExpression(&node, &_, true, false));
-//
-//         if (afterText != NULL)
-//             WRITE_TEXT(afterText);
-//     }
-//
-//     FreeStructMemberLiterals(&literals);
-// }
-//
-// static void GeneratePushStructVariable(NodePtr expr, const Type exprType)
-// {
-//     PushScope();
-//
-//     LiteralExpr variable;
-//     if (expr.type == Node_FunctionCall)
-//     {
-//         const FuncCallExpr* funcCall = expr.ptr;
-//
-//         const Token typeToken = (Token){Token_Identifier, funcCall->identifier.lineNumber, (char*)exprType.name};
-//         const Token identifier = (Token){Token_Identifier, funcCall->identifier.lineNumber, "temp"};
-//         const VarDeclStmt varDecl = (VarDeclStmt){typeToken, identifier, expr};
-//         ASSERT_ERROR(GenerateVariableDeclaration(&varDecl, NULL, NULL));
-//
-//         variable = (LiteralExpr){identifier, NULL};
-//         expr = (NodePtr){&variable, Node_Literal};
-//     }
-//     else if (expr.type == Node_Binary)
-//     {
-//         const BinaryExpr* binary = expr.ptr;
-//         assert(binary->operator.type == Token_Equals);
-//
-//         Type _;
-//         ASSERT_ERROR(GenerateExpression(&expr, &_, true, false));
-//         WRITE_LITERAL(";");
-//
-//         expr = binary->left;
-//     }
-//
-//     assert(expr.type == Node_Literal);
-//     GenerateStructMemberNames(expr.ptr, exprType, "stack_push(", ");", false);
-//
-//     PopScope(NULL);
-// }
-
-Result GeneratePushValue(const NodePtr expr, const Type expectedType, const long lineNumber)
-{
-    const size_t pos = GetStreamPosition();
-
-    WRITE_LITERAL("stack_push(");
-    Type exprType;
-    HANDLE_ERROR(GenerateExpression(&expr, &exprType, true, expectedType.id == GetKnownType("int").id));
-    WRITE_LITERAL(");");
-
-    HANDLE_ERROR(CheckAssignmentCompatibility(expectedType, exprType, lineNumber));
-
-    if (exprType.metaType == MetaType_Struct)
-    {
-        assert(0);
-        // SetStreamPosition(pos);
-        // GeneratePushStructVariable(expr, exprType);
-    }
-
-    return SUCCESS_RESULT;
-}
-
-Result GeneratePopValue(const VarDeclStmt* varDecl)
-{
-    int uniqueName;
-    HANDLE_ERROR(GenerateVariableDeclaration(varDecl, NULL, &uniqueName));
-
-    Type type;
-    ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
-    if (type.metaType == MetaType_Struct)
-    {
-        assert(0);
-        // const LiteralExpr literal = (LiteralExpr){.value = varDecl->identifier, .next = NULL};
-        // GenerateStructMemberNames(&literal, type, NULL, "=stack_pop();", true);
-        // return SUCCESS_RESULT;
-    }
-
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(varDecl->identifier.text);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("=stack_pop();");
-
-    return SUCCESS_RESULT;
-}
-
-Result GenerateLoopControlStatement(const LoopControlStmt* in);
-
-static Result GenerateReturnStatement(const ReturnStmt* in)
+static Result AnalyzeReturnStatement(const ReturnStmt* in)
 {
     const ScopeNode* functionScope = GetScopeType(ScopeType_Function);
     if (functionScope == NULL)
         return ERROR_RESULT("Return statement must be inside a function", in->returnToken.lineNumber);
 
-    WRITE_LITERAL("(");
-    WRITE_LITERAL("__hasReturned = 1;");
 
     if (GetScopeType(ScopeType_Loop) != NULL)
     {
         const LoopControlStmt stmt = {.type = LoopControl_Break, .lineNumber = in->returnToken.lineNumber};
-        ASSERT_ERROR(GenerateLoopControlStatement(&stmt));
+        ASSERT_ERROR(AnalyzeLoopControlStatement(&stmt));
     }
 
     const Type returnType = functionScope->functionReturnType;
@@ -153,15 +36,16 @@ static Result GenerateReturnStatement(const ReturnStmt* in)
                 AllocateString1Str("A function with return type \"%s\" cannot return a value", returnType.name),
                 in->returnToken.lineNumber);
 
-        HANDLE_ERROR(GeneratePushValue(in->expr, returnType, in->returnToken.lineNumber));
+        Type exprType;
+        HANDLE_ERROR(AnalyzeExpression(&in->expr, &exprType, true));
+        HANDLE_ERROR(CheckAssignmentCompatibility(returnType, exprType, in->returnToken.lineNumber));
     }
 
-    WRITE_LITERAL(");\n");
 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
+static Result AnalyzeStructVariableDeclaration(const VarDeclStmt* in, const Type type, const char* prefix)
 {
     const SymbolData* symbol = GetKnownSymbol(in->type.text, true, NULL);
     assert(symbol->symbolType == SymbolType_Struct);
@@ -181,7 +65,7 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
             char newPrefix[strlen(prefix) + strlen(in->identifier.text) + 2];
             if (snprintf(newPrefix, sizeof(newPrefix), "%s%s.", prefix, in->identifier.text) == 0)
                 assert(0);
-            HANDLE_ERROR(GenerateVariableDeclaration(node->ptr, newPrefix, NULL));
+            HANDLE_ERROR(AnalyzeVariableDeclaration(node->ptr, newPrefix, NULL));
             break;
         }
         default: assert(0);
@@ -202,60 +86,24 @@ static Result GenerateStructVariableDeclaration(const VarDeclStmt* in, const Typ
         };
         const NodePtr node = (NodePtr){&expr, Node_Binary};
         Type outType;
-        HANDLE_ERROR(GenerateExpression(&node, &outType, true, false));
-        WRITE_LITERAL(";\n");
+        HANDLE_ERROR(AnalyzeExpression(&node, &outType, true));
     }
 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateArrayVariableDeclaration(const VarDeclStmt* in, const Type type, const ScopeNode* scope)
+static Result AnalyzeArrayVariableDeclaration(const VarDeclStmt* in, const Type type, const ScopeNode* scope)
 {
-    const bool globalScope = scope->parent == NULL;
-    if (globalScope) BeginRead();
-
     int uniqueName;
     HANDLE_ERROR(RegisterVariable(in->identifier, type, NULL, NULL, true, false, in->public, &uniqueName));
-
-    WRITE_LITERAL("(");
-
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("_length");
-    WRITE_LITERAL("=");
-    if (type.metaType == MetaType_Struct)
-    {
-        WriteInteger(CountStructVariables(type));
-        WRITE_LITERAL("*");
-    }
     Type lengthType;
-    HANDLE_ERROR(GenerateExpression(&in->arrayLength, &lengthType, true, true));
-    WRITE_LITERAL(";\n");
-
+    HANDLE_ERROR(AnalyzeExpression(&in->arrayLength, &lengthType, true));
     HANDLE_ERROR(CheckAssignmentCompatibility(GetKnownType("int"), lengthType, in->identifier.lineNumber));
 
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("=");
-    WRITE_LITERAL("__nextArrayOffset");
-    WRITE_LITERAL(";");
-
-    WRITE_LITERAL("__nextArrayOffset");
-    WRITE_LITERAL("+=");
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("_length");
-
-    WRITE_LITERAL(");");
-
-    if (globalScope) EndReadMove(SIZE_MAX);
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const Type type)
+static Result AnalyzeExternalVariableDeclaration(const VarDeclStmt* in, const Type type)
 {
     if (type.metaType != MetaType_Primitive)
         return ERROR_RESULT("Only primitive types are allowed for external variable declarations", in->type.lineNumber);
@@ -268,7 +116,7 @@ static Result GenerateExternalVariableDeclaration(const VarDeclStmt* in, const T
     return SUCCESS_RESULT;
 }
 
-static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName)
+static Result AnalyzeVariableDeclaration(const VarDeclStmt* in, const char* prefix, int* outUniqueName)
 {
     const ScopeNode* scope = GetCurrentScope();
     const bool globalScope = scope->parent == NULL;
@@ -283,10 +131,8 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     Type type;
     HANDLE_ERROR(GetTypeFromToken(in->type, &type, false));
 
-    if (in->array) return GenerateArrayVariableDeclaration(in, type, scope);
-    if (in->external) return GenerateExternalVariableDeclaration(in, type);
-
-    if (globalScope) BeginRead();
+    if (in->array) return AnalyzeArrayVariableDeclaration(in, type, scope);
+    if (in->external) return AnalyzeExternalVariableDeclaration(in, type);
 
     if (type.metaType != MetaType_Primitive && in->public && !type.public)
         return ERROR_RESULT(
@@ -295,8 +141,7 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
 
     if (type.metaType == MetaType_Struct)
     {
-        HANDLE_ERROR(GenerateStructVariableDeclaration(in, type, prefix));
-        if (globalScope) EndReadMove(SIZE_MAX);
+        HANDLE_ERROR(AnalyzeStructVariableDeclaration(in, type, prefix));
         return SUCCESS_RESULT;
     }
 
@@ -321,24 +166,10 @@ static Result GenerateVariableDeclaration(const VarDeclStmt* in, const char* pre
     else
         initializer = in->initializer;
 
-    char* fullName = in->identifier.text;
-    if (prefix != NULL) fullName = AllocateString2Str("%s%s", prefix, in->identifier.text);
-
-    const bool isInteger = type.id == GetKnownType("int").id;
-
-    WRITE_LITERAL(VARIABLE_PREFIX);
-    WRITE_TEXT(fullName);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("=");
     Type initializerType;
-    HANDLE_ERROR(GenerateExpression(&initializer, &initializerType, true, isInteger));
-    WRITE_LITERAL(";\n");
+    HANDLE_ERROR(AnalyzeExpression(&initializer, &initializerType, true));
 
     HANDLE_ERROR(CheckAssignmentCompatibility(type, initializerType, in->identifier.lineNumber));
-
-    if (prefix != NULL) free(fullName);
-
-    if (globalScope) EndReadMove(SIZE_MAX);
 
     if (outUniqueName != NULL) *outUniqueName = uniqueName;
     return SUCCESS_RESULT;
@@ -385,15 +216,13 @@ static bool ControlPathsReturn(const NodePtr node, const bool allPathsMustReturn
     }
 }
 
-static Result GenerateFunctionBlock(const BlockStmt* in)
+static Result AnalyzeFunctionBlock(const BlockStmt* in)
 {
-    WRITE_LITERAL("(0;\n");
-
     long returnIfStatementCount = 0;
     for (int i = 0; i < in->statements.length; ++i)
     {
         const NodePtr* node = in->statements.array[i];
-        HANDLE_ERROR(GenerateStatement(node));
+        HANDLE_ERROR(AnalyzeStatement(node));
 
         if (ControlPathsReturn(*node, false))
         {
@@ -401,14 +230,9 @@ static Result GenerateFunctionBlock(const BlockStmt* in)
             if (statementsLeft == 0)
                 continue;
 
-            WRITE_LITERAL("(!__hasReturned) ? (\n");
             returnIfStatementCount++;
         }
     }
-    for (int i = 0; i < returnIfStatementCount; ++i)
-        WRITE_LITERAL(");");
-
-    WRITE_LITERAL(");\n");
 
     return SUCCESS_RESULT;
 }
@@ -437,9 +261,7 @@ static Result ParseParameterArray(const FuncDeclStmt* in, Array* outArray)
         if (varDecl->initializer.ptr != NULL)
         {
             Type initializerType;
-            const size_t pos = GetStreamPosition();
-            HANDLE_ERROR(GenerateExpression(&varDecl->initializer, &initializerType, true, false));
-            SetStreamPosition(pos);
+            HANDLE_ERROR(AnalyzeExpression(&varDecl->initializer, &initializerType, true));
             HANDLE_ERROR(CheckAssignmentCompatibility(param.type, initializerType, varDecl->identifier.lineNumber));
         }
 
@@ -453,7 +275,7 @@ static Result ParseParameterArray(const FuncDeclStmt* in, Array* outArray)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateExternalFunctionDeclaration(const FuncDeclStmt* in, const Type returnType)
+static Result AnalyzeExternalFunctionDeclaration(const FuncDeclStmt* in, const Type returnType)
 {
     assert(in->block.type == Node_Null);
     assert(in->identifier.type == Token_Identifier);
@@ -477,7 +299,7 @@ static Result GenerateExternalFunctionDeclaration(const FuncDeclStmt* in, const 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
+static Result AnalyzeFunctionDeclaration(const FuncDeclStmt* in)
 {
     const ScopeNode* scope = GetCurrentScope();
     const bool globalScope = scope->parent == NULL;
@@ -497,9 +319,7 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
             in->identifier.lineNumber);
 
     if (in->external)
-        return GenerateExternalFunctionDeclaration(in, returnType);
-
-    BeginRead();
+        return AnalyzeExternalFunctionDeclaration(in, returnType);
 
     PushScope();
 
@@ -514,11 +334,6 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
 
     assert(in->identifier.type == Token_Identifier);
 
-    const size_t pos = GetStreamPosition();
-    BeginRead();
-    WRITE_LITERAL("(0;");
-    WRITE_LITERAL("__hasReturned = 0;");
-
     Array params;
     HANDLE_ERROR(ParseParameterArray(in, &params));
 
@@ -528,32 +343,22 @@ static Result GenerateFunctionDeclaration(const FuncDeclStmt* in)
         assert(node->type == Node_VariableDeclaration);
         const VarDeclStmt* varDecl = node->ptr;
 
-        HANDLE_ERROR(GeneratePopValue(varDecl));
+        HANDLE_ERROR(AnalyzeVariableDeclaration(varDecl, NULL, NULL));
+        Type type;
+        ASSERT_ERROR(GetTypeFromToken(varDecl->type, &type, false));
     }
 
-    HANDLE_ERROR(GenerateFunctionBlock(in->block.ptr));
-    WRITE_LITERAL(");\n");
-    const Buffer functionBlock = EndRead();
-    SetStreamPosition(pos);
+    HANDLE_ERROR(AnalyzeFunctionBlock(in->block.ptr));
 
     PopScope(NULL);
 
     int uniqueName;
     HANDLE_ERROR(RegisterFunction(in->identifier, returnType, &params, NULL, false, in->public, &uniqueName));
 
-    WRITE_LITERAL("function ");
-    WRITE_LITERAL("func_");
-    WRITE_TEXT(in->identifier.text);
-    WriteInteger(uniqueName);
-    WRITE_LITERAL("()\n");
-    Write(functionBlock.buffer, functionBlock.length);
-
-    EndReadMove(SIZE_MAX);
-
     return SUCCESS_RESULT;
 }
 
-static Result GenerateStructDeclaration(const StructDeclStmt* in)
+static Result AnalyzeStructDeclaration(const StructDeclStmt* in)
 {
     HANDLE_ERROR(RegisterStruct(in->identifier, &in->members, in->public, NULL));
 
@@ -580,56 +385,37 @@ static Result GenerateStructDeclaration(const StructDeclStmt* in)
     return SUCCESS_RESULT;
 }
 
-static Result GenerateBlockStatement(const BlockStmt* in)
+static Result AnalyzeBlockStatement(const BlockStmt* in)
 {
     PushScope();
 
-    WRITE_LITERAL("(0;\n");
     for (int i = 0; i < in->statements.length; ++i)
-        HANDLE_ERROR(GenerateStatement(in->statements.array[i]));
-    WRITE_LITERAL(");\n");
+        HANDLE_ERROR(AnalyzeStatement(in->statements.array[i]));
 
     PopScope(NULL);
 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateSectionStatement(const SectionStmt* in)
+static Result AnalyzeSectionStatement(const SectionStmt* in)
 {
-    BeginRead();
-
-    WRITE_LITERAL("\n@");
-    WRITE_TEXT(in->identifier.text);
-    WRITE_LITERAL("\n");
-    HANDLE_ERROR(GenerateBlockStatement(in->block.ptr));
-
-    WRITE_LITERAL("\n@init\n");
-
-    EndReadMove(SIZE_MAX);
-
+    HANDLE_ERROR(AnalyzeBlockStatement(in->block.ptr));
     return SUCCESS_RESULT;
 }
 
-static Result GenerateIfStatement(const IfStmt* in)
+static Result AnalyzeIfStatement(const IfStmt* in)
 {
     Type exprType;
-    HANDLE_ERROR(GenerateExpression(&in->expr, &exprType, true, false));
+    HANDLE_ERROR(AnalyzeExpression(&in->expr, &exprType, true));
     const Type boolType = GetKnownType("bool");
     if (exprType.id != boolType.id)
         return ERROR_RESULT(
             AllocateString1Str("Expression inside if statement must be evaluate to a \"%s\"", boolType.name),
             in->ifToken.lineNumber);
 
-    WRITE_LITERAL("?(\n");
-    HANDLE_ERROR(GenerateStatement(&in->trueStmt));
-    WRITE_LITERAL(")");
+    HANDLE_ERROR(AnalyzeStatement(&in->trueStmt));
     if (in->falseStmt.type != Node_Null)
-    {
-        WRITE_LITERAL(":(\n");
-        HANDLE_ERROR(GenerateStatement(&in->falseStmt));
-        WRITE_LITERAL(")");
-    }
-    WRITE_LITERAL(";\n");
+        HANDLE_ERROR(AnalyzeStatement(&in->falseStmt));
 
     return SUCCESS_RESULT;
 }
@@ -671,18 +457,16 @@ static bool ControlPathsContainLoopControl(const NodePtr node)
     }
 }
 
-static Result GenerateWhileBlock(const BlockStmt* in)
+static Result AnalyzeWhileBlock(const BlockStmt* in)
 {
     const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
     assert(loopScope != NULL);
-
-    WRITE_LITERAL("(0;\n");
 
     long controlStatementCount = 0;
     for (int i = 0; i < in->statements.length; ++i)
     {
         const NodePtr* node = in->statements.array[i];
-        HANDLE_ERROR(GenerateStatement(node));
+        HANDLE_ERROR(AnalyzeStatement(node));
 
         if (ControlPathsContainLoopControl(*node))
         {
@@ -690,23 +474,14 @@ static Result GenerateWhileBlock(const BlockStmt* in)
             if (statementsLeft == 0)
                 continue;
 
-            WRITE_LITERAL("(!__continue");
-            WriteInteger(loopScope->uniqueName);
-            if (GetScopeType(ScopeType_Function) != NULL)
-                WRITE_LITERAL("&& !__hasReturned");
-            WRITE_LITERAL(") ? (\n");
             controlStatementCount++;
         }
     }
-    for (int i = 0; i < controlStatementCount; ++i)
-        WRITE_LITERAL(");");
-
-    WRITE_LITERAL(");\n");
 
     return SUCCESS_RESULT;
 }
 
-static Result GenerateLoopStatement(const NodePtr in)
+static Result AnalyzeLoopStatement(const NodePtr in)
 {
     const WhileStmt* whileStmt = in.ptr;
     const ForStmt* forStmt = in.ptr;
@@ -716,7 +491,7 @@ static Result GenerateLoopStatement(const NodePtr in)
     scope->scopeType = ScopeType_Loop;
 
     if (in.type == Node_For && forStmt->initialization.type != Node_Null)
-        HANDLE_ERROR(GenerateStatement(&forStmt->initialization));
+        HANDLE_ERROR(AnalyzeStatement(&forStmt->initialization));
 
     const NodePtr* condition = NULL;
     const NodePtr* stmt = NULL;
@@ -733,16 +508,6 @@ static Result GenerateLoopStatement(const NodePtr in)
     else
         assert(0);
 
-    WRITE_LITERAL("__break");
-    WriteInteger(scope->uniqueName);
-    WRITE_LITERAL("= 0;");
-
-    WRITE_LITERAL("while(__break");
-    WriteInteger(scope->uniqueName);
-    WRITE_LITERAL("== 0");
-    if (GetScopeType(ScopeType_Function) != NULL)
-        WRITE_LITERAL("&& __hasReturned == 0");
-    WRITE_LITERAL("&& (");
     Type exprType;
     NodePtr trueExpr;
     if (condition->type == Node_Null)
@@ -762,33 +527,24 @@ static Result GenerateLoopStatement(const NodePtr in)
         };
         condition = &trueExpr;
     }
-    HANDLE_ERROR(GenerateExpression(condition, &exprType, true, false));
-    WRITE_LITERAL("))\n");
+    HANDLE_ERROR(AnalyzeExpression(condition, &exprType, true));
 
     if (exprType.id != GetKnownType("bool").id)
         return ERROR_RESULT("Expression inside while block must evaluate to a bool type",);
 
-    WRITE_LITERAL("(0;");
-
-    WRITE_LITERAL("__continue");
-    WriteInteger(scope->uniqueName);
-    WRITE_LITERAL("= 0;");
-
     assert(stmt->type == Node_Block);
-    HANDLE_ERROR(GenerateWhileBlock(stmt->ptr));
+    HANDLE_ERROR(AnalyzeWhileBlock(stmt->ptr));
 
     Type _;
     if (in.type == Node_For)
-        HANDLE_ERROR(GenerateExpression(&forStmt->increment, &_, false, false));
-
-    WRITE_LITERAL(");");
+        HANDLE_ERROR(AnalyzeExpression(&forStmt->increment, &_, false));
 
     PopScope(NULL);
 
     return SUCCESS_RESULT;
 }
 
-Result GenerateLoopControlStatement(const LoopControlStmt* in)
+Result AnalyzeLoopControlStatement(const LoopControlStmt* in)
 {
     const ScopeNode* loopScope = GetScopeType(ScopeType_Loop);
     if (loopScope == NULL)
@@ -797,22 +553,10 @@ Result GenerateLoopControlStatement(const LoopControlStmt* in)
         return ERROR_RESULT_TOKEN("Cannot use \"#t\" statement outside of a loop", in->lineNumber, token);
     }
 
-    WRITE_LITERAL("(");
-    if (in->type == LoopControl_Break)
-    {
-        WRITE_LITERAL("__break");
-        WriteInteger(loopScope->uniqueName);
-        WRITE_LITERAL("= 1;");
-    }
-    WRITE_LITERAL("__continue");
-    WriteInteger(loopScope->uniqueName);
-    WRITE_LITERAL("= 1;");
-    WRITE_LITERAL(");");
-
     return SUCCESS_RESULT;
 }
 
-Result GenerateStatement(const NodePtr* in)
+static Result AnalyzeStatement(const NodePtr* in)
 {
     switch (in->type)
     {
@@ -829,27 +573,42 @@ Result GenerateStatement(const NodePtr* in)
         if (loopDepth > functionDepth)
         {
             if (loopScope != NULL)
-                return GenerateWhileBlock(in->ptr);
+                return AnalyzeWhileBlock(in->ptr);
         }
         else
         {
             if (functionScope != NULL)
-                return GenerateFunctionBlock(in->ptr);
+                return AnalyzeFunctionBlock(in->ptr);
         }
 
-        return GenerateBlockStatement(in->ptr);
+        return AnalyzeBlockStatement(in->ptr);
     }
     case Node_Import: return SUCCESS_RESULT;
-    case Node_ExpressionStatement: return GenerateExpressionStatement(in->ptr);
-    case Node_Return: return GenerateReturnStatement(in->ptr);
-    case Node_Section: return GenerateSectionStatement(in->ptr);
-    case Node_VariableDeclaration: return GenerateVariableDeclaration(in->ptr, NULL, NULL);
-    case Node_FunctionDeclaration: return GenerateFunctionDeclaration(in->ptr);
-    case Node_StructDeclaration: return GenerateStructDeclaration(in->ptr);
-    case Node_If: return GenerateIfStatement(in->ptr);
-    case Node_While: return GenerateLoopStatement(*in);
-    case Node_For: return GenerateLoopStatement(*in);
-    case Node_LoopControl: return GenerateLoopControlStatement(in->ptr);
+    case Node_ExpressionStatement:
+    {
+        Type _;
+        return AnalyzeExpression(&((ExpressionStmt*)in->ptr)->expr, &_, false);
+    }
+    case Node_Return: return AnalyzeReturnStatement(in->ptr);
+    case Node_Section: return AnalyzeSectionStatement(in->ptr);
+    case Node_VariableDeclaration: return AnalyzeVariableDeclaration(in->ptr, NULL, NULL);
+    case Node_FunctionDeclaration: return AnalyzeFunctionDeclaration(in->ptr);
+    case Node_StructDeclaration: return AnalyzeStructDeclaration(in->ptr);
+    case Node_If: return AnalyzeIfStatement(in->ptr);
+    case Node_While: return AnalyzeLoopStatement(*in);
+    case Node_For: return AnalyzeLoopStatement(*in);
+    case Node_LoopControl: return AnalyzeLoopControlStatement(in->ptr);
     default: assert(0);
     }
+}
+
+Result Analyze(const AST* in)
+{
+    for (int i = 0; i < in->statements.length; ++i)
+    {
+        const NodePtr* node = in->statements.array[i];
+        HANDLE_ERROR(AnalyzeStatement(node));
+    }
+
+    return SUCCESS_RESULT;
 }
