@@ -7,8 +7,8 @@
 //@formatter:off
 
 static const char jsfx[] = RAW_STRING_LITERAL(
-    // public import "math"
-    // public import "str"
+    public import "math"
+    public import "str"
     // public import "gfx"
 
     public external int time();
