@@ -1,6 +1,8 @@
 #include "Parser.h"
 
 #include <assert.h>
+#include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,13 +15,91 @@
 #define ERROR_RESULT_LINE_TOKEN(message, tokenType) ERROR_RESULT_TOKEN(message, lineNumber, tokenType)
 #define NOT_FOUND_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
 
-#define HANDLE_ERROR(func)\
-{const Result _r = func;\
-if (_r.hasError)\
-    return _r;}
-
 static Array tokens;
 static long pointer;
+
+static bool IsDigitBase(const char c, const int base)
+{
+    if (base == 10) return isdigit(c);
+    if (base == 16) return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    if (base == 2) return c == '0' || c == '1';
+    if (base == 8) return c >= '0' && c <= '7';
+    assert(0);
+}
+
+static Result StringToUInt64(const char* string, const int base, const int lineNumber, uint64_t* out)
+{
+    assert(
+        base == 10 ||
+        base == 16 ||
+        base == 8 ||
+        base == 2);
+
+    for (int i = 0; string[i] != '\0'; ++i)
+        if (!IsDigitBase(string[i], base))
+            return ERROR_RESULT("Invalid integer literal", lineNumber);
+
+    *out = strtoull(string, NULL, base);
+
+    if (*out == UINT64_MAX)
+        return ERROR_RESULT("Invalid integer literal", lineNumber);
+
+    if (*out == 0)
+    {
+        bool isZero = true;
+        for (int i = 0; string[i] != '\0'; ++i)
+            if (string[i] != '0') isZero = false;
+
+        if (!isZero)
+            return ERROR_RESULT("Invalid integer literal", lineNumber);
+    }
+
+    return SUCCESS_RESULT;
+}
+
+static Result EvaluateNumberLiteral(
+    const char* string,
+    const int lineNumber,
+    bool* outIsInteger,
+    double* outFloat,
+    uint64_t* outInt)
+{
+    const size_t length = strlen(string);
+    char text[length + 1];
+    memcpy(text, string, length + 1);
+
+    *outIsInteger = true;
+    for (int i = 0; text[i] != '\0'; ++i)
+        if (text[i] == '.') *outIsInteger = false;
+
+    if (!*outIsInteger)
+    {
+        int consumedChars;
+        if (sscanf(text, "%lf%n", outFloat, &consumedChars) != 1)
+            return ERROR_RESULT("Invalid float literal", lineNumber);
+        if (fpclassify(*outFloat) != FP_NORMAL && fpclassify(*outFloat) != FP_ZERO)
+            return ERROR_RESULT("Invalid float literal", lineNumber);
+        if (text[consumedChars] != '\0')
+            return ERROR_RESULT("Invalid float literal", lineNumber);
+
+        return SUCCESS_RESULT;
+    }
+
+    size_t index = 0;
+    int base = 10;
+    if (text[index] == '0')
+    {
+        if (tolower(text[index + 1]) == 'x') base = 16;
+        else if (tolower(text[index + 1]) == 'o') base = 8;
+        else if (tolower(text[index + 1]) == 'b') base = 2;
+
+        if (base != 10) index += 2;
+    }
+
+    HANDLE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
+    return SUCCESS_RESULT;
+}
+
 
 static Token* CurrentToken(const int offset)
 {
@@ -93,12 +173,13 @@ static Result ParseArrayAccess(NodePtr* out)
     if (MatchOne(Token_RightSquareBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
 
-    ArrayAccessExpr* arrayAccess = AllocArrayAccessExpr((ArrayAccessExpr)
-    {
-        .identifier = *identifier,
-        .subscript = subscript,
-    });
-    *out = (NodePtr){arrayAccess, Node_ArrayAccess};
+    *out = AllocASTNode(
+        &(ArrayAccessExpr)
+        {
+            .lineNumber = identifier->lineNumber,
+            .identifier = AllocateString(identifier->text),
+            .subscript = subscript,
+        }, sizeof(ArrayAccessExpr), Node_ArrayAccess);
     return SUCCESS_RESULT;
 }
 
@@ -153,10 +234,71 @@ static Result ParseFunctionCall(NodePtr* out)
     if (MatchOne(Token_RightBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
-    FuncCallExpr* func = AllocFuncCall((FuncCallExpr){*identifier, params});
-    *out = (NodePtr){func, Node_FunctionCall};
-
+    *out = AllocASTNode(
+        &(FuncCallExpr)
+        {
+            .lineNumber = identifier->lineNumber,
+            .identifier = AllocateString(identifier->text),
+            .parameters = params,
+        }, sizeof(FuncCallExpr), Node_FunctionCall);
     return SUCCESS_RESULT;
+}
+
+static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
+{
+    switch (token.type)
+    {
+    case Token_NumberLiteral:
+    {
+        bool isInteger;
+        double floatValue;
+        uint64_t intValue;
+        HANDLE_ERROR(EvaluateNumberLiteral(token.text, token.lineNumber, &isInteger, &floatValue, &intValue));
+
+        if (isInteger)
+            *out = (LiteralExpr)
+            {
+                .type = Literal_Int,
+                .intValue = intValue
+            };
+        else
+            *out = (LiteralExpr)
+            {
+                .type = Literal_Float,
+                .floatValue = floatValue
+            };
+        return SUCCESS_RESULT;
+    }
+    case Token_StringLiteral:
+    {
+        *out = (LiteralExpr)
+        {
+            .type = Literal_String,
+            .string = AllocateString(token.text),
+        };
+        return SUCCESS_RESULT;
+    }
+    case Token_Identifier:
+    {
+        *out = (LiteralExpr)
+        {
+            .type = Literal_Identifier,
+            .identifier = AllocateString(token.text),
+        };
+        return SUCCESS_RESULT;
+    }
+    case Token_True:
+    case Token_False:
+    {
+        *out = (LiteralExpr)
+        {
+            .type = Literal_Boolean,
+            .boolean = token.type == Token_True,
+        };
+        return SUCCESS_RESULT;
+    }
+    default: assert(0);
+    }
 }
 
 static Result ParsePrimary(NodePtr* out)
@@ -207,21 +349,24 @@ static Result ParsePrimary(NodePtr* out)
                 const Token* token = MatchOne(Token_Identifier);
                 if (token == NULL)
                     return ERROR_RESULT_LINE("Expected identifier");
-                value = (NodePtr){.ptr = AllocLiteral((LiteralExpr){.token = *token}), .type = Node_Literal};
+
+                LiteralExpr literal;
+                HANDLE_ERROR(LiteralExprFromToken(*token, &literal));
+                value = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
             }
 
             assert(value.ptr != NULL);
-            MemberAccessExpr* memberAccess = AllocMemberAccess((MemberAccessExpr)
-            {
-                .value = value,
-                .next = NULL_NODE,
-            });
-            if (current != NULL)
-                current->next = (NodePtr){.ptr = memberAccess, .type = Node_MemberAccess};
-            current = memberAccess;
+            const NodePtr memberAccess = AllocASTNode(
+                &(MemberAccessExpr)
+                {
+                    .value = value,
+                    .next = NULL_NODE,
+                }, sizeof(MemberAccessExpr), Node_MemberAccess);
+            if (current != NULL) current->next = memberAccess;
+            current = memberAccess.ptr;
 
             if (start == NULL)
-                start = memberAccess;
+                start = memberAccess.ptr;
 
             SET_LINE_NUMBER
             if (MatchOne(Token_Dot) == NULL)
@@ -237,10 +382,24 @@ static Result ParsePrimary(NodePtr* out)
     case Token_False:
     {
         Consume();
-        LiteralExpr* literal = AllocLiteral((LiteralExpr){.token = *token});
-        *out = (NodePtr){literal, Node_Literal};
+        LiteralExpr literal;
+        HANDLE_ERROR(LiteralExprFromToken(*token, &literal));
+        *out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
         return SUCCESS_RESULT;
     }
+    default: assert(0);
+    }
+}
+
+static UnaryOperator TokenTypeToUnaryOperator(const TokenType tokenType)
+{
+    switch (tokenType)
+    {
+    case Token_Plus: return Unary_Plus;
+    case Token_Minus: return Unary_Minus;
+    case Token_Exclamation: return Unary_Negate;
+    case Token_PlusPlus: return Unary_Increment;
+    case Token_MinusMinus: return Unary_Decrement;
     default: assert(0);
     }
 }
@@ -253,15 +412,46 @@ static Result ParseUnary(NodePtr* out)
     if (operator == NULL)
         return ParsePrimary(out);
 
-    UnaryExpr* unary = AllocUnary((UnaryExpr){*operator});
-    NodePtr expr;
     SET_LINE_NUMBER
+    NodePtr expr;
     if (!ParseUnary(&expr).success)
         return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
-    unary->expression = expr;
 
-    *out = (NodePtr){unary, Node_Unary};
+    *out = AllocASTNode(
+        &(UnaryExpr)
+        {
+            .lineNumber = operator->lineNumber,
+            .expression = expr,
+            .operatorType = TokenTypeToUnaryOperator(operator->type),
+        }, sizeof(UnaryExpr), Node_Unary);
     return SUCCESS_RESULT;
+}
+
+static BinaryOperator TokenTypeToBinaryOperator(const TokenType tokenType)
+{
+    switch (tokenType)
+    {
+    case Token_AmpersandAmpersand: return Binary_BoolAnd;
+    case Token_PipePipe: return Binary_BoolOr;
+    case Token_EqualsEquals: return Binary_IsEqual;
+    case Token_ExclamationEquals: return Binary_NotEqual;
+    case Token_RightAngleBracket: return Binary_GreaterThan;
+    case Token_RightAngleEquals: return Binary_GreaterOrEqual;
+    case Token_LeftAngleBracket: return Binary_LessThan;
+    case Token_LeftAngleEquals: return Binary_LessOrEqual;
+
+    case Token_Plus: return Binary_Add;
+    case Token_Minus: return Binary_Subtract;
+    case Token_Asterisk: return Binary_Multiply;
+    case Token_Slash: return Binary_Divide;
+
+    case Token_Equals: return Binary_Assignment;
+    case Token_PlusEquals: return Binary_AddAssign;
+    case Token_MinusEquals: return Binary_SubtractAssign;
+    case Token_AsteriskEquals: return Binary_MultiplyAssign;
+    case Token_SlashEquals: return Binary_DivideAssign;
+    default: assert(0);
+    }
 }
 
 typedef Result (*ParseFunc)(NodePtr* out);
@@ -284,8 +474,14 @@ static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const Tok
         if (right.ptr == NULL)
             return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
 
-        BinaryExpr* binary = AllocBinary((BinaryExpr){left, *operator, right});
-        left = (NodePtr){binary, Node_Binary};
+        left = AllocASTNode(
+            &(BinaryExpr)
+            {
+                .lineNumber = operator->lineNumber,
+                .operatorType = TokenTypeToBinaryOperator(operator->type),
+                .left = left,
+                .right = right,
+            }, sizeof(BinaryExpr), Node_Binary);
 
         operator = Match(operators, operatorsLength);
     }
@@ -366,8 +562,14 @@ static Result ParseAssignment(NodePtr* out)
         operator = operatorArray.array[i];
         const NodePtr* expr2 = exprArray.array[i];
 
-        BinaryExpr* binaryExpr = AllocBinary((BinaryExpr){*expr2, *operator, *expr1});
-        *expr1 = (NodePtr){binaryExpr, Node_Binary};
+        *expr1 = AllocASTNode(
+            &(BinaryExpr)
+            {
+                .lineNumber = operator->lineNumber,
+                .operatorType = TokenTypeToBinaryOperator(operator->type),
+                .left = *expr2,
+                .right = *expr1,
+            }, sizeof(BinaryExpr), Node_Binary);
     }
 
     *out = *expr1;
@@ -396,8 +598,7 @@ static Result ParseExpressionStatement(NodePtr* out)
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
 
-    const ExpressionStmt* expressionStmt = AllocExpressionStmt((ExpressionStmt){expr});
-    *out = (NodePtr){(void*)expressionStmt, Node_ExpressionStatement};
+    *out = AllocASTNode(&(ExpressionStmt){.expr = expr}, sizeof(ExpressionStmt), Node_ExpressionStatement);
     return SUCCESS_RESULT;
 }
 
@@ -416,9 +617,12 @@ static Result ParseReturnStatement(NodePtr* out)
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
 
-    const ReturnStmt* returnStmt = AllocReturnStmt((ReturnStmt){expr, *returnToken});
-    *out = (NodePtr){(void*)returnStmt, Node_Return};
-
+    *out = AllocASTNode(
+        &(ReturnStmt)
+        {
+            .lineNumber = returnToken->lineNumber,
+            .expr = expr,
+        }, sizeof(ReturnStmt), Node_Return);
     return SUCCESS_RESULT;
 }
 
@@ -461,9 +665,14 @@ static Result ParseIfStatement(NodePtr* out)
             return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else);
     }
 
-    const IfStmt* ifStmt = AllocIfStmt((IfStmt){*ifToken, expr, stmt, elseStmt});
-    *out = (NodePtr){(void*)ifStmt, Node_If};
-
+    *out = AllocASTNode(
+        &(IfStmt)
+        {
+            .lineNumber = ifToken->lineNumber,
+            .expr = expr,
+            .trueStmt = stmt,
+            .falseStmt = elseStmt,
+        }, sizeof(IfStmt), Node_If);
     return SUCCESS_RESULT;
 }
 
@@ -508,8 +717,11 @@ static Result ParseBlockStatement(NodePtr* out)
         return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->lineNumber, CurrentToken(0)->type);
     }
 
-    BlockStmt* block = AllocBlockStmt((BlockStmt){statements});
-    *out = (NodePtr){block, Node_Block};
+    *out = AllocASTNode(
+        &(BlockStmt)
+        {
+            .statements = statements,
+        }, sizeof(BlockStmt), Node_Block);
     return SUCCESS_RESULT;
 }
 
@@ -585,13 +797,13 @@ static Result ParseSectionStatement(NodePtr* out)
         return ERROR_RESULT_LINE("Expected block after section statement");
     assert(block.type == Node_Block);
 
-    SectionStmt* section = AllocSectionStmt((SectionStmt)
-    {
-        .identifier = *identifier,
-        .sectionType = sectionType,
-        .block = block
-    });
-    *out = (NodePtr){section, Node_Section};
+    *out = AllocASTNode(
+        &(SectionStmt)
+        {
+            .lineNumber = identifier->lineNumber,
+            .sectionType = sectionType,
+            .block = block
+        }, sizeof(SectionStmt), Node_Section);
     return SUCCESS_RESULT;
 }
 
@@ -643,18 +855,19 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
             return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
     }
 
-    VarDeclStmt* varDecl = AllocVarDeclStmt((VarDeclStmt)
-    {
-        .type = *type,
-        .identifier = *identifier,
-        .externalIdentifier = externalIdentifier,
-        .initializer = initializer,
-        .arrayLength = NULL_NODE,
-        .array = false,
-        .public = publicFound,
-        .external = externalFound,
-    });
-    *out = (NodePtr){varDecl, Node_VariableDeclaration};
+    *out = AllocASTNode(
+        &(VarDeclStmt)
+        {
+            .lineNumber = type->lineNumber,
+            .name = AllocateString(identifier->text),
+            .typeName = AllocateString(type->text),
+            .externalName = AllocateString(externalIdentifier.text),
+            .initializer = initializer,
+            .arrayLength = NULL_NODE,
+            .array = false,
+            .public = publicFound,
+            .external = externalFound,
+        }, sizeof(VarDeclStmt), Node_VariableDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -707,18 +920,18 @@ static Result ParseFunctionDeclaration(NodePtr* out)
         if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
     }
 
-    FuncDeclStmt* funcDecl = AllocFuncDeclStmt((FuncDeclStmt)
-    {
-        .type = *type,
-        .identifier = *identifier,
-        .externalIdentifier = externalIdentifier,
-        .parameters = params,
-        .block = block,
-        .public = publicFound,
-        .external = externalFound,
-    });
-    *out = (NodePtr){funcDecl, Node_FunctionDeclaration};
-
+    *out = AllocASTNode(
+        &(FuncDeclStmt)
+        {
+            .lineNumber = type->lineNumber,
+            .name = AllocateString(identifier->text),
+            .typeName = AllocateString(type->text),
+            .externalName = AllocateString(externalIdentifier.text),
+            .parameters = params,
+            .block = block,
+            .public = publicFound,
+            .external = externalFound,
+        }, sizeof(FuncDeclStmt), Node_FunctionDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -755,14 +968,14 @@ static Result ParseStructDeclaration(NodePtr* out)
     if (MatchOne(Token_RightCurlyBracket) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
 
-    StructDeclStmt* structDecl = AllocStructDeclStmt((StructDeclStmt)
-    {
-        .identifier = *identifier,
-        .members = members,
-        .public = publicFound,
-    });
-    *out = (NodePtr){structDecl, Node_StructDeclaration};
-
+    *out = AllocASTNode(
+        &(StructDeclStmt)
+        {
+            .lineNumber = identifier->lineNumber,
+            .name = AllocateString(identifier->text),
+            .members = members,
+            .public = publicFound,
+        }, sizeof(StructDeclStmt), Node_StructDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -797,17 +1010,19 @@ static Result ParseArrayDeclaration(NodePtr* out)
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
 
-    VarDeclStmt* arrayDecl = AllocVarDeclStmt((VarDeclStmt)
-    {
-        .identifier = *identifier,
-        .type = *type,
-        .arrayLength = length,
-        .initializer = NULL_NODE,
-        .array = true,
-        .public = false,
-        .external = false,
-    });
-    *out = (NodePtr){.ptr = arrayDecl, .type = Node_VariableDeclaration};
+    *out = AllocASTNode(
+        &(VarDeclStmt)
+        {
+            .lineNumber = identifier->lineNumber,
+            .name = AllocateString(identifier->text),
+            .typeName = AllocateString(type->text),
+            .externalName = NULL,
+            .arrayLength = length,
+            .initializer = NULL_NODE,
+            .array = true,
+            .public = false,
+            .external = false,
+        }, sizeof(VarDeclStmt), Node_VariableDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -829,8 +1044,13 @@ static Result ParseImportStatement(NodePtr* out)
     Consume();
     Consume();
 
-    ImportStmt* importStmt = AllocImportStmt((ImportStmt){.file = path->text, .import = *import, .public = publicFound});
-    *out = (NodePtr){.ptr = importStmt, .type = Node_Import};
+    *out = AllocASTNode(
+        &(ImportStmt)
+        {
+            .lineNumber = import->lineNumber,
+            .file = AllocateString(path->text),
+            .public = publicFound,
+        }, sizeof(ImportStmt), Node_Import);
     return SUCCESS_RESULT;
 }
 
@@ -866,17 +1086,16 @@ static Result ParseWhileStatement(NodePtr* out)
 
         Array statements = AllocateArray(sizeof(NodePtr));
         ArrayAdd(&statements, &stmt);
-        BlockStmt* blockPtr = AllocBlockStmt((BlockStmt){.statements = statements,});
-        block = (NodePtr){.ptr = blockPtr, .type = Node_Block};
+        block = AllocASTNode(&(BlockStmt){.statements = statements,}, sizeof(BlockStmt), Node_Block);
     }
 
-    WhileStmt* whileStmt = AllocWhileStmt((WhileStmt)
-    {
-        .whileToken = *whileToken,
-        .expr = expr,
-        .stmt = block,
-    });
-    *out = (NodePtr){.ptr = whileStmt, .type = Node_While};
+    *out = AllocASTNode(
+        &(WhileStmt)
+        {
+            .lineNumber = whileToken->lineNumber,
+            .expr = expr,
+            .stmt = block,
+        }, sizeof(WhileStmt), Node_While);
     return SUCCESS_RESULT;
 }
 
@@ -935,19 +1154,18 @@ static Result ParseForStatement(NodePtr* out)
 
         Array statements = AllocateArray(sizeof(NodePtr));
         ArrayAdd(&statements, &stmt);
-        BlockStmt* blockPtr = AllocBlockStmt((BlockStmt){.statements = statements,});
-        block = (NodePtr){.ptr = blockPtr, .type = Node_Block};
+        block = AllocASTNode(&(BlockStmt){.statements = statements,}, sizeof(BlockStmt), Node_Block);
     }
 
-    ForStmt* forStmt = AllocForStmt((ForStmt)
-    {
-        .forToken = *forToken,
-        .initialization = initializer,
-        .condition = condition,
-        .increment = increment,
-        .stmt = block,
-    });
-    *out = (NodePtr){.ptr = forStmt, .type = Node_For};
+    *out = AllocASTNode(
+        &(ForStmt)
+        {
+            .lineNumber = forToken->lineNumber,
+            .initialization = initializer,
+            .condition = condition,
+            .increment = increment,
+            .stmt = block,
+        }, sizeof(ForStmt), Node_For);
     return SUCCESS_RESULT;
 }
 
@@ -962,12 +1180,12 @@ static Result ParseLoopControlStatement(NodePtr* out)
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE("Expected \";\"");
 
-    LoopControlStmt* loopControlStmt = AllocLoopControlStmt((LoopControlStmt)
-    {
-        .type = token->type == Token_Break ? LoopControl_Break : LoopControl_Continue,
-        .lineNumber = token->lineNumber,
-    });
-    *out = (NodePtr){.ptr = loopControlStmt, .type = Node_LoopControl};
+    *out = AllocASTNode(
+        &(LoopControlStmt)
+        {
+            .lineNumber = token->lineNumber,
+            .type = token->type == Token_Break ? LoopControl_Break : LoopControl_Continue,
+        }, sizeof(LoopControlStmt), Node_LoopControl);
     return SUCCESS_RESULT;
 }
 

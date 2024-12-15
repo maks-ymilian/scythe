@@ -8,11 +8,6 @@
 
 #include "data-structures/Map.h"
 
-#define HANDLE_ERROR(function)\
-{const Result result = function;\
-if (result.hasError)\
-    return result;}
-
 #define ADD_KEYWORD(tokenType) {const TokenType t = tokenType; MapAdd(&keywords, GetTokenTypeString(tokenType), &t);};
 
 static const char* source;
@@ -290,4 +285,15 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     FreeMap(&keywords);
 
     return SUCCESS_RESULT;
+}
+
+void FreeTokenArray(const Array* tokens)
+{
+    for (int i = 0; i < tokens->length; ++i)
+    {
+        const Token* token = tokens->array[i];
+        if (token->text != NULL)
+            free(token->text);
+    }
+    FreeArray(tokens);
 }

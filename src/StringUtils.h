@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <string.h>
 
 static inline int IntCharCount(int number)
@@ -24,6 +25,7 @@ static inline int IntCharCount(int number)
 
 static inline char* AllocateString(const char* string)
 {
+    if (string == NULL) return NULL;
     const size_t length = strlen(string) + 1;
     char* new = malloc(length);
     memcpy(new, string, length);

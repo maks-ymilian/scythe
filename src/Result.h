@@ -1,11 +1,18 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdlib.h>
+
 #include "Token.h"
 
 #define SUCCESS_RESULT (Result){true, false, NULL, 0}
 #define ERROR_RESULT(message, lineNumber) (Result){false, true, message, lineNumber}
 #define ERROR_RESULT_TOKEN(message, lineNumber, tokenType) (Result){false, true, message, lineNumber, tokenType};
+
+#define HANDLE_ERROR(function)\
+{const Result _res = function;\
+if (_res.hasError)\
+    return _res;}
 
 typedef struct
 {

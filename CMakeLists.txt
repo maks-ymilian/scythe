@@ -4,7 +4,6 @@ set(PROJECT_NAME scythe)
 set(SOURCES
         "src/Main.c"
         "src/Scanner.c"
-        "src/Token.c"
         "src/Parser.c"
         "src/SyntaxTree.c"
         "src/data-structures/Array.c"
@@ -12,7 +11,6 @@ set(SOURCES
         "src/code-generation/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
-        "src/code-generation/Data.c"
         "src/code-generation/analyzer/ExpressionAnalyzer.c"
         "src/code-generation/analyzer/Analyzer.c"
         "src/Compiler.c"
@@ -27,5 +25,7 @@ add_compile_options(-fsanitize=address,undefined -g)
 add_link_options(-fsanitize=address,undefined)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 23)
 
 target_include_directories(${PROJECT_NAME} PRIVATE "src")

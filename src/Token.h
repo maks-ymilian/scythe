@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data-structures/Array.h"
+#include <assert.h>
 
 typedef enum
 {
@@ -80,10 +80,73 @@ typedef struct
     char* text;
 } Token;
 
-const char* GetTokenTypeString(TokenType tokenType);
+static inline const char* GetTokenTypeString(const TokenType tokenType)
+{
+    switch (tokenType)
+    {
+    case Token_LeftBracket: return "(";
+    case Token_RightBracket: return ")";
+    case Token_LeftCurlyBracket: return "{";
+    case Token_RightCurlyBracket: return "}";
+    case Token_LeftSquareBracket: return "[";
+    case Token_RightSquareBracket: return "]";
+    case Token_LeftAngleBracket: return "<";
+    case Token_RightAngleBracket: return ">";
+    case Token_Dot: return ".";
+    case Token_Comma: return ",";
+    case Token_Semicolon: return ";";
+    case Token_Plus: return "+";
+    case Token_Minus: return "-";
+    case Token_Asterisk: return "*";
+    case Token_Slash: return "/";
+    case Token_Exclamation: return "!";
+    case Token_Equals: return "=";
+    case Token_Ampersand: return "&";
+    case Token_Pipe: return "|";
+    case Token_At: return "@";
 
-Token CopyToken(Token token);
+    case Token_EqualsEquals: return "==";
+    case Token_ExclamationEquals: return "!=";
+    case Token_LeftAngleEquals: return "<=";
+    case Token_RightAngleEquals: return ">=";
+    case Token_AmpersandAmpersand: return "&&";
+    case Token_PipePipe: return "||";
+    case Token_PlusPlus: return "++";
+    case Token_MinusMinus: return "--";
+    case Token_PlusEquals: return "+=";
+    case Token_MinusEquals: return "-=";
+    case Token_AsteriskEquals: return "*=";
+    case Token_SlashEquals: return "/=";
 
-void PrintTokenArray(const Array* tokens);
-void FreeTokenArray(const Array* tokens);
-void FreeToken(const Token* token);
+    case Token_NumberLiteral: return "NumberLiteral";
+    case Token_StringLiteral: return "StringLiteral";
+    case Token_Identifier: return "Identifier";
+    case Token_True: return "true";
+    case Token_False: return "false";
+
+    case Token_Void: return "void";
+    case Token_Int: return "int";
+    case Token_Float: return "float";
+    case Token_String: return "string";
+    case Token_Bool: return "bool";
+
+    case Token_Struct: return "struct";
+    case Token_Import: return "import";
+    case Token_Public: return "public";
+    case Token_External: return "external";
+
+    case Token_If: return "if";
+    case Token_Else: return "else";
+    case Token_While: return "while";
+    case Token_For: return "for";
+    case Token_Switch: return "switch";
+
+    case Token_Return: return "return";
+    case Token_Break: return "break";
+    case Token_Continue: return "continue";
+
+    case Token_EndOfFile: return "EndOfFile";
+
+    default: assert(0);
+    }
+}

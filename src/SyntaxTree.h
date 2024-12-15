@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 
-#include "Token.h"
 #include "data-structures/Array.h"
 
 #define NULL_NODE (NodePtr){.ptr = NULL, .type = Node_Null}
@@ -42,88 +41,97 @@ typedef struct
     NodeType type;
 } NodePtr;
 
+typedef enum
+{
+    Binary_BoolAnd,
+    Binary_BoolOr,
+    Binary_IsEqual,
+    Binary_NotEqual,
+    Binary_GreaterThan,
+    Binary_GreaterOrEqual,
+    Binary_LessThan,
+    Binary_LessOrEqual,
+
+    Binary_Add,
+    Binary_Subtract,
+    Binary_Multiply,
+    Binary_Divide,
+
+    Binary_Assignment,
+    Binary_AddAssign,
+    Binary_SubtractAssign,
+    Binary_MultiplyAssign,
+    Binary_DivideAssign,
+} BinaryOperator;
 
 typedef struct
 {
+    int lineNumber;
+    BinaryOperator operatorType;
     NodePtr left;
-    Token operator;
     NodePtr right;
 } BinaryExpr;
 
-BinaryExpr* AllocBinary(BinaryExpr expr);
-
 
 typedef struct
 {
-    Token operator;
+    enum
+    {
+        Unary_Plus,
+        Unary_Minus,
+        Unary_Negate,
+        Unary_Increment,
+        Unary_Decrement,
+    } operatorType;
+
+    int lineNumber;
     NodePtr expression;
 } UnaryExpr;
 
-UnaryExpr* AllocUnary(UnaryExpr expr);
-
+typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
 
 typedef struct
 {
-    Token identifier;
+    enum
+    {
+        Literal_Float,
+        Literal_Int,
+        Literal_String,
+        Literal_Identifier,
+        Literal_Boolean,
+    } type;
+
+    union
+    {
+        double floatValue;
+        uint64_t intValue;
+        char* string;
+        char* identifier;
+        bool boolean;
+    };
+} LiteralExpr;
+
+typedef typeof(((LiteralExpr*)0)->type) LiteralType;
+
+typedef struct
+{
+    int lineNumber;
+    char* identifier;
     Array parameters;
 } FuncCallExpr;
 
-FuncCallExpr* AllocFuncCall(FuncCallExpr expr);
-
-
 typedef struct
 {
-    Token identifier;
+    int lineNumber;
+    char* identifier;
     NodePtr subscript;
 } ArrayAccessExpr;
-
-ArrayAccessExpr* AllocArrayAccessExpr(ArrayAccessExpr expr);
-
-
-typedef struct
-{
-    Token token;
-} LiteralExpr;
-
-LiteralExpr* AllocLiteral(LiteralExpr expr);
-
 
 typedef struct
 {
     NodePtr value;
     NodePtr next;
 } MemberAccessExpr;
-MemberAccessExpr* AllocMemberAccess(MemberAccessExpr expr);
-// LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr);
-// void FreeLiteral(LiteralExpr* expr);
-
-
-typedef struct
-{
-    Array statements;
-} BlockStmt;
-
-BlockStmt* AllocBlockStmt(BlockStmt stmt);
-
-
-typedef enum
-{
-    Section_Init,
-    Section_Slider,
-    Section_Block,
-    Section_Sample,
-    Section_Serialize,
-    Section_GFX,
-} SectionType;
-
-typedef struct
-{
-    SectionType sectionType;
-    Token identifier;
-    NodePtr block;
-} SectionStmt;
-
-SectionStmt* AllocSectionStmt(SectionStmt stmt);
 
 
 typedef struct
@@ -131,98 +139,96 @@ typedef struct
     NodePtr expr;
 } ExpressionStmt;
 
-ExpressionStmt* AllocExpressionStmt(ExpressionStmt stmt);
+
+typedef struct
+{
+    int lineNumber;
+    char* file;
+    bool public;
+} ImportStmt;
 
 
 typedef struct
 {
-    Token ifToken;
-    NodePtr expr;
-    NodePtr trueStmt;
-    NodePtr falseStmt;
-} IfStmt;
+    enum
+    {
+        Section_Init,
+        Section_Slider,
+        Section_Block,
+        Section_Sample,
+        Section_Serialize,
+        Section_GFX,
+    } sectionType;
 
-IfStmt* AllocIfStmt(IfStmt stmt);
+    int lineNumber;
+    NodePtr block;
+} SectionStmt;
 
-
-typedef struct
-{
-    NodePtr expr;
-    Token returnToken;
-} ReturnStmt;
-
-ReturnStmt* AllocReturnStmt(ReturnStmt stmt);
-
+typedef typeof(((SectionStmt*)0)->sectionType) SectionType;
 
 typedef struct
 {
-    Token type;
-    Token identifier;
+    int lineNumber;
+    char* typeName;
+    char* name;
+    char* externalName;
     NodePtr initializer;
     NodePtr arrayLength;
-    Token externalIdentifier;
     bool array;
     bool public;
     bool external;
 } VarDeclStmt;
 
-VarDeclStmt* AllocVarDeclStmt(VarDeclStmt stmt);
-
-
 typedef struct
 {
-    Token type;
-    Token identifier;
+    int lineNumber;
+    char* typeName;
+    char* name;
+    char* externalName;
     Array parameters;
     NodePtr block;
-    Token externalIdentifier;
     bool public;
     bool external;
 } FuncDeclStmt;
 
-FuncDeclStmt* AllocFuncDeclStmt(FuncDeclStmt stmt);
-
-
 typedef struct
 {
-    Token identifier;
+    int lineNumber;
+    char* name;
     Array members;
     bool public;
 } StructDeclStmt;
 
-StructDeclStmt* AllocStructDeclStmt(StructDeclStmt stmt);
+
+typedef struct
+{
+    Array statements;
+} BlockStmt;
 
 
 typedef struct
 {
-    Token import;
-    char* file;
-    bool public;
-} ImportStmt;
-
-ImportStmt* AllocImportStmt(ImportStmt stmt);
-
+    int lineNumber;
+    NodePtr expr;
+    NodePtr trueStmt;
+    NodePtr falseStmt;
+} IfStmt;
 
 typedef struct
 {
-    Token whileToken;
+    int lineNumber;
     NodePtr expr;
     NodePtr stmt;
 } WhileStmt;
 
-WhileStmt* AllocWhileStmt(WhileStmt stmt);
-
 typedef struct
 {
-    Token forToken;
+    int lineNumber;
     NodePtr initialization;
     NodePtr condition;
     NodePtr increment;
     NodePtr stmt;
 } ForStmt;
-
-ForStmt* AllocForStmt(ForStmt stmt);
-
 
 typedef struct
 {
@@ -235,13 +241,20 @@ typedef struct
     int lineNumber;
 } LoopControlStmt;
 
-LoopControlStmt* AllocLoopControlStmt(LoopControlStmt stmt);
+typedef typeof(((LoopControlStmt*)0)->type) LoopControlType;
 
 
 typedef struct
 {
-    Array statements;
+    int lineNumber;
+    NodePtr expr;
+} ReturnStmt;
+
+
+typedef struct
+{
+    Array nodes;
 } AST;
 
-
-void FreeSyntaxTree(AST root);
+NodePtr AllocASTNode(const void* node, size_t size, NodeType type);
+void FreeAST(AST root);

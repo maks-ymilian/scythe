@@ -1,5 +1,6 @@
 #pragma once
 
-#include "code-generation/Common.h"
+#include "Result.h"
+#include "SyntaxTree.h"
 
 Result Analyze(const AST* ast);

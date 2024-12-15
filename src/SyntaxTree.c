@@ -2,405 +2,168 @@
 
 #include <assert.h>
 #include "stdlib.h"
-#include <stdio.h>
 #include <string.h>
 
-// #define ENABLE_PRINT
-#ifdef ENABLE_PRINT
-#define DEBUG_PRINT(message) printf(message);
-#else
-#define DEBUG_PRINT(message) ;
-#endif
-
-#define COMMA ,
-#define ALLOCATE(type, paramName)\
-type* new = malloc(sizeof(type));\
-assert(new != NULL);\
-*new = paramName;\
-DEBUG_PRINT("%s" COMMA "Allocating "#type"\n");
-
-BinaryExpr* AllocBinary(const BinaryExpr expr)
+NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
 {
-    ALLOCATE(BinaryExpr, expr);
-    new->operator = CopyToken(expr.operator);
-    return new;
-}
-
-UnaryExpr* AllocUnary(const UnaryExpr expr)
-{
-    ALLOCATE(UnaryExpr, expr);
-    new->operator = CopyToken(expr.operator);
-    return new;
-}
-
-FuncCallExpr* AllocFuncCall(const FuncCallExpr expr)
-{
-    ALLOCATE(FuncCallExpr, expr);
-    new->identifier = CopyToken(expr.identifier);
-    return new;
-}
-
-ArrayAccessExpr* AllocArrayAccessExpr(const ArrayAccessExpr expr)
-{
-    ALLOCATE(ArrayAccessExpr, expr);
-    new->identifier = CopyToken(expr.identifier);
-    return new;
-}
-
-LiteralExpr* AllocLiteral(const LiteralExpr expr)
-{
-    ALLOCATE(LiteralExpr, expr);
-    new->token = CopyToken(expr.token);
-    return new;
-}
-
-MemberAccessExpr* AllocMemberAccess(MemberAccessExpr expr)
-{
-    ALLOCATE(MemberAccessExpr, expr);
-    return new;
-}
-
-//
-// LiteralExpr* DeepCopyLiteral(const LiteralExpr* expr)
-// {
-//     LiteralExpr* new = AllocLiteral(*expr);
-//     LiteralExpr* newStart = new;
-//
-//     while (expr->next.ptr != NULL)
-//     {
-//         assert(expr->next.type == Node_Literal);
-//         new->next = (NodePtr)
-//         {
-//             .type = Node_Literal,
-//             .ptr = AllocLiteral(*(LiteralExpr*)expr->next.ptr),
-//         };
-//
-//         new = new->next.ptr;
-//         expr = expr->next.ptr;
-//     }
-//
-//     return newStart;
-// }
-//
-// static void FreeNode(NodePtr node);
-//
-// void FreeLiteral(LiteralExpr* expr)
-// {
-//     FreeToken(&expr->value);
-//     FreeNode(expr->next);
-//     free(expr);
-//     DEBUG_PRINT("Freeing LiteralExpr\n");
-// }
-
-BlockStmt* AllocBlockStmt(const BlockStmt stmt)
-{
-    ALLOCATE(BlockStmt, stmt);
-    return new;
-}
-
-SectionStmt* AllocSectionStmt(const SectionStmt stmt)
-{
-    ALLOCATE(SectionStmt, stmt);
-    new->identifier = CopyToken(stmt.identifier);
-    return new;
-}
-
-ExpressionStmt* AllocExpressionStmt(const ExpressionStmt stmt)
-{
-    ALLOCATE(ExpressionStmt, stmt);
-    return new;
-}
-
-IfStmt* AllocIfStmt(const IfStmt stmt)
-{
-    ALLOCATE(IfStmt, stmt);
-    return new;
-}
-
-ReturnStmt* AllocReturnStmt(const ReturnStmt stmt)
-{
-    ALLOCATE(ReturnStmt, stmt);
-    return new;
-}
-
-VarDeclStmt* AllocVarDeclStmt(const VarDeclStmt stmt)
-{
-    ALLOCATE(VarDeclStmt, stmt);
-    new->identifier = CopyToken(stmt.identifier);
-    new->externalIdentifier = CopyToken(stmt.externalIdentifier);
-    new->type = CopyToken(stmt.type);
-    return new;
-}
-
-FuncDeclStmt* AllocFuncDeclStmt(const FuncDeclStmt stmt)
-{
-    ALLOCATE(FuncDeclStmt, stmt);
-    new->identifier = CopyToken(stmt.identifier);
-    new->externalIdentifier = CopyToken(stmt.externalIdentifier);
-    new->type = CopyToken(stmt.type);
-    return new;
-}
-
-StructDeclStmt* AllocStructDeclStmt(const StructDeclStmt stmt)
-{
-    ALLOCATE(StructDeclStmt, stmt);
-    new->identifier = CopyToken(stmt.identifier);
-    return new;
-}
-
-ImportStmt* AllocImportStmt(const ImportStmt stmt)
-{
-    ALLOCATE(ImportStmt, stmt);
-
-    new->import = CopyToken(stmt.import);
-
-    const char* oldString = new->file;
-    const size_t length = strlen(oldString) + 1;
-    new->file = malloc(length);
-    memcpy(new->file, oldString, length);
-
-    return new;
-}
-
-WhileStmt* AllocWhileStmt(const WhileStmt stmt)
-{
-    ALLOCATE(WhileStmt, stmt);
-    return new;
-}
-
-ForStmt* AllocForStmt(ForStmt stmt)
-{
-    ALLOCATE(ForStmt, stmt);
-    return new;
-}
-
-LoopControlStmt* AllocLoopControlStmt(LoopControlStmt stmt)
-{
-    ALLOCATE(LoopControlStmt, stmt);
-    return new;
+    void* out = malloc(size);
+    memcpy(out, node, size);
+    return (NodePtr){.ptr = out, .type = type};
 }
 
 static void FreeNode(const NodePtr node)
 {
     switch (node.type)
     {
-    // expressions
     case Node_Null: return;
+
     case Node_Binary:
     {
         const BinaryExpr* ptr = node.ptr;
-
         FreeNode(ptr->left);
-        FreeToken(&ptr->operator);
         FreeNode(ptr->right);
-
-        free(node.ptr)
-                DEBUG_PRINT("Freeing BinaryExpr\n");
-        return;
+        break;
     }
     case Node_Unary:
     {
         const UnaryExpr* ptr = node.ptr;
-
         FreeNode(ptr->expression);
-        FreeToken(&ptr->operator);
-
-        free(node.ptr)
-                DEBUG_PRINT("Freeing UnaryExpr\n");
-        return;
+        break;
     }
     case Node_Literal:
     {
         const LiteralExpr* ptr = node.ptr;
-
-        FreeToken(&ptr->token);
-        free(node.ptr);
-
-        DEBUG_PRINT("Freeing LiteralExpr\n");
-        return;
+        if (ptr->type == Literal_Identifier) free(ptr->identifier);
+        if (ptr->type == Literal_String) free(ptr->string);
+        break;
     }
     case Node_FunctionCall:
     {
         const FuncCallExpr* ptr = node.ptr;
-
-        FreeToken(&ptr->identifier);
+        free(ptr->identifier);
         for (int i = 0; i < ptr->parameters.length; ++i)
             FreeNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
-
-        free(node.ptr);
-        DEBUG_PRINT("Freeing FunctionCallExpression\n");
-        return;
+        break;
     }
     case Node_ArrayAccess:
     {
         const ArrayAccessExpr* ptr = node.ptr;
-
-        FreeToken(&ptr->identifier);
+        free(ptr->identifier);
         FreeNode(ptr->subscript);
-
-        free(node.ptr);
-        DEBUG_PRINT("Freeing ArrayAccessExpr\n");
-        return;
+        break;
     }
     case Node_MemberAccess:
     {
         const MemberAccessExpr* ptr = node.ptr;
-
         FreeNode(ptr->value);
         FreeNode(ptr->next);
-
-        free(node.ptr);
-        DEBUG_PRINT("Freeing MemberAccess\n");
-        return;
+        break;
     }
 
-    // statements
+    case Node_ExpressionStatement:
+    {
+        const ExpressionStmt* ptr = node.ptr;
+        FreeNode(ptr->expr);
+        break;
+    }
+
     case Node_Import:
     {
-        DEBUG_PRINT("Freeing ImportStmt\n");
         const ImportStmt* ptr = node.ptr;
-        FreeToken(&ptr->import);
         free(ptr->file);
-        return;
+        break;
     }
     case Node_Section:
     {
-        DEBUG_PRINT("Freeing SectionStmt\n");
         const SectionStmt* ptr = node.ptr;
-
-        FreeToken(&ptr->identifier);
         FreeNode(ptr->block);
-
-        free(node.ptr);
-        return;
-    }
-    case Node_Return:
-    {
-        DEBUG_PRINT("Freeing ReturnStmt\n")
-        const ReturnStmt* ptr = node.ptr;
-
-        FreeNode(ptr->expr);
-
-        free(node.ptr);
-        return;
-    }
-    case Node_ExpressionStatement:
-    {
-        DEBUG_PRINT("Freeing ExpressionStmt\n")
-        const ExpressionStmt* ptr = node.ptr;
-
-        FreeNode(ptr->expr);
-
-        free(node.ptr);
-        return;
+        break;
     }
     case Node_VariableDeclaration:
     {
-        DEBUG_PRINT("Freeing VarDeclStmt\n");
         const VarDeclStmt* ptr = node.ptr;
-
-        FreeToken(&ptr->identifier);
-        FreeToken(&ptr->externalIdentifier);
-        FreeToken(&ptr->type);
+        free(ptr->typeName);
+        free(ptr->name);
+        free(ptr->externalName);
         FreeNode(ptr->initializer);
         FreeNode(ptr->arrayLength);
-
-        free(node.ptr);
-        return;
-    }
-    case Node_Block:
-    {
-        DEBUG_PRINT("Freeing BlockStatement\n");
-        const BlockStmt* ptr = node.ptr;
-
-        for (int i = 0; i < ptr->statements.length; ++i)
-            FreeNode(*(NodePtr*)ptr->statements.array[i]);
-        FreeArray(&ptr->statements);
-
-        free(node.ptr);
-        return;
-    }
-    case Node_If:
-    {
-        DEBUG_PRINT("Freeing IfStatement\n");
-        const IfStmt* ptr = node.ptr;
-
-        FreeNode(ptr->expr);
-        FreeNode(ptr->trueStmt);
-        FreeNode(ptr->falseStmt);
-
-        free(node.ptr);
-        return;
+        break;
     }
     case Node_FunctionDeclaration:
     {
-        DEBUG_PRINT("Freeing FunctionDeclaration\n");
         const FuncDeclStmt* ptr = node.ptr;
-
+        free(ptr->typeName);
+        free(ptr->name);
+        free(ptr->externalName);
         for (int i = 0; i < ptr->parameters.length; ++i)
             FreeNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
-
-        FreeToken(&ptr->identifier);
-        FreeToken(&ptr->externalIdentifier);
-
-        free(node.ptr);
-        return;
+        break;
     }
     case Node_StructDeclaration:
     {
-        DEBUG_PRINT("Freeing StructDeclaration\n");
         const StructDeclStmt* ptr = node.ptr;
-
+        free(ptr->name);
         for (int i = 0; i < ptr->members.length; ++i)
             FreeNode(*(NodePtr*)ptr->members.array[i]);
         FreeArray(&ptr->members);
+        break;
+    }
 
-        FreeToken(&ptr->identifier);
+    case Node_Block:
+    {
+        const BlockStmt* ptr = node.ptr;
+        for (int i = 0; i < ptr->statements.length; ++i)
+            FreeNode(*(NodePtr*)ptr->statements.array[i]);
+        FreeArray(&ptr->statements);
+        break;
+    }
 
-        free(node.ptr);
-        return;
+    case Node_If:
+    {
+        const IfStmt* ptr = node.ptr;
+        FreeNode(ptr->expr);
+        FreeNode(ptr->trueStmt);
+        FreeNode(ptr->falseStmt);
+        break;
     }
     case Node_While:
     {
-        DEBUG_PRINT("Freeing WhileStmt\n");
         const WhileStmt* ptr = node.ptr;
-
         FreeNode(ptr->expr);
         FreeNode(ptr->stmt);
-
-        free(node.ptr);
-        return;
+        break;
     }
     case Node_For:
     {
-        DEBUG_PRINT("Freeing ForStmt\n");
         const ForStmt* ptr = node.ptr;
-
         FreeNode(ptr->condition);
         FreeNode(ptr->initialization);
         FreeNode(ptr->increment);
         FreeNode(ptr->stmt);
+        break;
+    }
+    case Node_LoopControl: break;
 
-        free(node.ptr);
-        return;
-    }
-    case Node_LoopControl:
+    case Node_Return:
     {
-        DEBUG_PRINT("Freeing LoopControl\n");
-        free(node.ptr);
-        return;
+        const ReturnStmt* ptr = node.ptr;
+        FreeNode(ptr->expr);
+        break;
     }
+
     default: assert(0);
     }
+
+    free(node.ptr);
 }
 
-void FreeSyntaxTree(const AST root)
+void FreeAST(const AST root)
 {
-    for (int i = 0; i < root.statements.length; ++i)
+    for (int i = 0; i < root.nodes.length; ++i)
     {
-        const NodePtr* node = root.statements.array[i];
+        const NodePtr* node = root.nodes.array[i];
         FreeNode(*node);
     }
 }
