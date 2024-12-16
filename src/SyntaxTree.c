@@ -11,7 +11,7 @@ NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
     return (NodePtr){.ptr = out, .type = type};
 }
 
-static void FreeNode(const NodePtr node)
+void FreeASTNode(const NodePtr node)
 {
     switch (node.type)
     {
@@ -20,14 +20,14 @@ static void FreeNode(const NodePtr node)
     case Node_Binary:
     {
         const BinaryExpr* ptr = node.ptr;
-        FreeNode(ptr->left);
-        FreeNode(ptr->right);
+        FreeASTNode(ptr->left);
+        FreeASTNode(ptr->right);
         break;
     }
     case Node_Unary:
     {
         const UnaryExpr* ptr = node.ptr;
-        FreeNode(ptr->expression);
+        FreeASTNode(ptr->expression);
         break;
     }
     case Node_Literal:
@@ -42,7 +42,7 @@ static void FreeNode(const NodePtr node)
         const FuncCallExpr* ptr = node.ptr;
         free(ptr->identifier.text);
         for (int i = 0; i < ptr->parameters.length; ++i)
-            FreeNode(*(NodePtr*)ptr->parameters.array[i]);
+            FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
         break;
     }
@@ -50,21 +50,21 @@ static void FreeNode(const NodePtr node)
     {
         const ArrayAccessExpr* ptr = node.ptr;
         free(ptr->identifier.text);
-        FreeNode(ptr->subscript);
+        FreeASTNode(ptr->subscript);
         break;
     }
     case Node_MemberAccess:
     {
         const MemberAccessExpr* ptr = node.ptr;
-        FreeNode(ptr->value);
-        FreeNode(ptr->next);
+        FreeASTNode(ptr->value);
+        FreeASTNode(ptr->next);
         break;
     }
 
     case Node_ExpressionStatement:
     {
         const ExpressionStmt* ptr = node.ptr;
-        FreeNode(ptr->expr);
+        FreeASTNode(ptr->expr);
         break;
     }
 
@@ -77,7 +77,7 @@ static void FreeNode(const NodePtr node)
     case Node_Section:
     {
         const SectionStmt* ptr = node.ptr;
-        FreeNode(ptr->block);
+        FreeASTNode(ptr->block);
         break;
     }
     case Node_VariableDeclaration:
@@ -86,8 +86,8 @@ static void FreeNode(const NodePtr node)
         free(ptr->typeName);
         free(ptr->name);
         free(ptr->externalName);
-        FreeNode(ptr->initializer);
-        FreeNode(ptr->arrayLength);
+        FreeASTNode(ptr->initializer);
+        FreeASTNode(ptr->arrayLength);
         break;
     }
     case Node_FunctionDeclaration:
@@ -97,7 +97,7 @@ static void FreeNode(const NodePtr node)
         free(ptr->name);
         free(ptr->externalName);
         for (int i = 0; i < ptr->parameters.length; ++i)
-            FreeNode(*(NodePtr*)ptr->parameters.array[i]);
+            FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
         break;
     }
@@ -106,7 +106,7 @@ static void FreeNode(const NodePtr node)
         const StructDeclStmt* ptr = node.ptr;
         free(ptr->name);
         for (int i = 0; i < ptr->members.length; ++i)
-            FreeNode(*(NodePtr*)ptr->members.array[i]);
+            FreeASTNode(*(NodePtr*)ptr->members.array[i]);
         FreeArray(&ptr->members);
         break;
     }
@@ -115,7 +115,7 @@ static void FreeNode(const NodePtr node)
     {
         const BlockStmt* ptr = node.ptr;
         for (int i = 0; i < ptr->statements.length; ++i)
-            FreeNode(*(NodePtr*)ptr->statements.array[i]);
+            FreeASTNode(*(NodePtr*)ptr->statements.array[i]);
         FreeArray(&ptr->statements);
         break;
     }
@@ -123,25 +123,25 @@ static void FreeNode(const NodePtr node)
     case Node_If:
     {
         const IfStmt* ptr = node.ptr;
-        FreeNode(ptr->expr);
-        FreeNode(ptr->trueStmt);
-        FreeNode(ptr->falseStmt);
+        FreeASTNode(ptr->expr);
+        FreeASTNode(ptr->trueStmt);
+        FreeASTNode(ptr->falseStmt);
         break;
     }
     case Node_While:
     {
         const WhileStmt* ptr = node.ptr;
-        FreeNode(ptr->expr);
-        FreeNode(ptr->stmt);
+        FreeASTNode(ptr->expr);
+        FreeASTNode(ptr->stmt);
         break;
     }
     case Node_For:
     {
         const ForStmt* ptr = node.ptr;
-        FreeNode(ptr->condition);
-        FreeNode(ptr->initialization);
-        FreeNode(ptr->increment);
-        FreeNode(ptr->stmt);
+        FreeASTNode(ptr->condition);
+        FreeASTNode(ptr->initialization);
+        FreeASTNode(ptr->increment);
+        FreeASTNode(ptr->stmt);
         break;
     }
     case Node_LoopControl: break;
@@ -149,7 +149,7 @@ static void FreeNode(const NodePtr node)
     case Node_Return:
     {
         const ReturnStmt* ptr = node.ptr;
-        FreeNode(ptr->expr);
+        FreeASTNode(ptr->expr);
         break;
     }
 
@@ -157,7 +157,7 @@ static void FreeNode(const NodePtr node)
     {
         const ModuleNode* ptr = node.ptr;
         for (int i = 0; i < ptr->statements.length; ++i)
-            FreeNode(*(NodePtr*)ptr->statements.array[i]);
+            FreeASTNode(*(NodePtr*)ptr->statements.array[i]);
         free(ptr->path);
         free(ptr->name);
         break;
@@ -174,6 +174,6 @@ void FreeAST(const AST root)
     for (int i = 0; i < root.nodes.length; ++i)
     {
         const NodePtr* node = root.nodes.array[i];
-        FreeNode(*node);
+        FreeASTNode(*node);
     }
 }
