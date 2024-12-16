@@ -270,12 +270,14 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
         if (isInteger)
             *out = (LiteralExpr)
             {
+                .lineNumber = token.lineNumber,
                 .type = Literal_Int,
                 .intValue = intValue
             };
         else
             *out = (LiteralExpr)
             {
+                .lineNumber = token.lineNumber,
                 .type = Literal_Float,
                 .floatValue = floatValue
             };
@@ -285,6 +287,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
     {
         *out = (LiteralExpr)
         {
+            .lineNumber = token.lineNumber,
             .type = Literal_String,
             .string = AllocateString(token.text),
         };
@@ -294,6 +297,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
     {
         *out = (LiteralExpr)
         {
+            .lineNumber = token.lineNumber,
             .type = Literal_Identifier,
             .identifier =
             (IdentifierReference)
@@ -309,6 +313,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
     {
         *out = (LiteralExpr)
         {
+            .lineNumber = token.lineNumber,
             .type = Literal_Boolean,
             .boolean = token.type == Token_True,
         };

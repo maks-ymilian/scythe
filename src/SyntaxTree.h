@@ -100,6 +100,8 @@ typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
 
 typedef struct
 {
+    int lineNumber;
+
     enum
     {
         Literal_Float,
