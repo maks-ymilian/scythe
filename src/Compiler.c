@@ -70,7 +70,6 @@ static void FreeProgramTree()
     for (int i = 0; i < programNodes.length; ++i)
     {
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
-        FreeAST(node->ast);
         FreeArray(&node->dependencies);
         free(node->path);
         free(node);
@@ -277,15 +276,27 @@ static Array SortProgramTree()
 
 void CompileProgramTree(char** outCode, size_t* outLength)
 {
+    AST merged = {.nodes = AllocateArray(sizeof(NodePtr))};
+
     const Array programNodes = SortProgramTree();
     for (int i = 0; i < programNodes.length; ++i)
     {
         const ProgramNode* node = *(ProgramNode**)programNodes.array[i];
+
+        const NodePtr module = AllocASTNode(
+            &(ModuleNode)
+            {
+                .path = AllocateString(node->path),
+                .statements = node->ast.nodes,
+            }, sizeof(ModuleNode), Node_Module);
+        ArrayAdd(&merged.nodes, &module);
     }
     FreeArray(&programNodes);
 
-    // HandleError(GenerateCode(merged, outCode, outLength),
-    //             "Code generation", NULL);
+    HandleError(GenerateCode(&merged, outCode, outLength),
+                "Code generation", NULL);
+
+    FreeAST(merged);
 }
 
 void Compile(const char* inputPath, const char* outputPath)
@@ -299,6 +310,7 @@ void Compile(const char* inputPath, const char* outputPath)
 
     FreeProgramTree();
 
+    printf("%.*s\n", (int)outputCodeLength, outputCode);
     HandleError(WriteOutputFile(outputPath, outputCode, outputCodeLength),
                 "Write", NULL);
 

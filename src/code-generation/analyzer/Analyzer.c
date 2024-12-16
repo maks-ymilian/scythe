@@ -4,9 +4,9 @@
 
 #include "ExpressionAnalyzer.h"
 
-static Result AnalyzeStatement(const NodePtr* in)
+static Result AnalyzeStatement(const NodePtr* node)
 {
-    switch (in->type)
+    switch (node->type)
     {
     case Node_Block: SUCCESS_RESULT;
     case Node_Import: return SUCCESS_RESULT;
@@ -23,10 +23,21 @@ static Result AnalyzeStatement(const NodePtr* in)
     }
 }
 
+static Result AnalyzeModule(const ModuleNode* module)
+{
+    for (int i = 0; i < module->statements.length; ++i)
+        HANDLE_ERROR(AnalyzeStatement(module->statements.array[i]));
+    return SUCCESS_RESULT;
+}
+
 Result Analyze(const AST* ast)
 {
     for (int i = 0; i < ast->nodes.length; ++i)
-        HANDLE_ERROR(AnalyzeStatement(ast->nodes.array[i]));
+    {
+        const NodePtr* node = ast->nodes.array[i];
+        assert(node->type == Node_Module);
+        HANDLE_ERROR(AnalyzeModule(node->ptr));
+    }
 
     return SUCCESS_RESULT;
 }

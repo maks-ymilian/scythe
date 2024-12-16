@@ -89,19 +89,38 @@ static Result VisitSection(const SectionStmt* section)
     return SUCCESS_RESULT;
 }
 
-Result Write(const AST* ast, char** outBuffer, size_t* outLength)
+static Result VisitModule(const ModuleNode* module)
 {
-    stream = AllocateMemoryStream();
-
-    for (int i = 0; i < ast->nodes.length; ++i)
+    if (module->statements.length != 0)
     {
-        const NodePtr* stmt = ast->nodes.array[i];
+        WriteString("\n// Module: ");
+        WriteString(module->path);
+        WriteChar('\n');
+    }
+
+    for (int i = 0; i < module->statements.length; ++i)
+    {
+        const NodePtr* stmt = module->statements.array[i];
         switch (stmt->type)
         {
         case Node_Section: return VisitSection(stmt->ptr);
         case Node_Import: return SUCCESS_RESULT;
         default: assert(0);
         }
+    }
+
+    return SUCCESS_RESULT;
+}
+
+Result Write(const AST* ast, char** outBuffer, size_t* outLength)
+{
+    stream = AllocateMemoryStream();
+
+    for (int i = 0; i < ast->nodes.length; ++i)
+    {
+        const NodePtr* node = ast->nodes.array[i];
+        assert(node->type == Node_Module);
+        HANDLE_ERROR(VisitModule(node->ptr));
     }
 
     const Buffer buffer = StreamGetBuffer(stream);

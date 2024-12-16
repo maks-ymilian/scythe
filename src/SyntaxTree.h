@@ -33,6 +33,8 @@ typedef enum
     Node_LoopControl,
 
     Node_Return,
+
+    Node_Module,
 } NodeType;
 
 typedef struct
@@ -249,6 +251,13 @@ typedef struct
     int lineNumber;
     NodePtr expr;
 } ReturnStmt;
+
+
+typedef struct
+{
+    char* path;
+    Array statements;
+} ModuleNode;
 
 
 typedef struct
