@@ -75,7 +75,7 @@ Result GlobalSectionPass(const AST* ast)
 
         HANDLE_ERROR(VisitModule(module));
 
-        ArrayAdd(&module->statements, &globalInitSection);
+        ArrayInsert(&module->statements, &globalInitSection, 0);
     }
 
     return SUCCESS_RESULT;
