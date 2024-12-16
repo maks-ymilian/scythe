@@ -10,34 +10,21 @@
 
 static MemoryStream* stream;
 
-static int CountCharsInNumber(long number)
-{
-    if (number == 0)
-        return 1;
-
-    int minus = 0;
-    if (number < 0)
-    {
-        number = -number;
-        minus = 1;
-    }
-
-    if (number < 10) return 1 + minus;
-    if (number < 100) return 2 + minus;
-    if (number < 1000) return 3 + minus;
-    if (number < 10000) return 4 + minus;
-    if (number < 100000) return 5 + minus;
-    if (number < 1000000) return 6 + minus;
-    if (number < 10000000) return 7 + minus;
-    if (number < 100000000) return 8 + minus;
-    if (number < 1000000000) return 9 + minus;
-    return 10 + minus;
-}
-
 static void WriteInteger(const long integer)
 {
-    char string[CountCharsInNumber(integer) + 1];
+    const int size = snprintf(NULL, 0, "%ld", integer);
+    assert(size > 0);
+    char string[size + 1];
     snprintf(string, sizeof(string), "%ld", integer);
+    StreamWrite(stream, string, sizeof(string) - 1);
+}
+
+static void WriteFloat(const double value)
+{
+    const int size = snprintf(NULL, 0,"%.14lf\n", value);
+    assert(size > 0);
+    char string[size + 1];
+    snprintf(NULL, 0,"%.14lf\n", value);
     StreamWrite(stream, string, sizeof(string) - 1);
 }
 
