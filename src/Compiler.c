@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -274,6 +275,21 @@ static Array SortProgramTree()
     return array;
 }
 
+char* AllocBaseFileName(const char* path)
+{
+    const size_t length = strlen(path) + 1;
+    char* string = malloc(length);
+    memcpy(string, path, length);
+
+    char* fileName = basename(string);
+
+    const size_t baseNameLength = strlen(fileName) + 1;
+    for (int i = 0; i < baseNameLength; ++i)
+        if (fileName[i] == '.') fileName[i] = '\0';
+
+    return fileName;
+}
+
 void CompileProgramTree(char** outCode, size_t* outLength)
 {
     AST merged = {.nodes = AllocateArray(sizeof(NodePtr))};
@@ -287,6 +303,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
             &(ModuleNode)
             {
                 .path = AllocateString(node->path),
+                .name = AllocBaseFileName(node->path),
                 .statements = node->ast.nodes,
             },
             sizeof(ModuleNode), Node_Module);

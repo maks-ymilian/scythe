@@ -158,6 +158,8 @@ static void FreeNode(const NodePtr node)
         const ModuleNode* ptr = node.ptr;
         for (int i = 0; i < ptr->statements.length; ++i)
             FreeNode(*(NodePtr*)ptr->statements.array[i]);
+        free(ptr->path);
+        free(ptr->name);
         break;
     }
 

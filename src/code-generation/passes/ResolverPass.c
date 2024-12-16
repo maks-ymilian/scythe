@@ -5,6 +5,10 @@
 #include <StringUtils.h>
 #include <data-structures/Map.h>
 
+static Map modules;
+
+//
+
 typedef struct Scope Scope;
 
 struct Scope
@@ -34,12 +38,18 @@ static void PushScope()
     currentScope = new;
 }
 
-static void PopScope()
+static void PopScope(Map* outMap)
 {
     assert(currentScope != NULL);
     Scope* scope = currentScope;
+
     currentScope = currentScope->parent;
-    FreeMap(&scope->declarations);
+
+    if (outMap == NULL)
+        FreeMap(&scope->declarations);
+    else
+        *outMap = scope->declarations;
+
     free(scope);
 }
 
@@ -70,6 +80,8 @@ static Result GetDeclaration(const char* name, NodePtr* outNode, const int lineN
     *outNode = NULL_NODE;
     return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber);
 }
+
+//
 
 static Result VisitLiteral(LiteralExpr* literal)
 {
@@ -172,7 +184,7 @@ static Result VisitBlock(const BlockStmt* block)
     PushScope();
     for (int i = 0; i < block->statements.length; ++i)
         HANDLE_ERROR(VisitStatement(block->statements.array[i]));
-    PopScope();
+    PopScope(NULL);
 
     return SUCCESS_RESULT;
 }
@@ -204,7 +216,7 @@ static Result VisitStatement(const NodePtr* node)
             for (int i = 0; i < block->statements.length; ++i)
                 HANDLE_ERROR(VisitStatement(block->statements.array[i]));
         }
-        PopScope();
+        PopScope(NULL);
 
         HANDLE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
         return SUCCESS_RESULT;
@@ -216,7 +228,7 @@ static Result VisitStatement(const NodePtr* node)
         PushScope();
         for (int i = 0; i < structDecl->members.length; ++i)
             HANDLE_ERROR(VisitStatement(structDecl->members.array[i]));
-        PopScope();
+        PopScope(NULL);
 
         HANDLE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));
         return SUCCESS_RESULT;
@@ -270,19 +282,28 @@ static Result VisitModule(const ModuleNode* module)
     PushScope();
     for (int i = 0; i < module->statements.length; ++i)
         HANDLE_ERROR(VisitStatement(module->statements.array[i]));
-    PopScope();
+
+    Map declarations;
+    PopScope(&declarations);
+    if (!MapAdd(&modules, module->name, &declarations))
+        assert(0);
 
     return SUCCESS_RESULT;
 }
 
 Result ResolverPass(const AST* ast)
 {
+    modules = AllocateMap(sizeof(Map));
     for (int i = 0; i < ast->nodes.length; ++i)
     {
         const NodePtr* node = ast->nodes.array[i];
         assert(node->type == Node_Module);
         HANDLE_ERROR(VisitModule(node->ptr));
     }
+
+    for (MAP_ITERATE(i, &modules))
+        FreeMap(i->value);
+    FreeMap(&modules);
 
     return SUCCESS_RESULT;
 }

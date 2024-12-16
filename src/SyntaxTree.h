@@ -264,6 +264,7 @@ typedef struct
 typedef struct
 {
     char* path;
+    char* name;
     Array statements;
 } ModuleNode;
 
