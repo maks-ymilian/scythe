@@ -14,39 +14,56 @@ static void AddToInitSection(const NodePtr* node)
     ArrayAdd(&block->statements, node);
 }
 
-static Result VisitBlock(BlockStmt* block)
+static Result VisitBlock(const NodePtr* node)
 {
+    if (node->type != Node_Block)
+        return SUCCESS_RESULT;
+
+    BlockStmt* block = node->ptr;
     for (int i = 0; i < block->statements.length; ++i)
     {
-        const NodePtr* stmt = block->statements.array[i];
-        switch (stmt->type)
+        const NodePtr* node = block->statements.array[i];
+        switch (node->type)
         {
-        case Node_Block:
-        {
-            HANDLE_ERROR(VisitBlock(stmt->ptr));
-            break;
-        }
         case Node_FunctionDeclaration:
         {
-            AddToInitSection(stmt);
+            AddToInitSection(node);
             ArrayRemove(&block->statements, i);
             i--;
             break;
         }
+        case Node_Block:
+        {
+            HANDLE_ERROR(VisitBlock(node));
+            break;
+        }
+        case Node_If:
+        {
+            const IfStmt* ifStmt = node->ptr;
+            HANDLE_ERROR(VisitBlock(&ifStmt->trueStmt));
+            HANDLE_ERROR(VisitBlock(&ifStmt->falseStmt));
+            break;
+        }
+        case Node_While:
+        {
+            const WhileStmt* whileStmt = node->ptr;
+            HANDLE_ERROR(VisitBlock(&whileStmt->stmt));
+            break;
+        }
+        case Node_For:
+        {
+            const ForStmt* forStmt = node->ptr;
+            HANDLE_ERROR(VisitBlock(&forStmt->stmt));
+            break;
+        }
+        case Node_Return:
+        case Node_LoopControl:
         case Node_ExpressionStatement:
         case Node_VariableDeclaration:
             break;
         default: assert(0);
         }
     }
-    return SUCCESS_RESULT;
-}
-
-static Result VisitSection(const SectionStmt* section)
-{
-    assert(section->block.type == Node_Block);
-    HANDLE_ERROR(VisitBlock(section->block.ptr));
-
     return SUCCESS_RESULT;
 }
 
@@ -66,8 +83,12 @@ static Result VisitModule(ModuleNode* module)
             i--;
             break;
         }
-        case Node_Section: VisitSection(stmt->ptr);
+        case Node_Section:
+        {
+            const SectionStmt* section = stmt->ptr;
+            HANDLE_ERROR(VisitBlock(&section->block));
             break;
+        }
         case Node_Import: break;
         default: assert(0);
         }
