@@ -7,8 +7,6 @@
 
 static Map modules;
 
-//
-
 typedef struct Scope Scope;
 
 struct Scope
@@ -81,7 +79,72 @@ static Result GetDeclaration(const char* name, NodePtr* outNode, const int lineN
     return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber);
 }
 
-//
+static Map* GetModule(const char* name)
+{
+    return MapGet(&modules, name);
+}
+
+static bool MemberAccessIsIdentifier(const MemberAccessExpr* memberAccess)
+{
+    return memberAccess != NULL &&
+           memberAccess->value.type == Node_Literal &&
+           ((LiteralExpr*)memberAccess->value.ptr)->type == Literal_Identifier;
+}
+
+static Result ResolveModuleAccess(MemberAccessExpr* current)
+{
+    if (current->next.ptr == NULL)
+        return SUCCESS_RESULT;
+
+    assert(current->next.type == Node_MemberAccess);
+    const MemberAccessExpr* next = current->next.ptr;
+
+    if (!MemberAccessIsIdentifier(current))
+        return SUCCESS_RESULT;
+
+    const LiteralExpr* currentLiteral = current->value.ptr;
+    const Map* module = GetModule(currentLiteral->identifier.text);
+    if (module == NULL)
+        return SUCCESS_RESULT;
+
+    IdentifierReference* nextIdentifier = NULL;
+    if (MemberAccessIsIdentifier(next))
+        nextIdentifier = &((LiteralExpr*)next->value.ptr)->identifier;
+    else if (next->value.type == Node_FunctionCall)
+        nextIdentifier = &((FuncCallExpr*)next->value.ptr)->identifier;
+    else if (next->value.type == Node_ArrayAccess)
+        nextIdentifier = &((ArrayAccessExpr*)next->value.ptr)->identifier;
+    else
+        assert(0);
+
+    const NodePtr* declaration = MapGet(module, nextIdentifier->text);
+    if (declaration == NULL)
+        return ERROR_RESULT(AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"",
+                                nextIdentifier->text, currentLiteral->identifier.text),
+                            currentLiteral->lineNumber);
+
+    bool public;
+    if (declaration->type == Node_StructDeclaration)
+        public = ((StructDeclStmt*)declaration->ptr)->public;
+    else if (declaration->type == Node_FunctionDeclaration)
+        public = ((FuncDeclStmt*)declaration->ptr)->public;
+    else if (declaration->type == Node_VariableDeclaration)
+        public = ((VarDeclStmt*)declaration->ptr)->public;
+    else
+        assert(0);
+
+    if (!public)
+        return ERROR_RESULT(AllocateString2Str("Identifier \"%s\" in module \"%s\" cannot be accessed because it is not public",
+                                nextIdentifier->text, currentLiteral->identifier.text),
+                            currentLiteral->lineNumber);
+
+    nextIdentifier->reference = *declaration;
+
+    FreeASTNode(current->value);
+    current->value = NULL_NODE;
+
+    return SUCCESS_RESULT;
+}
 
 static Result VisitLiteral(LiteralExpr* literal)
 {
@@ -89,14 +152,11 @@ static Result VisitLiteral(LiteralExpr* literal)
     {
     case Literal_Identifier:
     {
-        HANDLE_ERROR(GetDeclaration(
+        if (literal->identifier.reference.ptr == NULL)
+            HANDLE_ERROR(GetDeclaration(
             literal->identifier.text,
             &literal->identifier.reference,
             literal->lineNumber));
-
-        if (literal->identifier.reference.type != Node_VariableDeclaration)
-            return ERROR_RESULT(AllocateString1Str("\"%s\" is not the name of a variable", literal->identifier.text),
-                                literal->lineNumber);
 
         return SUCCESS_RESULT;
     }
@@ -128,7 +188,8 @@ static Result VisitExpression(const NodePtr* node)
     }
     case Node_MemberAccess:
     {
-        const MemberAccessExpr* memberAccess = node->ptr;
+        MemberAccessExpr* memberAccess = node->ptr;
+        HANDLE_ERROR(ResolveModuleAccess(memberAccess));
         HANDLE_ERROR(VisitExpression(&memberAccess->value));
         HANDLE_ERROR(VisitExpression(&memberAccess->next));
         return SUCCESS_RESULT;
@@ -136,14 +197,12 @@ static Result VisitExpression(const NodePtr* node)
     case Node_FunctionCall:
     {
         FuncCallExpr* funcCall = node->ptr;
-        HANDLE_ERROR(GetDeclaration(
+
+        if (funcCall->identifier.reference.ptr == NULL)
+            HANDLE_ERROR(GetDeclaration(
             funcCall->identifier.text,
             &funcCall->identifier.reference,
             funcCall->lineNumber));
-
-        if (funcCall->identifier.reference.type != Node_FunctionDeclaration)
-            return ERROR_RESULT(AllocateString1Str("\"%s\" is not the name of a function", funcCall->identifier.text),
-                                funcCall->lineNumber);
 
         for (int i = 0; i < funcCall->parameters.length; ++i)
         {
@@ -156,17 +215,12 @@ static Result VisitExpression(const NodePtr* node)
     case Node_ArrayAccess:
     {
         ArrayAccessExpr* arrayAccess = node->ptr;
-        HANDLE_ERROR(GetDeclaration(
+
+        if (arrayAccess->identifier.reference.ptr == NULL)
+            HANDLE_ERROR(GetDeclaration(
             arrayAccess->identifier.text,
             &arrayAccess->identifier.reference,
             arrayAccess->lineNumber));
-
-        const NodePtr* declaration = &arrayAccess->identifier.reference;
-        if (declaration->type != Node_VariableDeclaration ||
-            (declaration->type == Node_VariableDeclaration && !((VarDeclStmt*)declaration->ptr)->array))
-            return ERROR_RESULT(
-                AllocateString1Str("\"%s\" is not the name of an array", arrayAccess->identifier.text),
-                arrayAccess->lineNumber);
 
         HANDLE_ERROR(VisitExpression(&arrayAccess->subscript));
 
