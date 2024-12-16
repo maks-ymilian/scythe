@@ -288,7 +288,8 @@ void CompileProgramTree(char** outCode, size_t* outLength)
             {
                 .path = AllocateString(node->path),
                 .statements = node->ast.nodes,
-            }, sizeof(ModuleNode), Node_Module);
+            },
+            sizeof(ModuleNode), Node_Module);
         ArrayAdd(&merged.nodes, &module);
     }
     FreeArray(&programNodes);

@@ -93,8 +93,10 @@ Result GlobalSectionPass(const AST* ast)
                     &(BlockStmt)
                     {
                         .statements = AllocateArray(sizeof(NodePtr)),
-                    }, sizeof(BlockStmt), Node_Block),
-            }, sizeof(SectionStmt), Node_Section);
+                    },
+                    sizeof(BlockStmt), Node_Block),
+            },
+            sizeof(SectionStmt), Node_Section);
 
         HANDLE_ERROR(VisitModule(module));
 

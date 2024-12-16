@@ -184,7 +184,8 @@ static Result ParseArrayAccess(NodePtr* out)
                 .text = AllocateString(identifier->text),
                 .reference = NULL_NODE,
             },
-        }, sizeof(ArrayAccessExpr), Node_ArrayAccess);
+        },
+        sizeof(ArrayAccessExpr), Node_ArrayAccess);
     return SUCCESS_RESULT;
 }
 
@@ -250,7 +251,8 @@ static Result ParseFunctionCall(NodePtr* out)
                 .text = AllocateString(identifier->text),
                 .reference = NULL_NODE,
             },
-        }, sizeof(FuncCallExpr), Node_FunctionCall);
+        },
+        sizeof(FuncCallExpr), Node_FunctionCall);
     return SUCCESS_RESULT;
 }
 
@@ -376,7 +378,8 @@ static Result ParsePrimary(NodePtr* out)
                 {
                     .value = value,
                     .next = NULL_NODE,
-                }, sizeof(MemberAccessExpr), Node_MemberAccess);
+                },
+                sizeof(MemberAccessExpr), Node_MemberAccess);
             if (current != NULL) current->next = memberAccess;
             current = memberAccess.ptr;
 
@@ -438,7 +441,8 @@ static Result ParseUnary(NodePtr* out)
             .lineNumber = operator->lineNumber,
             .expression = expr,
             .operatorType = TokenTypeToUnaryOperator(operator->type),
-        }, sizeof(UnaryExpr), Node_Unary);
+        },
+        sizeof(UnaryExpr), Node_Unary);
     return SUCCESS_RESULT;
 }
 
@@ -496,7 +500,8 @@ static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const Tok
                 .operatorType = TokenTypeToBinaryOperator(operator->type),
                 .left = left,
                 .right = right,
-            }, sizeof(BinaryExpr), Node_Binary);
+            },
+            sizeof(BinaryExpr), Node_Binary);
 
         operator = Match(operators, operatorsLength);
     }
@@ -584,7 +589,8 @@ static Result ParseAssignment(NodePtr* out)
                 .operatorType = TokenTypeToBinaryOperator(operator->type),
                 .left = *expr2,
                 .right = *expr1,
-            }, sizeof(BinaryExpr), Node_Binary);
+            },
+            sizeof(BinaryExpr), Node_Binary);
     }
 
     *out = *expr1;
@@ -637,7 +643,8 @@ static Result ParseReturnStatement(NodePtr* out)
         {
             .lineNumber = returnToken->lineNumber,
             .expr = expr,
-        }, sizeof(ReturnStmt), Node_Return);
+        },
+        sizeof(ReturnStmt), Node_Return);
     return SUCCESS_RESULT;
 }
 
@@ -687,7 +694,8 @@ static Result ParseIfStatement(NodePtr* out)
             .expr = expr,
             .trueStmt = stmt,
             .falseStmt = elseStmt,
-        }, sizeof(IfStmt), Node_If);
+        },
+        sizeof(IfStmt), Node_If);
     return SUCCESS_RESULT;
 }
 
@@ -736,7 +744,8 @@ static Result ParseBlockStatement(NodePtr* out)
         &(BlockStmt)
         {
             .statements = statements,
-        }, sizeof(BlockStmt), Node_Block);
+        },
+        sizeof(BlockStmt), Node_Block);
     return SUCCESS_RESULT;
 }
 
@@ -818,7 +827,8 @@ static Result ParseSectionStatement(NodePtr* out)
             .lineNumber = identifier->lineNumber,
             .sectionType = sectionType,
             .block = block
-        }, sizeof(SectionStmt), Node_Section);
+        },
+        sizeof(SectionStmt), Node_Section);
     return SUCCESS_RESULT;
 }
 
@@ -882,7 +892,8 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
             .array = false,
             .public = publicFound,
             .external = externalFound,
-        }, sizeof(VarDeclStmt), Node_VariableDeclaration);
+        },
+        sizeof(VarDeclStmt), Node_VariableDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -946,7 +957,8 @@ static Result ParseFunctionDeclaration(NodePtr* out)
             .block = block,
             .public = publicFound,
             .external = externalFound,
-        }, sizeof(FuncDeclStmt), Node_FunctionDeclaration);
+        },
+        sizeof(FuncDeclStmt), Node_FunctionDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -990,7 +1002,8 @@ static Result ParseStructDeclaration(NodePtr* out)
             .name = AllocateString(identifier->text),
             .members = members,
             .public = publicFound,
-        }, sizeof(StructDeclStmt), Node_StructDeclaration);
+        },
+        sizeof(StructDeclStmt), Node_StructDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -1037,7 +1050,8 @@ static Result ParseArrayDeclaration(NodePtr* out)
             .array = true,
             .public = false,
             .external = false,
-        }, sizeof(VarDeclStmt), Node_VariableDeclaration);
+        },
+        sizeof(VarDeclStmt), Node_VariableDeclaration);
     return SUCCESS_RESULT;
 }
 
@@ -1065,7 +1079,8 @@ static Result ParseImportStatement(NodePtr* out)
             .lineNumber = import->lineNumber,
             .file = AllocateString(path->text),
             .public = publicFound,
-        }, sizeof(ImportStmt), Node_Import);
+        },
+        sizeof(ImportStmt), Node_Import);
     return SUCCESS_RESULT;
 }
 
@@ -1110,7 +1125,8 @@ static Result ParseWhileStatement(NodePtr* out)
             .lineNumber = whileToken->lineNumber,
             .expr = expr,
             .stmt = block,
-        }, sizeof(WhileStmt), Node_While);
+        },
+        sizeof(WhileStmt), Node_While);
     return SUCCESS_RESULT;
 }
 
@@ -1180,7 +1196,8 @@ static Result ParseForStatement(NodePtr* out)
             .condition = condition,
             .increment = increment,
             .stmt = block,
-        }, sizeof(ForStmt), Node_For);
+        },
+        sizeof(ForStmt), Node_For);
     return SUCCESS_RESULT;
 }
 
@@ -1200,7 +1217,8 @@ static Result ParseLoopControlStatement(NodePtr* out)
         {
             .lineNumber = token->lineNumber,
             .type = token->type == Token_Break ? LoopControl_Break : LoopControl_Continue,
-        }, sizeof(LoopControlStmt), Node_LoopControl);
+        },
+        sizeof(LoopControlStmt), Node_LoopControl);
     return SUCCESS_RESULT;
 }
 

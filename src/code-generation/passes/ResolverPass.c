@@ -1,6 +1,7 @@
 #include "ResolverPass.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 static Result VisitExpression(const NodePtr* in)
 {
@@ -19,7 +20,14 @@ static Result VisitStatement(const NodePtr* node)
 {
     switch (node->type)
     {
-    case Node_Block: SUCCESS_RESULT;
+    case Node_Block:
+    {
+        const BlockStmt* block = node->ptr;
+        for (int i = 0; i < block->statements.length; ++i)
+            HANDLE_ERROR(VisitStatement(block->statements.array[i]));
+        return SUCCESS_RESULT;
+    }
+    case Node_ExpressionStatement: return VisitExpression(&((ExpressionStmt*)node->ptr)->expr);
     case Node_Import: return SUCCESS_RESULT;
     case Node_Return: return SUCCESS_RESULT;
     case Node_Section: return SUCCESS_RESULT;
