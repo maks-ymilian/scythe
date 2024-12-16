@@ -8,8 +8,6 @@
 
 #include "data-structures/Map.h"
 
-#define ADD_KEYWORD(tokenType) {const TokenType t = tokenType; MapAdd(&keywords, GetTokenTypeString(tokenType), &t);};
-
 static const char* source;
 static long pointer;
 static long currentTokenStart;
@@ -18,6 +16,11 @@ static int currentLine;
 static Array tokens;
 
 static Map keywords;
+
+void AddKeyword(const TokenType tokenType)
+{
+    MapAdd(&keywords, GetTokenTypeString(tokenType), &tokenType);
+}
 
 static char Advance()
 {
@@ -146,29 +149,29 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 {
     keywords = AllocateMap(sizeof(TokenType));
 
-    ADD_KEYWORD(Token_True);
-    ADD_KEYWORD(Token_False);
+    AddKeyword(Token_True);
+    AddKeyword(Token_False);
 
-    ADD_KEYWORD(Token_Void);
-    ADD_KEYWORD(Token_Int);
-    ADD_KEYWORD(Token_Float);
-    ADD_KEYWORD(Token_String);
-    ADD_KEYWORD(Token_Bool);
+    AddKeyword(Token_Void);
+    AddKeyword(Token_Int);
+    AddKeyword(Token_Float);
+    AddKeyword(Token_String);
+    AddKeyword(Token_Bool);
 
-    ADD_KEYWORD(Token_Struct);
-    ADD_KEYWORD(Token_Import);
-    ADD_KEYWORD(Token_Public);
-    ADD_KEYWORD(Token_External);
+    AddKeyword(Token_Struct);
+    AddKeyword(Token_Import);
+    AddKeyword(Token_Public);
+    AddKeyword(Token_External);
 
-    ADD_KEYWORD(Token_If);
-    ADD_KEYWORD(Token_Else);
-    ADD_KEYWORD(Token_While);
-    ADD_KEYWORD(Token_For);
-    ADD_KEYWORD(Token_Switch);
+    AddKeyword(Token_If);
+    AddKeyword(Token_Else);
+    AddKeyword(Token_While);
+    AddKeyword(Token_For);
+    AddKeyword(Token_Switch);
 
-    ADD_KEYWORD(Token_Return);
-    ADD_KEYWORD(Token_Break);
-    ADD_KEYWORD(Token_Continue);
+    AddKeyword(Token_Return);
+    AddKeyword(Token_Break);
+    AddKeyword(Token_Continue);
 
     tokens = AllocateArray(sizeof(Token));
 
@@ -224,49 +227,49 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
         switch (character)
         {
-            case '(': AddNewToken(Token_LeftBracket, NULL);
-                continue;
-            case ')': AddNewToken(Token_RightBracket, NULL);
-                continue;
-            case '{': AddNewToken(Token_LeftCurlyBracket, NULL);
-                continue;
-            case '}': AddNewToken(Token_RightCurlyBracket, NULL);
-                continue;
-            case '[': AddNewToken(Token_LeftSquareBracket, NULL);
-                continue;
-            case ']': AddNewToken(Token_RightSquareBracket, NULL);
-                continue;
-            case '.': AddNewToken(Token_Dot, NULL);
-                continue;
-            case ',': AddNewToken(Token_Comma, NULL);
-                continue;
-            case ';': AddNewToken(Token_Semicolon, NULL);
-                continue;
-            case '@': AddNewToken(Token_At, NULL);
-                continue;
+        case '(': AddNewToken(Token_LeftBracket, NULL);
+            continue;
+        case ')': AddNewToken(Token_RightBracket, NULL);
+            continue;
+        case '{': AddNewToken(Token_LeftCurlyBracket, NULL);
+            continue;
+        case '}': AddNewToken(Token_RightCurlyBracket, NULL);
+            continue;
+        case '[': AddNewToken(Token_LeftSquareBracket, NULL);
+            continue;
+        case ']': AddNewToken(Token_RightSquareBracket, NULL);
+            continue;
+        case '.': AddNewToken(Token_Dot, NULL);
+            continue;
+        case ',': AddNewToken(Token_Comma, NULL);
+            continue;
+        case ';': AddNewToken(Token_Semicolon, NULL);
+            continue;
+        case '@': AddNewToken(Token_At, NULL);
+            continue;
 
-            case '=': AddDoubleSymbolToken(Token_Equals, (SecondSymbol[]){{'=', Token_EqualsEquals}}, 1);
-                continue;
-            case '!': AddDoubleSymbolToken(Token_Exclamation, (SecondSymbol[]){{'=', Token_ExclamationEquals}}, 1);
-                continue;
-            case '<': AddDoubleSymbolToken(Token_LeftAngleBracket, (SecondSymbol[]){{'=', Token_LeftAngleEquals}}, 1);
-                continue;
-            case '>': AddDoubleSymbolToken(Token_RightAngleBracket, (SecondSymbol[]){{'=', Token_RightAngleEquals}}, 1);
-                continue;
-            case '+': AddDoubleSymbolToken(Token_Plus, (SecondSymbol[]){{'+', Token_PlusPlus}, {'=', Token_PlusEquals}}, 2);
-                continue;
-            case '-': AddDoubleSymbolToken(Token_Minus, (SecondSymbol[]){{'-', Token_MinusMinus}, {'=', Token_MinusEquals}}, 2);
-                continue;
-            case '*': AddDoubleSymbolToken(Token_Asterisk, (SecondSymbol[]){{'=', Token_AsteriskEquals}}, 1);
-                continue;
-            case '/': AddDoubleSymbolToken(Token_Slash, (SecondSymbol[]){{'=', Token_SlashEquals}}, 1);
-                continue;
-            case '&': AddDoubleSymbolToken(Token_Ampersand, (SecondSymbol[]){{'&', Token_AmpersandAmpersand}}, 1);
-                continue;
-            case '|': AddDoubleSymbolToken(Token_Pipe, (SecondSymbol[]){{'|', Token_PipePipe}}, 1);
-                continue;
+        case '=': AddDoubleSymbolToken(Token_Equals, (SecondSymbol[]){{'=', Token_EqualsEquals}}, 1);
+            continue;
+        case '!': AddDoubleSymbolToken(Token_Exclamation, (SecondSymbol[]){{'=', Token_ExclamationEquals}}, 1);
+            continue;
+        case '<': AddDoubleSymbolToken(Token_LeftAngleBracket, (SecondSymbol[]){{'=', Token_LeftAngleEquals}}, 1);
+            continue;
+        case '>': AddDoubleSymbolToken(Token_RightAngleBracket, (SecondSymbol[]){{'=', Token_RightAngleEquals}}, 1);
+            continue;
+        case '+': AddDoubleSymbolToken(Token_Plus, (SecondSymbol[]){{'+', Token_PlusPlus}, {'=', Token_PlusEquals}}, 2);
+            continue;
+        case '-': AddDoubleSymbolToken(Token_Minus, (SecondSymbol[]){{'-', Token_MinusMinus}, {'=', Token_MinusEquals}}, 2);
+            continue;
+        case '*': AddDoubleSymbolToken(Token_Asterisk, (SecondSymbol[]){{'=', Token_AsteriskEquals}}, 1);
+            continue;
+        case '/': AddDoubleSymbolToken(Token_Slash, (SecondSymbol[]){{'=', Token_SlashEquals}}, 1);
+            continue;
+        case '&': AddDoubleSymbolToken(Token_Ampersand, (SecondSymbol[]){{'&', Token_AmpersandAmpersand}}, 1);
+            continue;
+        case '|': AddDoubleSymbolToken(Token_Pipe, (SecondSymbol[]){{'|', Token_PipePipe}}, 1);
+            continue;
 
-            default: break;
+        default: break;
         }
 
         if (isdigit(character)) // number literal
