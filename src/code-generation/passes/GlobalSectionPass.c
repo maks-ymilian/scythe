@@ -14,8 +14,31 @@ static void AddToInitSection(const NodePtr* node)
     ArrayAdd(&block->statements, node);
 }
 
-static Result VisitBlock(const BlockStmt* block)
+static Result VisitBlock(BlockStmt* block)
 {
+    for (int i = 0; i < block->statements.length; ++i)
+    {
+        const NodePtr* stmt = block->statements.array[i];
+        switch (stmt->type)
+        {
+        case Node_Block:
+        {
+            HANDLE_ERROR(VisitBlock(stmt->ptr));
+            break;
+        }
+        case Node_FunctionDeclaration:
+        {
+            AddToInitSection(stmt);
+            ArrayRemove(&block->statements, i);
+            i--;
+            break;
+        }
+        case Node_ExpressionStatement:
+        case Node_VariableDeclaration:
+            break;
+        default: assert(0);
+        }
+    }
     return SUCCESS_RESULT;
 }
 

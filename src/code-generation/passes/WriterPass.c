@@ -81,6 +81,8 @@ static Result VisitSection(const SectionStmt* section)
         case Node_ExpressionStatement:
             WriteString("expression\n");
             break;
+        case Node_Block:
+            break;
         default: printf("%d", stmt->type);
             assert(0);
         }
