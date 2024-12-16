@@ -21,6 +21,8 @@ set(SOURCES
 
 project(${PROJECT_NAME} C)
 
+add_compile_options(-Werror)
+
 add_compile_options(-fsanitize=address,undefined -g)
 add_link_options(-fsanitize=address,undefined)
 
