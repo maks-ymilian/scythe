@@ -4,9 +4,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../data-structures/MemoryStream.h"
-#include "../../Result.h"
-#include "../../SyntaxTree.h"
+#include "data-structures/MemoryStream.h"
+#include "Result.h"
+#include "SyntaxTree.h"
 
 static MemoryStream* stream;
 
@@ -21,10 +21,10 @@ static void WriteInteger(const long integer)
 
 static void WriteFloat(const double value)
 {
-    const int size = snprintf(NULL, 0,"%.14lf\n", value);
+    const int size = snprintf(NULL, 0, "%.14lf\n", value);
     assert(size > 0);
     char string[size + 1];
-    snprintf(NULL, 0,"%.14lf\n", value);
+    snprintf(NULL, 0, "%.14lf\n", value);
     StreamWrite(stream, string, sizeof(string) - 1);
 }
 
@@ -37,11 +37,6 @@ static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 }
 
 static Result VisitVariableDeclaration(const VarDeclStmt* varDecl)
-{
-    return SUCCESS_RESULT;
-}
-
-static Result VisitBlock(const BlockStmt* block)
 {
     return SUCCESS_RESULT;
 }
@@ -71,7 +66,27 @@ static Result VisitSection(const SectionStmt* section)
     WriteChar('\n');
 
     assert(section->block.type == Node_Block);
-    HANDLE_ERROR(VisitBlock(section->block.ptr));
+    const BlockStmt* block = section->block.ptr;
+    for (int i = 0; i < block->statements.length; ++i)
+    {
+        const NodePtr* stmt = block->statements.array[i];
+        switch (stmt->type)
+        {
+        case Node_FunctionDeclaration:
+            WriteString("function\n");
+            break;
+        case Node_VariableDeclaration:
+            WriteString("variable\n");
+            break;
+        case Node_ExpressionStatement:
+            WriteString("expression\n");
+            break;
+        default: printf("%d", stmt->type);
+            assert(0);
+        }
+    }
+
+    WriteChar('\n');
 
     return SUCCESS_RESULT;
 }
@@ -80,7 +95,7 @@ static Result VisitModule(const ModuleNode* module)
 {
     if (module->statements.length != 0)
     {
-        WriteString("\n// Module: ");
+        WriteString("// Module: ");
         WriteString(module->path);
         WriteChar('\n');
     }
@@ -90,8 +105,11 @@ static Result VisitModule(const ModuleNode* module)
         const NodePtr* stmt = module->statements.array[i];
         switch (stmt->type)
         {
-        case Node_Section: return VisitSection(stmt->ptr);
-        case Node_Import: return SUCCESS_RESULT;
+        case Node_Section:
+            VisitSection(stmt->ptr);
+            break;
+        case Node_Import:
+            break;
         default: assert(0);
         }
     }

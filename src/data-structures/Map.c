@@ -195,7 +195,6 @@ bool MapAdd(Map* map, const char* key, const void* value)
     return true;
 }
 
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
 bool MapRemove(Map* map, const char* key)
 {
     const size_t index = GetIndex(map, key);
