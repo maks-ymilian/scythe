@@ -10,17 +10,20 @@
 #define ERROR_RESULT_TOKEN(message, lineNumber, tokenType) (Result){false, true, message, lineNumber, tokenType};
 
 #define HANDLE_ERROR(function)\
-{const Result _res = function;\
-if (_res.hasError)\
-    return _res;}
+do{\
+    const Result _res = function;\
+    if (_res.hasError)\
+        return _res;\
+}\
+while(0)
 
 typedef struct
 {
-	bool success;
-	bool hasError;
-	const char* errorMessage;
-	int lineNumber;
-	TokenType tokenType;
-}Result;
+    bool success;
+    bool hasError;
+    const char* errorMessage;
+    int lineNumber;
+    TokenType tokenType;
+} Result;
 
 void PrintError(Result result);

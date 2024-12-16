@@ -633,7 +633,7 @@ static Result ParseReturnStatement(NodePtr* out)
 
     SET_LINE_NUMBER
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr))
+    HANDLE_ERROR(ParseExpression(&expr));
 
     if (MatchOne(Token_Semicolon) == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)

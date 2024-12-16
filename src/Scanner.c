@@ -277,7 +277,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
         else if (isalpha(character) || character == '_') // identifier / keyword
             ScanWord();
         else if (character == '"') // string literal
-            HANDLE_ERROR(ScanStringLiteral())
+            HANDLE_ERROR(ScanStringLiteral());
         else // error
             return ERROR_RESULT("Unexpected character", currentLine);
     }
