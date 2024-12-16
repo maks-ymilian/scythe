@@ -11,11 +11,12 @@ set(SOURCES
         "src/code-generation/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
-        "src/code-generation/analyzer/Analyzer.c"
+        "src/code-generation/passes/ResolverPass.c"
         "src/Compiler.c"
         "src/FileUtils.c"
         "src/BuiltInImports.c"
-        "src/code-generation/writer/Writer.c"
+        "src/code-generation/passes/WriterPass.c"
+        "src/code-generation/passes/GlobalSectionPass.c"
 )
 
 project(${PROJECT_NAME} C)

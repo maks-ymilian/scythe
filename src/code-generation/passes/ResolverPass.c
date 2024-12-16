@@ -1,4 +1,4 @@
-#include "Analyzer.h"
+#include "ResolverPass.h"
 
 #include <assert.h>
 
@@ -41,7 +41,7 @@ static Result VisitModule(const ModuleNode* module)
     return SUCCESS_RESULT;
 }
 
-Result Analyze(const AST* ast)
+Result ResolverPass(const AST* ast)
 {
     for (int i = 0; i < ast->nodes.length; ++i)
     {

@@ -1,12 +1,12 @@
-#include "Writer.h"
+#include "WriterPass.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
-#include "data-structures/MemoryStream.h"
-#include "Result.h"
-#include "SyntaxTree.h"
+#include "../../data-structures/MemoryStream.h"
+#include "../../Result.h"
+#include "../../SyntaxTree.h"
 
 static MemoryStream* stream;
 
@@ -99,7 +99,7 @@ static Result VisitModule(const ModuleNode* module)
     return SUCCESS_RESULT;
 }
 
-Result Write(const AST* ast, char** outBuffer, size_t* outLength)
+Result WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
 {
     stream = AllocateMemoryStream();
 

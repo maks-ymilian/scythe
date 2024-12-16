@@ -3,4 +3,4 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result Analyze(const AST* ast);
+Result GlobalSectionPass(const AST* ast);
