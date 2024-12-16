@@ -2,9 +2,20 @@
 
 #include <assert.h>
 
-#include "ExpressionAnalyzer.h"
+static Result VisitExpression(const NodePtr* in)
+{
+    switch (in->type)
+    {
+    case Node_Binary: return SUCCESS_RESULT;
+    case Node_Unary: return SUCCESS_RESULT;
+    case Node_Literal: return SUCCESS_RESULT;
+    case Node_MemberAccess: return SUCCESS_RESULT;
+    default:
+        assert(0);
+    }
+}
 
-static Result AnalyzeStatement(const NodePtr* node)
+static Result VisitStatement(const NodePtr* node)
 {
     switch (node->type)
     {
@@ -23,10 +34,10 @@ static Result AnalyzeStatement(const NodePtr* node)
     }
 }
 
-static Result AnalyzeModule(const ModuleNode* module)
+static Result VisitModule(const ModuleNode* module)
 {
     for (int i = 0; i < module->statements.length; ++i)
-        HANDLE_ERROR(AnalyzeStatement(module->statements.array[i]));
+        HANDLE_ERROR(VisitStatement(module->statements.array[i]));
     return SUCCESS_RESULT;
 }
 
@@ -36,7 +47,7 @@ Result Analyze(const AST* ast)
     {
         const NodePtr* node = ast->nodes.array[i];
         assert(node->type == Node_Module);
-        HANDLE_ERROR(AnalyzeModule(node->ptr));
+        HANDLE_ERROR(VisitModule(node->ptr));
     }
 
     return SUCCESS_RESULT;

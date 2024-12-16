@@ -11,7 +11,6 @@ set(SOURCES
         "src/code-generation/CodeGenerator.c"
         "src/data-structures/Map.c"
         "src/data-structures/MemoryStream.c"
-        "src/code-generation/analyzer/ExpressionAnalyzer.c"
         "src/code-generation/analyzer/Analyzer.c"
         "src/Compiler.c"
         "src/FileUtils.c"
