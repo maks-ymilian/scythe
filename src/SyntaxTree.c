@@ -33,14 +33,14 @@ static void FreeNode(const NodePtr node)
     case Node_Literal:
     {
         const LiteralExpr* ptr = node.ptr;
-        if (ptr->type == Literal_Identifier) free(ptr->identifier);
+        if (ptr->type == Literal_Identifier) free(ptr->identifier.text);
         if (ptr->type == Literal_String) free(ptr->string);
         break;
     }
     case Node_FunctionCall:
     {
         const FuncCallExpr* ptr = node.ptr;
-        free(ptr->identifier);
+        free(ptr->identifier.text);
         for (int i = 0; i < ptr->parameters.length; ++i)
             FreeNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
@@ -49,7 +49,7 @@ static void FreeNode(const NodePtr node)
     case Node_ArrayAccess:
     {
         const ArrayAccessExpr* ptr = node.ptr;
-        free(ptr->identifier);
+        free(ptr->identifier.text);
         FreeNode(ptr->subscript);
         break;
     }

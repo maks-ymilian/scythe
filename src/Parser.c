@@ -177,8 +177,13 @@ static Result ParseArrayAccess(NodePtr* out)
         &(ArrayAccessExpr)
         {
             .lineNumber = identifier->lineNumber,
-            .identifier = AllocateString(identifier->text),
             .subscript = subscript,
+            .identifier =
+            (IdentifierReference)
+            {
+                .text = AllocateString(identifier->text),
+                .reference = NULL_NODE,
+            },
         }, sizeof(ArrayAccessExpr), Node_ArrayAccess);
     return SUCCESS_RESULT;
 }
@@ -238,8 +243,13 @@ static Result ParseFunctionCall(NodePtr* out)
         &(FuncCallExpr)
         {
             .lineNumber = identifier->lineNumber,
-            .identifier = AllocateString(identifier->text),
             .parameters = params,
+            .identifier =
+            (IdentifierReference)
+            {
+                .text = AllocateString(identifier->text),
+                .reference = NULL_NODE,
+            },
         }, sizeof(FuncCallExpr), Node_FunctionCall);
     return SUCCESS_RESULT;
 }
@@ -283,7 +293,12 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
         *out = (LiteralExpr)
         {
             .type = Literal_Identifier,
-            .identifier = AllocateString(token.text),
+            .identifier =
+            (IdentifierReference)
+            {
+                .text = AllocateString(token.text),
+                .reference = NULL_NODE,
+            },
         };
         return SUCCESS_RESULT;
     }

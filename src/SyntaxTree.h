@@ -43,6 +43,13 @@ typedef struct
     NodeType type;
 } NodePtr;
 
+typedef struct
+{
+    char* text;
+    NodePtr reference;
+} IdentifierReference;
+
+
 typedef enum
 {
     Binary_BoolAnd,
@@ -73,7 +80,6 @@ typedef struct
     NodePtr left;
     NodePtr right;
 } BinaryExpr;
-
 
 typedef struct
 {
@@ -108,7 +114,7 @@ typedef struct
         double floatValue;
         uint64_t intValue;
         char* string;
-        char* identifier;
+        IdentifierReference identifier;
         bool boolean;
     };
 } LiteralExpr;
@@ -118,14 +124,14 @@ typedef typeof(((LiteralExpr*)0)->type) LiteralType;
 typedef struct
 {
     int lineNumber;
-    char* identifier;
+    IdentifierReference identifier;
     Array parameters;
 } FuncCallExpr;
 
 typedef struct
 {
     int lineNumber;
-    char* identifier;
+    IdentifierReference identifier;
     NodePtr subscript;
 } ArrayAccessExpr;
 
