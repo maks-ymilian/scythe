@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
+#include <data-structures/Map.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -294,22 +295,29 @@ void CompileProgramTree(char** outCode, size_t* outLength)
 {
     AST merged = {.nodes = AllocateArray(sizeof(NodePtr))};
 
+    Map moduleNames = AllocateMap(0);
     const Array programNodes = SortProgramTree();
     for (int i = 0; i < programNodes.length; ++i)
     {
         const ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
+        char* moduleName = AllocBaseFileName(node->path);
+        if (!MapAdd(&moduleNames, moduleName, NULL))
+            HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName), -1),
+                "Import", node->path);
+
         const NodePtr module = AllocASTNode(
             &(ModuleNode)
             {
                 .path = AllocateString(node->path),
-                .name = AllocBaseFileName(node->path),
+                .name = moduleName,
                 .statements = node->ast.nodes,
             },
             sizeof(ModuleNode), Node_Module);
         ArrayAdd(&merged.nodes, &module);
     }
     FreeArray(&programNodes);
+    FreeMap(&moduleNames);
 
     HandleError(GenerateCode(&merged, outCode, outLength),
                 "Code generation", NULL);
