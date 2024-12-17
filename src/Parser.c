@@ -837,6 +837,45 @@ static Result ParseSectionStatement(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
+static PrimitiveType TokenTypeToPrimitiveType(const TokenType tokenType)
+{
+    switch (tokenType)
+    {
+    case Token_Void: return Primitive_Void;
+    case Token_Int: return Primitive_Int;
+    case Token_Float: return Primitive_Float;
+    case Token_String: return Primitive_String;
+    case Token_Bool: return Primitive_Bool;
+    default: assert(0);
+    }
+}
+
+static TypeReference TokenToTypeReference(const Token token)
+{
+    switch (token.type)
+    {
+    case Token_Void:
+    case Token_Int:
+    case Token_Float:
+    case Token_String:
+    case Token_Bool:
+        return (TypeReference)
+        {
+            .text = NULL,
+            .primitive = true,
+            .value.primitiveType = TokenTypeToPrimitiveType(token.type),
+        };
+    case Token_Identifier:
+        return (TypeReference)
+        {
+            .text = AllocateString(token.text),
+            .primitive = false,
+            .value.reference = NULL_NODE,
+        };
+    default: assert(0);
+    }
+}
+
 static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
     long SET_LINE_NUMBER
@@ -888,9 +927,9 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     *out = AllocASTNode(
         &(VarDeclStmt)
         {
+            .type = TokenToTypeReference(*type),
             .lineNumber = type->lineNumber,
             .name = AllocateString(identifier->text),
-            .typeName = AllocateString(type->text),
             .externalName = AllocateString(externalIdentifier.text),
             .initializer = initializer,
             .arrayLength = NULL_NODE,
@@ -954,9 +993,9 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     *out = AllocASTNode(
         &(FuncDeclStmt)
         {
+            .type = TokenToTypeReference(*type),
             .lineNumber = type->lineNumber,
             .name = AllocateString(identifier->text),
-            .typeName = AllocateString(type->text),
             .externalName = AllocateString(externalIdentifier.text),
             .parameters = params,
             .block = block,
@@ -1046,9 +1085,9 @@ static Result ParseArrayDeclaration(NodePtr* out)
     *out = AllocASTNode(
         &(VarDeclStmt)
         {
+            .type = TokenToTypeReference(*type),
             .lineNumber = identifier->lineNumber,
             .name = AllocateString(identifier->text),
-            .typeName = AllocateString(type->text),
             .externalName = NULL,
             .arrayLength = length,
             .initializer = NULL_NODE,

@@ -243,21 +243,35 @@ static Result VisitBlock(const BlockStmt* block)
     return SUCCESS_RESULT;
 }
 
+static Result GetType(TypeReference* inout, const int lineNumber)
+{
+    if (inout->primitive)
+        return SUCCESS_RESULT;
+
+    HANDLE_ERROR(GetDeclaration(
+        inout->text,
+        &inout->value.reference,
+        lineNumber));
+
+    return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(const NodePtr* node)
 {
     switch (node->type)
     {
     case Node_VariableDeclaration:
     {
-        const VarDeclStmt* varDecl = node->ptr;
+        VarDeclStmt* varDecl = node->ptr;
         HANDLE_ERROR(VisitExpression(&varDecl->initializer));
         HANDLE_ERROR(VisitExpression(&varDecl->arrayLength));
         HANDLE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
+        HANDLE_ERROR(GetType(&varDecl->type, varDecl->lineNumber));
         return SUCCESS_RESULT;
     }
     case Node_FunctionDeclaration:
     {
-        const FuncDeclStmt* funcDecl = node->ptr;
+        FuncDeclStmt* funcDecl = node->ptr;
 
         PushScope();
         for (int i = 0; i < funcDecl->parameters.length; ++i)
@@ -272,6 +286,7 @@ static Result VisitStatement(const NodePtr* node)
         }
         PopScope(NULL);
 
+        HANDLE_ERROR(GetType(&funcDecl->type, funcDecl->lineNumber));
         HANDLE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
         return SUCCESS_RESULT;
     }

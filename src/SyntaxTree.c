@@ -83,7 +83,7 @@ void FreeASTNode(const NodePtr node)
     case Node_VariableDeclaration:
     {
         const VarDeclStmt* ptr = node.ptr;
-        free(ptr->typeName);
+        free(ptr->type.text);
         free(ptr->name);
         free(ptr->externalName);
         FreeASTNode(ptr->initializer);
@@ -93,7 +93,7 @@ void FreeASTNode(const NodePtr node)
     case Node_FunctionDeclaration:
     {
         const FuncDeclStmt* ptr = node.ptr;
-        free(ptr->typeName);
+        free(ptr->type.text);
         free(ptr->name);
         free(ptr->externalName);
         for (int i = 0; i < ptr->parameters.length; ++i)
