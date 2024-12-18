@@ -317,24 +317,32 @@ static Result VisitStatement(const NodePtr* node)
     {
         const IfStmt* ifStmt = node->ptr;
         HANDLE_ERROR(VisitExpression(&ifStmt->expr));
+        PushScope();
         HANDLE_ERROR(VisitStatement(&ifStmt->trueStmt));
+        PopScope(NULL);
+        PushScope();
         HANDLE_ERROR(VisitStatement(&ifStmt->falseStmt));
+        PopScope(NULL);
         return SUCCESS_RESULT;
     }
     case Node_While:
     {
         const WhileStmt* whileStmt = node->ptr;
         HANDLE_ERROR(VisitExpression(&whileStmt->expr));
+        PushScope();
         HANDLE_ERROR(VisitStatement(&whileStmt->stmt));
+        PopScope(NULL);
         return SUCCESS_RESULT;
     }
     case Node_For:
     {
         const ForStmt* forStmt = node->ptr;
+        PushScope();
         HANDLE_ERROR(VisitStatement(&forStmt->initialization));
         HANDLE_ERROR(VisitExpression(&forStmt->condition));
         HANDLE_ERROR(VisitExpression(&forStmt->increment));
         HANDLE_ERROR(VisitStatement(&forStmt->stmt));
+        PopScope(NULL);
         return SUCCESS_RESULT;
     }
 
