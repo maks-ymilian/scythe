@@ -196,6 +196,20 @@ char* AllocBaseFileName(const char* path)
     return fileName;
 }
 
+static void AddBuiltInImport(AST* ast)
+{
+    const NodePtr builtInImport = AllocASTNode(
+        &(ImportStmt)
+        {
+            .path = AllocateString("jsfx"),
+            .moduleName = NULL,
+            .public = false,
+            .lineNumber = -1,
+        },
+        sizeof(ImportStmt), Node_Import);
+    ArrayInsert(&ast->nodes, &builtInImport, 0);
+}
+
 static ProgramNode* GenerateProgramNode(
     const char* path,
     const char* moduleName,
@@ -240,6 +254,9 @@ static ProgramNode* GenerateProgramNode(
                 "Parse", path);
     FreeTokenArray(&tokens);
 
+    if (!isBuiltIn)
+        AddBuiltInImport(&programNode->ast);
+
     programNode->dependencies = AllocateArray(sizeof(ProgramDependency));
     for (int i = 0; i < programNode->ast.nodes.length; ++i)
     {
@@ -259,17 +276,6 @@ static ProgramNode* GenerateProgramNode(
 
         HandleError(CheckForCircularDependency(programNode, dependency.node, importStmt->lineNumber),
                     "Import", path);
-    }
-
-    if (!isBuiltIn)
-    {
-        const ProgramDependency builtIn =
-        {
-            .node = GenerateProgramNode("jsfx", NULL, -1, path),
-            .importLineNumber = -1,
-            .publicImport = false,
-        };
-        ArrayAdd(&programNode->dependencies, &builtIn);
     }
 
     programNode->searched = false;
@@ -312,7 +318,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
 
         if (!MapAdd(&moduleNames, node->moduleName, NULL))
             HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", node->moduleName), -1),
-                "Import", node->path);
+                        "Import", node->path);
 
         const NodePtr module = AllocASTNode(
             &(ModuleNode)
