@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
-#include <data-structures/Map.h>
 
 #include "Scanner.h"
 #include "Parser.h"
@@ -15,6 +14,7 @@
 #include "StringUtils.h"
 #include "FileUtils.h"
 #include "BuiltInImports.h"
+#include "data-structures/Map.h"
 
 static const char* watermark =
         "//\n"

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <StringUtils.h>
+#include <stddef.h>
 
 #define SET_LINE_NUMBER lineNumber = ((Token*)tokens.array[pointer])->lineNumber;
 
@@ -24,7 +25,7 @@ static bool IsDigitBase(const char c, const int base)
     if (base == 16) return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     if (base == 2) return c == '0' || c == '1';
     if (base == 8) return c >= '0' && c <= '7';
-    assert(0);
+    unreachable();
 }
 
 static Result StringToUInt64(const char* string, const int base, const int lineNumber, uint64_t* out)
@@ -319,7 +320,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
         };
         return SUCCESS_RESULT;
     }
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -410,7 +411,7 @@ static Result ParsePrimary(NodePtr* out)
         *out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
         return SUCCESS_RESULT;
     }
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -423,7 +424,7 @@ static UnaryOperator TokenTypeToUnaryOperator(const TokenType tokenType)
     case Token_Exclamation: return Unary_Negate;
     case Token_PlusPlus: return Unary_Increment;
     case Token_MinusMinus: return Unary_Decrement;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -474,7 +475,7 @@ static BinaryOperator TokenTypeToBinaryOperator(const TokenType tokenType)
     case Token_MinusEquals: return Binary_SubtractAssign;
     case Token_AsteriskEquals: return Binary_MultiplyAssign;
     case Token_SlashEquals: return Binary_DivideAssign;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -846,7 +847,7 @@ static PrimitiveType TokenTypeToPrimitiveType(const TokenType tokenType)
     case Token_Float: return Primitive_Float;
     case Token_String: return Primitive_String;
     case Token_Bool: return Primitive_Bool;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -872,7 +873,7 @@ static TypeReference TokenToTypeReference(const Token token)
             .primitive = false,
             .value.reference = NULL_NODE,
         };
-    default: assert(0);
+    default: unreachable();
     }
 }
 

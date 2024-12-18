@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdbool.h>
-
 #include "data-structures/Array.h"
 
 #define NULL_NODE (NodePtr){.ptr = NULL, .type = Node_Null}

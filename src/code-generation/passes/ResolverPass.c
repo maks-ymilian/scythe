@@ -2,8 +2,10 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <StringUtils.h>
-#include <data-structures/Map.h>
+#include <stddef.h>
+
+#include "StringUtils.h"
+#include "data-structures/Map.h"
 
 static Array currentAccessibleModules;
 
@@ -235,7 +237,7 @@ static Result VisitExpression(const NodePtr* node)
         return SUCCESS_RESULT;
     }
     case Node_Null: return SUCCESS_RESULT;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -383,7 +385,7 @@ static Result VisitStatement(const NodePtr* node)
     case Node_LoopControl:
     case Node_Null:
         return SUCCESS_RESULT;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
