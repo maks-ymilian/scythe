@@ -1121,7 +1121,8 @@ static Result ParseImportStatement(NodePtr* out)
         &(ImportStmt)
         {
             .lineNumber = import->lineNumber,
-            .file = AllocateString(path->text),
+            .path = AllocateString(path->text),
+            .moduleName = NULL,
             .public = publicFound,
         },
         sizeof(ImportStmt), Node_Import);

@@ -174,7 +174,8 @@ typedef struct
 typedef struct
 {
     int lineNumber;
-    char* file;
+    char* path;
+    char* moduleName;
     bool public;
 } ImportStmt;
 
@@ -285,7 +286,7 @@ typedef struct
 typedef struct
 {
     char* path;
-    char* name;
+    char* moduleName;
     Array statements;
 } ModuleNode;
 

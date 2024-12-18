@@ -71,7 +71,8 @@ void FreeASTNode(const NodePtr node)
     case Node_Import:
     {
         const ImportStmt* ptr = node.ptr;
-        free(ptr->file);
+        free(ptr->path);
+        free(ptr->moduleName);
         break;
     }
     case Node_Section:
@@ -159,7 +160,7 @@ void FreeASTNode(const NodePtr node)
         for (int i = 0; i < ptr->statements.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->statements.array[i]);
         free(ptr->path);
-        free(ptr->name);
+        free(ptr->moduleName);
         break;
     }
 

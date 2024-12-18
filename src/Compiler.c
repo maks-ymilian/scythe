@@ -37,6 +37,7 @@ typedef struct
     AST ast;
     Array dependencies;
     char* path;
+    char* moduleName;
     bool builtIn;
     bool searched;
 } ProgramNode;
@@ -74,6 +75,7 @@ static void FreeProgramTree()
         ProgramNode* node = *(ProgramNode**)programNodes.array[i];
         FreeArray(&node->dependencies);
         free(node->path);
+        free(node->moduleName);
         free(node);
     }
     FreeArray(&programNodes);
@@ -179,7 +181,26 @@ static bool IsSameFileOrBuiltInPath(
     return isSameFile;
 }
 
-static ProgramNode* GenerateProgramNode(const char* path, const int importLineNumber, const char* containingPath)
+char* AllocBaseFileName(const char* path)
+{
+    const size_t length = strlen(path) + 1;
+    char* string = malloc(length);
+    memcpy(string, path, length);
+
+    char* fileName = basename(string);
+
+    const size_t baseNameLength = strlen(fileName) + 1;
+    for (int i = 0; i < baseNameLength; ++i)
+        if (fileName[i] == '.') fileName[i] = '\0';
+
+    return fileName;
+}
+
+static ProgramNode* GenerateProgramNode(
+    const char* path,
+    const char* moduleName,
+    const int importLineNumber,
+    const char* containingPath)
 {
     const char* builtInSource = GetBuiltInSource(path);
     const bool isBuiltIn = builtInSource != NULL;
@@ -200,6 +221,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const int importLineNu
     ArrayAdd(&programNodes, &programNode);
 
     programNode->path = AllocateString(path);
+    programNode->moduleName = moduleName != NULL ? AllocateString(moduleName) : AllocBaseFileName(path);
     programNode->builtIn = isBuiltIn;
 
     const char* source = NULL;
@@ -223,11 +245,13 @@ static ProgramNode* GenerateProgramNode(const char* path, const int importLineNu
     {
         const NodePtr* node = programNode->ast.nodes.array[i];
         if (node->type != Node_Import) break;
-        const ImportStmt* importStmt = node->ptr;
+        ImportStmt* importStmt = node->ptr;
+
+        importStmt->moduleName = AllocBaseFileName(importStmt->path);
 
         ProgramDependency dependency =
         {
-            .node = GenerateProgramNode(importStmt->file, importStmt->lineNumber, path),
+            .node = GenerateProgramNode(importStmt->path, importStmt->moduleName, importStmt->lineNumber, path),
             .importLineNumber = importStmt->lineNumber,
             .publicImport = importStmt->public,
         };
@@ -241,7 +265,7 @@ static ProgramNode* GenerateProgramNode(const char* path, const int importLineNu
     {
         const ProgramDependency builtIn =
         {
-            .node = GenerateProgramNode("jsfx", -1, path),
+            .node = GenerateProgramNode("jsfx", NULL, -1, path),
             .importLineNumber = -1,
             .publicImport = false,
         };
@@ -276,21 +300,6 @@ static Array SortProgramTree()
     return array;
 }
 
-char* AllocBaseFileName(const char* path)
-{
-    const size_t length = strlen(path) + 1;
-    char* string = malloc(length);
-    memcpy(string, path, length);
-
-    char* fileName = basename(string);
-
-    const size_t baseNameLength = strlen(fileName) + 1;
-    for (int i = 0; i < baseNameLength; ++i)
-        if (fileName[i] == '.') fileName[i] = '\0';
-
-    return fileName;
-}
-
 void CompileProgramTree(char** outCode, size_t* outLength)
 {
     AST merged = {.nodes = AllocateArray(sizeof(NodePtr))};
@@ -301,16 +310,15 @@ void CompileProgramTree(char** outCode, size_t* outLength)
     {
         const ProgramNode* node = *(ProgramNode**)programNodes.array[i];
 
-        char* moduleName = AllocBaseFileName(node->path);
-        if (!MapAdd(&moduleNames, moduleName, NULL))
-            HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", moduleName), -1),
+        if (!MapAdd(&moduleNames, node->moduleName, NULL))
+            HandleError(ERROR_RESULT(AllocateString1Str("Module \"%s\" is already defined", node->moduleName), -1),
                 "Import", node->path);
 
         const NodePtr module = AllocASTNode(
             &(ModuleNode)
             {
                 .path = AllocateString(node->path),
-                .name = moduleName,
+                .moduleName = AllocateString(node->moduleName),
                 .statements = node->ast.nodes,
             },
             sizeof(ModuleNode), Node_Module);
@@ -328,7 +336,7 @@ void CompileProgramTree(char** outCode, size_t* outLength)
 void Compile(const char* inputPath, const char* outputPath)
 {
     programNodes = AllocateArray(sizeof(ProgramNode*));
-    GenerateProgramNode(inputPath, -1, NULL);
+    GenerateProgramNode(inputPath, NULL, -1, NULL);
 
     char* outputCode = NULL;
     size_t outputCodeLength = 0;

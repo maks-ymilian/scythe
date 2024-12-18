@@ -5,6 +5,8 @@
 #include <StringUtils.h>
 #include <data-structures/Map.h>
 
+static Array currentAccessibleModules;
+
 static Map modules;
 
 typedef struct Scope Scope;
@@ -79,16 +81,22 @@ static Result GetDeclaration(const char* name, NodePtr* outNode, const int lineN
     return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber);
 }
 
-static Map* GetModule(const char* name)
-{
-    return MapGet(&modules, name);
-}
-
 static bool MemberAccessIsIdentifier(const MemberAccessExpr* memberAccess)
 {
     return memberAccess != NULL &&
            memberAccess->value.type == Node_Literal &&
            ((LiteralExpr*)memberAccess->value.ptr)->type == Literal_Identifier;
+}
+
+static bool IsModuleAccessible(const Map* module)
+{
+    for (int i = 0; i < currentAccessibleModules.length; ++i)
+    {
+        const Map* m = *(Map**)currentAccessibleModules.array[i];
+        if (module == m)
+            return true;
+    }
+    return false;
 }
 
 static Result ResolveModuleAccess(MemberAccessExpr* current)
@@ -103,8 +111,8 @@ static Result ResolveModuleAccess(MemberAccessExpr* current)
         return SUCCESS_RESULT;
 
     const LiteralExpr* currentLiteral = current->value.ptr;
-    const Map* module = GetModule(currentLiteral->identifier.text);
-    if (module == NULL)
+    const Map* module = MapGet(&modules, currentLiteral->identifier.text);
+    if (module == NULL || !IsModuleAccessible(module))
         return SUCCESS_RESULT;
 
     IdentifierReference* nextIdentifier = NULL;
@@ -256,6 +264,25 @@ static Result GetType(TypeReference* inout, const int lineNumber)
     return SUCCESS_RESULT;
 }
 
+static void MakeImportAccessible(const ImportStmt* import, bool topLevel)
+{
+    Map* module = MapGet(&modules, import->moduleName);
+    assert(module != NULL);
+
+    ArrayAdd(&currentAccessibleModules, &module);
+
+    if (import->public || topLevel)
+    {
+        for (MAP_ITERATE(i, module))
+        {
+            const NodePtr* node = i->value;
+            if (node->type == Node_Import &&
+                ((ImportStmt*)node->ptr)->public)
+                MakeImportAccessible(node->ptr, false);
+        }
+    }
+}
+
 static Result VisitStatement(const NodePtr* node)
 {
     switch (node->type)
@@ -346,8 +373,14 @@ static Result VisitStatement(const NodePtr* node)
         return SUCCESS_RESULT;
     }
 
-    case Node_LoopControl:
     case Node_Import:
+    {
+        const ImportStmt* import = node->ptr;
+        HANDLE_ERROR(RegisterDeclaration(import->moduleName, node, import->lineNumber));
+        MakeImportAccessible(import, true);
+        return SUCCESS_RESULT;
+    }
+    case Node_LoopControl:
     case Node_Null:
         return SUCCESS_RESULT;
     default: assert(0);
@@ -362,14 +395,18 @@ static Result VisitModule(const ModuleNode* module)
 
     Map declarations;
     PopScope(&declarations);
-    if (!MapAdd(&modules, module->name, &declarations))
+    if (!MapAdd(&modules, module->moduleName, &declarations))
         assert(0);
+
+    ArrayClear(&currentAccessibleModules);
 
     return SUCCESS_RESULT;
 }
 
 Result ResolverPass(const AST* ast)
 {
+    currentAccessibleModules = AllocateArray(sizeof(Map*));
+
     modules = AllocateMap(sizeof(Map));
     for (int i = 0; i < ast->nodes.length; ++i)
     {
@@ -377,6 +414,8 @@ Result ResolverPass(const AST* ast)
         assert(node->type == Node_Module);
         HANDLE_ERROR(VisitModule(node->ptr));
     }
+
+    FreeArray(&currentAccessibleModules);
 
     for (MAP_ITERATE(i, &modules))
         FreeMap(i->value);
