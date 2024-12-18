@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 #define LOAD_FACTOR 0.75
 #define START_SIZE 16
@@ -53,7 +52,7 @@ static size_t Hash(const char* string)
     int c;
 
     while ((c = *string++))
-        hash = ((hash << 5) + hash) + c;
+        hash = (hash << 5) + hash + c;
 
     return hash;
 }

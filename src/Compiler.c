@@ -240,7 +240,7 @@ static ProgramNode* GenerateProgramNode(
 
     const char* source = NULL;
     if (!isBuiltIn)
-        HandleError(GetSourceFromImportPath(path, importLineNumber, (char**)&source),
+        HandleError(GetSourceFromImportPath(path, importLineNumber, &source),
                     "Read", containingPath);
     else
         source = builtInSource;

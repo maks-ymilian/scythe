@@ -563,7 +563,7 @@ static Result ParseAssignment(NodePtr* out)
     Array exprArray = AllocateArray(sizeof(NodePtr));
     ArrayAdd(&exprArray, &left);
 
-    const TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
+    constexpr TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
     const Token* operator = Match(validOperators, 5);
     Array operatorArray = AllocateArray(sizeof(Token));
     while (operator != NULL)
@@ -767,14 +767,6 @@ static Token* PeekType(const int offset)
     return type;
 }
 
-static Token* MatchType()
-{
-    Token* type = PeekType(0);
-    if (type != NULL)
-        Consume();
-    return type;
-}
-
 static Result ParseSectionStatement(NodePtr* out)
 {
     long SET_LINE_NUMBER
@@ -788,7 +780,7 @@ static Result ParseSectionStatement(NodePtr* out)
     if (identifier == NULL)
         return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_At);
 
-    const char sectionNames[6][10] =
+    constexpr char sectionNames[6][10] =
     {
         "init",
         "slider",
@@ -797,7 +789,7 @@ static Result ParseSectionStatement(NodePtr* out)
         "serialize",
         "gfx",
     };
-    const SectionType sectionTypes[] =
+    constexpr SectionType sectionTypes[] =
     {
         Section_Init,
         Section_Slider,

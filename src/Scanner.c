@@ -1,7 +1,6 @@
 #include "Scanner.h"
 
 #include <stdlib.h>
-#include <stdbool.h>
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
@@ -40,7 +39,7 @@ static bool IsAtEnd()
 
 static const char* AllocateSubstring(const long start, const long end)
 {
-    int length = (end + 1) - start;
+    int length = end + 1 - start;
     length += 1;
     char* text = malloc(length);
     assert(text != NULL);

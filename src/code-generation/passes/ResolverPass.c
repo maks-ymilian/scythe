@@ -266,7 +266,7 @@ static Result GetType(TypeReference* inout, const int lineNumber)
     return SUCCESS_RESULT;
 }
 
-static void MakeImportAccessible(const ImportStmt* import, bool topLevel)
+static void MakeImportAccessible(const ImportStmt* import, const bool topLevel)
 {
     Map* module = MapGet(&modules, import->moduleName);
     assert(module != NULL);
