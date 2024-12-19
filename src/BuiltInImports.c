@@ -6,7 +6,7 @@
 
 //@formatter:off
 
-static constexpr char jsfx[] = RAW_STRING_LITERAL(
+static const char jsfx[] = RAW_STRING_LITERAL(
     public import "math"
     public import "str"
     // public import "gfx"
@@ -169,7 +169,7 @@ static constexpr char jsfx[] = RAW_STRING_LITERAL(
     // get_host_placement([chain_pos, flags])
 );
 
-static constexpr char math[] = RAW_STRING_LITERAL(
+static const char math[] = RAW_STRING_LITERAL(
     public external float sin(float angle);
     public external float cos(float angle);
     public external float tan(float angle);
@@ -198,7 +198,7 @@ static constexpr char math[] = RAW_STRING_LITERAL(
     }
 );
 
-static constexpr char string[] = RAW_STRING_LITERAL(
+static const char string[] = RAW_STRING_LITERAL(
     public external int strlen(string str);
     public external string strcpy(string str, string srcstr);
     public external string strcat(string str, string srcstr);
@@ -218,7 +218,7 @@ static constexpr char string[] = RAW_STRING_LITERAL(
     // matchi(needle, haystack, ...)
 );
 
-static constexpr char gfx[] = RAW_STRING_LITERAL(
+static const char gfx[] = RAW_STRING_LITERAL(
     public import "mouse"
 
     public struct Color
@@ -324,7 +324,7 @@ static constexpr char gfx[] = RAW_STRING_LITERAL(
     public void line(int x, int y, int x2, int y2, bool aa = true) { gfx_line(x, y, x2, y2, aa); }
 );
 
-static constexpr char mouse[] = RAW_STRING_LITERAL(
+static const char mouse[] = RAW_STRING_LITERAL(
 
     public external int x mouse_x;
     public external int y mouse_y;

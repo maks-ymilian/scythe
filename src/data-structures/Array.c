@@ -11,7 +11,7 @@ Array AllocateArray(const size_t sizeOfType)
 {
     assert(sizeOfType > 0);
 
-    constexpr size_t count = START_SIZE;
+    const size_t count = START_SIZE;
 
     Array array;
     array.array = malloc(count * sizeof(void*));
