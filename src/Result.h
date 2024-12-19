@@ -1,29 +1,68 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
 
 #include "Token.h"
 
-#define SUCCESS_RESULT (Result){true, false, NULL, 0}
-#define ERROR_RESULT(message, lineNumber) (Result){false, true, message, lineNumber}
-#define ERROR_RESULT_TOKEN(message, lineNumber, tokenType) (Result){false, true, message, lineNumber, tokenType};
+#define SUCCESS_RESULT \
+(Result)\
+{\
+    .type = Result_Success,\
+    .errorMessage = NULL,\
+    .lineNumber = -1,\
+    .filePath = NULL,\
+}
 
-#define HANDLE_ERROR(function)\
-do{\
+#define ERROR_RESULT(message, line, path) \
+(Result)\
+{\
+    .type = Result_Error,\
+    .errorMessage = message,\
+    .lineNumber = line,\
+    .filePath = path,\
+}
+
+#define NOT_FOUND_RESULT \
+(Result)\
+{\
+    .type = Result_NotFound,\
+    .errorMessage = NULL,\
+    .lineNumber = -1,\
+    .filePath = NULL,\
+}
+
+#define PROPAGATE_ERROR(function)\
+do\
+{\
     const Result _res = function;\
-    if (_res.hasError)\
+    if (_res.type == Result_Error)\
         return _res;\
 }\
 while(0)
 
+typedef enum
+{
+    Result_Success,
+    Result_Error,
+    Result_NotFound,
+}ResultType;
+
 typedef struct
 {
-    bool success;
-    bool hasError;
-    const char* errorMessage;
+    ResultType type;
     int lineNumber;
-    TokenType tokenType;
+    const char* errorMessage;
+    const char* filePath;
 } Result;
 
-void PrintError(Result result);
+static inline void PrintError(const Result result)
+{
+    assert(result.type == Result_Error);
+    assert(result.errorMessage != NULL);
+    printf("%s", result.errorMessage);
+    if (result.lineNumber > 0)
+        printf(" (line %d)", result.lineNumber);
+    if (result.filePath != NULL)
+        printf(" (%s)", result.filePath);
+}

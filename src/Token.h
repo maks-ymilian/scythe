@@ -1,9 +1,11 @@
 #pragma once
 
-#include <assert.h>
+#include <stddef.h>
 
 typedef enum
 {
+    Token_Null,
+
     // 1 character
     Token_LeftBracket,
     Token_RightBracket,
@@ -147,6 +149,6 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 
     case Token_EndOfFile: return "EndOfFile";
 
-    default: assert(0);
+    default: unreachable();
     }
 }

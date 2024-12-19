@@ -9,15 +9,10 @@
 #include <StringUtils.h>
 #include <stddef.h>
 
-#define SET_LINE_NUMBER lineNumber = ((Token*)tokens.array[pointer])->lineNumber;
-
-#define NOT_FOUND_RESULT (Result){false, false, NULL, 0}
-#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, lineNumber);
-#define ERROR_RESULT_LINE_TOKEN(message, tokenType) ERROR_RESULT_TOKEN(message, lineNumber, tokenType)
-#define NOT_FOUND_RESULT_LINE_TOKEN(message, tokenType) (Result){false, false, message, lineNumber, tokenType};
+#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken(0)->lineNumber, NULL)
 
 static Array tokens;
-static long pointer;
+static size_t pointer;
 
 static bool IsDigitBase(const char c, const int base)
 {
@@ -38,12 +33,12 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
 
     for (int i = 0; string[i] != '\0'; ++i)
         if (!IsDigitBase(string[i], base))
-            return ERROR_RESULT("Invalid integer literal", lineNumber);
+            return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
 
     *out = strtoull(string, NULL, base);
 
     if (*out == UINT64_MAX)
-        return ERROR_RESULT("Invalid integer literal", lineNumber);
+        return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
 
     if (*out == 0)
     {
@@ -52,7 +47,7 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
             if (string[i] != '0') isZero = false;
 
         if (!isZero)
-            return ERROR_RESULT("Invalid integer literal", lineNumber);
+            return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
     }
 
     return SUCCESS_RESULT;
@@ -77,11 +72,11 @@ static Result EvaluateNumberLiteral(
     {
         int consumedChars;
         if (sscanf(text, "%lf%n", outFloat, &consumedChars) != 1)
-            return ERROR_RESULT("Invalid float literal", lineNumber);
+            return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
         if (fpclassify(*outFloat) != FP_NORMAL && fpclassify(*outFloat) != FP_ZERO)
-            return ERROR_RESULT("Invalid float literal", lineNumber);
+            return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
         if (text[consumedChars] != '\0')
-            return ERROR_RESULT("Invalid float literal", lineNumber);
+            return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
 
         return SUCCESS_RESULT;
     }
@@ -97,28 +92,26 @@ static Result EvaluateNumberLiteral(
         if (base != 10) index += 2;
     }
 
-    HANDLE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
+    PROPAGATE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
     return SUCCESS_RESULT;
 }
 
 
-static Token* CurrentToken(const int offset)
+static Token* CurrentToken(const size_t offset)
 {
     if (pointer + offset >= tokens.length)
-        return NULL;
+        return tokens.array[tokens.length - 1];
 
     return tokens.array[pointer + offset];
 }
 
 static void Consume() { pointer++; }
 
-static Token* Match(const TokenType* types, const int length)
+static Token* Match(const TokenType* types, const size_t length)
 {
     Token* current = CurrentToken(0);
-    if (current == NULL)
-        return NULL;
 
-    for (int i = 0; i < length; ++i)
+    for (size_t i = 0; i < length; ++i)
     {
         if (current->type != types[i])
             continue;
@@ -132,7 +125,7 @@ static Token* Match(const TokenType* types, const int length)
 
 static Token* MatchOne(const TokenType type) { return Match((TokenType[]){type}, 1); }
 
-static Token* Peek(const TokenType* types, const int length, const int offset)
+static Token* Peek(const TokenType* types, const int length, const size_t offset)
 {
     Token* current = CurrentToken(offset);
     if (current == NULL)
@@ -149,30 +142,28 @@ static Token* Peek(const TokenType* types, const int length, const int offset)
     return NULL;
 }
 
-static Token* PeekOne(const TokenType type, const int offset) { return Peek((TokenType[]){type}, 1, offset); }
+static Token* PeekOne(const TokenType type, const size_t offset) { return Peek((TokenType[]){type}, 1, offset); }
 
 static Result ParseExpression(NodePtr* out);
 
 static Result ParseArrayAccess(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* identifier = PeekOne(Token_Identifier, 0);
     if (identifier == NULL || PeekOne(Token_LeftSquareBracket, 1) == NULL)
         return NOT_FOUND_RESULT;
 
     Consume();
-    SET_LINE_NUMBER
+
     Consume();
 
     NodePtr subscript = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&subscript));
+    PROPAGATE_ERROR(ParseExpression(&subscript));
     if (subscript.ptr == NULL)
         return ERROR_RESULT_LINE("Expected subscript");
-    SET_LINE_NUMBER
+
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
+        return ERROR_RESULT_LINE("Expected \"]\"");
 
     *out = AllocASTNode(
         &(ArrayAccessExpr)
@@ -194,25 +185,22 @@ typedef Result (*ParseFunction)(NodePtr*);
 
 static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function)
 {
-    long SET_LINE_NUMBER;
-
     *outArray = AllocateArray(sizeof(NodePtr));
 
     NodePtr firstNode = NULL_NODE;
-    HANDLE_ERROR(function(&firstNode));
+    PROPAGATE_ERROR(function(&firstNode));
     if (firstNode.ptr != NULL)
     {
         ArrayAdd(outArray, &firstNode);
         while (true)
         {
-            SET_LINE_NUMBER;
             if (MatchOne(Token_Comma) == NULL)
                 break;
 
             NodePtr node = NULL_NODE;
-            HANDLE_ERROR(function(&node));
+            PROPAGATE_ERROR(function(&node));
             if (node.ptr == NULL)
-                return ERROR_RESULT_LINE_TOKEN("Expected item after \"#t\"", Token_Comma);
+                return ERROR_RESULT_LINE("Expected item after \",\"");
 
             ArrayAdd(outArray, &node);
         }
@@ -223,23 +211,21 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
 
 static Result ParseFunctionCall(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* identifier = PeekOne(Token_Identifier, 0);
     if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
         return NOT_FOUND_RESULT;
 
     if (MatchOne(Token_Identifier) == NULL)
-        assert(0);
+        unreachable();
     if (MatchOne(Token_LeftBracket) == NULL)
-        assert(0);
+        unreachable();
 
     Array params;
-    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
+    PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
 
-    SET_LINE_NUMBER;
+
     if (MatchOne(Token_RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+        return ERROR_RESULT_LINE("Expected \")\"");
 
     *out = AllocASTNode(
         &(FuncCallExpr)
@@ -266,7 +252,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
         bool isInteger;
         double floatValue;
         uint64_t intValue;
-        HANDLE_ERROR(EvaluateNumberLiteral(token.text, token.lineNumber, &isInteger, &floatValue, &intValue));
+        PROPAGATE_ERROR(EvaluateNumberLiteral(token.text, token.lineNumber, &isInteger, &floatValue, &intValue));
 
         if (isInteger)
             *out = (LiteralExpr)
@@ -326,8 +312,6 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 
 static Result ParsePrimary(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* token = Peek(
         (TokenType[])
         {
@@ -339,7 +323,13 @@ static Result ParsePrimary(NodePtr* out)
             Token_False,
         }, 6, 0);
     if (token == NULL)
-        return NOT_FOUND_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
+        return (Result)
+        {
+            .type = Result_NotFound,
+            .errorMessage = AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)),
+            .lineNumber = CurrentToken(0)->lineNumber,
+            .filePath = NULL,
+        };
 
     switch (token->type)
     {
@@ -347,13 +337,13 @@ static Result ParsePrimary(NodePtr* out)
     {
         Consume();
         *out = NULL_NODE;
-        HANDLE_ERROR(ParseExpression(out));
+        PROPAGATE_ERROR(ParseExpression(out));
         if (out->ptr == NULL)
             return ERROR_RESULT_LINE("Expected expression");
 
         const Token* closingBracket = MatchOne(Token_RightBracket);
         if (closingBracket == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+            return ERROR_RESULT_LINE("Expected \")\"");
 
         return SUCCESS_RESULT;
     }
@@ -364,9 +354,9 @@ static Result ParsePrimary(NodePtr* out)
         while (true)
         {
             NodePtr value = NULL_NODE;
-            HANDLE_ERROR(ParseFunctionCall(&value));
+            PROPAGATE_ERROR(ParseFunctionCall(&value));
             if (value.ptr == NULL)
-                HANDLE_ERROR(ParseArrayAccess(&value));
+                PROPAGATE_ERROR(ParseArrayAccess(&value));
             if (value.ptr == NULL)
             {
                 const Token* token = MatchOne(Token_Identifier);
@@ -374,7 +364,7 @@ static Result ParsePrimary(NodePtr* out)
                     return ERROR_RESULT_LINE("Expected identifier");
 
                 LiteralExpr literal;
-                HANDLE_ERROR(LiteralExprFromToken(*token, &literal));
+                PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
                 value = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
             }
 
@@ -392,7 +382,7 @@ static Result ParsePrimary(NodePtr* out)
             if (start == NULL)
                 start = memberAccess.ptr;
 
-            SET_LINE_NUMBER
+
             if (MatchOne(Token_Dot) == NULL)
                 break;
         }
@@ -407,7 +397,7 @@ static Result ParsePrimary(NodePtr* out)
     {
         Consume();
         LiteralExpr literal;
-        HANDLE_ERROR(LiteralExprFromToken(*token, &literal));
+        PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
         *out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
         return SUCCESS_RESULT;
     }
@@ -430,16 +420,15 @@ static UnaryOperator TokenTypeToUnaryOperator(const TokenType tokenType)
 
 static Result ParseUnary(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* operator = Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
     if (operator == NULL)
         return ParsePrimary(out);
 
-    SET_LINE_NUMBER
+
     NodePtr expr;
-    if (!ParseUnary(&expr).success)
-        return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
+    if (ParseUnary(&expr).type != Result_Success)
+        return ERROR_RESULT_LINE(
+            AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(operator->type)));
 
     *out = AllocASTNode(
         &(UnaryExpr)
@@ -483,21 +472,19 @@ typedef Result (*ParseFunc)(NodePtr* out);
 
 static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const TokenType operators[], const size_t operatorsLength)
 {
-    long SET_LINE_NUMBER
-
     NodePtr left = NULL_NODE;
-    HANDLE_ERROR(parseFunc(&left));
+    PROPAGATE_ERROR(parseFunc(&left));
     if (left.ptr == NULL)
         return NOT_FOUND_RESULT;
 
     const Token* operator = Match(operators, operatorsLength);
     while (operator != NULL)
     {
-        SET_LINE_NUMBER
         NodePtr right = NULL_NODE;
-        HANDLE_ERROR(parseFunc(&right));
+        PROPAGATE_ERROR(parseFunc(&right));
         if (right.ptr == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
+            return ERROR_RESULT_LINE(
+                AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(operator->type)));
 
         left = AllocASTNode(
             &(BinaryExpr)
@@ -553,10 +540,8 @@ static Result ParseBooleanOperators(NodePtr* out)
 
 static Result ParseAssignment(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     NodePtr left = NULL_NODE;
-    HANDLE_ERROR(ParseBooleanOperators(&left));
+    PROPAGATE_ERROR(ParseBooleanOperators(&left));
     if (left.ptr == NULL)
         return NOT_FOUND_RESULT;
 
@@ -570,11 +555,12 @@ static Result ParseAssignment(NodePtr* out)
     {
         ArrayAdd(&operatorArray, operator);
 
-        SET_LINE_NUMBER
+
         NodePtr right = NULL_NODE;
-        HANDLE_ERROR(ParseEquality(&right));
+        PROPAGATE_ERROR(ParseEquality(&right));
         if (right.ptr == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected expression after operator \"#t\"", operator->type);
+            return ERROR_RESULT_LINE(
+                AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(operator->type)));
 
         ArrayAdd(&exprArray, &right);
 
@@ -583,7 +569,7 @@ static Result ParseAssignment(NodePtr* out)
 
     NodePtr* expr1 = exprArray.array[exprArray.length - 1];
 
-    for (int i = exprArray.length - 2; i >= 0; --i)
+    for (int i = (int)exprArray.length - 2; i >= 0; --i)
     {
         operator = operatorArray.array[i];
         const NodePtr* expr2 = exprArray.array[i];
@@ -608,22 +594,18 @@ static Result ParseAssignment(NodePtr* out)
 
 static Result ParseExpression(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     return ParseAssignment(out);
 }
 
 static Result ParseExpressionStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr));
+    PROPAGATE_ERROR(ParseExpression(&expr));
 
     if (expr.type == Node_Null)
         return NOT_FOUND_RESULT;
     if (MatchOne(Token_Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
+        return ERROR_RESULT_LINE("Expected \";\"");
 
     *out = AllocASTNode(&(ExpressionStmt){.expr = expr}, sizeof(ExpressionStmt), Node_ExpressionStatement);
     return SUCCESS_RESULT;
@@ -631,18 +613,16 @@ static Result ParseExpressionStatement(NodePtr* out)
 
 static Result ParseReturnStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* returnToken = MatchOne(Token_Return);
     if (returnToken == NULL)
         return NOT_FOUND_RESULT;
 
-    SET_LINE_NUMBER
+
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr));
+    PROPAGATE_ERROR(ParseExpression(&expr));
 
     if (MatchOne(Token_Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon)
+        return ERROR_RESULT_LINE("Expected \";\"");
 
     *out = AllocASTNode(
         &(ReturnStmt)
@@ -658,39 +638,37 @@ static Result ParseStatement(NodePtr* out);
 
 static Result ParseIfStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER;
-
     const Token* ifToken = MatchOne(Token_If);
     if (ifToken == NULL)
         return NOT_FOUND_RESULT;
 
-    SET_LINE_NUMBER;
-    if (MatchOne(Token_LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
 
-    SET_LINE_NUMBER;
+    if (MatchOne(Token_LeftBracket) == NULL)
+        return ERROR_RESULT_LINE("Expected \"(\"");
+
+
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr));
+    PROPAGATE_ERROR(ParseExpression(&expr));
     if (expr.ptr == NULL)
         return ERROR_RESULT_LINE("Expected expression in if statement");
 
-    SET_LINE_NUMBER;
-    if (MatchOne(Token_RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
 
-    SET_LINE_NUMBER;
+    if (MatchOne(Token_RightBracket) == NULL)
+        return ERROR_RESULT_LINE("Expected \")\"");
+
+
     NodePtr stmt = NULL_NODE;
-    HANDLE_ERROR(ParseStatement(&stmt));
+    PROPAGATE_ERROR(ParseStatement(&stmt));
     if (stmt.ptr == NULL)
         return ERROR_RESULT_LINE("Expected statement");
 
-    SET_LINE_NUMBER;
+
     NodePtr elseStmt = NULL_NODE;
     if (MatchOne(Token_Else))
     {
-        HANDLE_ERROR(ParseStatement(&elseStmt));
+        PROPAGATE_ERROR(ParseStatement(&elseStmt));
         if (elseStmt.ptr == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected statement after \"#t\"", Token_Else);
+            return ERROR_RESULT_LINE("Expected statement after \"else\"");
     }
 
     *out = AllocASTNode(
@@ -707,32 +685,30 @@ static Result ParseIfStatement(NodePtr* out)
 
 static Result ParseBlockStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* openingBrace = MatchOne(Token_LeftCurlyBracket);
     if (openingBrace == NULL)
         return NOT_FOUND_RESULT;
 
     Array statements = AllocateArray(sizeof(NodePtr));
-    Result exitResult = {0, 0, NULL};
+    Result exitResult = NOT_FOUND_RESULT;
     while (true)
     {
-        SET_LINE_NUMBER
         NodePtr stmt = NULL_NODE;
         const Result result = ParseStatement(&stmt);
-        HANDLE_ERROR(result);
+        PROPAGATE_ERROR(result);
         if (stmt.ptr == NULL)
         {
+            assert(result.type == Result_NotFound);
             if (result.errorMessage != NULL)
                 exitResult = result;
             break;
         }
 
-        SET_LINE_NUMBER
+
         if (stmt.type == Node_Section)
             return ERROR_RESULT_LINE("Nested sections are not allowed");
 
-        SET_LINE_NUMBER
+
         if (stmt.type == Node_StructDeclaration)
             return ERROR_RESULT_LINE("Struct declarations not allowed inside code blocks");
 
@@ -742,8 +718,9 @@ static Result ParseBlockStatement(NodePtr* out)
     if (MatchOne(Token_RightCurlyBracket) == NULL)
     {
         if (exitResult.errorMessage != NULL)
-            return ERROR_RESULT_LINE_TOKEN(exitResult.errorMessage, exitResult.tokenType);
-        return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->lineNumber, CurrentToken(0)->type);
+            return exitResult;
+        return ERROR_RESULT_LINE(
+            AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
     }
 
     *out = AllocASTNode(
@@ -755,7 +732,7 @@ static Result ParseBlockStatement(NodePtr* out)
     return SUCCESS_RESULT;
 }
 
-static Token* PeekType(const int offset)
+static Token* PeekType(const size_t offset)
 {
     Token* type = PeekOne(Token_Identifier, offset);
     if (type == NULL)
@@ -769,16 +746,13 @@ static Token* PeekType(const int offset)
 
 static Result ParseSectionStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     if (MatchOne(Token_At) == NULL)
         return NOT_FOUND_RESULT;
 
-    SET_LINE_NUMBER;
 
     const Token* identifier = MatchOne(Token_Identifier);
     if (identifier == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected identifier after \"#t\"", Token_At);
+        return ERROR_RESULT_LINE("Expected identifier after \"@\"");
 
     const char sectionNames[6][10] =
     {
@@ -799,9 +773,9 @@ static Result ParseSectionStatement(NodePtr* out)
         Section_GFX,
     };
 
-    SectionType sectionType = -1;
+    SectionType sectionType;
     bool sectionFound = false;
-    for (int i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
+    for (size_t i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
     {
         if (strcmp(identifier->text, sectionNames[i]) == 0)
         {
@@ -814,7 +788,7 @@ static Result ParseSectionStatement(NodePtr* out)
         return ERROR_RESULT_LINE(AllocateString1Str("Unknown section type \"%s\"", identifier->text));
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block));
+    PROPAGATE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL)
         return ERROR_RESULT_LINE("Expected block after section statement");
     assert(block.type == Node_Block);
@@ -871,9 +845,7 @@ static TypeReference TokenToTypeReference(const Token token)
 
 static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 {
-    long SET_LINE_NUMBER
-
-    int modifierCount = 0;
+    size_t modifierCount = 0;
 
     const bool publicFound = PeekOne(Token_Public, 0 + modifierCount) != NULL;
     if (publicFound) modifierCount++;
@@ -886,7 +858,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     if (!(identifier && type))
         return NOT_FOUND_RESULT;
 
-    for (int i = 0; i < modifierCount; ++i) Consume();
+    for (size_t i = 0; i < modifierCount; ++i) Consume();
     Consume();
     Consume();
 
@@ -897,7 +869,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
         if (externalFound)
             return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
 
-        HANDLE_ERROR(ParseExpression(&initializer));
+        PROPAGATE_ERROR(ParseExpression(&initializer));
         if (initializer.ptr == NULL)
             return ERROR_RESULT_LINE("Expected expression");
     }
@@ -914,7 +886,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
     {
         const Token* semicolon = MatchOne(Token_Semicolon);
         if (semicolon == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+            return ERROR_RESULT_LINE("Expected \";\"");
     }
 
     *out = AllocASTNode(
@@ -941,9 +913,7 @@ static Result ParseVarDeclNoSemicolon(NodePtr* out)
 
 static Result ParseFunctionDeclaration(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
-    int modifierCount = 0;
+    size_t modifierCount = 0;
 
     const bool publicFound = PeekOne(Token_Public, 0 + modifierCount) != NULL;
     if (publicFound) modifierCount++;
@@ -956,20 +926,20 @@ static Result ParseFunctionDeclaration(NodePtr* out)
     if (!(identifier && type && PeekOne(Token_LeftBracket, 2 + modifierCount)))
         return NOT_FOUND_RESULT;
 
-    for (int i = 0; i < modifierCount; ++i) Consume();
+    for (size_t i = 0; i < modifierCount; ++i) Consume();
     Consume();
     Consume();
     Consume();
 
     Array params;
-    HANDLE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon));
+    PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon));
 
-    SET_LINE_NUMBER;
+
     if (MatchOne(Token_RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+        return ERROR_RESULT_LINE("Expected \")\"");
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block));
+    PROPAGATE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL && !externalFound) return ERROR_RESULT_LINE("Expected code block after function declaration");
     if (block.ptr != NULL && externalFound) return ERROR_RESULT_LINE("External functions cannot have code blocks");
 
@@ -980,7 +950,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
         if (token != NULL) externalIdentifier = *token;
         else externalIdentifier = *identifier;
 
-        if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+        if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE("Expected \";\"");
     }
 
     *out = AllocASTNode(
@@ -1001,8 +971,6 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 
 static Result ParseStructDeclaration(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const bool publicFound = PeekOne(Token_Public, 0) != NULL;
     if (PeekOne(Token_Struct, publicFound) == NULL)
         return NOT_FOUND_RESULT;
@@ -1010,27 +978,28 @@ static Result ParseStructDeclaration(NodePtr* out)
     if (publicFound) Consume();
     Consume();
 
-    SET_LINE_NUMBER
+
     const Token* identifier = MatchOne(Token_Identifier);
     if (identifier == NULL)
         return ERROR_RESULT_LINE("Expected struct name");
 
-    SET_LINE_NUMBER
+
     if (MatchOne(Token_LeftCurlyBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\" after struct name", Token_LeftCurlyBracket);
+        return ERROR_RESULT_LINE("Expected \"{\" after struct name");
 
     Array members = AllocateArray(sizeof(NodePtr));
     while (true)
     {
         NodePtr member = NULL_NODE;
-        HANDLE_ERROR(ParseVariableDeclaration(&member, true));
+        PROPAGATE_ERROR(ParseVariableDeclaration(&member, true));
         if (member.ptr == NULL) break;
         ArrayAdd(&members, &member);
     }
 
-    SET_LINE_NUMBER
+
     if (MatchOne(Token_RightCurlyBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->type);
+        return ERROR_RESULT_LINE(
+            AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
 
     *out = AllocASTNode(
         &(StructDeclStmt)
@@ -1046,8 +1015,6 @@ static Result ParseStructDeclaration(NodePtr* out)
 
 static Result ParseArrayDeclaration(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* type = PeekType(0);
     if (type == NULL) return NOT_FOUND_RESULT;
 
@@ -1060,20 +1027,20 @@ static Result ParseArrayDeclaration(NodePtr* out)
     Consume();
     Consume();
     Consume();
-    SET_LINE_NUMBER;
+
 
     NodePtr length = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&length));
+    PROPAGATE_ERROR(ParseExpression(&length));
     if (length.ptr == NULL)
         return ERROR_RESULT_LINE("Expected array length");
-    SET_LINE_NUMBER;
+
 
     if (MatchOne(Token_RightSquareBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightSquareBracket);
-    SET_LINE_NUMBER;
+        return ERROR_RESULT_LINE("Expected \"]\"");
+
 
     if (MatchOne(Token_Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
+        return ERROR_RESULT_LINE("Expected \";\"");
 
     *out = AllocASTNode(
         &(VarDeclStmt)
@@ -1094,8 +1061,6 @@ static Result ParseArrayDeclaration(NodePtr* out)
 
 static Result ParseImportStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const bool publicFound = PeekOne(Token_Public, 0) != NULL;
 
     const Token* import = PeekOne(Token_Import, 0 + publicFound);
@@ -1104,7 +1069,7 @@ static Result ParseImportStatement(NodePtr* out)
 
     const Token* path = PeekOne(Token_StringLiteral, 1 + publicFound);
     if (path == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected path after \"#t\"", Token_Import);
+        return ERROR_RESULT_LINE("Expected path after \"import\"");
 
     if (publicFound) Consume();
     Consume();
@@ -1124,31 +1089,29 @@ static Result ParseImportStatement(NodePtr* out)
 
 static Result ParseWhileStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* whileToken = MatchOne(Token_While);
     if (whileToken == NULL) return NOT_FOUND_RESULT;
 
     if (MatchOne(Token_LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
-    SET_LINE_NUMBER
+        return ERROR_RESULT_LINE("Expected \"(\"");
+
 
     NodePtr expr = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&expr));
+    PROPAGATE_ERROR(ParseExpression(&expr));
     if (expr.ptr == NULL)
         return ERROR_RESULT_LINE("Expected expression");
-    SET_LINE_NUMBER
+
 
     if (MatchOne(Token_RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
-    SET_LINE_NUMBER
+        return ERROR_RESULT_LINE("Expected \")\"");
+
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block));
+    PROPAGATE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL)
     {
         NodePtr stmt = NULL_NODE;
-        HANDLE_ERROR(ParseStatement(&stmt));
+        PROPAGATE_ERROR(ParseStatement(&stmt));
         if (stmt.ptr == NULL)
             return ERROR_RESULT_LINE("Expected statement after while statement");
 
@@ -1170,20 +1133,15 @@ static Result ParseWhileStatement(NodePtr* out)
 
 static Result ParseForStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* forToken = MatchOne(Token_For);
     if (forToken == NULL)
         return NOT_FOUND_RESULT;
-    SET_LINE_NUMBER
 
     if (MatchOne(Token_LeftBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_LeftBracket);
-    SET_LINE_NUMBER
+        return ERROR_RESULT_LINE("Expected \"(\"");
 
     NodePtr initializer = NULL_NODE;
-    HANDLE_ERROR(ParseStatement(&initializer));
-    SET_LINE_NUMBER
+    PROPAGATE_ERROR(ParseStatement(&initializer));
 
     if (initializer.type != Node_Null &&
         initializer.type != Node_VariableDeclaration &&
@@ -1194,30 +1152,29 @@ static Result ParseForStatement(NodePtr* out)
     if (initializer.type == Node_Null)
     {
         if (MatchOne(Token_Semicolon) == NULL)
-            return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
-        SET_LINE_NUMBER
+            return ERROR_RESULT_LINE("Expected \";\"");
     }
 
     NodePtr condition = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&condition));
-    SET_LINE_NUMBER
+    PROPAGATE_ERROR(ParseExpression(&condition));
+
     if (MatchOne(Token_Semicolon) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_Semicolon);
-    SET_LINE_NUMBER
+        return ERROR_RESULT_LINE("Expected \";\"");
+
 
     NodePtr increment = NULL_NODE;
-    HANDLE_ERROR(ParseExpression(&increment));
-    SET_LINE_NUMBER
+    PROPAGATE_ERROR(ParseExpression(&increment));
+
 
     if (MatchOne(Token_RightBracket) == NULL)
-        return ERROR_RESULT_LINE_TOKEN("Expected \"#t\"", Token_RightBracket);
+        return ERROR_RESULT_LINE("Expected \")\"");
 
     NodePtr block = NULL_NODE;
-    HANDLE_ERROR(ParseBlockStatement(&block));
+    PROPAGATE_ERROR(ParseBlockStatement(&block));
     if (block.ptr == NULL)
     {
         NodePtr stmt = NULL_NODE;
-        HANDLE_ERROR(ParseStatement(&stmt));
+        PROPAGATE_ERROR(ParseStatement(&stmt));
         if (stmt.ptr == NULL)
             return ERROR_RESULT_LINE("Expected statement after for statement");
 
@@ -1241,8 +1198,6 @@ static Result ParseForStatement(NodePtr* out)
 
 static Result ParseLoopControlStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     const Token* token = MatchOne(Token_Break);
     if (token == NULL) token = MatchOne(Token_Continue);
     if (token == NULL) return NOT_FOUND_RESULT;
@@ -1262,67 +1217,50 @@ static Result ParseLoopControlStatement(NodePtr* out)
 
 static Result ParseStatement(NodePtr* out)
 {
-    long SET_LINE_NUMBER
-
     Result result = ParseImportStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseFunctionDeclaration(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseStructDeclaration(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseIfStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseLoopControlStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseWhileStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseForStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseArrayDeclaration(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseVariableDeclaration(out, true);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseSectionStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseBlockStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseReturnStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     result = ParseExpressionStatement(out);
-    if (result.success || result.hasError)
-        return result;
+    if (result.type != Result_NotFound) return result;
 
     return NOT_FOUND_RESULT;
 }
 
 static Result ParseProgram(AST* out)
 {
-    long SET_LINE_NUMBER
-
     Array stmtArray = AllocateArray(sizeof(NodePtr));
 
     bool allowImportStatements = true;
@@ -1332,10 +1270,11 @@ static Result ParseProgram(AST* out)
             break;
 
         NodePtr stmt = NULL_NODE;
-        SET_LINE_NUMBER
-        HANDLE_ERROR(ParseStatement(&stmt));
+
+        PROPAGATE_ERROR(ParseStatement(&stmt));
         if (stmt.ptr == NULL)
-            return ERROR_RESULT_TOKEN("Unexpected token \"#t\"", CurrentToken(0)->lineNumber, CurrentToken(0)->type);
+            return ERROR_RESULT_LINE(
+                AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
 
         if (stmt.type == Node_Import)
         {
@@ -1358,7 +1297,7 @@ static Result ParseProgram(AST* out)
         ArrayAdd(&stmtArray, &stmt);
     }
 
-    *out = (AST){stmtArray};
+    *out = (AST){.nodes = stmtArray};
     return SUCCESS_RESULT;
 }
 

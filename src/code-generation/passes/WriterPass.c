@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stddef.h>
 
 #include "data-structures/MemoryStream.h"
 #include "Result.h"
@@ -28,8 +29,8 @@ static void WriteFloat(const double value)
     StreamWrite(stream, string, sizeof(string) - 1);
 }
 
-void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
-void WriteChar(const char chr) { StreamWriteByte(stream, chr); }
+static void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
+static void WriteChar(const char chr) { StreamWriteByte(stream, (uint8_t)chr); }
 
 static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
@@ -58,7 +59,7 @@ static Result VisitSection(const SectionStmt* section)
         break;
     case Section_GFX: sectionText = "gfx";
         break;
-    default: assert(0);
+    default: unreachable();
     }
 
     WriteChar('@');
@@ -67,7 +68,7 @@ static Result VisitSection(const SectionStmt* section)
 
     assert(section->block.type == Node_Block);
     const BlockStmt* block = section->block.ptr;
-    for (int i = 0; i < block->statements.length; ++i)
+    for (size_t i = 0; i < block->statements.length; ++i)
     {
         const NodePtr* stmt = block->statements.array[i];
         switch (stmt->type)
@@ -83,8 +84,7 @@ static Result VisitSection(const SectionStmt* section)
             break;
         case Node_Block:
             break;
-        default: printf("%d", stmt->type);
-            assert(0);
+        default: unreachable();
         }
     }
 
@@ -102,7 +102,7 @@ static Result VisitModule(const ModuleNode* module)
         WriteChar('\n');
     }
 
-    for (int i = 0; i < module->statements.length; ++i)
+    for (size_t i = 0; i < module->statements.length; ++i)
     {
         const NodePtr* stmt = module->statements.array[i];
         switch (stmt->type)
@@ -112,7 +112,7 @@ static Result VisitModule(const ModuleNode* module)
             break;
         case Node_Import:
             break;
-        default: assert(0);
+        default: unreachable();
         }
     }
 
@@ -123,11 +123,11 @@ Result WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
 {
     stream = AllocateMemoryStream();
 
-    for (int i = 0; i < ast->nodes.length; ++i)
+    for (size_t i = 0; i < ast->nodes.length; ++i)
     {
         const NodePtr* node = ast->nodes.array[i];
         assert(node->type == Node_Module);
-        HANDLE_ERROR(VisitModule(node->ptr));
+        PROPAGATE_ERROR(VisitModule(node->ptr));
     }
 
     const Buffer buffer = StreamGetBuffer(stream);

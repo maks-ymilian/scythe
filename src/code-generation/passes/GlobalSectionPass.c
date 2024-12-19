@@ -1,7 +1,8 @@
 #include "GlobalSectionPass.h"
 
 #include <stdio.h>
-#include <string.h>
+#include <assert.h>
+#include <stddef.h>
 
 static NodePtr globalInitSection;
 
@@ -20,7 +21,7 @@ static Result VisitBlock(const NodePtr* node)
         return SUCCESS_RESULT;
 
     BlockStmt* block = node->ptr;
-    for (int i = 0; i < block->statements.length; ++i)
+    for (size_t i = 0; i < block->statements.length; ++i)
     {
         const NodePtr* node = block->statements.array[i];
         switch (node->type)
@@ -34,26 +35,26 @@ static Result VisitBlock(const NodePtr* node)
         }
         case Node_Block:
         {
-            HANDLE_ERROR(VisitBlock(node));
+            PROPAGATE_ERROR(VisitBlock(node));
             break;
         }
         case Node_If:
         {
             const IfStmt* ifStmt = node->ptr;
-            HANDLE_ERROR(VisitBlock(&ifStmt->trueStmt));
-            HANDLE_ERROR(VisitBlock(&ifStmt->falseStmt));
+            PROPAGATE_ERROR(VisitBlock(&ifStmt->trueStmt));
+            PROPAGATE_ERROR(VisitBlock(&ifStmt->falseStmt));
             break;
         }
         case Node_While:
         {
             const WhileStmt* whileStmt = node->ptr;
-            HANDLE_ERROR(VisitBlock(&whileStmt->stmt));
+            PROPAGATE_ERROR(VisitBlock(&whileStmt->stmt));
             break;
         }
         case Node_For:
         {
             const ForStmt* forStmt = node->ptr;
-            HANDLE_ERROR(VisitBlock(&forStmt->stmt));
+            PROPAGATE_ERROR(VisitBlock(&forStmt->stmt));
             break;
         }
         case Node_Return:
@@ -61,7 +62,7 @@ static Result VisitBlock(const NodePtr* node)
         case Node_ExpressionStatement:
         case Node_VariableDeclaration:
             break;
-        default: assert(0);
+        default: unreachable();
         }
     }
     return SUCCESS_RESULT;
@@ -69,7 +70,7 @@ static Result VisitBlock(const NodePtr* node)
 
 static Result VisitModule(ModuleNode* module)
 {
-    for (int i = 0; i < module->statements.length; ++i)
+    for (size_t i = 0; i < module->statements.length; ++i)
     {
         const NodePtr* stmt = module->statements.array[i];
         switch (stmt->type)
@@ -86,11 +87,11 @@ static Result VisitModule(ModuleNode* module)
         case Node_Section:
         {
             const SectionStmt* section = stmt->ptr;
-            HANDLE_ERROR(VisitBlock(&section->block));
+            PROPAGATE_ERROR(VisitBlock(&section->block));
             break;
         }
         case Node_Import: break;
-        default: assert(0);
+        default: unreachable();
         }
     }
 
@@ -99,7 +100,7 @@ static Result VisitModule(ModuleNode* module)
 
 Result GlobalSectionPass(const AST* ast)
 {
-    for (int i = 0; i < ast->nodes.length; ++i)
+    for (size_t i = 0; i < ast->nodes.length; ++i)
     {
         const NodePtr* node = ast->nodes.array[i];
         assert(node->type == Node_Module);
@@ -119,7 +120,7 @@ Result GlobalSectionPass(const AST* ast)
             },
             sizeof(SectionStmt), Node_Section);
 
-        HANDLE_ERROR(VisitModule(module));
+        PROPAGATE_ERROR(VisitModule(module));
 
         ArrayInsert(&module->statements, &globalInitSection, 0);
     }

@@ -8,6 +8,7 @@
 #include "data-structures/Map.h"
 
 static Array currentAccessibleModules;
+static const char* currentFilePath = NULL;
 
 static Map modules;
 
@@ -59,7 +60,7 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 {
     assert(currentScope != NULL);
     if (!MapAdd(&currentScope->declarations, name, node))
-        return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber);
+        return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
     return SUCCESS_RESULT;
 }
 
@@ -69,7 +70,7 @@ static Result GetDeclaration(const char* name, NodePtr* outNode, const int lineN
     const Scope* scope = currentScope;
     while (scope != NULL)
     {
-        const void* get = MapGet(&scope->declarations, name);
+        void* get = MapGet(&scope->declarations, name);
         if (get != NULL)
         {
             *outNode = *(NodePtr*)get;
@@ -80,7 +81,7 @@ static Result GetDeclaration(const char* name, NodePtr* outNode, const int lineN
     }
 
     *outNode = NULL_NODE;
-    return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber);
+    return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber, currentFilePath);
 }
 
 static bool MemberAccessIsIdentifier(const MemberAccessExpr* memberAccess)
@@ -92,7 +93,7 @@ static bool MemberAccessIsIdentifier(const MemberAccessExpr* memberAccess)
 
 static bool IsModuleAccessible(const Map* module)
 {
-    for (int i = 0; i < currentAccessibleModules.length; ++i)
+    for (size_t i = 0; i < currentAccessibleModules.length; ++i)
     {
         const Map* m = *(Map**)currentAccessibleModules.array[i];
         if (module == m)
@@ -125,13 +126,16 @@ static Result ResolveModuleAccess(MemberAccessExpr* current)
     else if (next->value.type == Node_ArrayAccess)
         nextIdentifier = &((ArrayAccessExpr*)next->value.ptr)->identifier;
     else
-        assert(0);
+        unreachable();
 
     const NodePtr* declaration = MapGet(module, nextIdentifier->text);
     if (declaration == NULL)
-        return ERROR_RESULT(AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"",
-                                nextIdentifier->text, currentLiteral->identifier.text),
-                            currentLiteral->lineNumber);
+        return ERROR_RESULT(
+            AllocateString2Str(
+                "Unknown identifier \"%s\" in module \"%s\"",
+                nextIdentifier->text, currentLiteral->identifier.text),
+            currentLiteral->lineNumber,
+            currentFilePath);
 
     bool public;
     if (declaration->type == Node_StructDeclaration)
@@ -141,12 +145,15 @@ static Result ResolveModuleAccess(MemberAccessExpr* current)
     else if (declaration->type == Node_VariableDeclaration)
         public = ((VarDeclStmt*)declaration->ptr)->public;
     else
-        assert(0);
+        unreachable();
 
     if (!public)
-        return ERROR_RESULT(AllocateString2Str("Identifier \"%s\" in module \"%s\" cannot be accessed because it is not public",
-                                nextIdentifier->text, currentLiteral->identifier.text),
-                            currentLiteral->lineNumber);
+        return ERROR_RESULT(
+            AllocateString2Str(
+                "Identifier \"%s\" in module \"%s\" cannot be accessed because it is not public",
+                nextIdentifier->text, currentLiteral->identifier.text),
+            currentLiteral->lineNumber,
+            currentFilePath);
 
     nextIdentifier->reference = *declaration;
 
@@ -163,7 +170,7 @@ static Result VisitLiteral(LiteralExpr* literal)
     case Literal_Identifier:
     {
         if (literal->identifier.reference.ptr == NULL)
-            HANDLE_ERROR(GetDeclaration(
+            PROPAGATE_ERROR(GetDeclaration(
             literal->identifier.text,
             &literal->identifier.reference,
             literal->lineNumber));
@@ -175,7 +182,7 @@ static Result VisitLiteral(LiteralExpr* literal)
     case Literal_String:
     case Literal_Boolean:
         return SUCCESS_RESULT;
-    default: assert(0);
+    default: unreachable();
     }
 }
 
@@ -187,8 +194,8 @@ static Result VisitExpression(const NodePtr* node)
     case Node_Binary:
     {
         const BinaryExpr* binary = node->ptr;
-        HANDLE_ERROR(VisitExpression(&binary->left));
-        HANDLE_ERROR(VisitExpression(&binary->right));
+        PROPAGATE_ERROR(VisitExpression(&binary->left));
+        PROPAGATE_ERROR(VisitExpression(&binary->right));
         return SUCCESS_RESULT;
     }
     case Node_Unary:
@@ -199,9 +206,9 @@ static Result VisitExpression(const NodePtr* node)
     case Node_MemberAccess:
     {
         MemberAccessExpr* memberAccess = node->ptr;
-        HANDLE_ERROR(ResolveModuleAccess(memberAccess));
-        HANDLE_ERROR(VisitExpression(&memberAccess->value));
-        HANDLE_ERROR(VisitExpression(&memberAccess->next));
+        PROPAGATE_ERROR(ResolveModuleAccess(memberAccess));
+        PROPAGATE_ERROR(VisitExpression(&memberAccess->value));
+        PROPAGATE_ERROR(VisitExpression(&memberAccess->next));
         return SUCCESS_RESULT;
     }
     case Node_FunctionCall:
@@ -209,15 +216,15 @@ static Result VisitExpression(const NodePtr* node)
         FuncCallExpr* funcCall = node->ptr;
 
         if (funcCall->identifier.reference.ptr == NULL)
-            HANDLE_ERROR(GetDeclaration(
+            PROPAGATE_ERROR(GetDeclaration(
             funcCall->identifier.text,
             &funcCall->identifier.reference,
             funcCall->lineNumber));
 
-        for (int i = 0; i < funcCall->parameters.length; ++i)
+        for (size_t i = 0; i < funcCall->parameters.length; ++i)
         {
             const NodePtr* node = funcCall->parameters.array[i];
-            HANDLE_ERROR(VisitExpression(node));
+            PROPAGATE_ERROR(VisitExpression(node));
         }
 
         return SUCCESS_RESULT;
@@ -227,12 +234,12 @@ static Result VisitExpression(const NodePtr* node)
         ArrayAccessExpr* arrayAccess = node->ptr;
 
         if (arrayAccess->identifier.reference.ptr == NULL)
-            HANDLE_ERROR(GetDeclaration(
+            PROPAGATE_ERROR(GetDeclaration(
             arrayAccess->identifier.text,
             &arrayAccess->identifier.reference,
             arrayAccess->lineNumber));
 
-        HANDLE_ERROR(VisitExpression(&arrayAccess->subscript));
+        PROPAGATE_ERROR(VisitExpression(&arrayAccess->subscript));
 
         return SUCCESS_RESULT;
     }
@@ -246,8 +253,8 @@ static Result VisitStatement(const NodePtr* node);
 static Result VisitBlock(const BlockStmt* block)
 {
     PushScope();
-    for (int i = 0; i < block->statements.length; ++i)
-        HANDLE_ERROR(VisitStatement(block->statements.array[i]));
+    for (size_t i = 0; i < block->statements.length; ++i)
+        PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
     PopScope(NULL);
 
     return SUCCESS_RESULT;
@@ -258,7 +265,7 @@ static Result GetType(TypeReference* inout, const int lineNumber)
     if (inout->primitive)
         return SUCCESS_RESULT;
 
-    HANDLE_ERROR(GetDeclaration(
+    PROPAGATE_ERROR(GetDeclaration(
         inout->text,
         &inout->value.reference,
         lineNumber));
@@ -292,10 +299,10 @@ static Result VisitStatement(const NodePtr* node)
     case Node_VariableDeclaration:
     {
         VarDeclStmt* varDecl = node->ptr;
-        HANDLE_ERROR(VisitExpression(&varDecl->initializer));
-        HANDLE_ERROR(VisitExpression(&varDecl->arrayLength));
-        HANDLE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-        HANDLE_ERROR(GetType(&varDecl->type, varDecl->lineNumber));
+        PROPAGATE_ERROR(VisitExpression(&varDecl->initializer));
+        PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength));
+        PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
+        PROPAGATE_ERROR(GetType(&varDecl->type, varDecl->lineNumber));
         return SUCCESS_RESULT;
     }
     case Node_FunctionDeclaration:
@@ -303,20 +310,20 @@ static Result VisitStatement(const NodePtr* node)
         FuncDeclStmt* funcDecl = node->ptr;
 
         PushScope();
-        for (int i = 0; i < funcDecl->parameters.length; ++i)
-            HANDLE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
+        for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+            PROPAGATE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
 
         if (funcDecl->block.ptr != NULL)
         {
             assert(funcDecl->block.type == Node_Block);
             const BlockStmt* block = funcDecl->block.ptr;
-            for (int i = 0; i < block->statements.length; ++i)
-                HANDLE_ERROR(VisitStatement(block->statements.array[i]));
+            for (size_t i = 0; i < block->statements.length; ++i)
+                PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
         }
         PopScope(NULL);
 
-        HANDLE_ERROR(GetType(&funcDecl->type, funcDecl->lineNumber));
-        HANDLE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
+        PROPAGATE_ERROR(GetType(&funcDecl->type, funcDecl->lineNumber));
+        PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
         return SUCCESS_RESULT;
     }
     case Node_StructDeclaration:
@@ -324,11 +331,11 @@ static Result VisitStatement(const NodePtr* node)
         const StructDeclStmt* structDecl = node->ptr;
 
         PushScope();
-        for (int i = 0; i < structDecl->members.length; ++i)
-            HANDLE_ERROR(VisitStatement(structDecl->members.array[i]));
+        for (size_t i = 0; i < structDecl->members.length; ++i)
+            PROPAGATE_ERROR(VisitStatement(structDecl->members.array[i]));
         PopScope(NULL);
 
-        HANDLE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));
+        PROPAGATE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));
         return SUCCESS_RESULT;
     }
 
@@ -345,21 +352,21 @@ static Result VisitStatement(const NodePtr* node)
     case Node_If:
     {
         const IfStmt* ifStmt = node->ptr;
-        HANDLE_ERROR(VisitExpression(&ifStmt->expr));
+        PROPAGATE_ERROR(VisitExpression(&ifStmt->expr));
         PushScope();
-        HANDLE_ERROR(VisitStatement(&ifStmt->trueStmt));
+        PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
         PopScope(NULL);
         PushScope();
-        HANDLE_ERROR(VisitStatement(&ifStmt->falseStmt));
+        PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
         PopScope(NULL);
         return SUCCESS_RESULT;
     }
     case Node_While:
     {
         const WhileStmt* whileStmt = node->ptr;
-        HANDLE_ERROR(VisitExpression(&whileStmt->expr));
+        PROPAGATE_ERROR(VisitExpression(&whileStmt->expr));
         PushScope();
-        HANDLE_ERROR(VisitStatement(&whileStmt->stmt));
+        PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
         PopScope(NULL);
         return SUCCESS_RESULT;
     }
@@ -367,10 +374,10 @@ static Result VisitStatement(const NodePtr* node)
     {
         const ForStmt* forStmt = node->ptr;
         PushScope();
-        HANDLE_ERROR(VisitStatement(&forStmt->initialization));
-        HANDLE_ERROR(VisitExpression(&forStmt->condition));
-        HANDLE_ERROR(VisitExpression(&forStmt->increment));
-        HANDLE_ERROR(VisitStatement(&forStmt->stmt));
+        PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
+        PROPAGATE_ERROR(VisitExpression(&forStmt->condition));
+        PROPAGATE_ERROR(VisitExpression(&forStmt->increment));
+        PROPAGATE_ERROR(VisitStatement(&forStmt->stmt));
         PopScope(NULL);
         return SUCCESS_RESULT;
     }
@@ -378,7 +385,7 @@ static Result VisitStatement(const NodePtr* node)
     case Node_Import:
     {
         const ImportStmt* import = node->ptr;
-        HANDLE_ERROR(RegisterDeclaration(import->moduleName, node, import->lineNumber));
+        PROPAGATE_ERROR(RegisterDeclaration(import->moduleName, node, import->lineNumber));
         MakeImportAccessible(import, true);
         return SUCCESS_RESULT;
     }
@@ -391,14 +398,16 @@ static Result VisitStatement(const NodePtr* node)
 
 static Result VisitModule(const ModuleNode* module)
 {
+    currentFilePath = module->path;
+
     PushScope();
-    for (int i = 0; i < module->statements.length; ++i)
-        HANDLE_ERROR(VisitStatement(module->statements.array[i]));
+    for (size_t i = 0; i < module->statements.length; ++i)
+        PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
 
     Map declarations;
     PopScope(&declarations);
     if (!MapAdd(&modules, module->moduleName, &declarations))
-        assert(0);
+        unreachable();
 
     ArrayClear(&currentAccessibleModules);
 
@@ -410,11 +419,11 @@ Result ResolverPass(const AST* ast)
     currentAccessibleModules = AllocateArray(sizeof(Map*));
 
     modules = AllocateMap(sizeof(Map));
-    for (int i = 0; i < ast->nodes.length; ++i)
+    for (size_t i = 0; i < ast->nodes.length; ++i)
     {
         const NodePtr* node = ast->nodes.array[i];
         assert(node->type == Node_Module);
-        HANDLE_ERROR(VisitModule(node->ptr));
+        PROPAGATE_ERROR(VisitModule(node->ptr));
     }
 
     FreeArray(&currentAccessibleModules);

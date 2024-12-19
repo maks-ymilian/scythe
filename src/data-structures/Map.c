@@ -7,7 +7,7 @@
 #define LOAD_FACTOR 0.75
 #define START_SIZE 16
 
-static Map AllocateMapSize(const size_t sizeOfValueType, const int count)
+static Map AllocateMapSize(const size_t sizeOfValueType, const size_t count)
 {
     Map map;
     map.bucketsCap = count;
@@ -26,7 +26,7 @@ Map AllocateMap(const size_t sizeOfValueType)
 
 void FreeMap(const Map* map)
 {
-    for (int i = 0; i < map->bucketsCap; ++i)
+    for (size_t i = 0; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         while (true)
@@ -49,9 +49,9 @@ void FreeMap(const Map* map)
 static size_t Hash(const char* string)
 {
     size_t hash = 5381;
-    int c;
+    size_t c;
 
-    while ((c = *string++))
+    while ((c = (size_t)*string++))
         hash = (hash << 5) + hash + c;
 
     return hash;
@@ -63,7 +63,7 @@ static size_t GetIndex(const Map* map, const char* string)
     return hash % map->bucketsCap;
 }
 
-void AddNode(Map* map, Node* node)
+static void AddNode(Map* map, Node* node)
 {
     node->next = NULL;
 
@@ -91,7 +91,7 @@ static void Expand(Map* map)
 {
     Map newMap = AllocateMapSize(map->sizeOfValueType, map->bucketsCap * 2);
 
-    for (int i = 0; i < map->bucketsCap; ++i)
+    for (size_t i = 0; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         while (true)
@@ -129,7 +129,7 @@ void* MapGet(const Map* map, const char* key)
 
 static Node* NextBucket(const Map* map, const size_t startIndex)
 {
-    for (int i = startIndex; i < map->bucketsCap; ++i)
+    for (size_t i = startIndex; i < map->bucketsCap; ++i)
     {
         Node* node = map->buckets[i];
         if (node != NULL)
@@ -165,7 +165,7 @@ static Node* AllocateNode(const Map* map, const char* key, const void* value)
 {
     Node* node = malloc(sizeof(Node));
 
-    const int keyLength = strlen(key);
+    const size_t keyLength = strlen(key);
     node->key = malloc(keyLength + 1);
     memcpy(node->key, key, keyLength + 1);
 

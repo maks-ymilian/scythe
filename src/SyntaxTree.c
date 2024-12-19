@@ -1,8 +1,9 @@
 #include "SyntaxTree.h"
 
 #include <assert.h>
-#include "stdlib.h"
+#include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
 {
@@ -41,7 +42,7 @@ void FreeASTNode(const NodePtr node)
     {
         const FuncCallExpr* ptr = node.ptr;
         free(ptr->identifier.text);
-        for (int i = 0; i < ptr->parameters.length; ++i)
+        for (size_t i = 0; i < ptr->parameters.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
         break;
@@ -97,7 +98,7 @@ void FreeASTNode(const NodePtr node)
         free(ptr->type.text);
         free(ptr->name);
         free(ptr->externalName);
-        for (int i = 0; i < ptr->parameters.length; ++i)
+        for (size_t i = 0; i < ptr->parameters.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
         FreeArray(&ptr->parameters);
         break;
@@ -106,7 +107,7 @@ void FreeASTNode(const NodePtr node)
     {
         const StructDeclStmt* ptr = node.ptr;
         free(ptr->name);
-        for (int i = 0; i < ptr->members.length; ++i)
+        for (size_t i = 0; i < ptr->members.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->members.array[i]);
         FreeArray(&ptr->members);
         break;
@@ -115,7 +116,7 @@ void FreeASTNode(const NodePtr node)
     case Node_Block:
     {
         const BlockStmt* ptr = node.ptr;
-        for (int i = 0; i < ptr->statements.length; ++i)
+        for (size_t i = 0; i < ptr->statements.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->statements.array[i]);
         FreeArray(&ptr->statements);
         break;
@@ -157,14 +158,14 @@ void FreeASTNode(const NodePtr node)
     case Node_Module:
     {
         const ModuleNode* ptr = node.ptr;
-        for (int i = 0; i < ptr->statements.length; ++i)
+        for (size_t i = 0; i < ptr->statements.length; ++i)
             FreeASTNode(*(NodePtr*)ptr->statements.array[i]);
         free(ptr->path);
         free(ptr->moduleName);
         break;
     }
 
-    default: assert(0);
+    default: unreachable();
     }
 
     free(node.ptr);
@@ -172,7 +173,7 @@ void FreeASTNode(const NodePtr node)
 
 void FreeAST(const AST root)
 {
-    for (int i = 0; i < root.nodes.length; ++i)
+    for (size_t i = 0; i < root.nodes.length; ++i)
     {
         const NodePtr* node = root.nodes.array[i];
         FreeASTNode(*node);

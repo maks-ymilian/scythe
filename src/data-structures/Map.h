@@ -1,11 +1,11 @@
 #pragma once
 
 #include <inttypes.h>
-#include <stdbool.h>
 
 #define MAP_ITERATE(name, map) Node* name = NULL; MapNext(map, &name);
 
 typedef struct Node Node;
+
 struct Node
 {
     char* key;
@@ -21,7 +21,7 @@ typedef struct
     size_t sizeOfValueType;
 } Map;
 
-Map AllocateMap(const size_t sizeOfValueType);
+Map AllocateMap(size_t sizeOfValueType);
 void FreeMap(const Map* map);
 void* MapGet(const Map* map, const char* key);
 bool MapNext(const Map* map, Node** current);

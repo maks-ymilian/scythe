@@ -8,38 +8,22 @@
 #include "data-structures/Map.h"
 
 static const char* source;
-static long pointer;
-static long currentTokenStart;
+static size_t pointer;
+static size_t currentTokenStart;
 static int currentLine;
 
 static Array tokens;
 
 static Map keywords;
 
-void AddKeyword(const TokenType tokenType)
+static void AddKeyword(const TokenType tokenType)
 {
     MapAdd(&keywords, GetTokenTypeString(tokenType), &tokenType);
 }
 
-static char Advance()
+static char* AllocateSubstring(const size_t start, const size_t end)
 {
-    pointer++;
-    return source[pointer];
-}
-
-static char Peek()
-{
-    return source[pointer + 1];
-}
-
-static bool IsAtEnd()
-{
-    return source[pointer + 1] == 0;
-}
-
-static const char* AllocateSubstring(const long start, const long end)
-{
-    int length = end + 1 - start;
+    size_t length = end - start;
     length += 1;
     char* text = malloc(length);
     assert(text != NULL);
@@ -48,79 +32,59 @@ static const char* AllocateSubstring(const long start, const long end)
     return text;
 }
 
-static const char* AllocateCurrentLexeme()
+static void AddToken(const TokenType type, char* text)
 {
-    return AllocateSubstring(currentTokenStart, pointer);
-}
-
-static void AddNewToken(const TokenType type, const char* text)
-{
-    const Token token = (Token){type, currentLine, (char*)text};
+    const Token token = (Token)
+    {
+        .type = type,
+        .lineNumber = currentLine,
+        .text = text,
+    };
     ArrayAdd(&tokens, &token);
 }
 
 static void ScanWord()
 {
-    pointer--;
-
-    while (!IsAtEnd())
+    for (; source[pointer] != '\0'; pointer++)
     {
-        const char character = Advance();
-
-        if (!isalnum(character) && character != '_')
-        {
-            pointer--;
+        if (!isalnum(source[pointer]) && source[pointer] != '_')
             break;
-        }
     }
 
-    const char* lexeme = AllocateCurrentLexeme();
-    const TokenType* tokenType = MapGet(&keywords, lexeme);
+    char* string = AllocateSubstring(currentTokenStart, pointer);
+    const TokenType* tokenType = MapGet(&keywords, string);
     if (tokenType != NULL)
-        AddNewToken(*tokenType, NULL);
+        AddToken(*tokenType, NULL);
     else
-        AddNewToken(Token_Identifier, lexeme);
+        AddToken(Token_Identifier, string);
 }
 
 static Result ScanStringLiteral()
 {
-    const long start = pointer + 1;
-    bool foundClosingCharacter = false;
-    while (!IsAtEnd())
+    const size_t start = pointer;
+    pointer++;
+    for (; source[pointer] != '\0'; pointer++)
     {
-        const char character = Advance();
-
-        if (character == '"')
-        {
-            foundClosingCharacter = true;
+        if (source[pointer] == '"')
             break;
-        }
     }
-    const long end = pointer - 1;
+    if (source[pointer] == '\0')
+        return ERROR_RESULT("String literal is never closed", currentLine, NULL);
 
-    if (!foundClosingCharacter)
-        return ERROR_RESULT("String literal is never closed", currentLine);
-
-    AddNewToken(Token_StringLiteral, AllocateSubstring(start, end));
+    AddToken(Token_StringLiteral, AllocateSubstring(start + 1, pointer));
+    pointer++;
     return SUCCESS_RESULT;
 }
 
 static void ScanNumberLiteral()
 {
-    pointer--;
-
-    while (!IsAtEnd())
+    for (; source[pointer] != '\0'; pointer++)
     {
-        const char character = Advance();
-
-        if (!isalnum(character) && character != '.')
-        {
-            pointer--;
+        if (!isalnum(source[pointer]) && source[pointer] != '.')
             break;
-        }
     }
 
-    AddNewToken(Token_NumberLiteral, AllocateCurrentLexeme());
+    AddToken(Token_NumberLiteral, AllocateSubstring(currentTokenStart, pointer));
 }
 
 typedef struct
@@ -133,15 +97,15 @@ static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol
 {
     for (size_t i = 0; i < size; i++)
     {
-        if (Peek() == symbols[i].symbol)
+        if (source[pointer + 1] == symbols[i].symbol)
         {
-            Advance();
-            AddNewToken(symbols[i].joinedTokenType, NULL);
+            pointer++;
+            AddToken(symbols[i].joinedTokenType, NULL);
             return;
         }
     }
 
-    AddNewToken(defaultType, NULL);
+    AddToken(defaultType, NULL);
 }
 
 Result Scan(const char* const sourceCode, Array* outTokens)
@@ -175,15 +139,14 @@ Result Scan(const char* const sourceCode, Array* outTokens)
     tokens = AllocateArray(sizeof(Token));
 
     source = sourceCode;
-    pointer = -1;
     currentLine = 1;
 
     bool insideLineComment = false;
     bool insideMultilineComment = false;
 
-    while (!IsAtEnd())
+    for (pointer = 0; source[pointer] != '\0'; pointer++)
     {
-        const char character = Advance();
+        const char character = source[pointer];
 
         if (character == '\n')
         {
@@ -201,7 +164,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
         if (character == '/')
         {
-            const char peek = Peek();
+            const char peek = source[pointer + 1];
             if (peek == '/' && !insideMultilineComment)
             {
                 insideLineComment = true;
@@ -214,10 +177,10 @@ Result Scan(const char* const sourceCode, Array* outTokens)
             }
         }
 
-        if (character == '*' && Peek() == '/' && insideMultilineComment)
+        if (character == '*' && source[pointer + 1] == '/' && insideMultilineComment)
         {
             insideMultilineComment = false;
-            Advance();
+            pointer++;
             continue;
         }
 
@@ -226,25 +189,25 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
         switch (character)
         {
-        case '(': AddNewToken(Token_LeftBracket, NULL);
+        case '(': AddToken(Token_LeftBracket, NULL);
             continue;
-        case ')': AddNewToken(Token_RightBracket, NULL);
+        case ')': AddToken(Token_RightBracket, NULL);
             continue;
-        case '{': AddNewToken(Token_LeftCurlyBracket, NULL);
+        case '{': AddToken(Token_LeftCurlyBracket, NULL);
             continue;
-        case '}': AddNewToken(Token_RightCurlyBracket, NULL);
+        case '}': AddToken(Token_RightCurlyBracket, NULL);
             continue;
-        case '[': AddNewToken(Token_LeftSquareBracket, NULL);
+        case '[': AddToken(Token_LeftSquareBracket, NULL);
             continue;
-        case ']': AddNewToken(Token_RightSquareBracket, NULL);
+        case ']': AddToken(Token_RightSquareBracket, NULL);
             continue;
-        case '.': AddNewToken(Token_Dot, NULL);
+        case '.': AddToken(Token_Dot, NULL);
             continue;
-        case ',': AddNewToken(Token_Comma, NULL);
+        case ',': AddToken(Token_Comma, NULL);
             continue;
-        case ';': AddNewToken(Token_Semicolon, NULL);
+        case ';': AddToken(Token_Semicolon, NULL);
             continue;
-        case '@': AddNewToken(Token_At, NULL);
+        case '@': AddToken(Token_At, NULL);
             continue;
 
         case '=': AddDoubleSymbolToken(Token_Equals, (SecondSymbol[]){{'=', Token_EqualsEquals}}, 1);
@@ -276,11 +239,13 @@ Result Scan(const char* const sourceCode, Array* outTokens)
         else if (isalpha(character) || character == '_') // identifier / keyword
             ScanWord();
         else if (character == '"') // string literal
-            HANDLE_ERROR(ScanStringLiteral());
+            PROPAGATE_ERROR(ScanStringLiteral());
         else // error
-            return ERROR_RESULT("Unexpected character", currentLine);
+            return ERROR_RESULT("Unexpected character", currentLine, NULL);
+
+        pointer--;
     }
-    AddNewToken(Token_EndOfFile, NULL);
+    AddToken(Token_EndOfFile, NULL);
 
     *outTokens = tokens;
 
@@ -291,7 +256,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
 void FreeTokenArray(const Array* tokens)
 {
-    for (int i = 0; i < tokens->length; ++i)
+    for (size_t i = 0; i < tokens->length; ++i)
     {
         const Token* token = tokens->array[i];
         if (token->text != NULL)

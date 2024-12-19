@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -54,7 +55,7 @@ static inline char* AllocateString2Str(const char* format, const char* insert1, 
 
 static inline char* AllocateString2Int(const char* format, const int insert1, const int insert2)
 {
-    const size_t insertLength = IntCharCount(insert1) + IntCharCount(insert2);
+    const size_t insertLength = (size_t)(IntCharCount(insert1) + IntCharCount(insert2));
     const size_t formatLength = strlen(format) - 4;
     const size_t bufferLength = insertLength + formatLength + 1;
     char* str = malloc(bufferLength);

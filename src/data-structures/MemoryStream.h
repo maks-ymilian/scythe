@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdbool.h>
-
 #include "inttypes.h"
 
 typedef struct MemoryStream MemoryStream;
@@ -10,7 +8,7 @@ typedef struct
 {
     uint8_t* buffer;
     size_t length;
-}Buffer;
+} Buffer;
 
 MemoryStream* AllocateMemoryStream();
 void FreeMemoryStream(MemoryStream* stream, bool freeBuffer);

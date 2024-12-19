@@ -6,8 +6,8 @@
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
-    HANDLE_ERROR(ResolverPass(syntaxTree));
-    HANDLE_ERROR(GlobalSectionPass(syntaxTree));
-    HANDLE_ERROR(WriterPass(syntaxTree, outputCode, outputLength));
+    PROPAGATE_ERROR(ResolverPass(syntaxTree));
+    PROPAGATE_ERROR(GlobalSectionPass(syntaxTree));
+    PROPAGATE_ERROR(WriterPass(syntaxTree, outputCode, outputLength));
     return SUCCESS_RESULT;
 }

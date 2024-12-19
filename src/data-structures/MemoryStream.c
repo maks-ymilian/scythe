@@ -25,12 +25,12 @@ MemoryStream* AllocateMemoryStream()
 Buffer StreamRead(MemoryStream* stream, const size_t length)
 {
     if (length == 0)
-        return (Buffer){NULL, 0};
+        return (Buffer){.buffer = NULL, .length = 0};
 
     const size_t bytesLeft = stream->position - stream->length;
     const size_t minLength = length < bytesLeft ? length : bytesLeft;
 
-    const Buffer buffer = (Buffer){&stream->buffer[stream->position], minLength};
+    const Buffer buffer = (Buffer){.buffer = &stream->buffer[stream->position], .length = minLength};
     stream->position += minLength;
     return buffer;
 }
@@ -52,7 +52,7 @@ Buffer StreamRewindRead(MemoryStream* stream, const size_t offset)
 
 Buffer StreamGetBuffer(const MemoryStream* stream)
 {
-    return (Buffer){stream->buffer, stream->position};
+    return (Buffer){.buffer = stream->buffer, .length = stream->position};
 }
 
 size_t StreamGetPosition(const MemoryStream* stream) { return stream->position; }
