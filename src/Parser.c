@@ -548,7 +548,7 @@ static Result ParseAssignment(NodePtr* out)
     Array exprArray = AllocateArray(sizeof(NodePtr));
     ArrayAdd(&exprArray, &left);
 
-    const TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
+    constexpr TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
     const Token* operator = Match(validOperators, 5);
     Array operatorArray = AllocateArray(sizeof(Token));
     while (operator != NULL)
@@ -754,7 +754,7 @@ static Result ParseSectionStatement(NodePtr* out)
     if (identifier == NULL)
         return ERROR_RESULT_LINE("Expected identifier after \"@\"");
 
-    const char sectionNames[6][10] =
+    constexpr char sectionNames[6][10] =
     {
         "init",
         "slider",
