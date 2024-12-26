@@ -4,8 +4,8 @@
 
 typedef struct
 {
-    void** array;
-    size_t length, cap, sizeOfType;
+	void** array;
+	size_t length, cap, sizeOfType;
 } Array;
 
 Array AllocateArray(size_t sizeOfType);

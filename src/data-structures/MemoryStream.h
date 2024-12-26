@@ -6,8 +6,8 @@ typedef struct MemoryStream MemoryStream;
 
 typedef struct
 {
-    uint8_t* buffer;
-    size_t length;
+	uint8_t* buffer;
+	size_t length;
 } Buffer;
 
 MemoryStream* AllocateMemoryStream();

@@ -2,23 +2,25 @@
 
 #include <inttypes.h>
 
-#define MAP_ITERATE(name, map) Node* name = NULL; MapNext(map, &name);
+#define MAP_ITERATE(name, map) \
+	Node* name = NULL;         \
+	MapNext(map, &name);
 
 typedef struct Node Node;
 
 struct Node
 {
-    char* key;
-    void* value;
-    Node* next;
-    size_t bucket;
+	char* key;
+	void* value;
+	Node* next;
+	size_t bucket;
 };
 
 typedef struct
 {
-    Node** buckets;
-    size_t elementCount, bucketCount, bucketsCap;
-    size_t sizeOfValueType;
+	Node** buckets;
+	size_t elementCount, bucketCount, bucketsCap;
+	size_t sizeOfValueType;
 } Map;
 
 Map AllocateMap(size_t sizeOfValueType);
