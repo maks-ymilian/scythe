@@ -807,13 +807,13 @@ static TypeReference TokenToTypeReference(const Token token)
 		return (TypeReference){
 			.text = NULL,
 			.primitive = true,
-			.value.primitiveType = TokenTypeToPrimitiveType(token.type),
+			.primitiveType = TokenTypeToPrimitiveType(token.type),
 		};
 	case Token_Identifier:
 		return (TypeReference){
 			.text = AllocateString(token.text),
 			.primitive = false,
-			.value.reference = NULL_NODE,
+			.reference = NULL_NODE,
 		};
 	default: unreachable();
 	}

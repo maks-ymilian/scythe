@@ -66,7 +66,7 @@ typedef struct
 	{
 		NodePtr reference;
 		PrimitiveType primitiveType;
-	} value;
+	};
 } TypeReference;
 
 
