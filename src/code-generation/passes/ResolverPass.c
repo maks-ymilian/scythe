@@ -73,33 +73,144 @@ static bool NodeIsPublicDeclaration(const NodePtr* node)
 	}
 }
 
+static bool GetModuleFromNode(const NodePtr* node, Map** outModule, char** outModuleName)
+{
+	*outModule = NULL;
+	*outModuleName = NULL;
+
+	if (node->type != Node_Literal)
+		return false;
+
+	const LiteralExpr* literal = node->ptr;
+	assert(literal->type == Literal_Identifier);
+
+	if (literal->identifier.reference.type != Node_Import)
+		return false;
+
+	const ImportStmt* import = literal->identifier.reference.ptr;
+	*outModuleName = import->moduleName;
+	assert(*outModuleName);
+	*outModule = MapGet(&modules, *outModuleName);
+	assert(*outModule);
+
+	return true;
+}
+
+static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** outStructDecl)
+{
+	*outStructDecl = NULL;
+
+	const IdentifierReference* identifier = NULL;
+	if (node->type == Node_Literal)
+	{
+		const LiteralExpr* literal = node->ptr;
+		assert(literal->type == Literal_Identifier);
+		identifier = &literal->identifier;
+	}
+	else if (node->type == Node_FunctionCall)
+	{
+		const FuncCallExpr* funcCall = node->ptr;
+		identifier = &funcCall->identifier;
+	}
+	else if (node->type == Node_ArrayAccess)
+	{
+		const ArrayAccessExpr* arrayAccess = node->ptr;
+		identifier = &arrayAccess->identifier;
+	}
+	else
+		return false;
+
+	NodePtr type = NULL_NODE;
+
+	if (identifier->reference.type == Node_VariableDeclaration)
+	{
+		const VarDeclStmt* varDecl = identifier->reference.ptr;
+		type = varDecl->type;
+	}
+	else if (identifier->reference.type == Node_FunctionDeclaration)
+	{
+		const FuncDeclStmt* funcDecl = identifier->reference.ptr;
+		type = funcDecl->type;
+	}
+	else
+		return false;
+
+	if (type.type != Node_MemberAccess)
+		return false;
+
+	const MemberAccessExpr* last = type.ptr;
+	while (last->next.ptr != NULL)
+	{
+		assert(last->next.type == Node_MemberAccess);
+		last = last->next.ptr;
+	}
+
+	if (last->value.type != Node_Literal)
+		return false;
+
+	const LiteralExpr* literal = last->value.ptr;
+	if (literal->type != Literal_Identifier)
+		return false;
+	if (literal->identifier.reference.type != Node_StructDeclaration)
+		return false;
+
+	*outStructDecl = literal->identifier.reference.ptr;
+	return true;
+}
+
 static Result InitializeIdentifierReference(
 	IdentifierReference* identifier,
-	const int lineNumber,
-	const Map* module,
-	const char* moduleName)
+	const NodePtr* previous,
+	const int lineNumber)
 {
-	if (module != NULL)
+	if (previous != NULL)
 	{
-		assert(moduleName != NULL);
+		Map* module;
+		char* moduleName;
+		if (GetModuleFromNode(previous, &module, &moduleName))
+		{
+			const NodePtr* node = MapGet(module, identifier->text);
+			if (node == NULL)
+				return ERROR_RESULT(
+					AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", identifier->text, moduleName),
+					lineNumber,
+					currentFilePath);
 
-		const NodePtr* node = MapGet(module, identifier->text);
-		if (node == NULL)
+			if (!NodeIsPublicDeclaration(node))
+				return ERROR_RESULT(
+					AllocateString2Str("Declaration \"%s\" in module \"%s\" is private", identifier->text, moduleName),
+					lineNumber,
+					currentFilePath);
+
+			identifier->reference = *node;
+			return SUCCESS_RESULT;
+		}
+
+		StructDeclStmt* structDecl;
+		if (GetStructDeclarationFromNode(previous, &structDecl))
+		{
+			for (size_t i = 0; i < structDecl->members.length; ++i)
+			{
+				const NodePtr* node = structDecl->members.array[i];
+				if (node->type != Node_VariableDeclaration)
+					continue;
+
+				const VarDeclStmt* varDecl = node->ptr;
+				if (strcmp(varDecl->name, identifier->text) == 0)
+				{
+					identifier->reference = *node;
+					return SUCCESS_RESULT;
+				}
+			}
+
 			return ERROR_RESULT(
-				AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", identifier->text, moduleName),
+				AllocateString2Str("Member \"%s\" does not exist in struct \"%s\"", identifier->text, structDecl->name),
 				lineNumber,
 				currentFilePath);
+		}
 
-		if (!NodeIsPublicDeclaration(node))
-			return ERROR_RESULT(
-				AllocateString2Str("Declaration \"%s\" in module \"%s\" is private", identifier->text, moduleName),
-				lineNumber,
-				currentFilePath);
-
-		identifier->reference = *node;
-		return SUCCESS_RESULT;
+		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	}
-	assert(moduleName == NULL);
 
 	assert(currentScope != NULL);
 	const Scope* scope = currentScope;
@@ -119,56 +230,8 @@ static Result InitializeIdentifierReference(
 	return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier->text), lineNumber, currentFilePath);
 }
 
-static Result ResolveExpression(const NodePtr* node, const Map* module, const char* moduleName);
-
-static Result ResolveMemberAccess(const MemberAccessExpr* memberAccess)
+static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 {
-	const MemberAccessExpr* current = memberAccess;
-
-	const Map* module = NULL;
-	const char* moduleName = NULL;
-	if (current->value.type == Node_Literal)
-	{
-		const LiteralExpr* literal = current->value.ptr;
-		PROPAGATE_ERROR(ResolveExpression(&current->value, NULL, NULL));
-
-		assert(literal->type == Literal_Identifier);
-		if (literal->identifier.reference.type == Node_Import)
-		{
-			const ImportStmt* import = literal->identifier.reference.ptr;
-			moduleName = import->moduleName;
-			assert(moduleName);
-			module = MapGet(&modules, moduleName);
-			assert(module);
-		}
-
-		if (current->next.ptr == NULL)
-			return SUCCESS_RESULT;
-
-		assert(current->next.type == Node_MemberAccess);
-		current = current->next.ptr;
-	}
-
-	while (true)
-	{
-		PROPAGATE_ERROR(ResolveExpression(&current->value, module, moduleName));
-
-		if (current->next.ptr == NULL)
-			break;
-
-		assert(current->next.type == Node_MemberAccess);
-		current = current->next.ptr;
-	}
-
-	return SUCCESS_RESULT;
-}
-
-static Result ResolveExpression(const NodePtr* node, const Map* module, const char* moduleName)
-{
-	assert(
-		(module != NULL && moduleName != NULL) ||
-		(module == NULL && moduleName == NULL));
-
 	switch (node->type)
 	{
 	case Node_Literal:
@@ -180,9 +243,8 @@ static Result ResolveExpression(const NodePtr* node, const Map* module, const ch
 			if (literal->identifier.reference.ptr == NULL)
 				PROPAGATE_ERROR(InitializeIdentifierReference(
 					&literal->identifier,
-					literal->lineNumber,
-					module,
-					moduleName));
+					previous,
+					literal->lineNumber));
 
 			return SUCCESS_RESULT;
 		}
@@ -198,19 +260,31 @@ static Result ResolveExpression(const NodePtr* node, const Map* module, const ch
 	case Node_Binary:
 	{
 		const BinaryExpr* binary = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&binary->left, module, moduleName));
-		PROPAGATE_ERROR(ResolveExpression(&binary->right, module, moduleName));
+		PROPAGATE_ERROR(ResolveExpression(&binary->left, previous));
+		PROPAGATE_ERROR(ResolveExpression(&binary->right, previous));
 		return SUCCESS_RESULT;
 	}
 	case Node_Unary:
 	{
 		const UnaryExpr* unary = node->ptr;
-		return ResolveExpression(&unary->expression, module, moduleName);
+		return ResolveExpression(&unary->expression, previous);
 	}
 	case Node_MemberAccess:
 	{
-		const MemberAccessExpr* memberAccess = node->ptr;
-		PROPAGATE_ERROR(ResolveMemberAccess(memberAccess));
+		const MemberAccessExpr* current = node->ptr;
+		const NodePtr* previousValue = NULL;
+		while (true)
+		{
+			PROPAGATE_ERROR(ResolveExpression(&current->value, previousValue));
+
+			if (current->next.ptr == NULL)
+				break;
+
+			assert(current->next.type == Node_MemberAccess);
+			previousValue = &current->value;
+			current = current->next.ptr;
+		}
+
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionCall:
@@ -220,14 +294,13 @@ static Result ResolveExpression(const NodePtr* node, const Map* module, const ch
 		if (funcCall->identifier.reference.ptr == NULL)
 			PROPAGATE_ERROR(InitializeIdentifierReference(
 				&funcCall->identifier,
-				funcCall->lineNumber,
-				module,
-				moduleName));
+				previous,
+				funcCall->lineNumber));
 
 		for (size_t i = 0; i < funcCall->parameters.length; ++i)
 		{
 			const NodePtr* node = funcCall->parameters.array[i];
-			PROPAGATE_ERROR(ResolveExpression(node, module, moduleName));
+			PROPAGATE_ERROR(ResolveExpression(node, previous));
 		}
 
 		return SUCCESS_RESULT;
@@ -239,11 +312,10 @@ static Result ResolveExpression(const NodePtr* node, const Map* module, const ch
 		if (arrayAccess->identifier.reference.ptr == NULL)
 			PROPAGATE_ERROR(InitializeIdentifierReference(
 				&arrayAccess->identifier,
-				arrayAccess->lineNumber,
-				module,
-				moduleName));
+				previous,
+				arrayAccess->lineNumber));
 
-		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript, module, moduleName));
+		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript, previous));
 
 		return SUCCESS_RESULT;
 	}
@@ -264,13 +336,13 @@ static Result VisitBlock(const BlockStmt* block)
 	return SUCCESS_RESULT;
 }
 
-static Result InitializeTypeReference(const NodePtr* inout, const int lineNumber)
+static Result InitializeTypeReference(const NodePtr* inout)
 {
 	if (inout->type == Node_Literal)
 		return SUCCESS_RESULT;
 
 	assert(inout->type == Node_MemberAccess);
-	PROPAGATE_ERROR(ResolveExpression(inout, NULL, NULL));
+	PROPAGATE_ERROR(ResolveExpression(inout, NULL));
 
 	return SUCCESS_RESULT;
 }
@@ -306,10 +378,10 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, NULL, NULL));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength, NULL, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-		PROPAGATE_ERROR(InitializeTypeReference(&varDecl->type, varDecl->lineNumber));
+		PROPAGATE_ERROR(InitializeTypeReference(&varDecl->type));
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionDeclaration:
@@ -329,7 +401,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(InitializeTypeReference(&funcDecl->type, funcDecl->lineNumber));
+		PROPAGATE_ERROR(InitializeTypeReference(&funcDecl->type));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -347,8 +419,8 @@ static Result VisitStatement(const NodePtr* node)
 	}
 
 	case Node_Block: return VisitBlock(node->ptr);
-	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr, NULL, NULL);
-	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr, NULL, NULL);
+	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr, NULL);
+	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr, NULL);
 
 	case Node_Section:
 	{
@@ -359,7 +431,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_If:
 	{
 		const IfStmt* ifStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, NULL, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, NULL));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PopScope(NULL);
@@ -371,7 +443,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_While:
 	{
 		const WhileStmt* whileStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, NULL, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, NULL));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		PopScope(NULL);
@@ -382,8 +454,8 @@ static Result VisitStatement(const NodePtr* node)
 		const ForStmt* forStmt = node->ptr;
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, NULL, NULL));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment, NULL, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment, NULL));
 		PROPAGATE_ERROR(VisitStatement(&forStmt->stmt));
 		PopScope(NULL);
 		return SUCCESS_RESULT;
