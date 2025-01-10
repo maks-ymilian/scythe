@@ -90,6 +90,9 @@ static Result VisitSection(const SectionStmt* section)
 			break;
 		case Node_Block:
 			break;
+		case Node_StructDeclaration:
+			WriteString("struct (GET RID OF THIS)\n");
+			break;
 		default: unreachable();
 		}
 	}

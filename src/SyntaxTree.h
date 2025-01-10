@@ -48,27 +48,6 @@ typedef struct
 	NodePtr reference;
 } IdentifierReference;
 
-typedef enum
-{
-	Primitive_Void,
-	Primitive_Float,
-	Primitive_Int,
-	Primitive_Bool,
-	Primitive_String,
-} PrimitiveType;
-
-typedef struct
-{
-	char* text;
-	bool primitive;
-
-	union
-	{
-		NodePtr reference;
-		PrimitiveType primitiveType;
-	};
-} TypeReference;
-
 
 typedef enum
 {
@@ -118,6 +97,15 @@ typedef struct
 
 typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
 
+typedef enum
+{
+	Primitive_Void,
+	Primitive_Float,
+	Primitive_Int,
+	Primitive_Bool,
+	Primitive_String,
+} PrimitiveType;
+
 typedef struct
 {
 	int lineNumber;
@@ -129,6 +117,7 @@ typedef struct
 		Literal_String,
 		Literal_Identifier,
 		Literal_Boolean,
+		Literal_PrimitiveType,
 	} type;
 
 	union
@@ -138,6 +127,7 @@ typedef struct
 		char* string;
 		IdentifierReference identifier;
 		bool boolean;
+		PrimitiveType primitiveType;
 	};
 } LiteralExpr;
 
@@ -200,7 +190,7 @@ typedef typeof(((SectionStmt*)0)->sectionType) SectionType;
 typedef struct
 {
 	int lineNumber;
-	TypeReference type;
+	NodePtr type;
 	char* name;
 	char* externalName;
 	NodePtr initializer;
@@ -213,7 +203,7 @@ typedef struct
 typedef struct
 {
 	int lineNumber;
-	TypeReference type;
+	NodePtr type;
 	char* name;
 	char* externalName;
 	Array parameters;

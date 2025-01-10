@@ -264,23 +264,13 @@ static Result VisitBlock(const BlockStmt* block)
 	return SUCCESS_RESULT;
 }
 
-static Result InitializeTypeReference(
-	TypeReference* inout,
-	const int lineNumber,
-	const Map* module,
-	const char* moduleName)
+static Result InitializeTypeReference(const NodePtr* inout, const int lineNumber)
 {
-	assert(
-		(module != NULL && moduleName != NULL) ||
-		(module == NULL && moduleName == NULL));
-
-	if (inout->primitive)
+	if (inout->type == Node_Literal)
 		return SUCCESS_RESULT;
 
-	IdentifierReference hack = {.text = inout->text, .reference = NULL_NODE};
-	PROPAGATE_ERROR(InitializeIdentifierReference(&hack, lineNumber, module, moduleName));
-	inout->reference = hack.reference;
-	assert(inout->reference.type == Node_StructDeclaration);
+	assert(inout->type == Node_MemberAccess);
+	PROPAGATE_ERROR(ResolveExpression(inout, NULL, NULL));
 
 	return SUCCESS_RESULT;
 }
@@ -319,7 +309,7 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, NULL, NULL));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength, NULL, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-		PROPAGATE_ERROR(InitializeTypeReference(&varDecl->type, varDecl->lineNumber, NULL, NULL));
+		PROPAGATE_ERROR(InitializeTypeReference(&varDecl->type, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionDeclaration:
@@ -339,7 +329,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(InitializeTypeReference(&funcDecl->type, funcDecl->lineNumber, NULL, NULL));
+		PROPAGATE_ERROR(InitializeTypeReference(&funcDecl->type, funcDecl->lineNumber));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
