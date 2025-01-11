@@ -88,10 +88,12 @@ static Result VisitSection(const SectionStmt* section)
 		case Node_ExpressionStatement:
 			WriteString("expression\n");
 			break;
+
+			// temporary
 		case Node_Block:
 			break;
 		case Node_StructDeclaration:
-			WriteString("struct (GET RID OF THIS)\n");
+			WriteString("struct\n");
 			break;
 		default: unreachable();
 		}
