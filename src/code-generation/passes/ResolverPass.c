@@ -251,7 +251,8 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 		else if (literal->type == Literal_Int ||
 				 literal->type == Literal_Float ||
 				 literal->type == Literal_String ||
-				 literal->type == Literal_Boolean)
+				 literal->type == Literal_Boolean ||
+				 literal->type == Literal_PrimitiveType)
 			return SUCCESS_RESULT;
 
 		unreachable();
@@ -336,17 +337,6 @@ static Result VisitBlock(const BlockStmt* block)
 	return SUCCESS_RESULT;
 }
 
-static Result InitializeTypeReference(const NodePtr* inout)
-{
-	if (inout->type == Node_Literal)
-		return SUCCESS_RESULT;
-
-	assert(inout->type == Node_MemberAccess);
-	PROPAGATE_ERROR(ResolveExpression(inout, NULL));
-
-	return SUCCESS_RESULT;
-}
-
 static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool topLevel)
 {
 	assert(importNode->type == Node_Import);
@@ -381,7 +371,7 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, NULL));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-		PROPAGATE_ERROR(InitializeTypeReference(&varDecl->type));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->type, NULL));
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionDeclaration:
@@ -401,7 +391,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(InitializeTypeReference(&funcDecl->type));
+		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
