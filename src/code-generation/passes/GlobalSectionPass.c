@@ -120,7 +120,10 @@ Result GlobalSectionPass(const AST* ast)
 
 		PROPAGATE_ERROR(VisitModule(module));
 
-		ArrayInsert(&module->statements, &globalInitSection, 0);
+		if (((BlockStmt*)((SectionStmt*)globalInitSection.ptr)->block.ptr)->statements.length != 0)
+			ArrayInsert(&module->statements, &globalInitSection, 0);
+		else
+			FreeASTNode(globalInitSection);
 	}
 
 	return SUCCESS_RESULT;
