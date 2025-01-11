@@ -66,7 +66,7 @@ void ArrayRemove(Array* array, const size_t index)
 	assert(index < array->length);
 	free(array->array[index]);
 	if (index != array->length - 1)
-		memmove(array->array + index, array->array + index + 1, (array->length - index) * sizeof(void*));
+		memmove(array->array + index, array->array + index + 1, (array->length - index - 1) * sizeof(void*));
 	array->length -= 1;
 }
 
