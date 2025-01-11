@@ -122,7 +122,7 @@ typedef struct
 
 	union
 	{
-		double floatValue;
+		char* floatValue;
 		uint64_t intValue;
 		char* string;
 		IdentifierReference identifier;
