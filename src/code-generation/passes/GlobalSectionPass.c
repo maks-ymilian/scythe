@@ -15,10 +15,10 @@ static void AddToInitSection(const NodePtr* node)
 	ArrayAdd(&block->statements, node);
 }
 
-static Result VisitBlock(const NodePtr* node)
+static void VisitBlock(const NodePtr* node)
 {
 	if (node->type != Node_Block)
-		return SUCCESS_RESULT;
+		return;
 
 	BlockStmt* block = node->ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
@@ -29,7 +29,7 @@ static Result VisitBlock(const NodePtr* node)
 		case Node_FunctionDeclaration:
 		{
 			const FuncDeclStmt* funcDecl = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(&funcDecl->block));
+			VisitBlock(&funcDecl->block);
 
 			AddToInitSection(node);
 			ArrayRemove(&block->statements, i);
@@ -38,26 +38,26 @@ static Result VisitBlock(const NodePtr* node)
 		}
 		case Node_Block:
 		{
-			PROPAGATE_ERROR(VisitBlock(node));
+			VisitBlock(node);
 			break;
 		}
 		case Node_If:
 		{
 			const IfStmt* ifStmt = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(&ifStmt->trueStmt));
-			PROPAGATE_ERROR(VisitBlock(&ifStmt->falseStmt));
+			VisitBlock(&ifStmt->trueStmt);
+			VisitBlock(&ifStmt->falseStmt);
 			break;
 		}
 		case Node_While:
 		{
 			const WhileStmt* whileStmt = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(&whileStmt->stmt));
+			VisitBlock(&whileStmt->stmt);
 			break;
 		}
 		case Node_For:
 		{
 			const ForStmt* forStmt = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(&forStmt->stmt));
+			VisitBlock(&forStmt->stmt);
 			break;
 		}
 		case Node_Return:
@@ -68,10 +68,9 @@ static Result VisitBlock(const NodePtr* node)
 		default: unreachable();
 		}
 	}
-	return SUCCESS_RESULT;
 }
 
-static Result VisitModule(ModuleNode* module)
+static void VisitModule(ModuleNode* module)
 {
 	for (size_t i = 0; i < module->statements.length; ++i)
 	{
@@ -90,18 +89,16 @@ static Result VisitModule(ModuleNode* module)
 		case Node_Section:
 		{
 			const SectionStmt* section = stmt->ptr;
-			PROPAGATE_ERROR(VisitBlock(&section->block));
+			VisitBlock(&section->block);
 			break;
 		}
 		case Node_Import: break;
 		default: unreachable();
 		}
 	}
-
-	return SUCCESS_RESULT;
 }
 
-Result GlobalSectionPass(const AST* ast)
+void GlobalSectionPass(const AST* ast)
 {
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -121,13 +118,11 @@ Result GlobalSectionPass(const AST* ast)
 			},
 			sizeof(SectionStmt), Node_Section);
 
-		PROPAGATE_ERROR(VisitModule(module));
+		VisitModule(module);
 
 		if (((BlockStmt*)((SectionStmt*)globalInitSection.ptr)->block.ptr)->statements.length != 0)
 			ArrayInsert(&module->statements, &globalInitSection, 0);
 		else
 			FreeASTNode(globalInitSection);
 	}
-
-	return SUCCESS_RESULT;
 }

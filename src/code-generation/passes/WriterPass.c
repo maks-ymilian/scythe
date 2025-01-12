@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "Result.h"
-#include "SyntaxTree.h"
 #include "data-structures/MemoryStream.h"
 
 #define INDENT_WIDTH 4

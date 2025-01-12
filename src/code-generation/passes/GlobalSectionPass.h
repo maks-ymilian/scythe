@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Result.h"
 #include "SyntaxTree.h"
 
-Result GlobalSectionPass(const AST* ast);
+void GlobalSectionPass(const AST* ast);
