@@ -118,29 +118,43 @@ static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 	WriteString(";\n");
 }
 
+static void VisitStatement(const NodePtr* node)
+{
+	switch (node->type)
+	{
+	case Node_FunctionDeclaration:
+		WriteString("function\n");
+		break;
+	case Node_VariableDeclaration:
+		VisitVariableDeclaration(node->ptr);
+		break;
+	case Node_ExpressionStatement:
+		const ExpressionStmt* expressionStmt = node->ptr;
+		VisitExpression(expressionStmt->expr);
+		WriteString(";\n");
+		break;
+
+		// temporary
+	case Node_Block:
+		break;
+	case Node_StructDeclaration:
+		WriteString("struct\n");
+		break;
+	default: unreachable();
+	}
+}
+
 static void VisitSection(const SectionStmt* section)
 {
 	const char* sectionText = NULL;
 	switch (section->sectionType)
 	{
-	case Section_Init:
-		sectionText = "init";
-		break;
-	case Section_Block:
-		sectionText = "block";
-		break;
-	case Section_Sample:
-		sectionText = "sample";
-		break;
-	case Section_Serialize:
-		sectionText = "serialize";
-		break;
-	case Section_Slider:
-		sectionText = "slider";
-		break;
-	case Section_GFX:
-		sectionText = "gfx";
-		break;
+	case Section_Init: sectionText = "init"; break;
+	case Section_Block: sectionText = "block"; break;
+	case Section_Sample: sectionText = "sample"; break;
+	case Section_Serialize: sectionText = "serialize"; break;
+	case Section_Slider: sectionText = "slider"; break;
+	case Section_GFX: sectionText = "gfx"; break;
 	default: unreachable();
 	}
 
@@ -151,31 +165,7 @@ static void VisitSection(const SectionStmt* section)
 	assert(section->block.type == Node_Block);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
-	{
-		const NodePtr* stmt = block->statements.array[i];
-		switch (stmt->type)
-		{
-		case Node_FunctionDeclaration:
-			WriteString("function\n");
-			break;
-		case Node_VariableDeclaration:
-			VisitVariableDeclaration(stmt->ptr);
-			break;
-		case Node_ExpressionStatement:
-			const ExpressionStmt* expressionStmt = stmt->ptr;
-			VisitExpression(expressionStmt->expr);
-			WriteString(";\n");
-			break;
-
-			// temporary
-		case Node_Block:
-			break;
-		case Node_StructDeclaration:
-			WriteString("struct\n");
-			break;
-		default: unreachable();
-		}
-	}
+		VisitStatement(block->statements.array[i]);
 
 	WriteChar('\n');
 }
