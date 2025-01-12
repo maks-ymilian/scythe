@@ -32,19 +32,17 @@ static void WriteFloat(const double value)
 static void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
 static void WriteChar(const char chr) { StreamWriteByte(stream, (uint8_t)chr); }
 
-static Result VisitExpression(const NodePtr node)
+static void VisitExpression(const NodePtr node)
 {
 	WriteString("expression\n");
-	return SUCCESS_RESULT;
 }
 
-static Result VisitVariableDeclaration(const VarDeclStmt* varDecl)
+static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 {
 	WriteString("variable\n");
-	return SUCCESS_RESULT;
 }
 
-static Result VisitSection(const SectionStmt* section)
+static void VisitSection(const SectionStmt* section)
 {
 	const char* sectionText = NULL;
 	switch (section->sectionType)
@@ -85,11 +83,11 @@ static Result VisitSection(const SectionStmt* section)
 			WriteString("function\n");
 			break;
 		case Node_VariableDeclaration:
-			PROPAGATE_ERROR(VisitVariableDeclaration(stmt->ptr));
+			VisitVariableDeclaration(stmt->ptr);
 			break;
 		case Node_ExpressionStatement:
 			const ExpressionStmt* expressionStmt = stmt->ptr;
-			PROPAGATE_ERROR(VisitExpression(expressionStmt->expr));
+			VisitExpression(expressionStmt->expr);
 			break;
 
 			// temporary
@@ -103,11 +101,9 @@ static Result VisitSection(const SectionStmt* section)
 	}
 
 	WriteChar('\n');
-
-	return SUCCESS_RESULT;
 }
 
-static Result VisitModule(const ModuleNode* module)
+static void VisitModule(const ModuleNode* module)
 {
 	if (module->statements.length != 0)
 	{
@@ -129,11 +125,9 @@ static Result VisitModule(const ModuleNode* module)
 		default: unreachable();
 		}
 	}
-
-	return SUCCESS_RESULT;
 }
 
-Result WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
+void WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
 {
 	stream = AllocateMemoryStream();
 
@@ -141,13 +135,11 @@ Result WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 		assert(node->type == Node_Module);
-		PROPAGATE_ERROR(VisitModule(node->ptr));
+		VisitModule(node->ptr);
 	}
 
 	const Buffer buffer = StreamGetBuffer(stream);
 	FreeMemoryStream(stream, false);
 	if (outBuffer != NULL) *outBuffer = (char*)buffer.buffer;
 	if (outLength != NULL) *outLength = buffer.length;
-
-	return SUCCESS_RESULT;
 }
