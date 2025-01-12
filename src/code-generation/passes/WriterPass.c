@@ -133,10 +133,13 @@ static void VisitStatement(const NodePtr* node)
 		VisitExpression(expressionStmt->expr);
 		WriteString(";\n");
 		break;
+	case Node_Block:
+		const BlockStmt* block = node->ptr;
+		for (size_t i = 0; i < block->statements.length; ++i)
+			VisitStatement(block->statements.array[i]);
+		break;
 
 		// temporary
-	case Node_Block:
-		break;
 	case Node_StructDeclaration:
 		WriteString("struct\n");
 		break;
