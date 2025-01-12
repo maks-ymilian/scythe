@@ -9,7 +9,12 @@
 #include "SyntaxTree.h"
 #include "data-structures/MemoryStream.h"
 
+#define INDENT_WIDTH 4
+#define INDENT_STRING "    "
+
 static MemoryStream* stream;
+
+static int indentationLevel;
 
 static void WriteInteger(const long integer)
 {
@@ -29,8 +34,49 @@ static void WriteFloat(const double value)
 	StreamWrite(stream, string, sizeof(string) - 1);
 }
 
-static void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
-static void WriteChar(const char chr) { StreamWriteByte(stream, (uint8_t)chr); }
+static void WriteCurrentIndentation()
+{
+	for (int i = 0; i < indentationLevel; ++i)
+		StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
+}
+
+static void WriteString(const char* str)
+{
+	const size_t length = strlen(str);
+	StreamWrite(stream, str, length);
+
+	if (str[length - 1] == '\n')
+	{
+		for (int i = 0; i < indentationLevel; ++i)
+			StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
+	}
+}
+
+static void WriteChar(const char chr)
+{
+	StreamWriteByte(stream, (uint8_t)chr);
+
+	if (chr == '\n')
+	{
+		for (int i = 0; i < indentationLevel; ++i)
+			StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
+	}
+}
+
+static void PushIndent()
+{
+	StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
+	indentationLevel++;
+}
+
+static void PopIndent()
+{
+	const Buffer lastChars = StreamRewindRead(stream, INDENT_WIDTH);
+	if (memcmp(INDENT_STRING, lastChars.buffer, INDENT_WIDTH) == 0)
+		StreamRewind(stream, INDENT_WIDTH);
+
+	indentationLevel--;
+}
 
 static void VisitLiteralExpression(const LiteralExpr* literal)
 {
@@ -123,14 +169,23 @@ static void VisitStatement(const NodePtr* node);
 static void VisitIfStatement(const IfStmt* ifStmt)
 {
 	VisitExpression(ifStmt->expr);
-	WriteString(" ?\n(\n");
+	WriteString(" ?\n");
+	WriteString("(\n");
+
+	PushIndent();
 	VisitStatement(&ifStmt->trueStmt);
+	PopIndent();
+
 	WriteChar(')');
 
 	if (ifStmt->falseStmt.ptr != NULL)
 	{
 		WriteString(" : (\n");
+
+		PushIndent();
 		VisitStatement(&ifStmt->falseStmt);
+		PopIndent();
+
 		WriteChar(')');
 	}
 
@@ -221,6 +276,7 @@ static void VisitModule(const ModuleNode* module)
 
 void WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
 {
+	indentationLevel = 0;
 	stream = AllocateMemoryStream();
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
