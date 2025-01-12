@@ -32,13 +32,15 @@ static void WriteFloat(const double value)
 static void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
 static void WriteChar(const char chr) { StreamWriteByte(stream, (uint8_t)chr); }
 
-static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
+static Result VisitExpression(const NodePtr node)
 {
+	WriteString("expression\n");
 	return SUCCESS_RESULT;
 }
 
 static Result VisitVariableDeclaration(const VarDeclStmt* varDecl)
 {
+	WriteString("variable\n");
 	return SUCCESS_RESULT;
 }
 
@@ -83,10 +85,11 @@ static Result VisitSection(const SectionStmt* section)
 			WriteString("function\n");
 			break;
 		case Node_VariableDeclaration:
-			WriteString("variable\n");
+			PROPAGATE_ERROR(VisitVariableDeclaration(stmt->ptr));
 			break;
 		case Node_ExpressionStatement:
-			WriteString("expression\n");
+			const ExpressionStmt* expressionStmt = stmt->ptr;
+			PROPAGATE_ERROR(VisitExpression(expressionStmt->expr));
 			break;
 
 			// temporary
