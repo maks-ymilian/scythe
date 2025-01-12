@@ -32,14 +32,89 @@ static void WriteFloat(const double value)
 static void WriteString(const char* str) { StreamWrite(stream, str, strlen(str)); }
 static void WriteChar(const char chr) { StreamWriteByte(stream, (uint8_t)chr); }
 
+static void VisitLiteralExpression(const LiteralExpr* literal)
+{
+	switch (literal->type)
+	{
+	case Literal_Float: WriteString(literal->floatValue); break;
+	case Literal_Identifier: WriteString(literal->identifier.text); break;
+	default: unreachable();
+	}
+}
+
+static void VisitExpression(NodePtr node);
+
+static void VisitBinaryExpression(const BinaryExpr* binary)
+{
+	char* operator;
+	switch (binary->operatorType)
+	{
+	case Binary_BoolAnd: operator= "&&"; break;
+	case Binary_BoolOr: operator= "||"; break;
+	case Binary_IsEqual: operator= "=="; break;
+	case Binary_NotEqual: operator= "!="; break;
+	case Binary_GreaterThan: operator= ">"; break;
+	case Binary_GreaterOrEqual: operator= ">="; break;
+	case Binary_LessThan: operator= "<"; break;
+	case Binary_LessOrEqual: operator= "<="; break;
+
+	case Binary_Add: operator= "+"; break;
+	case Binary_Subtract: operator= "-"; break;
+	case Binary_Multiply: operator= "*"; break;
+	case Binary_Divide: operator= "/"; break;
+
+	case Binary_Assignment: operator= "="; break;
+	case Binary_AddAssign: operator= "+="; break;
+	case Binary_SubtractAssign: operator= "-="; break;
+	case Binary_MultiplyAssign: operator= "*="; break;
+	case Binary_DivideAssign: operator= "/="; break;
+
+	default: unreachable();
+	}
+
+	VisitExpression(binary->left);
+	WriteChar(' ');
+	WriteString(operator);
+	WriteChar(' ');
+	VisitExpression(binary->right);
+}
+
 static void VisitExpression(const NodePtr node)
 {
-	WriteString("expression\n");
+	switch (node.type)
+	{
+	case Node_Binary: VisitBinaryExpression(node.ptr); break;
+	case Node_Literal:
+		VisitLiteralExpression(node.ptr);
+		break;
+
+		// temporary
+	case Node_MemberAccess:
+		const MemberAccessExpr* memberAccess = node.ptr;
+		assert(memberAccess->value.type == Node_Literal);
+		VisitLiteralExpression(memberAccess->value.ptr);
+		break;
+	default: unreachable();
+	}
 }
 
 static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 {
-	WriteString("variable\n");
+	assert(varDecl->initializer.ptr != NULL);
+
+	VisitBinaryExpression(&(BinaryExpr){
+		.lineNumber = -1,
+		.operatorType = Binary_Assignment,
+		.right = varDecl->initializer,
+		.left = (NodePtr){
+			&(LiteralExpr){
+				.lineNumber = -1,
+				.type = Literal_Identifier,
+				.identifier = (IdentifierReference){.text = varDecl->name, .reference = NULL_NODE},
+			},
+			Node_Literal},
+	});
+	WriteString(";\n");
 }
 
 static void VisitSection(const SectionStmt* section)
@@ -88,6 +163,7 @@ static void VisitSection(const SectionStmt* section)
 		case Node_ExpressionStatement:
 			const ExpressionStmt* expressionStmt = stmt->ptr;
 			VisitExpression(expressionStmt->expr);
+			WriteString(";\n");
 			break;
 
 			// temporary

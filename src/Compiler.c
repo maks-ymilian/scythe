@@ -290,8 +290,8 @@ static ProgramNode* GenerateProgramNode(
 	HandleError("Parse", path, Parse(&tokens, &programNode->ast));
 	FreeTokenArray(&tokens);
 
-	if (!isBuiltIn)
-		AddBuiltInImportStatement(&programNode->ast);
+	// if (!isBuiltIn)
+	// 	AddBuiltInImportStatement(&programNode->ast);
 
 	GenerateProgramNodeDependencies(programNodes, programNode, path);
 
