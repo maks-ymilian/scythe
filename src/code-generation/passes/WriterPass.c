@@ -37,6 +37,7 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	switch (literal->type)
 	{
 	case Literal_Float: WriteString(literal->floatValue); break;
+	case Literal_Int: WriteInteger(literal->intValue); break;
 	case Literal_Identifier: WriteString(literal->identifier.text); break;
 	default: unreachable();
 	}
