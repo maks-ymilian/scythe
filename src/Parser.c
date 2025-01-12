@@ -262,7 +262,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 			*out = (LiteralExpr){
 				.lineNumber = token.lineNumber,
 				.type = Literal_Float,
-				.floatValue = token.text};
+				.floatValue = AllocateString(token.text)};
 		return SUCCESS_RESULT;
 	}
 	case Token_StringLiteral:

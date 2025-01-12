@@ -36,6 +36,7 @@ void FreeASTNode(const NodePtr node)
 		const LiteralExpr* ptr = node.ptr;
 		if (ptr->type == Literal_Identifier) free(ptr->identifier.text);
 		if (ptr->type == Literal_String) free(ptr->string);
+		if (ptr->type == Literal_Float) free(ptr->floatValue);
 		break;
 	}
 	case Node_FunctionCall:
