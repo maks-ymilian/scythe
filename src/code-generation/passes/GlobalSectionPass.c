@@ -28,6 +28,9 @@ static Result VisitBlock(const NodePtr* node)
 		{
 		case Node_FunctionDeclaration:
 		{
+			const FuncDeclStmt* funcDecl = node->ptr;
+			PROPAGATE_ERROR(VisitBlock(&funcDecl->block));
+
 			AddToInitSection(node);
 			ArrayRemove(&block->statements, i);
 			i--;
