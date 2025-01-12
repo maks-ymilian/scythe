@@ -118,6 +118,25 @@ static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 	WriteString(";\n");
 }
 
+static void VisitStatement(const NodePtr* node);
+
+static void VisitIfStatement(const IfStmt* ifStmt)
+{
+	VisitExpression(ifStmt->expr);
+	WriteString(" ?\n(\n");
+	VisitStatement(&ifStmt->trueStmt);
+	WriteChar(')');
+
+	if (ifStmt->falseStmt.ptr != NULL)
+	{
+		WriteString(" : (\n");
+		VisitStatement(&ifStmt->falseStmt);
+		WriteChar(')');
+	}
+
+	WriteString(";\n");
+}
+
 static void VisitStatement(const NodePtr* node)
 {
 	switch (node->type)
@@ -137,6 +156,9 @@ static void VisitStatement(const NodePtr* node)
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			VisitStatement(block->statements.array[i]);
+		break;
+	case Node_If:
+		VisitIfStatement(node->ptr);
 		break;
 
 		// temporary
