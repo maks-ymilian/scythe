@@ -142,17 +142,10 @@ static Result ScanKeyword()
 
 static Result ScanToken()
 {
-	Result result = ScanKeyword();
-	if (result.type != Result_NotFound) return result;
-
-	result = ScanNumberLiteral();
-	if (result.type != Result_NotFound) return result;
-
-	result = ScanIdentifier();
-	if (result.type != Result_NotFound) return result;
-
-	result = ScanStringLiteral();
-	if (result.type != Result_NotFound) return result;
+	PROPAGATE_FOUND(ScanKeyword());
+	PROPAGATE_FOUND(ScanNumberLiteral());
+	PROPAGATE_FOUND(ScanIdentifier());
+	PROPAGATE_FOUND(ScanStringLiteral());
 
 	return ERROR_RESULT("Unexpected character", currentLine, NULL);
 }

@@ -41,6 +41,15 @@
 	}                                  \
 	while (0)
 
+#define PROPAGATE_FOUND(function)         \
+	do                                    \
+	{                                     \
+		const Result _res = function;     \
+		if (_res.type != Result_NotFound) \
+			return _res;                  \
+	}                                     \
+	while (0)
+
 typedef enum
 {
 	Result_Success,

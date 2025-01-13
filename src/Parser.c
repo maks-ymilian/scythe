@@ -1240,44 +1240,19 @@ static Result ParseLoopControlStatement(NodePtr* out)
 
 static Result ParseStatement(NodePtr* out)
 {
-	Result result = ParseImportStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseFunctionDeclaration(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseStructDeclaration(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseIfStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseLoopControlStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseWhileStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseForStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseArrayDeclaration(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseVariableDeclaration(out, true);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseSectionStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseBlockStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseReturnStatement(out);
-	if (result.type != Result_NotFound) return result;
-
-	result = ParseExpressionStatement(out);
-	if (result.type != Result_NotFound) return result;
+	PROPAGATE_FOUND(ParseImportStatement(out));
+	PROPAGATE_FOUND(ParseFunctionDeclaration(out));
+	PROPAGATE_FOUND(ParseStructDeclaration(out));
+	PROPAGATE_FOUND(ParseIfStatement(out));
+	PROPAGATE_FOUND(ParseLoopControlStatement(out));
+	PROPAGATE_FOUND(ParseWhileStatement(out));
+	PROPAGATE_FOUND(ParseForStatement(out));
+	PROPAGATE_FOUND(ParseArrayDeclaration(out));
+	PROPAGATE_FOUND(ParseVariableDeclaration(out, true));
+	PROPAGATE_FOUND(ParseSectionStatement(out));
+	PROPAGATE_FOUND(ParseBlockStatement(out));
+	PROPAGATE_FOUND(ParseReturnStatement(out));
+	PROPAGATE_FOUND(ParseExpressionStatement(out));
 
 	return NOT_FOUND_RESULT;
 }
