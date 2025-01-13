@@ -68,7 +68,7 @@ typedef enum
 	Binary_Subtract,
 	Binary_Multiply,
 	Binary_Divide,
-	Binary_Exponent,
+	Binary_Exponentiation,
 	Binary_Modulo,
 	Binary_LeftShift,
 	Binary_RightShift,

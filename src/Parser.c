@@ -441,23 +441,96 @@ static BinaryOperator TokenTypeToBinaryOperator(const TokenType tokenType)
 	case Token_LeftAngleBracket: return Binary_LessThan;
 	case Token_LeftAngleEquals: return Binary_LessOrEqual;
 
+	case Token_Ampersand: return Binary_BitAnd;
+	case Token_Pipe: return Binary_BitOr;
+	case Token_Tilde: return Binary_XOR;
+
 	case Token_Plus: return Binary_Add;
 	case Token_Minus: return Binary_Subtract;
 	case Token_Asterisk: return Binary_Multiply;
 	case Token_Slash: return Binary_Divide;
+	case Token_Caret: return Binary_Exponentiation;
+	case Token_Percent: return Binary_Modulo;
+	case Token_LeftAngleLeftAngle: return Binary_LeftShift;
+	case Token_RightAngleRightAngle: return Binary_RightShift;
 
 	case Token_Equals: return Binary_Assignment;
 	case Token_PlusEquals: return Binary_AddAssign;
 	case Token_MinusEquals: return Binary_SubtractAssign;
 	case Token_AsteriskEquals: return Binary_MultiplyAssign;
 	case Token_SlashEquals: return Binary_DivideAssign;
+	case Token_PercentEquals: return Binary_ModuloAssign;
+	case Token_CaretEquals: return Binary_ExponentAssign;
+	case Token_AmpersandEquals: return Binary_BitAndAssign;
+	case Token_PipeEquals: return Binary_BitOrAssign;
+	case Token_TildeEquals: return Binary_XORAssign;
+
 	default: unreachable();
 	}
 }
 
 typedef Result (*ParseFunc)(NodePtr* out);
 
-static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const TokenType operators[], const size_t operatorsLength)
+static Result ParseRightBinary(
+	NodePtr* out,
+	const ParseFunc parseFunc,
+	const TokenType operators[],
+	const size_t operatorsLength)
+{
+	NodePtr left = NULL_NODE;
+	PROPAGATE_ERROR(parseFunc(&left));
+	if (left.ptr == NULL)
+		return NOT_FOUND_RESULT;
+
+	Array exprArray = AllocateArray(sizeof(NodePtr));
+	ArrayAdd(&exprArray, &left);
+
+	const Token* op = Match(operators, operatorsLength);
+	Array operatorArray = AllocateArray(sizeof(Token));
+	while (op != NULL)
+	{
+		ArrayAdd(&operatorArray, op);
+
+		NodePtr right = NULL_NODE;
+		PROPAGATE_ERROR(parseFunc(&right));
+		if (right.ptr == NULL)
+			return ERROR_RESULT_LINE(
+				AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(op->type)));
+
+		ArrayAdd(&exprArray, &right);
+
+		op = Match(operators, operatorsLength);
+	}
+
+	NodePtr* expr1 = exprArray.array[exprArray.length - 1];
+
+	for (int i = (int)exprArray.length - 2; i >= 0; --i)
+	{
+		op = operatorArray.array[i];
+		const NodePtr* expr2 = exprArray.array[i];
+
+		*expr1 = AllocASTNode(
+			&(BinaryExpr){
+				.lineNumber = op->lineNumber,
+				.operatorType = TokenTypeToBinaryOperator(op->type),
+				.left = *expr2,
+				.right = *expr1,
+			},
+			sizeof(BinaryExpr), Node_Binary);
+	}
+
+	*out = *expr1;
+	FreeArray(&exprArray);
+	FreeArray(&operatorArray);
+
+	return SUCCESS_RESULT;
+}
+
+static Result ParseLeftBinary(
+	NodePtr* out,
+	const ParseFunc parseFunc,
+	const TokenType operators[],
+	const size_t operatorsLength)
 {
 	NodePtr left = NULL_NODE;
 	PROPAGATE_ERROR(parseFunc(&left));
@@ -489,90 +562,129 @@ static Result ParseLeftBinary(NodePtr* out, const ParseFunc parseFunc, const Tok
 	return SUCCESS_RESULT;
 }
 
-static Result ParseFactor(NodePtr* out)
+static Result ParseExponentiation(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseUnary, (TokenType[]){Token_Asterisk, Token_Slash}, 2);
+	return ParseLeftBinary(out, ParseUnary,
+		(TokenType[]){
+			Token_Caret,
+		},
+		1);
 }
 
-static Result ParseTerm(NodePtr* out)
+static Result ParseMultiplicative(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseFactor, (TokenType[]){Token_Plus, Token_Minus}, 2);
+	return ParseLeftBinary(out, ParseExponentiation,
+		(TokenType[]){
+			Token_Asterisk,
+			Token_Slash,
+			Token_Percent,
+		},
+		3);
 }
 
-static Result ParseNumberComparison(NodePtr* out)
+static Result ParseAdditive(NodePtr* out)
 {
-	return ParseLeftBinary(
-		out,
-		ParseTerm,
+	return ParseLeftBinary(out, ParseMultiplicative,
+		(TokenType[]){
+			Token_Plus,
+			Token_Minus,
+		},
+		2);
+}
+
+static Result ParseBitShift(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseAdditive,
+		(TokenType[]){
+			Token_LeftAngleLeftAngle,
+			Token_RightAngleRightAngle,
+		},
+		2);
+}
+
+static Result ParseRelational(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseBitShift,
 		(TokenType[]){
 			Token_RightAngleBracket,
 			Token_RightAngleEquals,
 			Token_LeftAngleBracket,
-			Token_LeftAngleEquals},
+			Token_LeftAngleEquals,
+		},
 		4);
 }
 
 static Result ParseEquality(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseNumberComparison, (TokenType[]){Token_EqualsEquals, Token_ExclamationEquals}, 2);
+	return ParseLeftBinary(out, ParseRelational,
+		(TokenType[]){
+			Token_EqualsEquals,
+			Token_ExclamationEquals,
+		},
+		2);
 }
 
-static Result ParseBooleanOperators(NodePtr* out)
+static Result ParseBitwiseAnd(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseEquality, (TokenType[]){Token_AmpersandAmpersand, Token_PipePipe}, 2);
+	return ParseLeftBinary(out, ParseEquality,
+		(TokenType[]){
+			Token_Ampersand,
+		},
+		1);
+}
+
+static Result ParseXOR(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseBitwiseAnd,
+		(TokenType[]){
+			Token_Tilde,
+		},
+		1);
+}
+
+static Result ParseBitwiseOr(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseXOR,
+		(TokenType[]){
+			Token_Pipe,
+		},
+		1);
+}
+
+static Result ParseBooleanAnd(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseBitwiseOr,
+		(TokenType[]){
+			Token_AmpersandAmpersand,
+		},
+		1);
+}
+
+static Result ParseBooleanOr(NodePtr* out)
+{
+	return ParseLeftBinary(out, ParseBooleanAnd,
+		(TokenType[]){
+			Token_PipePipe,
+		},
+		1);
 }
 
 static Result ParseAssignment(NodePtr* out)
 {
-	NodePtr left = NULL_NODE;
-	PROPAGATE_ERROR(ParseBooleanOperators(&left));
-	if (left.ptr == NULL)
-		return NOT_FOUND_RESULT;
-
-	Array exprArray = AllocateArray(sizeof(NodePtr));
-	ArrayAdd(&exprArray, &left);
-
-	constexpr TokenType validOperators[5] = {Token_Equals, Token_PlusEquals, Token_MinusEquals, Token_AsteriskEquals, Token_SlashEquals};
-	const Token* op = Match(validOperators, 5);
-	Array operatorArray = AllocateArray(sizeof(Token));
-	while (op != NULL)
-	{
-		ArrayAdd(&operatorArray, op);
-
-
-		NodePtr right = NULL_NODE;
-		PROPAGATE_ERROR(ParseEquality(&right));
-		if (right.ptr == NULL)
-			return ERROR_RESULT_LINE(
-				AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(op->type)));
-
-		ArrayAdd(&exprArray, &right);
-
-		op = Match(validOperators, 5);
-	}
-
-	NodePtr* expr1 = exprArray.array[exprArray.length - 1];
-
-	for (int i = (int)exprArray.length - 2; i >= 0; --i)
-	{
-		op = operatorArray.array[i];
-		const NodePtr* expr2 = exprArray.array[i];
-
-		*expr1 = AllocASTNode(
-			&(BinaryExpr){
-				.lineNumber = op->lineNumber,
-				.operatorType = TokenTypeToBinaryOperator(op->type),
-				.left = *expr2,
-				.right = *expr1,
-			},
-			sizeof(BinaryExpr), Node_Binary);
-	}
-
-	*out = *expr1;
-	FreeArray(&exprArray);
-	FreeArray(&operatorArray);
-
-	return SUCCESS_RESULT;
+	return ParseRightBinary(out, ParseBooleanOr,
+		(TokenType[]){
+			Token_Equals,
+			Token_PlusEquals,
+			Token_MinusEquals,
+			Token_AsteriskEquals,
+			Token_SlashEquals,
+			Token_PercentEquals,
+			Token_CaretEquals,
+			Token_AmpersandEquals,
+			Token_PipeEquals,
+			Token_TildeEquals,
+		},
+		10);
 }
 
 static Result ParseExpression(NodePtr* out)

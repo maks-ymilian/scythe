@@ -96,16 +96,29 @@ static void VisitBinaryExpression(const BinaryExpr* binary)
 	case Binary_LessThan: operator= "<"; break;
 	case Binary_LessOrEqual: operator= "<="; break;
 
+	case Binary_BitAnd: operator = "&"; break;
+	case Binary_BitOr: operator = "|"; break;
+	case Binary_XOR: operator = "~"; break;
+
 	case Binary_Add: operator= "+"; break;
 	case Binary_Subtract: operator= "-"; break;
 	case Binary_Multiply: operator= "*"; break;
 	case Binary_Divide: operator= "/"; break;
+	case Binary_Exponentiation: operator = "^"; break;
+	case Binary_Modulo: operator = "%"; break;
+	case Binary_LeftShift: operator = "<<"; break;
+	case Binary_RightShift: operator = ">>"; break;
 
 	case Binary_Assignment: operator= "="; break;
 	case Binary_AddAssign: operator= "+="; break;
 	case Binary_SubtractAssign: operator= "-="; break;
 	case Binary_MultiplyAssign: operator= "*="; break;
 	case Binary_DivideAssign: operator= "/="; break;
+	case Binary_ModuloAssign: operator = "%="; break;
+	case Binary_ExponentAssign: operator = "^="; break;
+	case Binary_BitAndAssign: operator = "&="; break;
+	case Binary_BitOrAssign: operator = "|="; break;
+	case Binary_XORAssign: operator = "~="; break;
 
 	default: unreachable();
 	}
