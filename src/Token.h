@@ -42,6 +42,7 @@ typedef enum
 	Token_PipeEquals,
 	Token_PercentEquals,
 	Token_TildeEquals,
+	Token_CaretEquals,
 
 	Token_LeftAngleEquals,
 	Token_RightAngleEquals,
@@ -79,6 +80,7 @@ typedef enum
 	Token_At,
 	Token_Tilde,
 	Token_Percent,
+	Token_Caret,
 
 	// end of file
 	Token_EndOfFile,
@@ -135,6 +137,7 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_PipeEquals: return "|=";
 	case Token_PercentEquals: return "%=";
 	case Token_TildeEquals: return "~=";
+	case Token_CaretEquals: return "^=";
 
 	case Token_LeftAngleEquals: return "<=";
 	case Token_RightAngleEquals: return ">=";
@@ -171,6 +174,7 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_At: return "@";
 	case Token_Tilde: return "~";
 	case Token_Percent: return "%";
+	case Token_Caret: return  "^";
 
 	case Token_EndOfFile: return "EndOfFile";
 
