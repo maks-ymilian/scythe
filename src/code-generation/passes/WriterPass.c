@@ -32,12 +32,6 @@ static void WriteFloat(const double value)
 	StreamWrite(stream, string, sizeof(string) - 1);
 }
 
-static void WriteCurrentIndentation()
-{
-	for (int i = 0; i < indentationLevel; ++i)
-		StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
-}
-
 static void WriteString(const char* str)
 {
 	const size_t length = strlen(str);
@@ -72,7 +66,6 @@ static void PopIndent()
 	const Buffer lastChars = StreamRewindRead(stream, INDENT_WIDTH);
 	if (memcmp(INDENT_STRING, lastChars.buffer, INDENT_WIDTH) == 0)
 		StreamRewind(stream, INDENT_WIDTH);
-
 	indentationLevel--;
 }
 
@@ -117,11 +110,13 @@ static void VisitBinaryExpression(const BinaryExpr* binary)
 	default: unreachable();
 	}
 
+	WriteChar('(');
 	VisitExpression(binary->left);
 	WriteChar(' ');
 	WriteString(operator);
 	WriteChar(' ');
 	VisitExpression(binary->right);
+	WriteChar(')');
 }
 
 static void VisitExpression(const NodePtr node)

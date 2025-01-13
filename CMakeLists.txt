@@ -16,6 +16,7 @@ set(SOURCES
         "src/BuiltInImports.c"
         "src/code-generation/passes/WriterPass.c"
         "src/code-generation/passes/GlobalSectionPass.c"
+        "src/code-generation/passes/TypeConversionPass.c"
 )
 
 project(${PROJECT_NAME} C)
