@@ -4,8 +4,6 @@
 
 typedef enum
 {
-	Token_Null,
-
 	// 1 character
 	Token_LeftBracket,
 	Token_RightBracket,

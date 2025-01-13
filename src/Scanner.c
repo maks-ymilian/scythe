@@ -42,8 +42,11 @@ static void AddToken(const TokenType type, char* text)
 	ArrayAdd(&tokens, &token);
 }
 
-static void ScanWord()
+static Result ScanWord()
 {
+	if (!isalpha(source[pointer]) && source[pointer] != '_')
+		return NOT_FOUND_RESULT;
+
 	for (; source[pointer] != '\0'; pointer++)
 	{
 		if (!isalnum(source[pointer]) && source[pointer] != '_')
@@ -56,10 +59,15 @@ static void ScanWord()
 		AddToken(*tokenType, NULL);
 	else
 		AddToken(Token_Identifier, string);
+
+	return SUCCESS_RESULT;
 }
 
 static Result ScanStringLiteral()
 {
+	if (source[pointer] != '"')
+		return NOT_FOUND_RESULT;
+
 	const size_t start = pointer;
 	pointer++;
 	for (; source[pointer] != '\0'; pointer++)
@@ -72,11 +80,15 @@ static Result ScanStringLiteral()
 
 	AddToken(Token_StringLiteral, AllocateSubstring(start + 1, pointer));
 	pointer++;
+
 	return SUCCESS_RESULT;
 }
 
-static void ScanNumberLiteral()
+static Result ScanNumberLiteral()
 {
+	if (!isdigit(source[pointer]))
+		return NOT_FOUND_RESULT;
+
 	for (; source[pointer] != '\0'; pointer++)
 	{
 		if (!isalnum(source[pointer]) && source[pointer] != '.')
@@ -84,6 +96,22 @@ static void ScanNumberLiteral()
 	}
 
 	AddToken(Token_NumberLiteral, AllocateSubstring(currentTokenStart, pointer));
+
+	return SUCCESS_RESULT;
+}
+
+static Result ScanToken()
+{
+	Result result = ScanNumberLiteral();
+	if (result.type != Result_NotFound) return result;
+
+	result = ScanWord();
+	if (result.type != Result_NotFound) return result;
+
+	result = ScanStringLiteral();
+	if (result.type != Result_NotFound) return result;
+
+	return ERROR_RESULT("Unexpected character", currentLine, NULL);
 }
 
 typedef struct
@@ -253,14 +281,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 		default: break;
 		}
 
-		if (isdigit(character)) // number literal
-			ScanNumberLiteral();
-		else if (isalpha(character) || character == '_') // identifier / keyword
-			ScanWord();
-		else if (character == '"') // string literal
-			PROPAGATE_ERROR(ScanStringLiteral());
-		else // error
-			return ERROR_RESULT("Unexpected character", currentLine, NULL);
+		PROPAGATE_ERROR(ScanToken());
 
 		pointer--;
 	}
