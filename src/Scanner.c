@@ -9,103 +9,146 @@
 
 static const char* source;
 static size_t pointer;
-static size_t currentTokenStart;
 static int currentLine;
 
 static Array tokens;
 
-static Map keywords;
-
-static void AddKeyword(const TokenType tokenType)
+static void AddTokenSubstring(const TokenType type, const size_t start, const size_t end)
 {
-	MapAdd(&keywords, GetTokenTypeString(tokenType), &tokenType);
+	const size_t length = end - start;
+	char* text = malloc(length + 1);
+	memcpy(text, source + start, length);
+	text[length] = '\0';
+
+	ArrayAdd(&tokens,
+		&(Token){
+			.type = type,
+			.lineNumber = currentLine,
+			.text = text,
+		});
 }
 
-static char* AllocateSubstring(const size_t start, const size_t end)
+static void AddToken(const TokenType type)
 {
-	size_t length = end - start;
-	length += 1;
-	char* text = malloc(length);
-	assert(text != NULL);
-	memcpy(text, source + start, length - 1);
-	text[length - 1] = '\0';
-	return text;
+	ArrayAdd(&tokens,
+		&(Token){
+			.type = type,
+			.lineNumber = currentLine,
+			.text = NULL,
+		});
 }
 
-static void AddToken(const TokenType type, char* text)
+static Result ScanIdentifier()
 {
-	const Token token = (Token){
-		.type = type,
-		.lineNumber = currentLine,
-		.text = text,
-	};
-	ArrayAdd(&tokens, &token);
-}
+	const size_t start = pointer;
 
-static Result ScanWord()
-{
 	if (!isalpha(source[pointer]) && source[pointer] != '_')
 		return NOT_FOUND_RESULT;
 
-	for (; source[pointer] != '\0'; pointer++)
+	while (true)
 	{
+		if (source[pointer] == '\0')
+			break;
+
 		if (!isalnum(source[pointer]) && source[pointer] != '_')
 			break;
+
+		pointer++;
 	}
 
-	char* string = AllocateSubstring(currentTokenStart, pointer);
-	const TokenType* tokenType = MapGet(&keywords, string);
-	if (tokenType != NULL)
-		AddToken(*tokenType, NULL);
-	else
-		AddToken(Token_Identifier, string);
+	AddTokenSubstring(Token_Identifier, start, pointer);
 
 	return SUCCESS_RESULT;
 }
 
 static Result ScanStringLiteral()
 {
+	const size_t start = pointer;
+
 	if (source[pointer] != '"')
 		return NOT_FOUND_RESULT;
 
-	const size_t start = pointer;
 	pointer++;
-	for (; source[pointer] != '\0'; pointer++)
+	while (true)
 	{
+		if (source[pointer] == '\0')
+			return ERROR_RESULT("String literal is never closed", currentLine, NULL);
+
 		if (source[pointer] == '"')
 			break;
+
+		pointer++;
 	}
-	if (source[pointer] == '\0')
-		return ERROR_RESULT("String literal is never closed", currentLine, NULL);
 
-	AddToken(Token_StringLiteral, AllocateSubstring(start + 1, pointer));
+	AddTokenSubstring(Token_StringLiteral, start + 1, pointer);
+
 	pointer++;
-
 	return SUCCESS_RESULT;
 }
 
 static Result ScanNumberLiteral()
 {
+	const size_t start = pointer;
+
 	if (!isdigit(source[pointer]))
 		return NOT_FOUND_RESULT;
 
-	for (; source[pointer] != '\0'; pointer++)
+	while (true)
 	{
+		if (source[pointer] == '\0')
+			break;
+
 		if (!isalnum(source[pointer]) && source[pointer] != '.')
 			break;
+
+		pointer++;
 	}
 
-	AddToken(Token_NumberLiteral, AllocateSubstring(currentTokenStart, pointer));
+	AddTokenSubstring(Token_NumberLiteral, start, pointer);
 
 	return SUCCESS_RESULT;
 }
 
+static Result ScanKeyword()
+{
+	for (TokenType tokenType = 0; tokenType < TokenType_Max; ++tokenType)
+	{
+		switch (tokenType)
+		{
+		case Token_NumberLiteral:
+		case Token_StringLiteral:
+		case Token_Identifier:
+		case Token_EndOfFile:
+			continue;
+		default:
+		}
+
+		const char* string = GetTokenTypeString(tokenType);
+		const size_t length = strlen(string);
+
+		if (strlen(source + pointer) < length)
+			continue;
+
+		if (memcmp(source + pointer, string, length) == 0)
+		{
+			AddToken(tokenType);
+			pointer += length;
+			return SUCCESS_RESULT;
+		}
+	}
+
+	return NOT_FOUND_RESULT;
+}
+
 static Result ScanToken()
 {
-	Result result = ScanNumberLiteral();
+	Result result = ScanKeyword();
 	if (result.type != Result_NotFound) return result;
 
-	result = ScanWord();
+	result = ScanNumberLiteral();
+	if (result.type != Result_NotFound) return result;
+
+	result = ScanIdentifier();
 	if (result.type != Result_NotFound) return result;
 
 	result = ScanStringLiteral();
@@ -114,182 +157,63 @@ static Result ScanToken()
 	return ERROR_RESULT("Unexpected character", currentLine, NULL);
 }
 
-typedef struct
-{
-	char symbol;
-	TokenType joinedTokenType;
-} SecondSymbol;
-
-static void AddDoubleSymbolToken(const TokenType defaultType, const SecondSymbol* symbols, const size_t size)
-{
-	for (size_t i = 0; i < size; i++)
-	{
-		if (source[pointer + 1] == symbols[i].symbol)
-		{
-			pointer++;
-			AddToken(symbols[i].joinedTokenType, NULL);
-			return;
-		}
-	}
-
-	AddToken(defaultType, NULL);
-}
-
 Result Scan(const char* const sourceCode, Array* outTokens)
 {
-	keywords = AllocateMap(sizeof(TokenType));
-
-	AddKeyword(Token_True);
-	AddKeyword(Token_False);
-
-	AddKeyword(Token_Void);
-	AddKeyword(Token_Int);
-	AddKeyword(Token_Float);
-	AddKeyword(Token_String);
-	AddKeyword(Token_Bool);
-
-	AddKeyword(Token_Struct);
-	AddKeyword(Token_Import);
-	AddKeyword(Token_Public);
-	AddKeyword(Token_External);
-
-	AddKeyword(Token_If);
-	AddKeyword(Token_Else);
-	AddKeyword(Token_While);
-	AddKeyword(Token_For);
-	AddKeyword(Token_Switch);
-
-	AddKeyword(Token_Return);
-	AddKeyword(Token_Break);
-	AddKeyword(Token_Continue);
-
 	tokens = AllocateArray(sizeof(Token));
-
 	source = sourceCode;
 	currentLine = 1;
+	pointer = 0;
 
 	bool insideLineComment = false;
 	bool insideMultilineComment = false;
 
-	for (pointer = 0; source[pointer] != '\0'; pointer++)
+	while (source[pointer] != '\0')
 	{
-		const char character = source[pointer];
-
-		if (character == '\n')
+		switch (source[pointer])
 		{
-			currentLine++;
+		case '\n':
 			insideLineComment = false;
+			currentLine++;
+		case ' ':
+		case '\t':
+		case '\r':
+			pointer++;
 			continue;
+
+		default:
 		}
 
-		if (character == ' ' ||
-			character == '\t' ||
-			character == '\r')
-			continue;
-
-		currentTokenStart = pointer;
-
-		if (character == '/')
+		if (memcmp(source + pointer, "//", 2) == 0)
 		{
-			const char peek = source[pointer + 1];
-			if (peek == '/' && !insideMultilineComment)
-			{
-				insideLineComment = true;
-				continue;
-			}
-			else if (peek == '*')
-			{
-				insideMultilineComment = true;
-				continue;
-			}
+			insideLineComment = true;
+			pointer += 2;
+			continue;
 		}
-
-		if (character == '*' && source[pointer + 1] == '/' && insideMultilineComment)
+		else if (memcmp(source + pointer, "/*", 2) == 0)
+		{
+			insideMultilineComment = true;
+			pointer += 2;
+			continue;
+		}
+		else if (memcmp(source + pointer, "*/", 2) == 0 && insideMultilineComment)
 		{
 			insideMultilineComment = false;
-			pointer++;
+			pointer += 2;
 			continue;
 		}
 
 		if (insideLineComment || insideMultilineComment)
-			continue;
-
-		switch (character)
 		{
-		case '(':
-			AddToken(Token_LeftBracket, NULL);
+			pointer++;
 			continue;
-		case ')':
-			AddToken(Token_RightBracket, NULL);
-			continue;
-		case '{':
-			AddToken(Token_LeftCurlyBracket, NULL);
-			continue;
-		case '}':
-			AddToken(Token_RightCurlyBracket, NULL);
-			continue;
-		case '[':
-			AddToken(Token_LeftSquareBracket, NULL);
-			continue;
-		case ']':
-			AddToken(Token_RightSquareBracket, NULL);
-			continue;
-		case '.':
-			AddToken(Token_Dot, NULL);
-			continue;
-		case ',':
-			AddToken(Token_Comma, NULL);
-			continue;
-		case ';':
-			AddToken(Token_Semicolon, NULL);
-			continue;
-		case '@':
-			AddToken(Token_At, NULL);
-			continue;
-
-		case '=':
-			AddDoubleSymbolToken(Token_Equals, (SecondSymbol[]){{'=', Token_EqualsEquals}}, 1);
-			continue;
-		case '!':
-			AddDoubleSymbolToken(Token_Exclamation, (SecondSymbol[]){{'=', Token_ExclamationEquals}}, 1);
-			continue;
-		case '<':
-			AddDoubleSymbolToken(Token_LeftAngleBracket, (SecondSymbol[]){{'=', Token_LeftAngleEquals}}, 1);
-			continue;
-		case '>':
-			AddDoubleSymbolToken(Token_RightAngleBracket, (SecondSymbol[]){{'=', Token_RightAngleEquals}}, 1);
-			continue;
-		case '+':
-			AddDoubleSymbolToken(Token_Plus, (SecondSymbol[]){{'+', Token_PlusPlus}, {'=', Token_PlusEquals}}, 2);
-			continue;
-		case '-':
-			AddDoubleSymbolToken(Token_Minus, (SecondSymbol[]){{'-', Token_MinusMinus}, {'=', Token_MinusEquals}}, 2);
-			continue;
-		case '*':
-			AddDoubleSymbolToken(Token_Asterisk, (SecondSymbol[]){{'=', Token_AsteriskEquals}}, 1);
-			continue;
-		case '/':
-			AddDoubleSymbolToken(Token_Slash, (SecondSymbol[]){{'=', Token_SlashEquals}}, 1);
-			continue;
-		case '&':
-			AddDoubleSymbolToken(Token_Ampersand, (SecondSymbol[]){{'&', Token_AmpersandAmpersand}}, 1);
-			continue;
-		case '|':
-			AddDoubleSymbolToken(Token_Pipe, (SecondSymbol[]){{'|', Token_PipePipe}}, 1);
-			continue;
-
-		default: break;
 		}
 
 		PROPAGATE_ERROR(ScanToken());
-
-		pointer--;
 	}
-	AddToken(Token_EndOfFile, NULL);
+
+	AddToken(Token_EndOfFile);
 
 	*outTokens = tokens;
-
-	FreeMap(&keywords);
 
 	return SUCCESS_RESULT;
 }

@@ -4,6 +4,57 @@
 
 typedef enum
 {
+	// keywords
+	Token_Void,
+	Token_Int,
+	Token_Float,
+	Token_String,
+	Token_Bool,
+
+	Token_Struct,
+	Token_Import,
+	Token_Public,
+	Token_External,
+
+	Token_If,
+	Token_Else,
+	Token_While,
+	Token_For,
+	Token_Switch,
+
+	Token_Return,
+	Token_Break,
+	Token_Continue,
+
+	// literals
+	Token_NumberLiteral,
+	Token_StringLiteral,
+	Token_Identifier,
+	Token_True,
+	Token_False,
+
+	// 2 characters
+	Token_PlusEquals,
+	Token_MinusEquals,
+	Token_AsteriskEquals,
+	Token_SlashEquals,
+	Token_AmpersandEquals,
+	Token_PipeEquals,
+	Token_PercentEquals,
+	Token_TildeEquals,
+
+	Token_LeftAngleEquals,
+	Token_RightAngleEquals,
+	Token_EqualsEquals,
+	Token_ExclamationEquals,
+	Token_AmpersandAmpersand,
+	Token_PipePipe,
+	Token_PlusPlus,
+	Token_MinusMinus,
+
+	Token_LeftAngleLeftAngle,
+	Token_RightAngleRightAngle,
+
 	// 1 character
 	Token_LeftBracket,
 	Token_RightBracket,
@@ -29,59 +80,10 @@ typedef enum
 	Token_Tilde,
 	Token_Percent,
 
-	// 2 characters
-	Token_PlusEquals,
-	Token_MinusEquals,
-	Token_AsteriskEquals,
-	Token_SlashEquals,
-	Token_AmpersandEquals,
-	Token_PipeEquals,
-	Token_PercentEquals,
-	Token_TildeEquals,
-
-	Token_LeftAngleEquals,
-	Token_RightAngleEquals,
-	Token_EqualsEquals,
-	Token_ExclamationEquals,
-	Token_AmpersandAmpersand,
-	Token_PipePipe,
-	Token_PlusPlus,
-	Token_MinusMinus,
-
-	Token_LeftAngleLeftAngle,
-	Token_RightAngleRightAngle,
-
-	// literals
-	Token_NumberLiteral,
-	Token_StringLiteral,
-	Token_Identifier,
-	Token_True,
-	Token_False,
-
-	// keywords
-	Token_Void,
-	Token_Int,
-	Token_Float,
-	Token_String,
-	Token_Bool,
-
-	Token_Struct,
-	Token_Import,
-	Token_Public,
-	Token_External,
-
-	Token_If,
-	Token_Else,
-	Token_While,
-	Token_For,
-	Token_Switch,
-
-	Token_Return,
-	Token_Break,
-	Token_Continue,
-
 	// end of file
 	Token_EndOfFile,
+
+	TokenType_Max,
 } TokenType;
 
 typedef struct
@@ -95,29 +97,34 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 {
 	switch (tokenType)
 	{
-	// 1 character
-	case Token_LeftBracket: return "(";
-	case Token_RightBracket: return ")";
-	case Token_LeftCurlyBracket: return "{";
-	case Token_RightCurlyBracket: return "}";
-	case Token_LeftSquareBracket: return "[";
-	case Token_RightSquareBracket: return "]";
-	case Token_LeftAngleBracket: return "<";
-	case Token_RightAngleBracket: return ">";
-	case Token_Dot: return ".";
-	case Token_Comma: return ",";
-	case Token_Semicolon: return ";";
-	case Token_Plus: return "+";
-	case Token_Minus: return "-";
-	case Token_Asterisk: return "*";
-	case Token_Slash: return "/";
-	case Token_Exclamation: return "!";
-	case Token_Equals: return "=";
-	case Token_Ampersand: return "&";
-	case Token_Pipe: return "|";
-	case Token_At: return "@";
-	case Token_Tilde: return "~";
-	case Token_Percent: return "%";
+	// keywords
+	case Token_Void: return "void";
+	case Token_Int: return "int";
+	case Token_Float: return "float";
+	case Token_String: return "string";
+	case Token_Bool: return "bool";
+
+	case Token_Struct: return "struct";
+	case Token_Import: return "import";
+	case Token_Public: return "public";
+	case Token_External: return "external";
+
+	case Token_If: return "if";
+	case Token_Else: return "else";
+	case Token_While: return "while";
+	case Token_For: return "for";
+	case Token_Switch: return "switch";
+
+	case Token_Return: return "return";
+	case Token_Break: return "break";
+	case Token_Continue: return "continue";
+
+	// literals
+	case Token_NumberLiteral: return "NumberLiteral";
+	case Token_StringLiteral: return "StringLiteral";
+	case Token_Identifier: return "Identifier";
+	case Token_True: return "true";
+	case Token_False: return "false";
 
 	// 2 characters
 	case Token_PlusEquals: return "+=";
@@ -141,34 +148,29 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_LeftAngleLeftAngle: return "<<";
 	case Token_RightAngleRightAngle: return ">>";
 
-	// literals
-	case Token_NumberLiteral: return "NumberLiteral";
-	case Token_StringLiteral: return "StringLiteral";
-	case Token_Identifier: return "Identifier";
-	case Token_True: return "true";
-	case Token_False: return "false";
-
-	// keywords
-	case Token_Void: return "void";
-	case Token_Int: return "int";
-	case Token_Float: return "float";
-	case Token_String: return "string";
-	case Token_Bool: return "bool";
-
-	case Token_Struct: return "struct";
-	case Token_Import: return "import";
-	case Token_Public: return "public";
-	case Token_External: return "external";
-
-	case Token_If: return "if";
-	case Token_Else: return "else";
-	case Token_While: return "while";
-	case Token_For: return "for";
-	case Token_Switch: return "switch";
-
-	case Token_Return: return "return";
-	case Token_Break: return "break";
-	case Token_Continue: return "continue";
+	// 1 character
+	case Token_LeftBracket: return "(";
+	case Token_RightBracket: return ")";
+	case Token_LeftCurlyBracket: return "{";
+	case Token_RightCurlyBracket: return "}";
+	case Token_LeftSquareBracket: return "[";
+	case Token_RightSquareBracket: return "]";
+	case Token_LeftAngleBracket: return "<";
+	case Token_RightAngleBracket: return ">";
+	case Token_Dot: return ".";
+	case Token_Comma: return ",";
+	case Token_Semicolon: return ";";
+	case Token_Plus: return "+";
+	case Token_Minus: return "-";
+	case Token_Asterisk: return "*";
+	case Token_Slash: return "/";
+	case Token_Exclamation: return "!";
+	case Token_Equals: return "=";
+	case Token_Ampersand: return "&";
+	case Token_Pipe: return "|";
+	case Token_At: return "@";
+	case Token_Tilde: return "~";
+	case Token_Percent: return "%";
 
 	case Token_EndOfFile: return "EndOfFile";
 
