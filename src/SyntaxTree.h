@@ -60,16 +60,29 @@ typedef enum
 	Binary_LessThan,
 	Binary_LessOrEqual,
 
+	Binary_BitAnd,
+	Binary_BitOr,
+	Binary_XOR,
+
 	Binary_Add,
 	Binary_Subtract,
 	Binary_Multiply,
 	Binary_Divide,
+	Binary_Exponent,
+	Binary_Modulo,
+	Binary_LeftShift,
+	Binary_RightShift,
 
 	Binary_Assignment,
 	Binary_AddAssign,
 	Binary_SubtractAssign,
 	Binary_MultiplyAssign,
 	Binary_DivideAssign,
+	Binary_ModuloAssign,
+	Binary_ExponentAssign,
+	Binary_BitAndAssign,
+	Binary_BitOrAssign,
+	Binary_XORAssign,
 } BinaryOperator;
 
 typedef struct

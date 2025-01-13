@@ -15,6 +15,7 @@ typedef enum
 	Token_RightSquareBracket,
 	Token_LeftAngleBracket,
 	Token_RightAngleBracket,
+
 	Token_Dot,
 	Token_Comma,
 	Token_Semicolon,
@@ -27,20 +28,30 @@ typedef enum
 	Token_Ampersand,
 	Token_Pipe,
 	Token_At,
+	Token_Tilde,
+	Token_Percent,
 
 	// 2 characters
-	Token_EqualsEquals,
-	Token_ExclamationEquals,
-	Token_LeftAngleEquals,
-	Token_RightAngleEquals,
-	Token_AmpersandAmpersand,
-	Token_PipePipe,
-	Token_PlusPlus,
-	Token_MinusMinus,
 	Token_PlusEquals,
 	Token_MinusEquals,
 	Token_AsteriskEquals,
 	Token_SlashEquals,
+	Token_AmpersandEquals,
+	Token_PipeEquals,
+	Token_PercentEquals,
+	Token_TildeEquals,
+
+	Token_LeftAngleEquals,
+	Token_RightAngleEquals,
+	Token_EqualsEquals,
+	Token_ExclamationEquals,
+	Token_AmpersandAmpersand,
+	Token_PipePipe,
+	Token_PlusPlus,
+	Token_MinusMinus,
+
+	Token_LeftAngleLeftAngle,
+	Token_RightAngleRightAngle,
 
 	// literals
 	Token_NumberLiteral,
@@ -86,6 +97,7 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 {
 	switch (tokenType)
 	{
+	// 1 character
 	case Token_LeftBracket: return "(";
 	case Token_RightBracket: return ")";
 	case Token_LeftCurlyBracket: return "{";
@@ -106,26 +118,39 @@ static inline const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_Ampersand: return "&";
 	case Token_Pipe: return "|";
 	case Token_At: return "@";
+	case Token_Tilde: return "~";
+	case Token_Percent: return "%";
 
-	case Token_EqualsEquals: return "==";
-	case Token_ExclamationEquals: return "!=";
-	case Token_LeftAngleEquals: return "<=";
-	case Token_RightAngleEquals: return ">=";
-	case Token_AmpersandAmpersand: return "&&";
-	case Token_PipePipe: return "||";
-	case Token_PlusPlus: return "++";
-	case Token_MinusMinus: return "--";
+	// 2 characters
 	case Token_PlusEquals: return "+=";
 	case Token_MinusEquals: return "-=";
 	case Token_AsteriskEquals: return "*=";
 	case Token_SlashEquals: return "/=";
+	case Token_AmpersandEquals: return "&=";
+	case Token_PipeEquals: return "|=";
+	case Token_PercentEquals: return "%=";
+	case Token_TildeEquals: return "~=";
 
+	case Token_LeftAngleEquals: return "<=";
+	case Token_RightAngleEquals: return ">=";
+	case Token_EqualsEquals: return "==";
+	case Token_ExclamationEquals: return "!=";
+	case Token_AmpersandAmpersand: return "&&";
+	case Token_PipePipe: return "||";
+	case Token_PlusPlus: return "++";
+	case Token_MinusMinus: return "--";
+
+	case Token_LeftAngleLeftAngle: return "<<";
+	case Token_RightAngleRightAngle: return ">>";
+
+	// literals
 	case Token_NumberLiteral: return "NumberLiteral";
 	case Token_StringLiteral: return "StringLiteral";
 	case Token_Identifier: return "Identifier";
 	case Token_True: return "true";
 	case Token_False: return "false";
 
+	// keywords
 	case Token_Void: return "void";
 	case Token_Int: return "int";
 	case Token_Float: return "float";
