@@ -241,10 +241,18 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 		if (literal->type == Literal_Identifier)
 		{
 			if (literal->identifier.reference.ptr == NULL)
+			{
 				PROPAGATE_ERROR(InitializeIdentifierReference(
 					&literal->identifier,
 					previous,
 					literal->lineNumber));
+
+				if (literal->identifier.reference.type != Node_VariableDeclaration)
+					return ERROR_RESULT(
+						AllocateString1Str("\"%s\" is not a variable", literal->identifier.text),
+						literal->lineNumber,
+						currentFilePath);
+			}
 
 			return SUCCESS_RESULT;
 		}
@@ -293,10 +301,18 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 		FuncCallExpr* funcCall = node->ptr;
 
 		if (funcCall->identifier.reference.ptr == NULL)
+		{
 			PROPAGATE_ERROR(InitializeIdentifierReference(
 				&funcCall->identifier,
 				previous,
 				funcCall->lineNumber));
+
+			if (funcCall->identifier.reference.type != Node_FunctionDeclaration)
+				return ERROR_RESULT(
+					AllocateString1Str("\"%s\" is not a function", funcCall->identifier.text),
+					funcCall->lineNumber,
+					currentFilePath);
+		}
 
 		for (size_t i = 0; i < funcCall->parameters.length; ++i)
 		{
@@ -311,10 +327,19 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 		ArrayAccessExpr* arrayAccess = node->ptr;
 
 		if (arrayAccess->identifier.reference.ptr == NULL)
+		{
 			PROPAGATE_ERROR(InitializeIdentifierReference(
 				&arrayAccess->identifier,
 				previous,
 				arrayAccess->lineNumber));
+
+			if (arrayAccess->identifier.reference.type != Node_VariableDeclaration ||
+				!((VarDeclStmt*)arrayAccess->identifier.reference.ptr)->array)
+				return ERROR_RESULT(
+					AllocateString1Str("\"%s\" is not an array", arrayAccess->identifier.text),
+					arrayAccess->lineNumber,
+					currentFilePath);
+		}
 
 		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript, previous));
 
