@@ -75,9 +75,91 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 	case Node_Literal:
 		PROPAGATE_ERROR(VisitLiteral(node->ptr, outType));
 		break;
+	case Node_MemberAccess:
+		const MemberAccessExpr* memberAccess = node->ptr;
+		assert(memberAccess->next.ptr == NULL);
+		assert(memberAccess->value.type == Node_Literal);
+		PROPAGATE_ERROR(VisitLiteral(memberAccess->value.ptr, outType));
+		break;
 	default: unreachable();
 	}
 	return SUCCESS_RESULT;
+}
+
+static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
+{
+	switch (primitiveType)
+	{
+	case Primitive_Void: return Token_Void;
+	case Primitive_Float: return Token_Float;
+	case Primitive_Int: return Token_Int;
+	case Primitive_Bool: return Token_Bool;
+	case Primitive_String: return Token_String;
+	default: unreachable();
+	}
+}
+
+static Result ConvertExpression(NodePtr* node, const PrimitiveType targetType, const int lineNumber)
+{
+	PrimitiveType exprType;
+	PROPAGATE_ERROR(VisitExpression(node, &exprType));
+
+	if (targetType == Primitive_Void)
+		return ERROR_RESULT("\"void\" is not allowed here", lineNumber, currentFilePath);
+
+	if (exprType == targetType)
+		return SUCCESS_RESULT;
+
+	const Result error = ERROR_RESULT(
+		AllocateString2Str(
+			"Cannot convert type \"%s\" to \"%s\"",
+			GetTokenTypeString(PrimitiveTypeToTokenType(exprType)),
+			GetTokenTypeString(PrimitiveTypeToTokenType(targetType))),
+		lineNumber,
+		currentFilePath);
+
+	switch (targetType)
+	{
+	case Primitive_Float:
+		if (exprType != Primitive_Int)
+			return error;
+		return SUCCESS_RESULT;
+
+	case Primitive_Int:
+		if (exprType != Primitive_Float)
+			return error;
+
+		*node = AllocASTNode(
+			&(BinaryExpr){
+				.lineNumber = lineNumber,
+				.operatorType = Binary_BitOr,
+				.right = *node,
+				.left = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = lineNumber,
+						.type = Literal_Int,
+						.intValue = 0,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
+			sizeof(BinaryExpr), Node_Binary);
+
+		return SUCCESS_RESULT;
+
+	case Primitive_Bool:
+	case Primitive_String:
+		return error;
+
+	default: unreachable();
+	}
+}
+
+static PrimitiveType GetType(const NodePtr type)
+{
+	assert(type.type == Node_Literal);
+	const LiteralExpr* literal = type.ptr;
+	assert(literal->type == Literal_PrimitiveType);
+	return literal->primitiveType;
 }
 
 static Result VisitStatement(const NodePtr* node)
@@ -93,16 +175,17 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 		break;
 	case Node_VariableDeclaration:
-		const VarDeclStmt* varDecl = node->ptr;
-
-		PrimitiveType initializerType;
-		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, &initializerType));
+		VarDeclStmt* varDecl = node->ptr;
+		PROPAGATE_ERROR(ConvertExpression(
+			&varDecl->initializer,
+			GetType(varDecl->type),
+			varDecl->lineNumber));
 
 		if (varDecl->arrayLength.ptr != NULL)
-		{
-			PrimitiveType arrayLengthType;
-			PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength, &arrayLengthType));
-		}
+			PROPAGATE_ERROR(ConvertExpression(
+				&varDecl->arrayLength,
+				Primitive_Int,
+				varDecl->lineNumber));
 		break;
 	case Node_ExpressionStatement:
 		const ExpressionStmt* expressionStmt = node->ptr;
@@ -114,12 +197,10 @@ static Result VisitStatement(const NodePtr* node)
 			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
 	case Node_If:
-		const IfStmt* ifStmt = node->ptr;
+		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
-
-		PrimitiveType type;
-		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, &type));
+		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, Primitive_Bool, ifStmt->lineNumber));
 		break;
 	default: unreachable();
 	}
