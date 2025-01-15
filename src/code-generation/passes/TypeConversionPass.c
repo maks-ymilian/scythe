@@ -26,64 +26,56 @@ static PrimitiveType GetIdentifierType(const IdentifierReference identifier)
 	return literal->primitiveType;
 }
 
-static Result VisitLiteral(const LiteralExpr* literal, PrimitiveType* outType)
+static void GetLiteralType(const LiteralExpr* literal, PrimitiveType* outType)
 {
-	PrimitiveType _;
 	if (outType == NULL)
-		outType = &_;
+		return;
 
 	switch (literal->type)
 	{
-	case Literal_Identifier:
-		if (literal->identifier.reference.type != Node_VariableDeclaration)
-			return ERROR_RESULT(
-				AllocateString1Str("Identifier \"%s\" is not a variable", literal->identifier.text),
-				literal->lineNumber,
-				currentFilePath);
-
-		*outType = GetIdentifierType(literal->identifier);
-		break;
+	case Literal_Identifier: *outType = GetIdentifierType(literal->identifier); break;
 	case Literal_Float: *outType = Primitive_Float; break;
 	case Literal_Int: *outType = Primitive_Int; break;
 	case Literal_String: *outType = Primitive_String; break;
 	case Literal_Boolean: *outType = Primitive_Bool; break;
 	default: unreachable();
 	}
-	return SUCCESS_RESULT;
 }
 
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
-
-static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
+static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
 {
-	assert(node->type == Node_Binary);
-	const BinaryExpr* binary = node->ptr;
-
-	PROPAGATE_ERROR(VisitExpression(&binary->left, outType));
-	PROPAGATE_ERROR(VisitExpression(&binary->right, outType));
-
-	return SUCCESS_RESULT;
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_BitOr,
+			.right = expr,
+			.left = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = 0,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(BinaryExpr), Node_Binary);
 }
 
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
+static NodePtr AllocIntToBoolConversion(const NodePtr expr, const int lineNumber)
 {
-	switch (node->type)
-	{
-	case Node_Binary:
-		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
-		break;
-	case Node_Literal:
-		PROPAGATE_ERROR(VisitLiteral(node->ptr, outType));
-		break;
-	case Node_MemberAccess:
-		const MemberAccessExpr* memberAccess = node->ptr;
-		assert(memberAccess->next.ptr == NULL);
-		assert(memberAccess->value.type == Node_Literal);
-		PROPAGATE_ERROR(VisitLiteral(memberAccess->value.ptr, outType));
-		break;
-	default: unreachable();
-	}
-	return SUCCESS_RESULT;
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_NotEqual,
+			.left = expr,
+			.right = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = 0,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(BinaryExpr), Node_Binary);
 }
 
 static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
@@ -99,24 +91,66 @@ static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
 	}
 }
 
-static Result ConvertExpression(NodePtr* node, const PrimitiveType targetType, const int lineNumber)
+static TokenType BinaryOperatorToTokenType(const BinaryOperator operator)
 {
-	PrimitiveType exprType;
-	PROPAGATE_ERROR(VisitExpression(node, &exprType));
+	switch (operator)
+	{
+	case Binary_BoolAnd: return Token_AmpersandAmpersand;
+	case Binary_BoolOr: return Token_PipePipe;
+	case Binary_IsEqual: return Token_EqualsEquals;
+	case Binary_NotEqual: return Token_ExclamationEquals;
+	case Binary_GreaterThan: return Token_RightAngleBracket;
+	case Binary_GreaterOrEqual: return Token_RightAngleEquals;
+	case Binary_LessThan: return Token_LeftAngleBracket;
+	case Binary_LessOrEqual: return Token_LeftAngleEquals;
 
-	if (targetType == Primitive_Void)
-		return ERROR_RESULT("\"void\" is not allowed here", lineNumber, currentFilePath);
+	case Binary_BitAnd: return Token_Ampersand;
+	case Binary_BitOr: return Token_Pipe;
+	case Binary_XOR: return Token_Tilde;
 
+	case Binary_Add: return Token_Plus;
+	case Binary_Subtract: return Token_Minus;
+	case Binary_Multiply: return Token_Asterisk;
+	case Binary_Divide: return Token_Slash;
+	case Binary_Exponentiation: return Token_Caret;
+	case Binary_Modulo: return Token_Percent;
+	case Binary_LeftShift: return Token_LeftAngleLeftAngle;
+	case Binary_RightShift: return Token_RightAngleRightAngle;
+
+	case Binary_Assignment: return Token_Equals;
+	case Binary_AddAssign: return Token_PlusEquals;
+	case Binary_SubtractAssign: return Token_MinusEquals;
+	case Binary_MultiplyAssign: return Token_AsteriskEquals;
+	case Binary_DivideAssign: return Token_SlashEquals;
+	case Binary_ModuloAssign: return Token_PercentEquals;
+	case Binary_ExponentAssign: return Token_CaretEquals;
+	case Binary_BitAndAssign: return Token_AmpersandEquals;
+	case Binary_BitOrAssign: return Token_PipeEquals;
+	case Binary_XORAssign: return Token_TildeEquals;
+
+	default: unreachable();
+	}
+}
+
+static Result VisitExpression(NodePtr* node, PrimitiveType* outType);
+
+static Result ConvertExpression(
+	NodePtr* expr,
+	const PrimitiveType exprType,
+	const PrimitiveType targetType,
+	const int lineNumber,
+	const char* errorMessage)
+{
 	if (exprType == targetType)
 		return SUCCESS_RESULT;
 
-	const Result error = ERROR_RESULT(
-		AllocateString2Str(
+	if (errorMessage == NULL)
+		errorMessage = AllocateString2Str(
 			"Cannot convert type \"%s\" to \"%s\"",
 			GetTokenTypeString(PrimitiveTypeToTokenType(exprType)),
-			GetTokenTypeString(PrimitiveTypeToTokenType(targetType))),
-		lineNumber,
-		currentFilePath);
+			GetTokenTypeString(PrimitiveTypeToTokenType(targetType)));
+
+	const Result error = ERROR_RESULT(errorMessage, lineNumber, currentFilePath);
 
 	switch (targetType)
 	{
@@ -128,26 +162,17 @@ static Result ConvertExpression(NodePtr* node, const PrimitiveType targetType, c
 	case Primitive_Int:
 		if (exprType != Primitive_Float)
 			return error;
-
-		*node = AllocASTNode(
-			&(BinaryExpr){
-				.lineNumber = lineNumber,
-				.operatorType = Binary_BitOr,
-				.right = *node,
-				.left = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = lineNumber,
-						.type = Literal_Int,
-						.intValue = 0,
-					},
-					sizeof(LiteralExpr), Node_Literal),
-			},
-			sizeof(BinaryExpr), Node_Binary);
-
+		*expr = AllocFloatToIntConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
 
 	case Primitive_Bool:
+		if (exprType != Primitive_Float && exprType != Primitive_Int)
+			return error;
+		*expr = AllocIntToBoolConversion(*expr, lineNumber);
+		return SUCCESS_RESULT;
+
 	case Primitive_String:
+	case Primitive_Void:
 		return error;
 
 	default: unreachable();
@@ -162,6 +187,200 @@ static PrimitiveType GetType(const NodePtr type)
 	return literal->primitiveType;
 }
 
+static LiteralExpr* GetLiteralExpr(const NodePtr node)
+{
+	if (node.type == Node_Literal)
+		return node.ptr;
+	if (node.type == Node_MemberAccess)
+	{
+		const MemberAccessExpr* memberAccessExpr = node.ptr;
+		assert(memberAccessExpr->next.ptr == NULL);
+		if (memberAccessExpr->value.type == Node_Literal)
+			return memberAccessExpr->value.ptr;
+	}
+	return NULL;
+}
+
+static Result VisitBinaryExpression(NodePtr* node, PrimitiveType* outType)
+{
+	assert(node->type == Node_Binary);
+	BinaryExpr* binary = node->ptr;
+
+	PrimitiveType leftType;
+	PrimitiveType rightType;
+	PROPAGATE_ERROR(VisitExpression(&binary->left, &leftType));
+	PROPAGATE_ERROR(VisitExpression(&binary->right, &rightType));
+
+	const char* errorMessage = AllocateString3Str(
+		"Cannot use operator \"%s\" on type \"%s\" and \"%s\"",
+		GetTokenTypeString(BinaryOperatorToTokenType(binary->operatorType)),
+		GetTokenTypeString(PrimitiveTypeToTokenType(leftType)),
+		GetTokenTypeString(PrimitiveTypeToTokenType(rightType)));
+
+	switch (binary->operatorType)
+	{
+	case Binary_IsEqual:
+	case Binary_NotEqual:
+	{
+		if (leftType != rightType &&
+			(leftType != Primitive_Int || rightType != Primitive_Float) &&
+			(leftType != Primitive_Float || rightType != Primitive_Int))
+			return ERROR_RESULT(errorMessage, binary->lineNumber, currentFilePath);
+
+		if (outType != NULL) *outType = Primitive_Bool;
+		break;
+	}
+
+	case Binary_BoolAnd:
+	case Binary_BoolOr:
+	{
+		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, Primitive_Bool, binary->lineNumber, errorMessage));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, Primitive_Bool, binary->lineNumber, errorMessage));
+		if (outType != NULL) *outType = Primitive_Bool;
+		break;
+	}
+
+		// relational
+	case Binary_GreaterThan:
+	case Binary_GreaterOrEqual:
+	case Binary_LessThan:
+	case Binary_LessOrEqual:
+	{
+		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, Primitive_Float, binary->lineNumber, errorMessage));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, Primitive_Float, binary->lineNumber, errorMessage));
+		if (outType != NULL) *outType = Primitive_Bool;
+		break;
+	}
+
+		// arithmetic
+	case Binary_Add:
+	case Binary_Subtract:
+	case Binary_Multiply:
+	case Binary_Divide:
+	case Binary_Exponentiation:
+	{
+		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, Primitive_Float, binary->lineNumber, errorMessage));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, Primitive_Float, binary->lineNumber, errorMessage));
+
+		PrimitiveType type;
+		if (leftType == Primitive_Int && rightType == Primitive_Int &&
+			binary->operatorType != Binary_Divide &&
+			binary->operatorType != Binary_Exponentiation)
+			type = Primitive_Int;
+		else
+			type = Primitive_Float;
+
+		if (outType != NULL) *outType = type;
+		break;
+	}
+
+		// integer arithmetic
+	case Binary_Modulo:
+	case Binary_LeftShift:
+	case Binary_RightShift:
+	case Binary_BitAnd:
+	case Binary_BitOr:
+	case Binary_XOR:
+	{
+		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, Primitive_Float, binary->lineNumber, errorMessage));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, Primitive_Float, binary->lineNumber, errorMessage));
+		if (outType != NULL) *outType = Primitive_Int;
+		break;
+	}
+
+		// assignment
+	case Binary_Assignment:
+	{
+		const LiteralExpr* literal = GetLiteralExpr(binary->left);
+		if (literal == NULL || literal->type != Literal_Identifier)
+			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
+
+		PrimitiveType variableType;
+		GetLiteralType(literal, &variableType);
+		PROPAGATE_ERROR(ConvertExpression(
+			&binary->right,
+			rightType,
+			variableType,
+			binary->lineNumber,
+			NULL));
+
+		if (outType != NULL) *outType = leftType;
+		break;
+	}
+
+		// compound assignment
+		BinaryOperator operator;
+	case Binary_AddAssign: operator= Binary_Add; goto HandleCompoundAssignment;
+	case Binary_SubtractAssign: operator= Binary_Subtract; goto HandleCompoundAssignment;
+	case Binary_MultiplyAssign: operator= Binary_Multiply; goto HandleCompoundAssignment;
+	case Binary_DivideAssign: operator= Binary_Divide; goto HandleCompoundAssignment;
+	case Binary_ModuloAssign: operator= Binary_Modulo; goto HandleCompoundAssignment;
+	case Binary_ExponentAssign: operator= Binary_Exponentiation; goto HandleCompoundAssignment;
+	case Binary_BitAndAssign: operator= Binary_BitAnd; goto HandleCompoundAssignment;
+	case Binary_BitOrAssign: operator= Binary_BitOr; goto HandleCompoundAssignment;
+	case Binary_XORAssign:
+	{
+		operator= Binary_XOR;
+
+	HandleCompoundAssignment:
+		const LiteralExpr* literal = GetLiteralExpr(binary->left);
+		if (literal == NULL || literal->type != Literal_Identifier)
+			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
+
+		binary->operatorType = Binary_Assignment;
+		binary->right = AllocASTNode(
+			&(BinaryExpr){
+				.lineNumber = binary->lineNumber,
+				.operatorType = operator,
+				.right = binary->right,
+				.left = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = literal->lineNumber,
+						.type = Literal_Identifier,
+						.identifier = (IdentifierReference){
+							.reference = literal->identifier.reference,
+							.text = AllocateString(literal->identifier.text),
+						},
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
+			sizeof(BinaryExpr), Node_Binary);
+
+		PrimitiveType type;
+		PROPAGATE_ERROR(VisitBinaryExpression(&binary->right, &type));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, type, leftType, binary->lineNumber, NULL));
+
+		if (outType != NULL) *outType = leftType;
+		break;
+	}
+
+	default: unreachable();
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
+{
+	switch (node->type)
+	{
+	case Node_Binary:
+		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
+		break;
+	case Node_Literal:
+		GetLiteralType(node->ptr, outType);
+		break;
+	case Node_MemberAccess:
+		const MemberAccessExpr* memberAccess = node->ptr;
+		assert(memberAccess->next.ptr == NULL);
+		assert(memberAccess->value.type == Node_Literal);
+		GetLiteralType(memberAccess->value.ptr, outType);
+		break;
+	default: unreachable();
+	}
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(const NodePtr* node)
 {
 	switch (node->type)
@@ -169,39 +388,57 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_Null:
 		break;
 	case Node_FunctionDeclaration:
+	{
 		const FuncDeclStmt* funcDecl = node->ptr;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 			PROPAGATE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
 		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 		break;
+	}
 	case Node_VariableDeclaration:
+	{
 		VarDeclStmt* varDecl = node->ptr;
+
+		PrimitiveType type;
+		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, &type));
 		PROPAGATE_ERROR(ConvertExpression(
 			&varDecl->initializer,
+			type,
 			GetType(varDecl->type),
-			varDecl->lineNumber));
+			varDecl->lineNumber,
+			NULL));
 
 		if (varDecl->arrayLength.ptr != NULL)
-			PROPAGATE_ERROR(ConvertExpression(
-				&varDecl->arrayLength,
-				Primitive_Int,
-				varDecl->lineNumber));
+		{
+			PrimitiveType type;
+			PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength, &type));
+			PROPAGATE_ERROR(ConvertExpression(&varDecl->arrayLength, type, Primitive_Int, varDecl->lineNumber, NULL));
+		}
 		break;
+	}
 	case Node_ExpressionStatement:
-		const ExpressionStmt* expressionStmt = node->ptr;
+	{
+		ExpressionStmt* expressionStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr, NULL));
 		break;
+	}
 	case Node_Block:
+	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
+	}
 	case Node_If:
+	{
 		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
-		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, Primitive_Bool, ifStmt->lineNumber));
+		PrimitiveType type;
+		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, &type));
+		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, type, Primitive_Bool, ifStmt->lineNumber, NULL));
 		break;
+	}
 	default: unreachable();
 	}
 	return SUCCESS_RESULT;

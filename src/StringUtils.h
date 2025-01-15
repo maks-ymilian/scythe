@@ -53,6 +53,16 @@ static inline char* AllocateString2Str(const char* format, const char* insert1, 
 	return str;
 }
 
+static inline char* AllocateString3Str(const char* format, const char* insert1, const char* insert2, const char* insert3)
+{
+	const size_t insertLength = strlen(insert1) + strlen(insert2) + strlen(insert3);
+	const size_t formatLength = strlen(format) - 6;
+	const size_t bufferLength = insertLength + formatLength + 1;
+	char* str = malloc(bufferLength);
+	snprintf(str, bufferLength, format, insert1, insert2, insert3);
+	return str;
+}
+
 static inline char* AllocateString2Int(const char* format, const int insert1, const int insert2)
 {
 	const size_t insertLength = (size_t)(IntCharCount(insert1) + IntCharCount(insert2));
