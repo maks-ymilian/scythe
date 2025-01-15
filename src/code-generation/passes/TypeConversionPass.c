@@ -132,7 +132,7 @@ static TokenType BinaryOperatorToTokenType(const BinaryOperator operator)
 	}
 }
 
-static Result VisitExpression(NodePtr* node, PrimitiveType* outType);
+static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
 
 static Result ConvertExpression(
 	NodePtr* expr,
@@ -201,7 +201,7 @@ static LiteralExpr* GetLiteralExpr(const NodePtr node)
 	return NULL;
 }
 
-static Result VisitBinaryExpression(NodePtr* node, PrimitiveType* outType)
+static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	assert(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
@@ -360,7 +360,7 @@ static Result VisitBinaryExpression(NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
+static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	switch (node->type)
 	{
@@ -418,7 +418,7 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_ExpressionStatement:
 	{
-		ExpressionStmt* expressionStmt = node->ptr;
+		const ExpressionStmt* expressionStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr, NULL));
 		break;
 	}
