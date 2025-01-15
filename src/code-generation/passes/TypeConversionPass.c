@@ -26,7 +26,7 @@ static PrimitiveType GetIdentifierType(const IdentifierReference identifier)
 	return literal->primitiveType;
 }
 
-static void GetLiteralType(const LiteralExpr* literal, PrimitiveType* outType)
+static void VisitLiteral(LiteralExpr* literal, PrimitiveType* outType)
 {
 	if (outType == NULL)
 		return;
@@ -37,7 +37,10 @@ static void GetLiteralType(const LiteralExpr* literal, PrimitiveType* outType)
 	case Literal_Float: *outType = Primitive_Float; break;
 	case Literal_Int: *outType = Primitive_Int; break;
 	case Literal_String: *outType = Primitive_String; break;
-	case Literal_Boolean: *outType = Primitive_Bool; break;
+	case Literal_Boolean:
+		literal->type = Literal_Int;
+		literal->intValue = literal->boolean ? 1 : 0;
+		*outType = Primitive_Bool; break;
 	default: unreachable();
 	}
 }
@@ -291,12 +294,12 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 		// assignment
 	case Binary_Assignment:
 	{
-		const LiteralExpr* literal = GetLiteralExpr(binary->left);
+		LiteralExpr* literal = GetLiteralExpr(binary->left);
 		if (literal == NULL || literal->type != Literal_Identifier)
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 		PrimitiveType variableType;
-		GetLiteralType(literal, &variableType);
+		VisitLiteral(literal, &variableType);
 		PROPAGATE_ERROR(ConvertExpression(
 			&binary->right,
 			rightType,
@@ -368,13 +371,13 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
 		break;
 	case Node_Literal:
-		GetLiteralType(node->ptr, outType);
+		VisitLiteral(node->ptr, outType);
 		break;
 	case Node_MemberAccess:
 		const MemberAccessExpr* memberAccess = node->ptr;
 		assert(memberAccess->next.ptr == NULL);
 		assert(memberAccess->value.type == Node_Literal);
-		GetLiteralType(memberAccess->value.ptr, outType);
+		VisitLiteral(memberAccess->value.ptr, outType);
 		break;
 	default: unreachable();
 	}
