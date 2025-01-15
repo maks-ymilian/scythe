@@ -35,6 +35,9 @@ static void WriteFloat(const double value)
 static void WriteString(const char* str)
 {
 	const size_t length = strlen(str);
+	if (length == 0)
+		return;
+
 	StreamWrite(stream, str, length);
 
 	if (str[length - 1] == '\n')
@@ -76,6 +79,11 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	case Literal_Float: WriteString(literal->floatValue); break;
 	case Literal_Int: WriteInteger(literal->intValue); break;
 	case Literal_Identifier: WriteString(literal->identifier.text); break;
+	case Literal_String:
+		WriteChar('\"');
+		WriteString(literal->string);
+		WriteChar('\"');
+		break;
 	default: unreachable();
 	}
 }
