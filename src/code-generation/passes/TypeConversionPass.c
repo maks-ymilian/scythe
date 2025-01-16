@@ -404,6 +404,49 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
+static Result AddVariableInitializer(VarDeclStmt* varDecl)
+{
+	if (varDecl->array)
+		return SUCCESS_RESULT;
+
+	if (varDecl->initializer.ptr != NULL)
+		return SUCCESS_RESULT;
+
+	switch (GetType(varDecl->type))
+	{
+	case Primitive_Void:
+		return ERROR_RESULT("\"void\" is not allowed here", varDecl->lineNumber, currentFilePath);
+
+	case Primitive_Float:
+	case Primitive_Int:
+		varDecl->initializer = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = varDecl->lineNumber,
+				.type = Literal_Int,
+				.intValue = 0,
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		break;
+
+	case Primitive_Bool:
+		varDecl->initializer = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = varDecl->lineNumber,
+				.type = Literal_Boolean,
+				.boolean = false,
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		break;
+
+	case Primitive_String:
+		return ERROR_RESULT("Variables of type \"string\" must have an initializer", varDecl->lineNumber, currentFilePath);
+
+	default: unreachable();
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(const NodePtr* node)
 {
 	switch (node->type)
@@ -421,6 +464,8 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
+
+		PROPAGATE_ERROR(AddVariableInitializer(varDecl));
 
 		PrimitiveType type;
 		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, &type));

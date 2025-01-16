@@ -17,7 +17,6 @@ set(SOURCES
         "src/code-generation/Writer.c"
         "src/code-generation/passes/GlobalSectionPass.c"
         "src/code-generation/passes/TypeConversionPass.c"
-        "src/code-generation/passes/DefaultValuePass.c"
 )
 
 project(${PROJECT_NAME} C)
