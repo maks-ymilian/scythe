@@ -382,7 +382,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 		operator= Binary_XOR;
 
 	HandleCompoundAssignment:
-		const LiteralExpr* literal = GetLiteralExpr(binary->left);
+		LiteralExpr* literal = GetLiteralExpr(binary->left);
 		if (literal == NULL || literal->type != Literal_Identifier)
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
@@ -392,16 +392,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 				.lineNumber = binary->lineNumber,
 				.operatorType = operator,
 				.right = binary->right,
-				.left = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = literal->lineNumber,
-						.type = Literal_Identifier,
-						.identifier = (IdentifierReference){
-							.reference = literal->identifier.reference,
-							.text = AllocateString(literal->identifier.text),
-						},
-					},
-					sizeof(LiteralExpr), Node_Literal),
+				.left = CopyASTNode((NodePtr){.ptr = literal, .type = Node_Literal}),
 			},
 			sizeof(BinaryExpr), Node_Binary);
 
