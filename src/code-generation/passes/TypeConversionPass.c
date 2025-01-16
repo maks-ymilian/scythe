@@ -54,18 +54,47 @@ static PrimitiveType GetType(const NodePtr type)
 	return literal->primitiveType;
 }
 
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
-
-static void VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* outType)
+static size_t Max(const size_t a, const size_t b)
 {
-	if (outType == NULL)
-		return;
+	return a > b ? a : b;
+}
 
+static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
+static Result ConvertExpression(
+	NodePtr* expr,
+	PrimitiveType exprType,
+	PrimitiveType targetType,
+	int lineNumber,
+	const char* errorMessage);
+
+static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* outType)
+{
 	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 	const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
-	*outType = GetType(funcDecl->type);
 
+	if (outType != NULL) *outType = GetType(funcDecl->type);
 
+	for (size_t i = 0; i < Max(funcDecl->parameters.length, funcCall->parameters.length); ++i)
+	{
+		if (i >= funcDecl->parameters.length ||
+			i >= funcCall->parameters.length)
+			return ERROR_RESULT(
+				AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
+					funcDecl->parameters.length, funcCall->parameters.length),
+				funcCall->lineNumber, currentFilePath);
+
+		NodePtr* expr = funcCall->parameters.array[i];
+
+		const NodePtr* node = funcDecl->parameters.array[i];
+		assert(node->type == Node_VariableDeclaration);
+		const VarDeclStmt* varDecl = node->ptr;
+
+		PrimitiveType exprType;
+		PROPAGATE_ERROR(VisitExpression(expr, &exprType));
+		PROPAGATE_ERROR(ConvertExpression(expr, exprType, GetType(varDecl->type), funcCall->lineNumber, NULL));
+	}
+
+	return SUCCESS_RESULT;
 }
 
 static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
@@ -394,7 +423,7 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 		if (memberAccess->value.type == Node_Literal)
 			VisitLiteral(memberAccess->value.ptr, outType);
 		else if (memberAccess->value.type == Node_FunctionCall)
-			VisitFunctionCall(memberAccess->value.ptr, outType);
+			PROPAGATE_ERROR(VisitFunctionCall(memberAccess->value.ptr, outType));
 		else
 			unreachable();
 
