@@ -150,7 +150,7 @@ typedef struct
 {
 	int lineNumber;
 	IdentifierReference identifier;
-	Array parameters;
+	Array arguments;
 } FuncCallExpr;
 
 typedef struct

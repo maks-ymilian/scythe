@@ -78,10 +78,10 @@ static void VisitFunctionCall(const FuncCallExpr* funcCall)
 {
 	WriteString(funcCall->identifier.text);
 	WriteChar('(');
-	for (size_t i = 0; i < funcCall->parameters.length; ++i)
+	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
-		VisitExpression(*(NodePtr*)funcCall->parameters.array[i]);
-		if (i < funcCall->parameters.length - 1)
+		VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
+		if (i < funcCall->arguments.length - 1)
 			WriteString(", ");
 	}
 	WriteChar(')');

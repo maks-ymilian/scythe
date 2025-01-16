@@ -313,9 +313,9 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 					currentFilePath);
 		}
 
-		for (size_t i = 0; i < funcCall->parameters.length; ++i)
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 		{
-			const NodePtr* node = funcCall->parameters.array[i];
+			const NodePtr* node = funcCall->arguments.array[i];
 			PROPAGATE_ERROR(ResolveExpression(node, previous));
 		}
 

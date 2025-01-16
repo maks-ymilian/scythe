@@ -231,7 +231,7 @@ static Result ParseFunctionCall(NodePtr* out)
 	*out = AllocASTNode(
 		&(FuncCallExpr){
 			.lineNumber = identifier->lineNumber,
-			.parameters = params,
+			.arguments = params,
 			.identifier =
 				(IdentifierReference){
 					.text = AllocateString(identifier->text),

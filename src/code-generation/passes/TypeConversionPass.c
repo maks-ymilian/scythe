@@ -74,16 +74,16 @@ static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* out
 
 	if (outType != NULL) *outType = GetType(funcDecl->type);
 
-	for (size_t i = 0; i < Max(funcDecl->parameters.length, funcCall->parameters.length); ++i)
+	for (size_t i = 0; i < Max(funcDecl->parameters.length, funcCall->arguments.length); ++i)
 	{
 		if (i >= funcDecl->parameters.length ||
-			i >= funcCall->parameters.length)
+			i >= funcCall->arguments.length)
 			return ERROR_RESULT(
 				AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-					funcDecl->parameters.length, funcCall->parameters.length),
+					funcDecl->parameters.length, funcCall->arguments.length),
 				funcCall->lineNumber, currentFilePath);
 
-		NodePtr* expr = funcCall->parameters.array[i];
+		NodePtr* expr = funcCall->arguments.array[i];
 
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);

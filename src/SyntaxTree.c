@@ -43,9 +43,9 @@ void FreeASTNode(const NodePtr node)
 	{
 		const FuncCallExpr* ptr = node.ptr;
 		free(ptr->identifier.text);
-		for (size_t i = 0; i < ptr->parameters.length; ++i)
-			FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
-		FreeArray(&ptr->parameters);
+		for (size_t i = 0; i < ptr->arguments.length; ++i)
+			FreeASTNode(*(NodePtr*)ptr->arguments.array[i]);
+		FreeArray(&ptr->arguments);
 		break;
 	}
 	case Node_ArrayAccess:
