@@ -6,6 +6,121 @@
 #include <stdlib.h>
 #include <string.h>
 
+TokenType binaryOperatorToTokenType[] = {
+	[Binary_BoolAnd] = Token_AmpersandAmpersand,
+	[Binary_BoolOr] = Token_PipePipe,
+	[Binary_IsEqual] = Token_EqualsEquals,
+	[Binary_NotEqual] = Token_ExclamationEquals,
+	[Binary_GreaterThan] = Token_RightAngleBracket,
+	[Binary_GreaterOrEqual] = Token_RightAngleEquals,
+	[Binary_LessThan] = Token_LeftAngleBracket,
+	[Binary_LessOrEqual] = Token_LeftAngleEquals,
+
+	[Binary_BitAnd] = Token_Ampersand,
+	[Binary_BitOr] = Token_Pipe,
+	[Binary_XOR] = Token_Tilde,
+
+	[Binary_Add] = Token_Plus,
+	[Binary_Subtract] = Token_Minus,
+	[Binary_Multiply] = Token_Asterisk,
+	[Binary_Divide] = Token_Slash,
+	[Binary_Exponentiation] = Token_Caret,
+	[Binary_Modulo] = Token_Percent,
+	[Binary_LeftShift] = Token_LeftAngleLeftAngle,
+	[Binary_RightShift] = Token_RightAngleRightAngle,
+
+	[Binary_Assignment] = Token_Equals,
+	[Binary_AddAssign] = Token_PlusEquals,
+	[Binary_SubtractAssign] = Token_MinusEquals,
+	[Binary_MultiplyAssign] = Token_AsteriskEquals,
+	[Binary_DivideAssign] = Token_SlashEquals,
+	[Binary_ModuloAssign] = Token_PercentEquals,
+	[Binary_ExponentAssign] = Token_CaretEquals,
+	[Binary_BitAndAssign] = Token_AmpersandEquals,
+	[Binary_BitOrAssign] = Token_PipeEquals,
+	[Binary_XORAssign] = Token_TildeEquals,
+};
+
+BinaryOperator tokenTypeToBinaryOperator[] = {
+	[Token_AmpersandAmpersand] = Binary_BoolAnd,
+	[Token_PipePipe] = Binary_BoolOr,
+	[Token_EqualsEquals] = Binary_IsEqual,
+	[Token_ExclamationEquals] = Binary_NotEqual,
+	[Token_RightAngleBracket] = Binary_GreaterThan,
+	[Token_RightAngleEquals] = Binary_GreaterOrEqual,
+	[Token_LeftAngleBracket] = Binary_LessThan,
+	[Token_LeftAngleEquals] = Binary_LessOrEqual,
+
+	[Token_Ampersand] = Binary_BitAnd,
+	[Token_Pipe] = Binary_BitOr,
+	[Token_Tilde] = Binary_XOR,
+
+	[Token_Plus] = Binary_Add,
+	[Token_Minus] = Binary_Subtract,
+	[Token_Asterisk] = Binary_Multiply,
+	[Token_Slash] = Binary_Divide,
+	[Token_Caret] = Binary_Exponentiation,
+	[Token_Percent] = Binary_Modulo,
+	[Token_LeftAngleLeftAngle] = Binary_LeftShift,
+	[Token_RightAngleRightAngle] = Binary_RightShift,
+
+	[Token_Equals] = Binary_Assignment,
+	[Token_PlusEquals] = Binary_AddAssign,
+	[Token_MinusEquals] = Binary_SubtractAssign,
+	[Token_AsteriskEquals] = Binary_MultiplyAssign,
+	[Token_SlashEquals] = Binary_DivideAssign,
+	[Token_PercentEquals] = Binary_ModuloAssign,
+	[Token_CaretEquals] = Binary_ExponentAssign,
+	[Token_AmpersandEquals] = Binary_BitAndAssign,
+	[Token_PipeEquals] = Binary_BitOrAssign,
+	[Token_TildeEquals] = Binary_XORAssign,
+};
+
+TokenType unaryOperatorToTokenType[] = {
+	[Unary_Plus] = Token_Plus,
+	[Unary_Minus] = Token_Minus,
+	[Unary_Negate] = Token_Exclamation,
+	[Unary_Increment] = Token_PlusPlus,
+	[Unary_Decrement] = Token_MinusMinus,
+};
+
+UnaryOperator tokenTypeToUnaryOperator[] = {
+	[Token_Plus] = Unary_Plus,
+	[Token_Minus] = Unary_Minus,
+	[Token_Exclamation] = Unary_Negate,
+	[Token_PlusPlus] = Unary_Increment,
+	[Token_MinusMinus] = Unary_Decrement,
+};
+
+TokenType primitiveTypeToTokenType[] = {
+	[Primitive_Void] = Token_Void,
+	[Primitive_Float] = Token_Float,
+	[Primitive_Int] = Token_Int,
+	[Primitive_Bool] = Token_Bool,
+	[Primitive_String] = Token_String,
+};
+
+PrimitiveType tokenTypeToPrimitiveType[] = {
+	[Token_Void] = Primitive_Void,
+	[Token_Float] = Primitive_Float,
+	[Token_Int] = Primitive_Int,
+	[Token_Bool] = Primitive_Bool,
+	[Token_String] = Primitive_String,
+};
+
+BinaryOperator getCompoundAssignmentOperator[] =
+{
+	[Binary_AddAssign] = Binary_Add,
+	[Binary_SubtractAssign] = Binary_Subtract,
+	[Binary_MultiplyAssign] = Binary_Multiply,
+	[Binary_DivideAssign] = Binary_Divide,
+	[Binary_ModuloAssign] = Binary_Modulo,
+	[Binary_ExponentAssign] = Binary_Exponentiation,
+	[Binary_BitAndAssign] = Binary_BitAnd,
+	[Binary_BitOrAssign] = Binary_BitOr,
+	[Binary_XORAssign] = Binary_XOR,
+};
+
 NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
 {
 	void* out = malloc(size);

@@ -158,47 +158,6 @@ static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
 	}
 }
 
-static TokenType BinaryOperatorToTokenType(const BinaryOperator operator)
-{
-	switch (operator)
-	{
-	case Binary_BoolAnd: return Token_AmpersandAmpersand;
-	case Binary_BoolOr: return Token_PipePipe;
-	case Binary_IsEqual: return Token_EqualsEquals;
-	case Binary_NotEqual: return Token_ExclamationEquals;
-	case Binary_GreaterThan: return Token_RightAngleBracket;
-	case Binary_GreaterOrEqual: return Token_RightAngleEquals;
-	case Binary_LessThan: return Token_LeftAngleBracket;
-	case Binary_LessOrEqual: return Token_LeftAngleEquals;
-
-	case Binary_BitAnd: return Token_Ampersand;
-	case Binary_BitOr: return Token_Pipe;
-	case Binary_XOR: return Token_Tilde;
-
-	case Binary_Add: return Token_Plus;
-	case Binary_Subtract: return Token_Minus;
-	case Binary_Multiply: return Token_Asterisk;
-	case Binary_Divide: return Token_Slash;
-	case Binary_Exponentiation: return Token_Caret;
-	case Binary_Modulo: return Token_Percent;
-	case Binary_LeftShift: return Token_LeftAngleLeftAngle;
-	case Binary_RightShift: return Token_RightAngleRightAngle;
-
-	case Binary_Assignment: return Token_Equals;
-	case Binary_AddAssign: return Token_PlusEquals;
-	case Binary_SubtractAssign: return Token_MinusEquals;
-	case Binary_MultiplyAssign: return Token_AsteriskEquals;
-	case Binary_DivideAssign: return Token_SlashEquals;
-	case Binary_ModuloAssign: return Token_PercentEquals;
-	case Binary_ExponentAssign: return Token_CaretEquals;
-	case Binary_BitAndAssign: return Token_AmpersandEquals;
-	case Binary_BitOrAssign: return Token_PipeEquals;
-	case Binary_XORAssign: return Token_TildeEquals;
-
-	default: unreachable();
-	}
-}
-
 static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
 
 static Result ConvertExpression(
@@ -272,7 +231,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 
 	const char* errorMessage = AllocateString3Str(
 		"Cannot use operator \"%s\" on type \"%s\" and \"%s\"",
-		GetTokenTypeString(BinaryOperatorToTokenType(binary->operatorType)),
+		GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
 		GetTokenTypeString(PrimitiveTypeToTokenType(leftType)),
 		GetTokenTypeString(PrimitiveTypeToTokenType(rightType)));
 
@@ -368,37 +327,31 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 	}
 
 		// compound assignment
-		BinaryOperator operator;
-	case Binary_AddAssign: operator= Binary_Add; goto HandleCompoundAssignment;
-	case Binary_SubtractAssign: operator= Binary_Subtract; goto HandleCompoundAssignment;
-	case Binary_MultiplyAssign: operator= Binary_Multiply; goto HandleCompoundAssignment;
-	case Binary_DivideAssign: operator= Binary_Divide; goto HandleCompoundAssignment;
-	case Binary_ModuloAssign: operator= Binary_Modulo; goto HandleCompoundAssignment;
-	case Binary_ExponentAssign: operator= Binary_Exponentiation; goto HandleCompoundAssignment;
-	case Binary_BitAndAssign: operator= Binary_BitAnd; goto HandleCompoundAssignment;
-	case Binary_BitOrAssign: operator= Binary_BitOr; goto HandleCompoundAssignment;
+	case Binary_AddAssign:
+	case Binary_SubtractAssign:
+	case Binary_MultiplyAssign:
+	case Binary_DivideAssign:
+	case Binary_ModuloAssign:
+	case Binary_ExponentAssign:
+	case Binary_BitAndAssign:
+	case Binary_BitOrAssign:
 	case Binary_XORAssign:
 	{
-		operator= Binary_XOR;
-
-	HandleCompoundAssignment:
 		LiteralExpr* literal = GetLiteralExpr(binary->left);
 		if (literal == NULL || literal->type != Literal_Identifier)
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
-		binary->operatorType = Binary_Assignment;
 		binary->right = AllocASTNode(
 			&(BinaryExpr){
 				.lineNumber = binary->lineNumber,
-				.operatorType = operator,
+				.operatorType = getCompoundAssignmentOperator[binary->operatorType],
 				.right = binary->right,
 				.left = CopyASTNode((NodePtr){.ptr = literal, .type = Node_Literal}),
 			},
 			sizeof(BinaryExpr), Node_Binary);
+		binary->operatorType = Binary_Assignment;
 
-		PrimitiveType type;
-		PROPAGATE_ERROR(VisitBinaryExpression(&binary->right, &type));
-		PROPAGATE_ERROR(ConvertExpression(&binary->right, type, leftType, binary->lineNumber, NULL));
+		PROPAGATE_ERROR(VisitBinaryExpression(node, NULL));
 
 		if (outType != NULL) *outType = leftType;
 		break;

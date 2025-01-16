@@ -394,19 +394,6 @@ static Result ParsePrimary(NodePtr* out)
 	}
 }
 
-static UnaryOperator TokenTypeToUnaryOperator(const TokenType tokenType)
-{
-	switch (tokenType)
-	{
-	case Token_Plus: return Unary_Plus;
-	case Token_Minus: return Unary_Minus;
-	case Token_Exclamation: return Unary_Negate;
-	case Token_PlusPlus: return Unary_Increment;
-	case Token_MinusMinus: return Unary_Decrement;
-	default: unreachable();
-	}
-}
-
 static Result ParseUnary(NodePtr* out)
 {
 	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
@@ -422,51 +409,10 @@ static Result ParseUnary(NodePtr* out)
 		&(UnaryExpr){
 			.lineNumber = operator->lineNumber,
 			.expression = expr,
-			.operatorType = TokenTypeToUnaryOperator(operator->type),
+			.operatorType = tokenTypeToUnaryOperator[operator->type],
 		},
 		sizeof(UnaryExpr), Node_Unary);
 	return SUCCESS_RESULT;
-}
-
-static BinaryOperator TokenTypeToBinaryOperator(const TokenType tokenType)
-{
-	switch (tokenType)
-	{
-	case Token_AmpersandAmpersand: return Binary_BoolAnd;
-	case Token_PipePipe: return Binary_BoolOr;
-	case Token_EqualsEquals: return Binary_IsEqual;
-	case Token_ExclamationEquals: return Binary_NotEqual;
-	case Token_RightAngleBracket: return Binary_GreaterThan;
-	case Token_RightAngleEquals: return Binary_GreaterOrEqual;
-	case Token_LeftAngleBracket: return Binary_LessThan;
-	case Token_LeftAngleEquals: return Binary_LessOrEqual;
-
-	case Token_Ampersand: return Binary_BitAnd;
-	case Token_Pipe: return Binary_BitOr;
-	case Token_Tilde: return Binary_XOR;
-
-	case Token_Plus: return Binary_Add;
-	case Token_Minus: return Binary_Subtract;
-	case Token_Asterisk: return Binary_Multiply;
-	case Token_Slash: return Binary_Divide;
-	case Token_Caret: return Binary_Exponentiation;
-	case Token_Percent: return Binary_Modulo;
-	case Token_LeftAngleLeftAngle: return Binary_LeftShift;
-	case Token_RightAngleRightAngle: return Binary_RightShift;
-
-	case Token_Equals: return Binary_Assignment;
-	case Token_PlusEquals: return Binary_AddAssign;
-	case Token_MinusEquals: return Binary_SubtractAssign;
-	case Token_AsteriskEquals: return Binary_MultiplyAssign;
-	case Token_SlashEquals: return Binary_DivideAssign;
-	case Token_PercentEquals: return Binary_ModuloAssign;
-	case Token_CaretEquals: return Binary_ExponentAssign;
-	case Token_AmpersandEquals: return Binary_BitAndAssign;
-	case Token_PipeEquals: return Binary_BitOrAssign;
-	case Token_TildeEquals: return Binary_XORAssign;
-
-	default: unreachable();
-	}
 }
 
 typedef Result (*ParseFunc)(NodePtr* out);
@@ -512,7 +458,7 @@ static Result ParseRightBinary(
 		*expr1 = AllocASTNode(
 			&(BinaryExpr){
 				.lineNumber = op->lineNumber,
-				.operatorType = TokenTypeToBinaryOperator(op->type),
+				.operatorType = tokenTypeToBinaryOperator[op->type],
 				.left = *expr2,
 				.right = *expr1,
 			},
@@ -549,7 +495,7 @@ static Result ParseLeftBinary(
 		left = AllocASTNode(
 			&(BinaryExpr){
 				.lineNumber = op->lineNumber,
-				.operatorType = TokenTypeToBinaryOperator(op->type),
+				.operatorType = tokenTypeToBinaryOperator[op->type],
 				.left = left,
 				.right = right,
 			},
@@ -899,15 +845,7 @@ static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 		return false;
 
 	*outLineNumber = primitiveType->lineNumber;
-	switch (primitiveType->type)
-	{
-	case Token_Void: *out = Primitive_Void; break;
-	case Token_Int: *out = Primitive_Int; break;
-	case Token_Float: *out = Primitive_Float; break;
-	case Token_String: *out = Primitive_String; break;
-	case Token_Bool: *out = Primitive_Bool; break;
-	default: unreachable();
-	}
+	*out = tokenTypeToPrimitiveType[primitiveType->type];
 	return true;
 }
 

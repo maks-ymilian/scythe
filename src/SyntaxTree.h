@@ -1,6 +1,7 @@
 #pragma once
 
 #include "data-structures/Array.h"
+#include "Token.h"
 
 #define NULL_NODE \
 	(NodePtr) { .ptr = NULL, .type = Node_Null }
@@ -298,6 +299,17 @@ typedef struct
 {
 	Array nodes;
 } AST;
+
+extern TokenType binaryOperatorToTokenType[];
+extern BinaryOperator tokenTypeToBinaryOperator[];
+
+extern TokenType unaryOperatorToTokenType[];
+extern UnaryOperator tokenTypeToUnaryOperator[];
+
+extern TokenType primitiveTypeToTokenType[];
+extern PrimitiveType tokenTypeToPrimitiveType[];
+
+extern BinaryOperator getCompoundAssignmentOperator[];
 
 NodePtr AllocASTNode(const void* node, size_t size, NodeType type);
 NodePtr CopyASTNode(NodePtr node);
