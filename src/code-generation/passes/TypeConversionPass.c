@@ -84,7 +84,6 @@ static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* out
 				funcCall->lineNumber, currentFilePath);
 
 		NodePtr* expr = funcCall->arguments.array[i];
-
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
@@ -476,26 +475,13 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitStatement(const NodePtr* node)
+static Result VisitVariableDeclaration(VarDeclStmt* varDecl, const bool addInitializer)
 {
-	switch (node->type)
-	{
-	case Node_Null:
-		break;
-	case Node_FunctionDeclaration:
-	{
-		const FuncDeclStmt* funcDecl = node->ptr;
-		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
-		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
-		break;
-	}
-	case Node_VariableDeclaration:
-	{
-		VarDeclStmt* varDecl = node->ptr;
-
+	if (addInitializer)
 		PROPAGATE_ERROR(AddVariableInitializer(varDecl));
 
+	if (varDecl->initializer.ptr != NULL)
+	{
 		PrimitiveType type;
 		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, &type));
 		PROPAGATE_ERROR(ConvertExpression(
@@ -504,13 +490,62 @@ static Result VisitStatement(const NodePtr* node)
 			GetType(varDecl->type),
 			varDecl->lineNumber,
 			NULL));
+	}
 
-		if (varDecl->arrayLength.ptr != NULL)
+	if (varDecl->arrayLength.ptr != NULL)
+	{
+		PrimitiveType type;
+		PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength, &type));
+		PROPAGATE_ERROR(ConvertExpression(&varDecl->arrayLength, type, Primitive_Int, varDecl->lineNumber, NULL));
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result VisitStatement(const NodePtr* node);
+
+static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
+{
+	bool encounteredOptional = false;
+	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+	{
+		const NodePtr* node = funcDecl->parameters.array[i];
+		assert(node->type == Node_VariableDeclaration);
+		VarDeclStmt* varDecl = node->ptr;
+
+		PROPAGATE_ERROR(VisitVariableDeclaration(varDecl, false));
+
+		if (varDecl->initializer.ptr == NULL)
 		{
-			PrimitiveType type;
-			PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength, &type));
-			PROPAGATE_ERROR(ConvertExpression(&varDecl->arrayLength, type, Primitive_Int, varDecl->lineNumber, NULL));
+			if (encounteredOptional)
+				return ERROR_RESULT(
+					"Optional parameters must be at the end of the parameter list",
+					varDecl->lineNumber,
+					currentFilePath);
 		}
+		else
+			encounteredOptional = true;
+	}
+
+	PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
+
+	return SUCCESS_RESULT;
+}
+
+static Result VisitStatement(const NodePtr* node)
+{
+	switch (node->type)
+	{
+	case Node_Null:
+		break;
+	case Node_FunctionDeclaration:
+	{
+		PROPAGATE_ERROR(VisitFunctionDeclaration(node->ptr));
+		break;
+	}
+	case Node_VariableDeclaration:
+	{
+		PROPAGATE_ERROR(VisitVariableDeclaration(node->ptr, true));
 		break;
 	}
 	case Node_ExpressionStatement:
