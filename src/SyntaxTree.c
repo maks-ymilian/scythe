@@ -1,5 +1,6 @@
 #include "SyntaxTree.h"
 
+#include <StringUtils.h>
 #include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -46,9 +47,9 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_Literal);
 		ptr = copy.ptr;
 
-		if (ptr->type == Literal_Float) ptr->floatValue = strdup(ptr->floatValue);
-		if (ptr->type == Literal_Identifier) ptr->identifier.text = strdup(ptr->identifier.text);
-		if (ptr->type == Literal_String) ptr->string = strdup(ptr->string);
+		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
+		if (ptr->type == Literal_Identifier) ptr->identifier.text = AllocateString(ptr->identifier.text);
+		if (ptr->type == Literal_String) ptr->string = AllocateString(ptr->string);
 
 		return copy;
 	}
@@ -59,7 +60,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_FunctionCall);
 		ptr = copy.ptr;
 
-		ptr->identifier.text = strdup(ptr->identifier.text);
+		ptr->identifier.text = AllocateString(ptr->identifier.text);
 
 		Array arguments = AllocateArray(sizeof(NodePtr));
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
@@ -81,7 +82,7 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		ptr->subscript = CopyASTNode(ptr->subscript);
 
-		ptr->identifier.text = strdup(ptr->identifier.text);
+		ptr->identifier.text = AllocateString(ptr->identifier.text);
 
 		return copy;
 	}
