@@ -21,6 +21,24 @@ static void VisitBlock(const NodePtr* node)
 		return;
 
 	BlockStmt* block = node->ptr;
+
+	if (block->statements.length == 0)
+	{
+		const NodePtr node = AllocASTNode(
+			&(ExpressionStmt){
+				.expr = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = block->lineNumber,
+						.type = Literal_Int,
+						.intValue = 0,
+					},
+					sizeof(LiteralExpr), Node_Literal)},
+			sizeof(ExpressionStmt), Node_ExpressionStatement);
+
+		ArrayAdd(&block->statements, &node);
+		return;
+	}
+
 	for (size_t i = 0; i < block->statements.length; ++i)
 	{
 		const NodePtr* node = block->statements.array[i];
