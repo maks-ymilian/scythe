@@ -3,13 +3,13 @@
 #include "passes/GlobalSectionPass.h"
 #include "passes/ResolverPass.h"
 #include "passes/TypeConversionPass.h"
-#include "passes/WriterPass.h"
+#include "Writer.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
 	GlobalSectionPass(syntaxTree);
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
-	WriterPass(syntaxTree, outputCode, outputLength);
+	WriteOutput(syntaxTree, outputCode, outputLength);
 	return SUCCESS_RESULT;
 }

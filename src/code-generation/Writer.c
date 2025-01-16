@@ -1,11 +1,11 @@
-#include "WriterPass.h"
+#include "Writer.h"
 
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "data-structures/MemoryStream.h"
+#include "../data-structures/MemoryStream.h"
 
 #define INDENT_WIDTH 4
 #define INDENT_STRING "    "
@@ -288,7 +288,7 @@ static void VisitModule(const ModuleNode* module)
 	}
 }
 
-void WriterPass(const AST* ast, char** outBuffer, size_t* outLength)
+void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 {
 	indentationLevel = 0;
 	stream = AllocateMemoryStream();

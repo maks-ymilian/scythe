@@ -14,7 +14,7 @@ set(SOURCES
         "src/Compiler.c"
         "src/FileUtils.c"
         "src/BuiltInImports.c"
-        "src/code-generation/passes/WriterPass.c"
+        "src/code-generation/Writer.c"
         "src/code-generation/passes/GlobalSectionPass.c"
         "src/code-generation/passes/TypeConversionPass.c"
 )
