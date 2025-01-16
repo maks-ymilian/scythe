@@ -236,6 +236,7 @@ typedef struct
 
 typedef struct
 {
+	int lineNumber;
 	Array statements;
 } BlockStmt;
 

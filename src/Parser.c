@@ -818,6 +818,7 @@ static Result ParseBlockStatement(NodePtr* out)
 
 	*out = AllocASTNode(
 		&(BlockStmt){
+			.lineNumber = openingBrace->lineNumber,
 			.statements = statements,
 		},
 		sizeof(BlockStmt), Node_Block);
@@ -1249,6 +1250,7 @@ static Result ParseWhileStatement(NodePtr* out)
 		ArrayAdd(&statements, &stmt);
 		block = AllocASTNode(
 			&(BlockStmt){
+				.lineNumber = whileToken->lineNumber,
 				.statements = statements,
 			},
 			sizeof(BlockStmt), Node_Block);
@@ -1315,6 +1317,7 @@ static Result ParseForStatement(NodePtr* out)
 		ArrayAdd(&statements, &stmt);
 		block = AllocASTNode(
 			&(BlockStmt){
+				.lineNumber = forToken->lineNumber,
 				.statements = statements,
 			},
 			sizeof(BlockStmt), Node_Block);
