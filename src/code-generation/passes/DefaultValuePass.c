@@ -67,8 +67,17 @@ static Result VisitStatement(const NodePtr* node)
 		for (size_t i = 0; i < block->statements.length; ++i)
 			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
-	case Node_ExpressionStatement:
+	case Node_FunctionDeclaration:
+		const FuncDeclStmt* funcDecl = node->ptr;
+		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
+		break;
 	case Node_If:
+		const IfStmt* ifStmt = node->ptr;
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
+		break;
+	case Node_ExpressionStatement:
+	case Node_Null:
 		break;
 	default: unreachable();
 	}
