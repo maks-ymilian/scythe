@@ -300,5 +300,6 @@ typedef struct
 } AST;
 
 NodePtr AllocASTNode(const void* node, size_t size, NodeType type);
+NodePtr CopyASTNode(NodePtr node);
 void FreeASTNode(NodePtr node);
 void FreeAST(AST root);

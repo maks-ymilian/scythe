@@ -12,6 +12,108 @@ NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
 	return (NodePtr){.ptr = out, .type = type};
 }
 
+NodePtr CopyASTNode(const NodePtr node)
+{
+	switch (node.type)
+	{
+	case Node_Binary:
+	{
+		BinaryExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(BinaryExpr), Node_Binary);
+		assert(copy.type == Node_Binary);
+		ptr = copy.ptr;
+
+		ptr->left = CopyASTNode(ptr->left);
+		ptr->right = CopyASTNode(ptr->right);
+
+		return copy;
+	}
+	case Node_Unary:
+	{
+		UnaryExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(UnaryExpr), Node_Unary);
+		assert(copy.type == Node_Unary);
+		ptr = copy.ptr;
+
+		ptr->expression = CopyASTNode(ptr->expression);
+
+		return copy;
+	}
+	case Node_Literal:
+	{
+		LiteralExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(LiteralExpr), Node_Literal);
+		assert(copy.type == Node_Literal);
+		ptr = copy.ptr;
+
+		if (ptr->type == Literal_Float) ptr->floatValue = strdup(ptr->floatValue);
+		if (ptr->type == Literal_Identifier) ptr->identifier.text = strdup(ptr->identifier.text);
+		if (ptr->type == Literal_String) ptr->string = strdup(ptr->string);
+
+		return copy;
+	}
+	case Node_FunctionCall:
+	{
+		FuncCallExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(FuncCallExpr), Node_FunctionCall);
+		assert(copy.type == Node_FunctionCall);
+		ptr = copy.ptr;
+
+		ptr->identifier.text = strdup(ptr->identifier.text);
+
+		Array arguments = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->arguments.length; ++i)
+		{
+			const NodePtr* node = ptr->arguments.array[i];
+			const NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&arguments, &copy);
+		}
+		ptr->arguments = arguments;
+
+		return copy;
+	}
+	case Node_ArrayAccess:
+	{
+		ArrayAccessExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(ArrayAccessExpr), Node_ArrayAccess);
+		assert(copy.type == Node_ArrayAccess);
+		ptr = copy.ptr;
+
+		ptr->subscript = CopyASTNode(ptr->subscript);
+
+		ptr->identifier.text = strdup(ptr->identifier.text);
+
+		return copy;
+	}
+	case Node_MemberAccess:
+	{
+		MemberAccessExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(MemberAccessExpr), Node_MemberAccess);
+		assert(copy.type == Node_Binary);
+		ptr = copy.ptr;
+
+		ptr->next = CopyASTNode(ptr->next);
+		ptr->value = CopyASTNode(ptr->value);
+
+		return copy;
+	}
+
+	case Node_ExpressionStatement:
+	case Node_Import:
+	case Node_Section:
+	case Node_VariableDeclaration:
+	case Node_FunctionDeclaration:
+	case Node_StructDeclaration:
+	case Node_Block:
+	case Node_If:
+	case Node_While:
+	case Node_For:
+	case Node_LoopControl:
+	case Node_Return:
+	default: unreachable();
+	}
+}
+
 void FreeASTNode(const NodePtr node)
 {
 	switch (node.type)
