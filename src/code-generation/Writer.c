@@ -72,6 +72,21 @@ static void PopIndent()
 	indentationLevel--;
 }
 
+static void VisitExpression(NodePtr node);
+
+static void VisitFunctionCall(const FuncCallExpr* funcCall)
+{
+	WriteString(funcCall->identifier.text);
+	WriteChar('(');
+	for (size_t i = 0; i < funcCall->parameters.length; ++i)
+	{
+		VisitExpression(*(NodePtr*)funcCall->parameters.array[i]);
+		if (i < funcCall->parameters.length - 1)
+			WriteString(", ");
+	}
+	WriteChar(')');
+}
+
 static void VisitLiteralExpression(const LiteralExpr* literal)
 {
 	switch (literal->type)
@@ -87,8 +102,6 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	default: unreachable();
 	}
 }
-
-static void VisitExpression(NodePtr node);
 
 static void VisitBinaryExpression(const BinaryExpr* binary)
 {
@@ -145,15 +158,17 @@ static void VisitExpression(const NodePtr node)
 	switch (node.type)
 	{
 	case Node_Binary: VisitBinaryExpression(node.ptr); break;
-	case Node_Literal:
-		VisitLiteralExpression(node.ptr);
-		break;
-
-		// temporary
+	case Node_Literal: VisitLiteralExpression(node.ptr); break;
+	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
 	case Node_MemberAccess:
 		const MemberAccessExpr* memberAccess = node.ptr;
-		assert(memberAccess->value.type == Node_Literal);
-		VisitLiteralExpression(memberAccess->value.ptr);
+		assert(memberAccess->next.ptr == NULL);
+		if (memberAccess->value.type == Node_Literal)
+			VisitLiteralExpression(memberAccess->value.ptr);
+		else if (memberAccess->value.type == Node_FunctionCall)
+			VisitFunctionCall(memberAccess->value.ptr);
+		else
+			unreachable();
 		break;
 	default: unreachable();
 	}
