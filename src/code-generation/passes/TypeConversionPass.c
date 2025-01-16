@@ -40,9 +40,32 @@ static void VisitLiteral(LiteralExpr* literal, PrimitiveType* outType)
 	case Literal_Boolean:
 		literal->type = Literal_Int;
 		literal->intValue = literal->boolean ? 1 : 0;
-		*outType = Primitive_Bool; break;
+		*outType = Primitive_Bool;
+		break;
 	default: unreachable();
 	}
+}
+
+static PrimitiveType GetType(const NodePtr type)
+{
+	assert(type.type == Node_Literal);
+	const LiteralExpr* literal = type.ptr;
+	assert(literal->type == Literal_PrimitiveType);
+	return literal->primitiveType;
+}
+
+static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
+
+static void VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* outType)
+{
+	if (outType == NULL)
+		return;
+
+	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
+	const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+	*outType = GetType(funcDecl->type);
+
+
 }
 
 static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
@@ -180,14 +203,6 @@ static Result ConvertExpression(
 
 	default: unreachable();
 	}
-}
-
-static PrimitiveType GetType(const NodePtr type)
-{
-	assert(type.type == Node_Literal);
-	const LiteralExpr* literal = type.ptr;
-	assert(literal->type == Literal_PrimitiveType);
-	return literal->primitiveType;
 }
 
 static LiteralExpr* GetLiteralExpr(const NodePtr node)
@@ -376,8 +391,13 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 	case Node_MemberAccess:
 		const MemberAccessExpr* memberAccess = node->ptr;
 		assert(memberAccess->next.ptr == NULL);
-		assert(memberAccess->value.type == Node_Literal);
-		VisitLiteral(memberAccess->value.ptr, outType);
+		if (memberAccess->value.type == Node_Literal)
+			VisitLiteral(memberAccess->value.ptr, outType);
+		else if (memberAccess->value.type == Node_FunctionCall)
+			VisitFunctionCall(memberAccess->value.ptr, outType);
+		else
+			unreachable();
+
 		break;
 	default: unreachable();
 	}

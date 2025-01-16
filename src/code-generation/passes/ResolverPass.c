@@ -264,7 +264,6 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 			return SUCCESS_RESULT;
 
 		unreachable();
-		return SUCCESS_RESULT;
 	}
 	case Node_Binary:
 	{
