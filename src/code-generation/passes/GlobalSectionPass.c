@@ -95,8 +95,11 @@ static void VisitModule(ModuleNode* module)
 		const NodePtr* stmt = module->statements.array[i];
 		switch (stmt->type)
 		{
-		case Node_StructDeclaration:
 		case Node_FunctionDeclaration:
+			const FuncDeclStmt* funcDecl = stmt->ptr;
+			VisitBlock(&funcDecl->block);
+			[[fallthrough]];
+		case Node_StructDeclaration:
 		case Node_VariableDeclaration:
 		{
 			AddToInitSection(stmt);
