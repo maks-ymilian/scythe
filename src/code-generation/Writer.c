@@ -195,6 +195,34 @@ static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 
 static void VisitStatement(const NodePtr* node);
 
+static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
+{
+	WriteString("function ");
+	WriteString(funcDecl->name);
+
+	WriteChar('(');
+	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+	{
+		const NodePtr* node = funcDecl->parameters.array[i];
+
+		assert(node->type == Node_VariableDeclaration);
+		const VarDeclStmt* varDecl = node->ptr;
+		WriteString(varDecl->name);
+
+		if (i < funcDecl->parameters.length - 1)
+			WriteString(", ");
+	}
+	WriteString(")\n");
+
+	WriteString("(\n");
+
+	PushIndent();
+	VisitStatement(&funcDecl->block);
+	PopIndent();
+
+	WriteString(");\n");
+}
+
 static void VisitIfStatement(const IfStmt* ifStmt)
 {
 	VisitExpression(ifStmt->expr);
@@ -226,7 +254,7 @@ static void VisitStatement(const NodePtr* node)
 	switch (node->type)
 	{
 	case Node_FunctionDeclaration:
-		WriteString("function\n");
+		VisitFunctionDeclaration(node->ptr);
 		break;
 	case Node_VariableDeclaration:
 		VisitVariableDeclaration(node->ptr);
