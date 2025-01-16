@@ -944,6 +944,7 @@ static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
 			.array = false,
 			.public = public != NULL,
 			.external = external != NULL,
+			.uniqueName = -1,
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 	return SUCCESS_RESULT;
@@ -1015,6 +1016,7 @@ static Result ParseFunctionDeclaration(NodePtr* out)
 			.block = block,
 			.public = public != NULL,
 			.external = external != NULL,
+			.uniqueName = -1,
 		},
 		sizeof(FuncDeclStmt), Node_FunctionDeclaration);
 	return SUCCESS_RESULT;
@@ -1064,6 +1066,7 @@ static Result ParseStructDeclaration(NodePtr* out)
 			.name = AllocateString(identifier->text),
 			.members = members,
 			.public = public != NULL,
+			.uniqueName = -1,
 		},
 		sizeof(StructDeclStmt), Node_StructDeclaration);
 	return SUCCESS_RESULT;
@@ -1122,6 +1125,7 @@ static Result ParseArrayDeclaration(NodePtr* out)
 			.array = true,
 			.public = public != NULL,
 			.external = false,
+			.uniqueName = -1,
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 	return SUCCESS_RESULT;

@@ -212,6 +212,7 @@ typedef struct
 	bool array;
 	bool public;
 	bool external;
+	int uniqueName;
 } VarDeclStmt;
 
 typedef struct
@@ -224,6 +225,7 @@ typedef struct
 	NodePtr block;
 	bool public;
 	bool external;
+	int uniqueName;
 } FuncDeclStmt;
 
 typedef struct
@@ -232,6 +234,7 @@ typedef struct
 	char* name;
 	Array members;
 	bool public;
+	int uniqueName;
 } StructDeclStmt;
 
 

@@ -72,11 +72,25 @@ static void PopIndent()
 	indentationLevel--;
 }
 
+static int GetUniqueName(const IdentifierReference* identifier)
+{
+	switch (identifier->reference.type)
+	{
+	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->uniqueName;
+	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->uniqueName;
+	case Node_StructDeclaration: return ((StructDeclStmt*)identifier->reference.ptr)->uniqueName;
+	default: unreachable();
+	}
+}
+
 static void VisitExpression(NodePtr node);
 
 static void VisitFunctionCall(const FuncCallExpr* funcCall)
 {
 	WriteString(funcCall->identifier.text);
+	WriteChar('_');
+	WriteInteger(GetUniqueName(&funcCall->identifier));
+
 	WriteChar('(');
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
@@ -93,7 +107,11 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	{
 	case Literal_Float: WriteString(literal->floatValue); break;
 	case Literal_Int: WriteInteger(literal->intValue); break;
-	case Literal_Identifier: WriteString(literal->identifier.text); break;
+	case Literal_Identifier:
+		WriteString(literal->identifier.text);
+		WriteChar('_');
+		WriteInteger(GetUniqueName(&literal->identifier));
+		break;
 	case Literal_String:
 		WriteChar('\"');
 		WriteString(literal->string);
@@ -174,7 +192,7 @@ static void VisitExpression(const NodePtr node)
 	}
 }
 
-static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
+static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
 	assert(varDecl->initializer.ptr != NULL);
 
@@ -186,7 +204,10 @@ static void VisitVariableDeclaration(const VarDeclStmt* varDecl)
 			&(LiteralExpr){
 				.lineNumber = -1,
 				.type = Literal_Identifier,
-				.identifier = (IdentifierReference){.text = varDecl->name, .reference = NULL_NODE},
+				.identifier = (IdentifierReference){
+					.text = varDecl->name,
+					.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
+				},
 			},
 			Node_Literal},
 	});
@@ -199,6 +220,8 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
 	WriteString("function ");
 	WriteString(funcDecl->name);
+	WriteChar('_');
+	WriteInteger(funcDecl->uniqueName);
 
 	WriteChar('(');
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -208,6 +231,8 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 		assert(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
 		WriteString(varDecl->name);
+		WriteChar('_');
+		WriteInteger(varDecl->uniqueName);
 
 		if (i < funcDecl->parameters.length - 1)
 			WriteString(", ");
