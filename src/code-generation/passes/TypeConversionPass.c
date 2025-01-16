@@ -67,7 +67,7 @@ static Result ConvertExpression(
 	int lineNumber,
 	const char* errorMessage);
 
-static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* outType)
+static Result VisitFunctionCall(FuncCallExpr* funcCall, PrimitiveType* outType)
 {
 	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 	const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
@@ -76,17 +76,24 @@ static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* out
 
 	for (size_t i = 0; i < Max(funcDecl->parameters.length, funcCall->arguments.length); ++i)
 	{
-		if (i >= funcDecl->parameters.length ||
-			i >= funcCall->arguments.length)
-			return ERROR_RESULT(
-				AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-					funcDecl->parameters.length, funcCall->arguments.length),
-				funcCall->lineNumber, currentFilePath);
+		if (i >= funcDecl->parameters.length)
+			goto ArgumentCountError;
 
-		NodePtr* expr = funcCall->arguments.array[i];
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
+
+		if (i >= funcCall->arguments.length)
+		{
+			if (varDecl->initializer.ptr == NULL)
+				goto ArgumentCountError;
+
+			const NodePtr node = CopyASTNode(varDecl->initializer);
+			ArrayAdd(&funcCall->arguments, &node);
+			assert(i < funcCall->arguments.length);
+		}
+
+		NodePtr* expr = funcCall->arguments.array[i];
 
 		PrimitiveType exprType;
 		PROPAGATE_ERROR(VisitExpression(expr, &exprType));
@@ -94,6 +101,12 @@ static Result VisitFunctionCall(const FuncCallExpr* funcCall, PrimitiveType* out
 	}
 
 	return SUCCESS_RESULT;
+
+ArgumentCountError:
+	return ERROR_RESULT(
+		AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
+			funcDecl->parameters.length, funcCall->arguments.length),
+		funcCall->lineNumber, currentFilePath);
 }
 
 static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
