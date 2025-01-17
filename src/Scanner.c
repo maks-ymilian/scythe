@@ -167,6 +167,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 		case '\n':
 			insideLineComment = false;
 			currentLine++;
+		[[fallthrough]];
 		case ' ':
 		case '\t':
 		case '\r':
