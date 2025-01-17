@@ -33,8 +33,11 @@ add_compile_options(
         -Wno-unused-parameter
 )
 
-add_compile_options(-fsanitize=address,undefined -g)
-add_link_options(-fsanitize=address,undefined)
+option(USE_SANITIZERS OFF)
+if (USE_SANITIZERS)
+    add_compile_options(-fsanitize=address,undefined -g)
+    add_link_options(-fsanitize=address,undefined)
+endif ()
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
