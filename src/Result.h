@@ -65,7 +65,7 @@ typedef struct
 	const char* filePath;
 } Result;
 
-static inline void PrintError(const Result result)
+static void PrintError(const Result result)
 {
 	assert(result.type == Result_Error);
 	assert(result.errorMessage != NULL);

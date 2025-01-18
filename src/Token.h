@@ -95,7 +95,7 @@ typedef struct
 	char* text;
 } Token;
 
-static inline const char* GetTokenTypeString(const TokenType tokenType)
+static const char* GetTokenTypeString(const TokenType tokenType)
 {
 	switch (tokenType)
 	{
