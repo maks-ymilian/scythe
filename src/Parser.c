@@ -641,10 +641,9 @@ static Result ParseExpression(NodePtr* out)
 static Result ParseExpressionStatement(NodePtr* out)
 {
 	NodePtr expr = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&expr));
-
-	if (expr.type == Node_Null)
-		return NOT_FOUND_RESULT;
+	const Result result = ParseExpression(&expr);
+	if (result.type != Result_Success)
+		return result;
 	if (MatchOne(Token_Semicolon) == NULL)
 		return ERROR_RESULT_LINE("Expected \";\"");
 
