@@ -156,14 +156,12 @@ static Result ParseArrayAccess(NodePtr* out)
 		return NOT_FOUND_RESULT;
 
 	Consume();
-
 	Consume();
 
 	NodePtr subscript = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&subscript));
 	if (subscript.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected subscript");
-
 
 	if (MatchOne(Token_RightSquareBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \"]\"");
@@ -223,7 +221,6 @@ static Result ParseFunctionCall(NodePtr* out)
 
 	Array params;
 	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
-
 
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
@@ -370,7 +367,6 @@ static Result ParsePrimary(NodePtr* out)
 
 			if (start == NULL)
 				start = memberAccess.ptr;
-
 
 			if (MatchOne(Token_Dot) == NULL)
 				break;
@@ -644,6 +640,7 @@ static Result ParseExpressionStatement(NodePtr* out)
 	const Result result = ParseExpression(&expr);
 	if (result.type != Result_Success)
 		return result;
+
 	if (MatchOne(Token_Semicolon) == NULL)
 		return ERROR_RESULT_LINE("Expected \";\"");
 
@@ -656,7 +653,6 @@ static Result ParseReturnStatement(NodePtr* out)
 	const Token* returnToken = MatchOne(Token_Return);
 	if (returnToken == NULL)
 		return NOT_FOUND_RESULT;
-
 
 	NodePtr expr = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&expr));
@@ -681,26 +677,21 @@ static Result ParseIfStatement(NodePtr* out)
 	if (ifToken == NULL)
 		return NOT_FOUND_RESULT;
 
-
 	if (MatchOne(Token_LeftBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \"(\"");
-
 
 	NodePtr expr = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&expr));
 	if (expr.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected expression in if statement");
 
-
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
-
 
 	NodePtr stmt = NULL_NODE;
 	PROPAGATE_ERROR(ParseStatement(&stmt));
 	if (stmt.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected statement");
-
 
 	NodePtr elseStmt = NULL_NODE;
 	if (MatchOne(Token_Else))
@@ -742,10 +733,8 @@ static Result ParseBlockStatement(NodePtr* out)
 			break;
 		}
 
-
 		if (stmt.type == Node_Section)
 			return ERROR_RESULT_LINE("Nested sections are not allowed");
-
 
 		if (stmt.type == Node_StructDeclaration)
 			return ERROR_RESULT_LINE("Struct declarations not allowed inside code blocks");
@@ -774,7 +763,6 @@ static Result ParseSectionStatement(NodePtr* out)
 {
 	if (MatchOne(Token_At) == NULL)
 		return NOT_FOUND_RESULT;
-
 
 	const Token* identifier = MatchOne(Token_Identifier);
 	if (identifier == NULL)
@@ -1167,16 +1155,13 @@ static Result ParseWhileStatement(NodePtr* out)
 	if (MatchOne(Token_LeftBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \"(\"");
 
-
 	NodePtr expr = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&expr));
 	if (expr.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected expression");
 
-
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
-
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
@@ -1237,10 +1222,8 @@ static Result ParseForStatement(NodePtr* out)
 	if (MatchOne(Token_Semicolon) == NULL)
 		return ERROR_RESULT_LINE("Expected \";\"");
 
-
 	NodePtr increment = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&increment));
-
 
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
