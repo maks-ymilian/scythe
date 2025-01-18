@@ -108,8 +108,6 @@ static Token* CurrentToken(const size_t offset)
 	return tokens.array[pointer + offset];
 }
 
-static void Consume() { pointer++; }
-
 static Token* Match(const TokenType* types, const size_t length)
 {
 	Token* current = CurrentToken(0);
@@ -119,7 +117,7 @@ static Token* Match(const TokenType* types, const size_t length)
 		if (current->type != types[i])
 			continue;
 
-		Consume();
+		pointer++;
 		return current;
 	}
 
@@ -151,12 +149,14 @@ static Result ParseExpression(NodePtr* out);
 
 static Result ParseArrayAccess(NodePtr* out)
 {
-	const Token* identifier = PeekOne(Token_Identifier, 0);
-	if (identifier == NULL || PeekOne(Token_LeftSquareBracket, 1) == NULL)
-		return NOT_FOUND_RESULT;
+	const size_t oldPointer = pointer;
 
-	Consume();
-	Consume();
+	const Token* identifier = MatchOne(Token_Identifier);
+	if (identifier == NULL || MatchOne(Token_LeftSquareBracket) == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
 
 	NodePtr subscript = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&subscript));
@@ -210,14 +210,14 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
 
 static Result ParseFunctionCall(NodePtr* out)
 {
-	const Token* identifier = PeekOne(Token_Identifier, 0);
-	if (identifier == NULL || PeekOne(Token_LeftBracket, 1) == NULL)
-		return NOT_FOUND_RESULT;
+	const size_t oldPointer = pointer;
 
-	if (MatchOne(Token_Identifier) == NULL)
-		unreachable();
-	if (MatchOne(Token_LeftBracket) == NULL)
-		unreachable();
+	const Token* identifier = MatchOne(Token_Identifier);
+	if (identifier == NULL || MatchOne(Token_LeftBracket) == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
 
 	Array params;
 	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
@@ -322,7 +322,7 @@ static Result ParsePrimary(NodePtr* out)
 	{
 	case Token_LeftBracket:
 	{
-		Consume();
+		pointer++;
 		*out = NULL_NODE;
 		PROPAGATE_ERROR(ParseExpression(out));
 		if (out->ptr == NULL)
@@ -380,7 +380,7 @@ static Result ParsePrimary(NodePtr* out)
 	case Token_True:
 	case Token_False:
 	{
-		Consume();
+		pointer++;
 		LiteralExpr literal;
 		PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
 		*out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
@@ -1261,8 +1261,7 @@ static Result ParseForStatement(NodePtr* out)
 
 static Result ParseLoopControlStatement(NodePtr* out)
 {
-	const Token* token = MatchOne(Token_Break);
-	if (token == NULL) token = MatchOne(Token_Continue);
+	const Token* token = Match((TokenType[]){Token_Break, Token_Continue}, 2);
 	if (token == NULL) return NOT_FOUND_RESULT;
 
 	if (MatchOne(Token_Semicolon) == NULL)
