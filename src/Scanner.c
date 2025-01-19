@@ -1,11 +1,8 @@
 #include "Scanner.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "data-structures/Map.h"
 
 static const char* source;
 static size_t pointer;

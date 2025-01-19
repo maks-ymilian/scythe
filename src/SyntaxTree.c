@@ -1,10 +1,11 @@
 #include "SyntaxTree.h"
 
-#include <StringUtils.h>
 #include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "StringUtils.h"
 
 TokenType binaryOperatorToTokenType[] = {
 	[Binary_BoolAnd] = Token_AmpersandAmpersand,

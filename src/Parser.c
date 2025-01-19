@@ -1,6 +1,5 @@
 #include "Parser.h"
 
-#include <StringUtils.h>
 #include <assert.h>
 #include <ctype.h>
 #include <math.h>
@@ -8,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "StringUtils.h"
 
 #define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken(0)->lineNumber, NULL)
 
