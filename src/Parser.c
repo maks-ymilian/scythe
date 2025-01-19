@@ -420,9 +420,9 @@ static Result ParseRightBinary(
 	const size_t operatorsLength)
 {
 	NodePtr left = NULL_NODE;
-	PROPAGATE_ERROR(parseFunc(&left));
-	if (left.ptr == NULL)
-		return NOT_FOUND_RESULT;
+	const Result result = parseFunc(&left);
+	if (result.type != Result_Success)
+		return result;
 
 	Array exprArray = AllocateArray(sizeof(NodePtr));
 	ArrayAdd(&exprArray, &left);
@@ -475,9 +475,9 @@ static Result ParseLeftBinary(
 	const size_t operatorsLength)
 {
 	NodePtr left = NULL_NODE;
-	PROPAGATE_ERROR(parseFunc(&left));
-	if (left.ptr == NULL)
-		return NOT_FOUND_RESULT;
+	const Result result = parseFunc(&left);
+	if (result.type != Result_Success)
+		return result;
 
 	const Token* op = Match(operators, operatorsLength);
 	while (op != NULL)
@@ -1278,20 +1278,25 @@ static Result ParseLoopControlStatement(NodePtr* out)
 
 static Result ParseStatement(NodePtr* out)
 {
+	// these start with a defining token
 	PROPAGATE_FOUND(ParseImportStatement(out));
-	PROPAGATE_FOUND(ParseFunctionDeclaration(out));
-	PROPAGATE_FOUND(ParseStructDeclaration(out));
 	PROPAGATE_FOUND(ParseIfStatement(out));
 	PROPAGATE_FOUND(ParseLoopControlStatement(out));
 	PROPAGATE_FOUND(ParseWhileStatement(out));
 	PROPAGATE_FOUND(ParseForStatement(out));
-	PROPAGATE_FOUND(ParseArrayDeclaration(out));
-	PROPAGATE_FOUND(ParseVariableDeclaration(out, true));
 	PROPAGATE_FOUND(ParseSectionStatement(out));
 	PROPAGATE_FOUND(ParseBlockStatement(out));
 	PROPAGATE_FOUND(ParseReturnStatement(out));
-	PROPAGATE_FOUND(ParseExpressionStatement(out));
 
+	// todo should return not found with a message
+	PROPAGATE_FOUND(ParseFunctionDeclaration(out));
+	PROPAGATE_FOUND(ParseStructDeclaration(out));
+	PROPAGATE_FOUND(ParseArrayDeclaration(out));
+	PROPAGATE_FOUND(ParseVariableDeclaration(out, true));
+
+	PROPAGATE_FOUND(ParseExpressionStatement(out)); // returns not found with a message
+
+	// maybe make this return the
 	return NOT_FOUND_RESULT;
 }
 
