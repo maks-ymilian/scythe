@@ -14,6 +14,30 @@
 static Array tokens;
 static size_t pointer;
 
+static Token* CurrentToken(const size_t offset)
+{
+	if (pointer + offset >= tokens.length)
+		return tokens.array[tokens.length - 1];
+
+	return tokens.array[pointer + offset];
+}
+
+static Token* Match(const TokenType* types, const size_t length)
+{
+	Token* current = CurrentToken(0);
+	for (size_t i = 0; i < length; ++i)
+	{
+		if (current->type == types[i])
+		{
+			pointer++;
+			return current;
+		}
+	}
+	return NULL;
+}
+
+static Token* MatchOne(const TokenType type) { return Match((TokenType[]){type}, 1); }
+
 static bool IsDigitBase(const char c, const int base)
 {
 	if (base == 10) return isdigit(c);
@@ -98,52 +122,6 @@ static Result EvaluateNumberLiteral(
 	PROPAGATE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
 	return SUCCESS_RESULT;
 }
-
-
-static Token* CurrentToken(const size_t offset)
-{
-	if (pointer + offset >= tokens.length)
-		return tokens.array[tokens.length - 1];
-
-	return tokens.array[pointer + offset];
-}
-
-static Token* Match(const TokenType* types, const size_t length)
-{
-	Token* current = CurrentToken(0);
-
-	for (size_t i = 0; i < length; ++i)
-	{
-		if (current->type != types[i])
-			continue;
-
-		pointer++;
-		return current;
-	}
-
-	return NULL;
-}
-
-static Token* MatchOne(const TokenType type) { return Match((TokenType[]){type}, 1); }
-
-static Token* Peek(const TokenType* types, const int length, const size_t offset)
-{
-	Token* current = CurrentToken(offset);
-	if (current == NULL)
-		return NULL;
-
-	for (int i = 0; i < length; ++i)
-	{
-		if (current->type != types[i])
-			continue;
-
-		return current;
-	}
-
-	return NULL;
-}
-
-static Token* PeekOne(const TokenType type, const size_t offset) { return Peek((TokenType[]){type}, 1, offset); }
 
 static Result ParseExpression(NodePtr* out);
 
@@ -300,7 +278,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 
 static Result ParsePrimary(NodePtr* out)
 {
-	const Token* token = Peek(
+	const Token* token = Match(
 		(TokenType[]){
 			Token_NumberLiteral,
 			Token_StringLiteral,
@@ -309,7 +287,7 @@ static Result ParsePrimary(NodePtr* out)
 			Token_True,
 			Token_False,
 		},
-		6, 0);
+		6);
 	if (token == NULL)
 		return (Result){
 			.type = Result_NotFound,
@@ -322,7 +300,6 @@ static Result ParsePrimary(NodePtr* out)
 	{
 	case Token_LeftBracket:
 	{
-		pointer++;
 		*out = NULL_NODE;
 		PROPAGATE_ERROR(ParseExpression(out));
 		if (out->ptr == NULL)
@@ -336,6 +313,8 @@ static Result ParsePrimary(NodePtr* out)
 	}
 	case Token_Identifier:
 	{
+		pointer--;
+
 		MemberAccessExpr* start = NULL;
 		MemberAccessExpr* current = NULL;
 		while (true)
@@ -380,7 +359,6 @@ static Result ParsePrimary(NodePtr* out)
 	case Token_True:
 	case Token_False:
 	{
-		pointer++;
 		LiteralExpr literal;
 		PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
 		*out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
