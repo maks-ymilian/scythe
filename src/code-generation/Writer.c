@@ -298,7 +298,7 @@ static void VisitStatement(const NodePtr* node)
 		VisitIfStatement(node->ptr);
 		break;
 
-		// temporary
+		// todo
 	case Node_StructDeclaration:
 		WriteString("struct\n");
 		break;

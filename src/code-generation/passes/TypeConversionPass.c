@@ -528,6 +528,10 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, type, Primitive_Bool, ifStmt->lineNumber, NULL));
 		break;
 	}
+
+	// todo
+	case Node_StructDeclaration:
+	    break;
 	default: unreachable();
 	}
 	return SUCCESS_RESULT;
