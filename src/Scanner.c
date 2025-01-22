@@ -35,6 +35,11 @@ static void AddToken(const TokenType type)
 		});
 }
 
+static bool IsIdentifierChar(const char ch)
+{
+	return isalnum(ch) || ch == '_';
+}
+
 static Result ScanIdentifier()
 {
 	const size_t start = pointer;
@@ -47,7 +52,7 @@ static Result ScanIdentifier()
 		if (source[pointer] == '\0')
 			break;
 
-		if (!isalnum(source[pointer]) && source[pointer] != '_')
+		if (!IsIdentifierChar(source[pointer]))
 			break;
 
 		pointer++;
@@ -126,6 +131,10 @@ static Result ScanKeyword()
 		if (strlen(source + pointer) < length)
 			continue;
 
+		if (IsIdentifierChar(source[pointer]) &&
+			IsIdentifierChar(source[pointer + length]))
+			continue;
+
 		if (memcmp(source + pointer, string, length) == 0)
 		{
 			AddToken(tokenType);
@@ -164,7 +173,7 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 		case '\n':
 			insideLineComment = false;
 			currentLine++;
-		[[fallthrough]];
+			[[fallthrough]];
 		case ' ':
 		case '\t':
 		case '\r':
