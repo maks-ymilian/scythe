@@ -10,22 +10,22 @@
 
 #include "StringUtils.h"
 
-#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken(0)->lineNumber, NULL)
+#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken()->lineNumber, NULL)
 
 static Array tokens;
 static size_t pointer;
 
-static Token* CurrentToken(const size_t offset)
+static Token* CurrentToken()
 {
-	if (pointer + offset >= tokens.length)
+	if (pointer >= tokens.length)
 		return tokens.array[tokens.length - 1];
 
-	return tokens.array[pointer + offset];
+	return tokens.array[pointer];
 }
 
 static Token* Match(const TokenType* types, const size_t length)
 {
-	Token* current = CurrentToken(0);
+	Token* current = CurrentToken();
 	for (size_t i = 0; i < length; ++i)
 	{
 		if (current->type == types[i])
@@ -161,7 +161,7 @@ static Result ParseArrayAccess(NodePtr* out)
 
 typedef Result (*ParseFunction)(NodePtr*);
 
-static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function)
+static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken)
 {
 	*outArray = AllocateArray(sizeof(NodePtr));
 
@@ -178,11 +178,16 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
 			NodePtr node = NULL_NODE;
 			PROPAGATE_ERROR(function(&node));
 			if (node.ptr == NULL)
-				return ERROR_RESULT_LINE("Expected item after \",\"");
+				return ERROR_RESULT_LINE(
+					AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 
 			ArrayAdd(outArray, &node);
 		}
 	}
+
+	if (MatchOne(endToken) == NULL)
+		return ERROR_RESULT_LINE(
+			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 
 	return SUCCESS_RESULT;
 }
@@ -199,10 +204,7 @@ static Result ParseFunctionCall(NodePtr* out)
 	}
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression));
-
-	if (MatchOne(Token_RightBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \")\"");
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket));
 
 	*out = AllocASTNode(
 		&(FuncCallExpr){
@@ -290,12 +292,7 @@ static Result ParsePrimary(NodePtr* out)
 		},
 		6);
 	if (token == NULL)
-		return (Result){
-			.type = Result_NotFound,
-			.errorMessage = AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)),
-			.lineNumber = CurrentToken(0)->lineNumber,
-			.filePath = NULL,
-		};
+		return NOT_FOUND_RESULT;
 
 	switch (token->type)
 	{
@@ -726,7 +723,7 @@ static Result ParseBlockStatement(NodePtr* out)
 		if (exitResult.errorMessage != NULL)
 			return exitResult;
 		return ERROR_RESULT_LINE(
-			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
+			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 	}
 
 	*out = AllocASTNode(
@@ -795,6 +792,230 @@ static Result ParseSectionStatement(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
+static Result ParseVariableDeclaration(
+	NodePtr* out,
+	const Token* public,
+	const Token* external,
+	const NodePtr type,
+	const Token* identifier,
+	const bool expectSemicolon)
+{
+	NodePtr initializer = NULL_NODE;
+	const Token* equals = MatchOne(Token_Equals);
+	if (equals != NULL)
+	{
+		if (external)
+			return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
+
+		PROPAGATE_ERROR(ParseExpression(&initializer));
+		if (initializer.ptr == NULL)
+			return ERROR_RESULT_LINE("Expected expression");
+	}
+
+	Token externalIdentifier = {};
+	if (external)
+	{
+		const Token* token = MatchOne(Token_Identifier);
+		if (token != NULL)
+			externalIdentifier = *token;
+		else
+			externalIdentifier = *identifier;
+	}
+
+	if (expectSemicolon)
+	{
+		const Token* semicolon = MatchOne(Token_Semicolon);
+		if (semicolon == NULL)
+			return ERROR_RESULT_LINE("Expected \";\"");
+	}
+
+	*out = AllocASTNode(
+		&(VarDeclStmt){
+			.type = type,
+			.lineNumber = identifier->lineNumber,
+			.name = AllocateString(identifier->text),
+			.externalName = AllocateString(externalIdentifier.text),
+			.initializer = initializer,
+			.arrayLength = NULL_NODE,
+			.array = false,
+			.public = public != NULL,
+			.external = external != NULL,
+			.uniqueName = -1,
+		},
+		sizeof(VarDeclStmt), Node_VariableDeclaration);
+	return SUCCESS_RESULT;
+}
+
+static Result ParseTypeAndIdentifier(NodePtr* type, const Token** identifier);
+
+static Result ParseVarDeclNoSemicolon(NodePtr* out)
+{
+	NodePtr type = NULL_NODE;
+	const Token* identifier;
+	PROPAGATE_ERROR(ParseTypeAndIdentifier(&type, &identifier));
+	if (type.ptr == NULL)
+		return NOT_FOUND_RESULT;
+
+	return ParseVariableDeclaration(out, NULL, NULL, type, identifier, false);
+}
+
+static Result ParseArrayDeclaration(
+	NodePtr* out,
+	const Token* public,
+	const Token* external,
+	const NodePtr type,
+	const Token* identifier)
+{
+	if (MatchOne(Token_LeftSquareBracket) == NULL)
+		return NOT_FOUND_RESULT;
+
+	if (external)
+		return ERROR_RESULT_LINE("\"external\" is not allowed here");
+
+	NodePtr length = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&length));
+	if (length.ptr == NULL)
+		return ERROR_RESULT_LINE("Expected array length");
+
+	if (MatchOne(Token_RightSquareBracket) == NULL)
+		return ERROR_RESULT_LINE("Expected \"]\"");
+
+	if (MatchOne(Token_Semicolon) == NULL)
+		return ERROR_RESULT_LINE("Expected \";\"");
+
+	*out = AllocASTNode(
+		&(VarDeclStmt){
+			.type = type,
+			.lineNumber = identifier->lineNumber,
+			.name = AllocateString(identifier->text),
+			.externalName = NULL,
+			.arrayLength = length,
+			.initializer = NULL_NODE,
+			.array = true,
+			.public = public != NULL,
+			.external = false,
+			.uniqueName = -1,
+		},
+		sizeof(VarDeclStmt), Node_VariableDeclaration);
+	return SUCCESS_RESULT;
+}
+
+static Result ParseFunctionDeclaration(
+	NodePtr* out,
+	const Token* public,
+	const Token* external,
+	const NodePtr type,
+	const Token* identifier)
+{
+	if (MatchOne(Token_LeftBracket) == NULL)
+		return NOT_FOUND_RESULT;
+
+	Array params;
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon, Token_RightBracket));
+
+	NodePtr block = NULL_NODE;
+	PROPAGATE_ERROR(ParseBlockStatement(&block));
+	if (block.ptr == NULL && !external) return ERROR_RESULT_LINE("Expected code block after function declaration");
+	if (block.ptr != NULL && external) return ERROR_RESULT_LINE("External functions cannot have code blocks");
+
+	Token externalIdentifier = {};
+	if (external)
+	{
+		const Token* token = MatchOne(Token_Identifier);
+		if (token != NULL)
+			externalIdentifier = *token;
+		else
+			externalIdentifier = *identifier;
+
+		if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE("Expected \";\"");
+	}
+
+	*out = AllocASTNode(
+		&(FuncDeclStmt){
+			.type = type,
+			.lineNumber = identifier->lineNumber,
+			.name = AllocateString(identifier->text),
+			.externalName = AllocateString(externalIdentifier.text),
+			.parameters = params,
+			.block = block,
+			.public = public != NULL,
+			.external = external != NULL,
+			.uniqueName = -1,
+		},
+		sizeof(FuncDeclStmt), Node_FunctionDeclaration);
+	return SUCCESS_RESULT;
+}
+
+static Result ParseModifierDeclaration(NodePtr* out);
+
+static Result ParseStructDeclaration(NodePtr* out, const Token* public, const Token* external)
+{
+	if (MatchOne(Token_Struct) == NULL)
+		return NOT_FOUND_RESULT;
+
+	if (external)
+		return ERROR_RESULT_LINE("\"external\" is not allowed here");
+
+	const Token* identifier = MatchOne(Token_Identifier);
+	if (identifier == NULL)
+		return ERROR_RESULT_LINE("Expected struct name");
+
+	if (MatchOne(Token_LeftCurlyBracket) == NULL)
+		return ERROR_RESULT_LINE("Expected \"{\" after struct name");
+
+	Array members = AllocateArray(sizeof(NodePtr));
+	while (true)
+	{
+		NodePtr member = NULL_NODE;
+		PROPAGATE_ERROR(ParseVarDeclNoSemicolon(&member));
+		if (member.ptr == NULL) break;
+
+		if (MatchOne(Token_Semicolon) == NULL)
+			return ERROR_RESULT_LINE("Expected \";\"");
+
+		ArrayAdd(&members, &member);
+	}
+
+	if (MatchOne(Token_RightCurlyBracket) == NULL)
+		return ERROR_RESULT_LINE(
+			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
+
+	*out = AllocASTNode(
+		&(StructDeclStmt){
+			.lineNumber = identifier->lineNumber,
+			.name = AllocateString(identifier->text),
+			.members = members,
+			.public = public != NULL,
+			.uniqueName = -1,
+		},
+		sizeof(StructDeclStmt), Node_StructDeclaration);
+	return SUCCESS_RESULT;
+}
+
+static Result ParseImportStatement(NodePtr* out, const Token* public, const Token* external)
+{
+	const Token* import = MatchOne(Token_Import);
+	if (import == NULL)
+		return NOT_FOUND_RESULT;
+
+	if (external)
+		return ERROR_RESULT_LINE("\"external\" is not allowed here");
+
+	const Token* path = MatchOne(Token_StringLiteral);
+	if (path == NULL)
+		return ERROR_RESULT_LINE("Expected path after \"import\"");
+
+	*out = AllocASTNode(
+		&(ImportStmt){
+			.lineNumber = import->lineNumber,
+			.path = AllocateString(path->text),
+			.moduleName = NULL,
+			.public = public != NULL,
+		},
+		sizeof(ImportStmt), Node_Import);
+	return SUCCESS_RESULT;
+}
+
 static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 {
 	const Token* primitiveType = Match(
@@ -842,288 +1063,52 @@ static Result ParseType(NodePtr* out)
 	return NOT_FOUND_RESULT;
 }
 
+static Result ParseTypeAndIdentifier(NodePtr* type, const Token** identifier)
+{
+	PROPAGATE_ERROR(ParseType(type));
+	if (type->ptr == NULL)
+		return NOT_FOUND_RESULT;
+
+	*identifier = MatchOne(Token_Identifier);
+	if (*identifier == NULL)
+		return ERROR_RESULT_LINE("Expected identifier after type");
+
+	return SUCCESS_RESULT;
+}
+
+static Result ParseDeclaration(NodePtr* out, const Token* public, const Token* external)
+{
+	NodePtr type = NULL_NODE;
+	const Token* identifier;
+	PROPAGATE_ERROR(ParseTypeAndIdentifier(&type, &identifier));
+	if (type.ptr == NULL)
+		return NOT_FOUND_RESULT;
+
+	PROPAGATE_FOUND(ParseFunctionDeclaration(out, public, external, type, identifier));
+	PROPAGATE_FOUND(ParseArrayDeclaration(out, public, external, type, identifier));
+
+	return ParseVariableDeclaration(out, public, external, type, identifier, true);
+}
+
 static void ParseModifiers(Token** public, Token** external)
 {
 	*public = MatchOne(Token_Public);
 	*external = MatchOne(Token_External);
 }
 
-static Result ParseVariableDeclaration(NodePtr* out, const bool expectSemicolon)
+static Result ParseModifierDeclaration(NodePtr* out)
 {
-	const size_t oldPointer = pointer;
-
 	Token* public, *external;
 	ParseModifiers(&public, &external);
 
-	NodePtr type = NULL_NODE;
-	PROPAGATE_ERROR(ParseType(&type));
-	if (type.ptr == NULL)
-	{
-		pointer = oldPointer;
+	PROPAGATE_FOUND(ParseStructDeclaration(out, public, external));
+	PROPAGATE_FOUND(ParseImportStatement(out, public, external));
+	PROPAGATE_FOUND(ParseDeclaration(out, public, external));
+
+	if (public == NULL && external == NULL)
 		return NOT_FOUND_RESULT;
-	}
 
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	NodePtr initializer = NULL_NODE;
-	const Token* equals = MatchOne(Token_Equals);
-	if (equals != NULL)
-	{
-		if (external)
-			return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
-
-		PROPAGATE_ERROR(ParseExpression(&initializer));
-		if (initializer.ptr == NULL)
-			return ERROR_RESULT_LINE("Expected expression");
-	}
-
-	Token externalIdentifier = {};
-	if (external)
-	{
-		const Token* token = MatchOne(Token_Identifier);
-		if (token != NULL)
-			externalIdentifier = *token;
-		else
-			externalIdentifier = *identifier;
-	}
-
-	if (expectSemicolon)
-	{
-		const Token* semicolon = MatchOne(Token_Semicolon);
-		if (semicolon == NULL)
-			return ERROR_RESULT_LINE("Expected \";\"");
-	}
-
-	*out = AllocASTNode(
-		&(VarDeclStmt){
-			.type = type,
-			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier.text),
-			.initializer = initializer,
-			.arrayLength = NULL_NODE,
-			.array = false,
-			.public = public != NULL,
-			.external = external != NULL,
-			.uniqueName = -1,
-		},
-		sizeof(VarDeclStmt), Node_VariableDeclaration);
-	return SUCCESS_RESULT;
-}
-
-static Result ParseVarDeclNoSemicolon(NodePtr* out)
-{
-	return ParseVariableDeclaration(out, false);
-}
-
-static Result ParseFunctionDeclaration(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	Token* public, *external;
-	ParseModifiers(&public, &external);
-
-	NodePtr type = NULL_NODE;
-	PROPAGATE_ERROR(ParseType(&type));
-	if (type.ptr == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	if (MatchOne(Token_LeftBracket) == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon));
-
-	if (MatchOne(Token_RightBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \")\"");
-
-	NodePtr block = NULL_NODE;
-	PROPAGATE_ERROR(ParseBlockStatement(&block));
-	if (block.ptr == NULL && !external) return ERROR_RESULT_LINE("Expected code block after function declaration");
-	if (block.ptr != NULL && external) return ERROR_RESULT_LINE("External functions cannot have code blocks");
-
-	Token externalIdentifier = {};
-	if (external)
-	{
-		const Token* token = MatchOne(Token_Identifier);
-		if (token != NULL)
-			externalIdentifier = *token;
-		else
-			externalIdentifier = *identifier;
-
-		if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE("Expected \";\"");
-	}
-
-	*out = AllocASTNode(
-		&(FuncDeclStmt){
-			.type = type,
-			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier.text),
-			.parameters = params,
-			.block = block,
-			.public = public != NULL,
-			.external = external != NULL,
-			.uniqueName = -1,
-		},
-		sizeof(FuncDeclStmt), Node_FunctionDeclaration);
-	return SUCCESS_RESULT;
-}
-
-static Result ParseStructDeclaration(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	Token* public, *external;
-	ParseModifiers(&public, &external);
-
-	if (MatchOne(Token_Struct) == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	if (external)
-		return ERROR_RESULT_LINE("\"external\" is not allowed here");
-
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL)
-		return ERROR_RESULT_LINE("Expected struct name");
-
-
-	if (MatchOne(Token_LeftCurlyBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \"{\" after struct name");
-
-	Array members = AllocateArray(sizeof(NodePtr));
-	while (true)
-	{
-		NodePtr member = NULL_NODE;
-		PROPAGATE_ERROR(ParseVariableDeclaration(&member, true));
-		if (member.ptr == NULL) break;
-		ArrayAdd(&members, &member);
-	}
-
-
-	if (MatchOne(Token_RightCurlyBracket) == NULL)
-		return ERROR_RESULT_LINE(
-			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
-
-	*out = AllocASTNode(
-		&(StructDeclStmt){
-			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.members = members,
-			.public = public != NULL,
-			.uniqueName = -1,
-		},
-		sizeof(StructDeclStmt), Node_StructDeclaration);
-	return SUCCESS_RESULT;
-}
-
-static Result ParseArrayDeclaration(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	Token* public, *external;
-	ParseModifiers(&public, &external);
-
-	NodePtr type = NULL_NODE;
-	PROPAGATE_ERROR(ParseType(&type));
-	if (type.ptr == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	if (MatchOne(Token_LeftSquareBracket) == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	if (external)
-		return ERROR_RESULT_LINE("\"external\" is not allowed here");
-
-	NodePtr length = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&length));
-	if (length.ptr == NULL)
-		return ERROR_RESULT_LINE("Expected array length");
-
-	if (MatchOne(Token_RightSquareBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \"]\"");
-
-	if (MatchOne(Token_Semicolon) == NULL)
-		return ERROR_RESULT_LINE("Expected \";\"");
-
-	*out = AllocASTNode(
-		&(VarDeclStmt){
-			.type = type,
-			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = NULL,
-			.arrayLength = length,
-			.initializer = NULL_NODE,
-			.array = true,
-			.public = public != NULL,
-			.external = false,
-			.uniqueName = -1,
-		},
-		sizeof(VarDeclStmt), Node_VariableDeclaration);
-	return SUCCESS_RESULT;
-}
-
-static Result ParseImportStatement(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	Token* public, *external;
-	ParseModifiers(&public, &external);
-
-	const Token* import = MatchOne(Token_Import);
-	if (import == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	const Token* path = MatchOne(Token_StringLiteral);
-	if (path == NULL)
-		return ERROR_RESULT_LINE("Expected path after \"import\"");
-
-	*out = AllocASTNode(
-		&(ImportStmt){
-			.lineNumber = import->lineNumber,
-			.path = AllocateString(path->text),
-			.moduleName = NULL,
-			.public = public != NULL,
-		},
-		sizeof(ImportStmt), Node_Import);
-	return SUCCESS_RESULT;
+	return ERROR_RESULT_LINE("Expected declaration after modifiers");
 }
 
 static Result ParseWhileStatement(NodePtr* out)
@@ -1257,8 +1242,6 @@ static Result ParseLoopControlStatement(NodePtr* out)
 
 static Result ParseStatement(NodePtr* out)
 {
-	// these start with a defining token
-	PROPAGATE_FOUND(ParseImportStatement(out));
 	PROPAGATE_FOUND(ParseIfStatement(out));
 	PROPAGATE_FOUND(ParseLoopControlStatement(out));
 	PROPAGATE_FOUND(ParseWhileStatement(out));
@@ -1266,16 +1249,8 @@ static Result ParseStatement(NodePtr* out)
 	PROPAGATE_FOUND(ParseSectionStatement(out));
 	PROPAGATE_FOUND(ParseBlockStatement(out));
 	PROPAGATE_FOUND(ParseReturnStatement(out));
-
-	// todo should return not found with a message
-	PROPAGATE_FOUND(ParseFunctionDeclaration(out));
-	PROPAGATE_FOUND(ParseStructDeclaration(out));
-	PROPAGATE_FOUND(ParseArrayDeclaration(out));
-	PROPAGATE_FOUND(ParseVariableDeclaration(out, true));
-
-	PROPAGATE_FOUND(ParseExpressionStatement(out)); // returns not found with a message
-
-	// maybe make this return the
+	PROPAGATE_FOUND(ParseExpressionStatement(out));
+	PROPAGATE_FOUND(ParseModifierDeclaration(out));
 	return NOT_FOUND_RESULT;
 }
 
@@ -1294,7 +1269,7 @@ static Result ParseProgram(AST* out)
 		PROPAGATE_ERROR(ParseStatement(&stmt));
 		if (stmt.ptr == NULL)
 			return ERROR_RESULT_LINE(
-				AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken(0)->type)));
+				AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 
 		if (stmt.type == Node_Import)
 		{
@@ -1302,9 +1277,7 @@ static Result ParseProgram(AST* out)
 				return ERROR_RESULT_LINE("Import statements must be at the top of the file");
 		}
 		else
-		{
 			allowImportStatements = false;
-		}
 
 		if (stmt.type != Node_Section &&
 			stmt.type != Node_FunctionDeclaration &&
