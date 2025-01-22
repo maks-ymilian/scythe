@@ -260,10 +260,9 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 					previous,
 					literal->lineNumber));
 
-				if (literal->identifier.reference.type != Node_VariableDeclaration &&
-					literal->identifier.reference.type != Node_Import)
+				if (literal->identifier.reference.type == Node_FunctionDeclaration)
 					return ERROR_RESULT(
-						AllocateString1Str("\"%s\" is not a variable", literal->identifier.text),
+						AllocateString1Str("\"%s\" is a function, not a variable", literal->identifier.text),
 						literal->lineNumber,
 						currentFilePath);
 			}
