@@ -612,10 +612,20 @@ static Result ParseExpression(NodePtr* out)
 
 static Result ParseExpressionStatement(NodePtr* out)
 {
+	const size_t oldPointer = pointer;
+
 	NodePtr expr = NULL_NODE;
 	const Result result = ParseExpression(&expr);
 	if (result.type != Result_Success)
 		return result;
+
+	// special case for variable declarations
+	if (expr.type == Node_MemberAccess &&
+		MatchOne(Token_Identifier))
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
 
 	if (MatchOne(Token_Semicolon) == NULL)
 		return ERROR_RESULT_LINE("Expected \";\"");
