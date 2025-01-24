@@ -206,7 +206,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		MemberAccessExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(MemberAccessExpr), Node_MemberAccess);
-		assert(copy.type == Node_Binary);
+		assert(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
 		ptr->next = CopyASTNode(ptr->next);
@@ -219,6 +219,21 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_Import:
 	case Node_Section:
 	case Node_VariableDeclaration:
+	{
+		VarDeclStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(VarDeclStmt), Node_VariableDeclaration);
+		assert(copy.type == Node_VariableDeclaration);
+		ptr = copy.ptr;
+
+		ptr->initializer = CopyASTNode(ptr->initializer);
+		ptr->type = CopyASTNode(ptr->type);
+		ptr->arrayLength = CopyASTNode(ptr->arrayLength);
+
+		ptr->name = AllocateString(ptr->name);
+		ptr->externalName = AllocateString(ptr->externalName);
+
+		return copy;
+	}
 	case Node_FunctionDeclaration:
 	case Node_StructDeclaration:
 	case Node_Block:
