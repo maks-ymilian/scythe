@@ -705,19 +705,12 @@ static Result ParseBlockStatement(NodePtr* out)
 		return NOT_FOUND_RESULT;
 
 	Array statements = AllocateArray(sizeof(NodePtr));
-	Result exitResult = NOT_FOUND_RESULT;
 	while (true)
 	{
 		NodePtr stmt = NULL_NODE;
-		const Result result = ParseStatement(&stmt);
-		PROPAGATE_ERROR(result);
+		PROPAGATE_ERROR(ParseStatement(&stmt));
 		if (stmt.ptr == NULL)
-		{
-			assert(result.type == Result_NotFound);
-			if (result.errorMessage != NULL)
-				exitResult = result;
 			break;
-		}
 
 		if (stmt.type == Node_Section)
 			return ERROR_RESULT_LINE("Nested sections are not allowed");
@@ -729,12 +722,7 @@ static Result ParseBlockStatement(NodePtr* out)
 	}
 
 	if (MatchOne(Token_RightCurlyBracket) == NULL)
-	{
-		if (exitResult.errorMessage != NULL)
-			return exitResult;
-		return ERROR_RESULT_LINE(
-			AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
-	}
+		return ERROR_RESULT_LINE(AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 
 	*out = AllocASTNode(
 		&(BlockStmt){
