@@ -225,9 +225,9 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_VariableDeclaration);
 		ptr = copy.ptr;
 
-		ptr->initializer = CopyASTNode(ptr->initializer);
+		if (ptr->initializer.ptr) ptr->initializer = CopyASTNode(ptr->initializer);
+		if (ptr->arrayLength.ptr) ptr->arrayLength = CopyASTNode(ptr->arrayLength);
 		ptr->type = CopyASTNode(ptr->type);
-		ptr->arrayLength = CopyASTNode(ptr->arrayLength);
 
 		ptr->name = AllocateString(ptr->name);
 		ptr->externalName = AllocateString(ptr->externalName);
