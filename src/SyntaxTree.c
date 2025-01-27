@@ -232,6 +232,14 @@ NodePtr CopyASTNode(const NodePtr node)
 		ptr->name = AllocateString(ptr->name);
 		ptr->externalName = AllocateString(ptr->externalName);
 
+		Array instantiated = AllocateArray(sizeof(VarDeclStmt*));
+		for (size_t i = 0; i < ptr->instantiatedVariables.length; ++i)
+		{
+			const VarDeclStmt** var = ptr->instantiatedVariables.array[i];
+			ArrayAdd(&instantiated, var);
+		}
+		ptr->instantiatedVariables = instantiated;
+
 		return copy;
 	}
 	case Node_FunctionDeclaration:
@@ -325,6 +333,7 @@ void FreeASTNode(const NodePtr node)
 		FreeASTNode(ptr->type);
 		FreeASTNode(ptr->initializer);
 		FreeASTNode(ptr->arrayLength);
+		FreeArray(&ptr->instantiatedVariables);
 		break;
 	}
 	case Node_FunctionDeclaration:

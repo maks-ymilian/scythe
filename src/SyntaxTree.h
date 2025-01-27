@@ -209,6 +209,7 @@ typedef struct
 	char* externalName;
 	NodePtr initializer;
 	NodePtr arrayLength;
+	Array instantiatedVariables;
 	bool array;
 	bool public;
 	bool external;
