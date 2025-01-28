@@ -46,25 +46,24 @@ static StructDeclStmt* GetStructDecl(const NodePtr type)
 }
 
 
-static bool GetStructVarDeclFromMemberAccessValue(const NodePtr value, VarDeclStmt** out)
+static VarDeclStmt* GetStructVarDeclFromMemberAccessValue(const NodePtr value)
 {
 	switch (value.type)
 	{
 	case Node_Literal:
 		const LiteralExpr* literal = value.ptr;
 		if (literal->type != Literal_Identifier)
-			return false;
+			return NULL;
 		if (literal->identifier.reference.type != Node_VariableDeclaration)
-			return false;
+			return NULL;
 		VarDeclStmt* varDecl = literal->identifier.reference.ptr;
 		if (GetStructDecl(varDecl->type) == NULL)
-			return false;
-		*out = varDecl;
-		return true;
+			return NULL;
+		return varDecl;
 
 	case Node_FunctionCall:
 	case Node_ArrayAccess:
-		return false;
+		return NULL;
 	default: unreachable();
 	}
 }
@@ -85,20 +84,12 @@ static Result VisitExpression(const NodePtr* node)
 	{
 	case Node_MemberAccess:
 		MemberAccessExpr* memberAccess = node->ptr;
-		VarDeclStmt* varDecl = NULL;
-		while (!GetStructVarDeclFromMemberAccessValue(memberAccess->value, &varDecl))
-		{
-			if (memberAccess->next.ptr == NULL)
-				break;
-
-			assert(memberAccess->next.type == Node_MemberAccess);
-			memberAccess = memberAccess->next.ptr;
-		}
+		const VarDeclStmt* varDecl = GetStructVarDeclFromMemberAccessValue(memberAccess->value);
 		if (varDecl == NULL)
 			break;
 
 		IdentifierReference* currentIdentifier = GetIdentifier(*node);
-		IdentifierReference* nextIdentifier = GetIdentifier(memberAccess->next);
+		const IdentifierReference* nextIdentifier = GetIdentifier(memberAccess->next);
 
 		VarDeclStmt* instantiated = FindInstantiated(nextIdentifier->text, varDecl);
 		assert(instantiated != NULL);
