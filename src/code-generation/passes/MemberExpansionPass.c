@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "StringUtils.h"
 
@@ -130,7 +131,7 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 	*memberAccessNode = next;
 }
 
-static Result VisitExpression(NodePtr* node)
+static void VisitExpression(NodePtr* node)
 {
 	switch (node->type)
 	{
@@ -141,12 +142,12 @@ static Result VisitExpression(NodePtr* node)
 
 	case Node_Binary:
 		BinaryExpr* binary = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&binary->left));
-		PROPAGATE_ERROR(VisitExpression(&binary->right));
+		VisitExpression(&binary->left);
+		VisitExpression(&binary->right);
 		break;
 	case Node_Unary:
 		UnaryExpr* unary = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&unary->expression));
+		VisitExpression(&unary->expression);
 		break;
 	case Node_Literal:
 		// const LiteralExpr* literal = node->ptr;
@@ -160,7 +161,6 @@ static Result VisitExpression(NodePtr* node)
 
 	default: unreachable();
 	}
-	return SUCCESS_RESULT;
 }
 
 static void InstantiateStructMember(VarDeclStmt* structVarDecl, VarDeclStmt* memberDecl, Array* array, const size_t index)
@@ -186,7 +186,7 @@ static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const s
 	return true;
 }
 
-static Result VisitBlock(BlockStmt* block)
+static void VisitBlock(BlockStmt* block)
 {
 	for (size_t i = 0; i < block->statements.length; ++i)
 	{
@@ -209,7 +209,7 @@ static Result VisitBlock(BlockStmt* block)
 			break;
 		case Node_ExpressionStatement:
 			ExpressionStmt* exprStmt = node->ptr;
-			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
+			VisitExpression(&exprStmt->expr);
 			break;
 
 			// case Node_FunctionDeclaration:
@@ -236,18 +236,15 @@ static Result VisitBlock(BlockStmt* block)
 		default: break; unreachable();
 		}
 	}
-
-	return SUCCESS_RESULT;
 }
 
-static Result VisitSection(const SectionStmt* section)
+static void VisitSection(const SectionStmt* section)
 {
 	assert(section->block.type == Node_Block);
-	PROPAGATE_ERROR(VisitBlock(section->block.ptr));
-	return SUCCESS_RESULT;
+	VisitBlock(section->block.ptr);
 }
 
-static Result VisitModule(const ModuleNode* module)
+static void VisitModule(const ModuleNode* module)
 {
 	currentFilePath = module->path;
 
@@ -257,17 +254,16 @@ static Result VisitModule(const ModuleNode* module)
 		switch (stmt->type)
 		{
 		case Node_Section:
-			PROPAGATE_ERROR(VisitSection(stmt->ptr));
+			VisitSection(stmt->ptr);
 			break;
 		case Node_Import:
 			break;
 		default: unreachable();
 		}
 	}
-	return SUCCESS_RESULT;
 }
 
-Result MemberExpansionPass(const AST* ast)
+void MemberExpansionPass(const AST* ast)
 {
 	nodesToDelete = AllocateArray(sizeof(NodePtr));
 
@@ -275,7 +271,7 @@ Result MemberExpansionPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 		assert(node->type == Node_Module);
-		PROPAGATE_ERROR(VisitModule(node->ptr));
+		VisitModule(node->ptr);
 	}
 
 	for (size_t i = 0; i < nodesToDelete.length; ++i)
@@ -284,6 +280,4 @@ Result MemberExpansionPass(const AST* ast)
 		FreeASTNode(*node);
 	}
 	FreeArray(&nodesToDelete);
-
-	return SUCCESS_RESULT;
 }
