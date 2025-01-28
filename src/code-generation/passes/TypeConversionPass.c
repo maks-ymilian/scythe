@@ -205,20 +205,6 @@ static Result ConvertExpression(
 	}
 }
 
-static LiteralExpr* GetLiteralExpr(const NodePtr node)
-{
-	if (node.type == Node_Literal)
-		return node.ptr;
-	if (node.type == Node_MemberAccess)
-	{
-		const MemberAccessExpr* memberAccessExpr = node.ptr;
-		assert(memberAccessExpr->next.ptr == NULL);
-		if (memberAccessExpr->value.type == Node_Literal)
-			return memberAccessExpr->value.ptr;
-	}
-	return NULL;
-}
-
 static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	assert(node->type == Node_Binary);
@@ -309,7 +295,10 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 		// assignment
 	case Binary_Assignment:
 	{
-		LiteralExpr* literal = GetLiteralExpr(binary->left);
+		LiteralExpr* literal = NULL;
+		if (binary->left.type == Node_Literal)
+			literal = binary->left.ptr;
+
 		if (literal == NULL || literal->type != Literal_Identifier)
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
@@ -337,7 +326,10 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 	case Binary_BitOrAssign:
 	case Binary_XORAssign:
 	{
-		LiteralExpr* literal = GetLiteralExpr(binary->left);
+		LiteralExpr* literal = NULL;
+		if (binary->left.type == Node_Literal)
+			literal = binary->left.ptr;
+
 		if (literal == NULL || literal->type != Literal_Identifier)
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
@@ -373,16 +365,8 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 	case Node_Literal:
 		VisitLiteral(node->ptr, outType);
 		break;
-	case Node_MemberAccess:
-		const MemberAccessExpr* memberAccess = node->ptr;
-		assert(memberAccess->next.ptr == NULL);
-		if (memberAccess->value.type == Node_Literal)
-			VisitLiteral(memberAccess->value.ptr, outType);
-		else if (memberAccess->value.type == Node_FunctionCall)
-			PROPAGATE_ERROR(VisitFunctionCall(memberAccess->value.ptr, outType));
-		else
-			unreachable();
-
+	case Node_FunctionCall:
+		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
 		break;
 	default: unreachable();
 	}

@@ -177,16 +177,6 @@ static void VisitExpression(const NodePtr node)
 	case Node_Binary: VisitBinaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
-	case Node_MemberAccess:
-		const MemberAccessExpr* memberAccess = node.ptr;
-		assert(memberAccess->next.ptr == NULL);
-		if (memberAccess->value.type == Node_Literal)
-			VisitLiteralExpression(memberAccess->value.ptr);
-		else if (memberAccess->value.type == Node_FunctionCall)
-			VisitFunctionCall(memberAccess->value.ptr);
-		else
-			unreachable();
-		break;
 	default: unreachable();
 	}
 }
