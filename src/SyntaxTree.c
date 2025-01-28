@@ -110,16 +110,16 @@ PrimitiveType tokenTypeToPrimitiveType[] = {
 };
 
 BinaryOperator getCompoundAssignmentOperator[] =
-{
-	[Binary_AddAssign] = Binary_Add,
-	[Binary_SubtractAssign] = Binary_Subtract,
-	[Binary_MultiplyAssign] = Binary_Multiply,
-	[Binary_DivideAssign] = Binary_Divide,
-	[Binary_ModuloAssign] = Binary_Modulo,
-	[Binary_ExponentAssign] = Binary_Exponentiation,
-	[Binary_BitAndAssign] = Binary_BitAnd,
-	[Binary_BitOrAssign] = Binary_BitOr,
-	[Binary_XORAssign] = Binary_XOR,
+	{
+		[Binary_AddAssign] = Binary_Add,
+		[Binary_SubtractAssign] = Binary_Subtract,
+		[Binary_MultiplyAssign] = Binary_Multiply,
+		[Binary_DivideAssign] = Binary_Divide,
+		[Binary_ModuloAssign] = Binary_Modulo,
+		[Binary_ExponentAssign] = Binary_Exponentiation,
+		[Binary_BitAndAssign] = Binary_BitAnd,
+		[Binary_BitOrAssign] = Binary_BitOr,
+		[Binary_XORAssign] = Binary_XOR,
 };
 
 NodePtr AllocASTNode(const void* node, const size_t size, const NodeType type)
@@ -209,7 +209,8 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
-		ptr->next = CopyASTNode(ptr->next);
+		if (ptr->next.ptr != NULL) ptr->next = CopyASTNode(ptr->next);
+		else ptr->next = NULL_NODE;
 		ptr->value = CopyASTNode(ptr->value);
 
 		return copy;
