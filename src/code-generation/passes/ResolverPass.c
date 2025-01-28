@@ -232,69 +232,29 @@ static Result InitializeIdentifierReference(
 	return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", identifier->text), lineNumber, currentFilePath);
 }
 
-static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
+static Result ResolveExpression(const NodePtr* node);
+
+static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previous)
 {
 	switch (node->type)
 	{
 	case Node_Literal:
 	{
 		LiteralExpr* literal = node->ptr;
-
-		if (literal->type == Literal_Identifier)
+		assert(literal->type == Literal_Identifier);
+		if (literal->identifier.reference.ptr == NULL)
 		{
-			if (literal->identifier.reference.ptr == NULL)
-			{
-				PROPAGATE_ERROR(InitializeIdentifierReference(
-					&literal->identifier,
-					previous,
-					literal->lineNumber));
+			PROPAGATE_ERROR(InitializeIdentifierReference(
+				&literal->identifier,
+				previous,
+				literal->lineNumber));
 
-				if (literal->identifier.reference.type == Node_FunctionDeclaration)
-					return ERROR_RESULT(
-						AllocateString1Str("\"%s\" is a function, not a variable", literal->identifier.text),
-						literal->lineNumber,
-						currentFilePath);
-			}
-
-			return SUCCESS_RESULT;
+			if (literal->identifier.reference.type == Node_FunctionDeclaration)
+				return ERROR_RESULT(
+					AllocateString1Str("\"%s\" is a function, not a variable", literal->identifier.text),
+					literal->lineNumber,
+					currentFilePath);
 		}
-		else if (literal->type == Literal_Int ||
-				 literal->type == Literal_Float ||
-				 literal->type == Literal_String ||
-				 literal->type == Literal_Boolean ||
-				 literal->type == Literal_PrimitiveType)
-			return SUCCESS_RESULT;
-
-		unreachable();
-	}
-	case Node_Binary:
-	{
-		const BinaryExpr* binary = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&binary->left, previous));
-		PROPAGATE_ERROR(ResolveExpression(&binary->right, previous));
-		return SUCCESS_RESULT;
-	}
-	case Node_Unary:
-	{
-		const UnaryExpr* unary = node->ptr;
-		return ResolveExpression(&unary->expression, previous);
-	}
-	case Node_MemberAccess:
-	{
-		const MemberAccessExpr* current = node->ptr;
-		const NodePtr* previousValue = NULL;
-		while (true)
-		{
-			PROPAGATE_ERROR(ResolveExpression(&current->value, previousValue));
-
-			if (current->next.ptr == NULL)
-				break;
-
-			assert(current->next.type == Node_MemberAccess);
-			previousValue = &current->value;
-			current = current->next.ptr;
-		}
-
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionCall:
@@ -318,7 +278,7 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 		{
 			const NodePtr* node = funcCall->arguments.array[i];
-			PROPAGATE_ERROR(ResolveExpression(node, previous));
+			PROPAGATE_ERROR(ResolveExpression(node));
 		}
 
 		return SUCCESS_RESULT;
@@ -342,7 +302,55 @@ static Result ResolveExpression(const NodePtr* node, const NodePtr* previous)
 					currentFilePath);
 		}
 
-		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript, previous));
+		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript));
+
+		return SUCCESS_RESULT;
+	}
+	default: unreachable();
+	}
+}
+
+static Result ResolveExpression(const NodePtr* node)
+{
+	switch (node->type)
+	{
+	case Node_Literal:
+	{
+		const LiteralExpr* literal = node->ptr;
+		assert(literal->type == Literal_Int ||
+			   literal->type == Literal_Float ||
+			   literal->type == Literal_String ||
+			   literal->type == Literal_Boolean ||
+			   literal->type == Literal_PrimitiveType);
+		return SUCCESS_RESULT;
+	}
+	case Node_Binary:
+	{
+		const BinaryExpr* binary = node->ptr;
+		PROPAGATE_ERROR(ResolveExpression(&binary->left));
+		PROPAGATE_ERROR(ResolveExpression(&binary->right));
+		return SUCCESS_RESULT;
+	}
+	case Node_Unary:
+	{
+		const UnaryExpr* unary = node->ptr;
+		return ResolveExpression(&unary->expression);
+	}
+	case Node_MemberAccess:
+	{
+		const MemberAccessExpr* current = node->ptr;
+		const NodePtr* previousValue = NULL;
+		while (true)
+		{
+			PROPAGATE_ERROR(ResolveMemberAccessValue(&current->value, previousValue));
+
+			if (current->next.ptr == NULL)
+				break;
+
+			assert(current->next.type == Node_MemberAccess);
+			previousValue = &current->value;
+			current = current->next.ptr;
+		}
 
 		return SUCCESS_RESULT;
 	}
@@ -394,10 +402,10 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, NULL));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->type, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->type));
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionDeclaration:
@@ -417,7 +425,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -435,8 +443,8 @@ static Result VisitStatement(const NodePtr* node)
 	}
 
 	case Node_Block: return VisitBlock(node->ptr);
-	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr, NULL);
-	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr, NULL);
+	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr);
+	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr);
 
 	case Node_Section:
 	{
@@ -447,7 +455,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_If:
 	{
 		const IfStmt* ifStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PopScope(NULL);
@@ -459,7 +467,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_While:
 	{
 		const WhileStmt* whileStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		PopScope(NULL);
@@ -470,8 +478,8 @@ static Result VisitStatement(const NodePtr* node)
 		const ForStmt* forStmt = node->ptr;
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, NULL));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment));
 		PROPAGATE_ERROR(VisitStatement(&forStmt->stmt));
 		PopScope(NULL);
 		return SUCCESS_RESULT;
