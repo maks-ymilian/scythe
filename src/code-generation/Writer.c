@@ -78,7 +78,6 @@ static int GetUniqueName(const IdentifierReference* identifier)
 	{
 	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->uniqueName;
 	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->uniqueName;
-	case Node_StructDeclaration: return ((StructDeclStmt*)identifier->reference.ptr)->uniqueName;
 	default: unreachable();
 	}
 }

@@ -23,8 +23,6 @@ struct Scope
 
 static Scope* currentScope = NULL;
 
-static int uniqueNameCounter;
-
 static void PushScope()
 {
 	Scope* new = malloc(sizeof(Scope));
@@ -60,15 +58,6 @@ static void PopScope(Map* outMap)
 
 static Result RegisterDeclaration(const char* name, const NodePtr* node, const int lineNumber)
 {
-	switch (node->type)
-	{
-	case Node_VariableDeclaration: ((VarDeclStmt*)node->ptr)->uniqueName = ++uniqueNameCounter; break;
-	case Node_FunctionDeclaration: ((FuncDeclStmt*)node->ptr)->uniqueName = ++uniqueNameCounter; break;
-	case Node_StructDeclaration: ((StructDeclStmt*)node->ptr)->uniqueName = ++uniqueNameCounter; break;
-	case Node_Import: break;
-	default: unreachable();
-	}
-
 	assert(currentScope != NULL);
 	if (!MapAdd(&currentScope->declarations, name, node))
 		return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
@@ -518,8 +507,6 @@ static Result VisitModule(const ModuleNode* module)
 
 Result ResolverPass(const AST* ast)
 {
-	uniqueNameCounter = 0;
-
 	modules = AllocateMap(sizeof(Map));
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{

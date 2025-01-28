@@ -235,7 +235,6 @@ typedef struct
 	char* name;
 	Array members;
 	bool public;
-	int uniqueName;
 } StructDeclStmt;
 
 

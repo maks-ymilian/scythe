@@ -986,7 +986,6 @@ static Result ParseStructDeclaration(NodePtr* out, const Token* public, const To
 			.name = AllocateString(identifier->text),
 			.members = members,
 			.public = public != NULL,
-			.uniqueName = -1,
 		},
 		sizeof(StructDeclStmt), Node_StructDeclaration);
 	return SUCCESS_RESULT;
