@@ -36,16 +36,6 @@ static void VisitStatement(const NodePtr node)
 		VisitStatement(ifStmt->trueStmt);
 		break;
 
-		// todo
-	// case Node_While:
-	// 	break;
-	// case Node_For:
-	// 	break;
-	// case Node_LoopControl:
-	// 	break;
-	//
-	// case Node_Return:
-	// 	break;
 	default: unreachable();
 	}
 }
