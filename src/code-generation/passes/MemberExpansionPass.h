@@ -3,4 +3,4 @@
 #include "Result.h"
 #include "SyntaxTree.h"
 
-Result StructExpansionPass(const AST* ast);
+Result MemberExpansionPass(const AST* ast);

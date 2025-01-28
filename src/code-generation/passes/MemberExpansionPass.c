@@ -1,10 +1,9 @@
-#include "StructExpansionPass.h"
+#include "MemberExpansionPass.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "StringUtils.h"
-#include "data-structures/Map.h"
 
 static Array nodesToDelete;
 
@@ -268,7 +267,7 @@ static Result VisitModule(const ModuleNode* module)
 	return SUCCESS_RESULT;
 }
 
-Result StructExpansionPass(const AST* ast)
+Result MemberExpansionPass(const AST* ast)
 {
 	nodesToDelete = AllocateArray(sizeof(NodePtr));
 
