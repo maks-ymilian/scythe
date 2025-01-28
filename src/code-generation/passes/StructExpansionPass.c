@@ -99,21 +99,54 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 	memberAccess->next = NULL_NODE;
 }
 
-static Result VisitExpression(const NodePtr* node)
+static ImportStmt* GetImportStmtFromMemberAccessValue(const NodePtr value)
+{
+	switch (value.type)
+	{
+	case Node_Literal:
+		const LiteralExpr* literal = value.ptr;
+		if (literal->type != Literal_Identifier)
+			return NULL;
+		if (literal->identifier.reference.type != Node_Import)
+			return NULL;
+		return literal->identifier.reference.ptr;
+
+	case Node_FunctionCall:
+	case Node_ArrayAccess:
+		return NULL;
+	default: unreachable();
+	}
+}
+
+static void RemoveModuleAccess(NodePtr* memberAccessNode)
+{
+	assert(memberAccessNode->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = memberAccessNode->ptr;
+	if (GetImportStmtFromMemberAccessValue(memberAccess->value) == NULL)
+		return;
+
+	const NodePtr next = memberAccess->next;
+	memberAccess->next = NULL_NODE;
+	FreeASTNode(*memberAccessNode);
+	*memberAccessNode = next;
+}
+
+static Result VisitExpression(NodePtr* node)
 {
 	switch (node->type)
 	{
 	case Node_MemberAccess:
+		RemoveModuleAccess(node);
 		UpdateStructMemberAccess(*node);
 		break;
 
 	case Node_Binary:
-		const BinaryExpr* binary = node->ptr;
+		BinaryExpr* binary = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&binary->left));
 		PROPAGATE_ERROR(VisitExpression(&binary->right));
 		break;
 	case Node_Unary:
-		const UnaryExpr* unary = node->ptr;
+		UnaryExpr* unary = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&unary->expression));
 		break;
 	case Node_Literal:
@@ -176,7 +209,7 @@ static Result VisitBlock(BlockStmt* block)
 			i--;
 			break;
 		case Node_ExpressionStatement:
-			const ExpressionStmt* exprStmt = node->ptr;
+			ExpressionStmt* exprStmt = node->ptr;
 			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
 			break;
 
