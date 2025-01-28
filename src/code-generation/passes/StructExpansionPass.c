@@ -78,27 +78,33 @@ static IdentifierReference* GetIdentifier(const NodePtr memberAccessNode)
 	return &literal->identifier;
 }
 
+static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
+{
+	assert(memberAccessNode.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
+	const VarDeclStmt* varDecl = GetStructVarDeclFromMemberAccessValue(memberAccess->value);
+	if (varDecl == NULL)
+		return;
+
+	IdentifierReference* currentIdentifier = GetIdentifier(memberAccessNode);
+	const IdentifierReference* nextIdentifier = GetIdentifier(memberAccess->next);
+
+	VarDeclStmt* instantiated = FindInstantiated(nextIdentifier->text, varDecl);
+	assert(instantiated != NULL);
+	currentIdentifier->reference = (NodePtr){.ptr = instantiated, .type = Node_VariableDeclaration};
+	free(currentIdentifier->text);
+	currentIdentifier->text = AllocateString(nextIdentifier->text);
+
+	FreeASTNode(memberAccess->next);
+	memberAccess->next = NULL_NODE;
+}
+
 static Result VisitExpression(const NodePtr* node)
 {
 	switch (node->type)
 	{
 	case Node_MemberAccess:
-		MemberAccessExpr* memberAccess = node->ptr;
-		const VarDeclStmt* varDecl = GetStructVarDeclFromMemberAccessValue(memberAccess->value);
-		if (varDecl == NULL)
-			break;
-
-		IdentifierReference* currentIdentifier = GetIdentifier(*node);
-		const IdentifierReference* nextIdentifier = GetIdentifier(memberAccess->next);
-
-		VarDeclStmt* instantiated = FindInstantiated(nextIdentifier->text, varDecl);
-		assert(instantiated != NULL);
-		currentIdentifier->reference = (NodePtr){.ptr = instantiated, .type = Node_VariableDeclaration};
-		free(currentIdentifier->text);
-		currentIdentifier->text = AllocateString(nextIdentifier->text);
-
-		FreeASTNode(memberAccess->next);
-		memberAccess->next = NULL_NODE;
+		UpdateStructMemberAccess(*node);
 		break;
 
 	case Node_Binary:
