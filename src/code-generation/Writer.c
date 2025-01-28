@@ -297,11 +297,6 @@ static void VisitStatement(const NodePtr* node)
 	case Node_If:
 		VisitIfStatement(node->ptr);
 		break;
-
-		// todo
-	case Node_StructDeclaration:
-		WriteString("struct\n");
-		break;
 	default: unreachable();
 	}
 }

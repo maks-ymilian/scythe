@@ -198,6 +198,11 @@ static Result VisitBlock(BlockStmt* block)
 				i--;
 			}
 			break;
+		case Node_StructDeclaration:
+			ArrayAdd(&nodesToDelete, node);
+			ArrayRemove(&block->statements, i);
+			i--;
+			break;
 		case Node_ExpressionStatement:
 			const ExpressionStmt* exprStmt = node->ptr;
 			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
@@ -208,8 +213,6 @@ static Result VisitBlock(BlockStmt* block)
 			// 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 			// 	{
 			// 	}
-			// 	break;
-			// case Node_StructDeclaration:
 			// 	break;
 			// case Node_Block:
 			// 	break;
