@@ -134,31 +134,6 @@ static Result VisitExpression(const NodePtr* node)
 	return SUCCESS_RESULT;
 }
 
-static VarDeclStmt* GetStructMember(const StructDeclStmt* structDecl, const char* name)
-{
-	for (size_t i = 0; i < structDecl->members.length; ++i)
-	{
-		const NodePtr* node = structDecl->members.array[i];
-		assert(node->type == Node_VariableDeclaration);
-		VarDeclStmt* varDecl = node->ptr;
-		if (strcmp(name, varDecl->name) == 0)
-			return varDecl;
-	}
-	unreachable();
-}
-
-static char* GetText(const NodePtr node)
-{
-	switch (node.type)
-	{
-	case Node_Literal: return ((LiteralExpr*)node.ptr)->identifier.text;
-	case Node_FunctionCall: return ((FuncCallExpr*)node.ptr)->identifier.text;
-	case Node_ArrayAccess: return ((ArrayAccessExpr*)node.ptr)->identifier.text;
-
-	default: unreachable();
-	}
-}
-
 static void InstantiateStructMember(VarDeclStmt* structVarDecl, VarDeclStmt* memberDecl, Array* array, const size_t index)
 {
 	const NodePtr copy = CopyASTNode((NodePtr){.ptr = memberDecl, .type = Node_VariableDeclaration});
