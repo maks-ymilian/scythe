@@ -159,15 +159,13 @@ static void VisitExpression(NodePtr* node)
 		VisitExpression(&unary->expression);
 		break;
 	case Node_Literal:
-		// const LiteralExpr* literal = node->ptr;
+		const LiteralExpr* literal = node->ptr;
+		assert(literal->type == Literal_Int ||
+			   literal->type == Literal_Float ||
+			   literal->type == Literal_String ||
+			   literal->type == Literal_Boolean ||
+			   literal->type == Literal_PrimitiveType);
 		break;
-	case Node_FunctionCall:
-		const FuncCallExpr* funcCall = node->ptr;
-		break;
-	case Node_ArrayAccess:
-		const ArrayAccessExpr* arrayAccess = node->ptr;
-		break;
-
 	default: unreachable();
 	}
 }
