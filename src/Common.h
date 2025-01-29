@@ -10,4 +10,4 @@
 		printf("Invalid value %d in %s:%u\n", v, __FILE__, __LINE__); \
 		unreachable();                                                \
 	}                                                                 \
-	while (0);
+	while (0)
