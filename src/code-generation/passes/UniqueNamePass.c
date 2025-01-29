@@ -17,6 +17,14 @@ static void VisitStatement(const NodePtr node)
 	case Node_FunctionDeclaration:
 		FuncDeclStmt* funcDecl = node.ptr;
 		funcDecl->uniqueName = ++uniqueNameCounter;
+		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+		{
+			const NodePtr* node = funcDecl->parameters.array[i];
+			assert(node->type == Node_VariableDeclaration);
+			VisitStatement(*node);
+		}
+		assert(funcDecl->block.type == Node_Block);
+		VisitStatement(funcDecl->block);
 		break;
 	case Node_StructDeclaration:
 		break;
