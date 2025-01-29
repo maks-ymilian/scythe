@@ -231,6 +231,8 @@ static void VisitBlock(BlockStmt* block)
 					i--;
 				}
 			}
+			assert(funcDecl->block.type == Node_Block);
+			VisitBlock(funcDecl->block.ptr);
 			break;
 		default: INVALID_VALUE(node->type);
 		}
