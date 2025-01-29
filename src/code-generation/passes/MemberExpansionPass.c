@@ -1,7 +1,6 @@
 #include "MemberExpansionPass.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -218,29 +217,22 @@ static void VisitBlock(BlockStmt* block)
 			ExpressionStmt* exprStmt = node->ptr;
 			VisitExpression(&exprStmt->expr);
 			break;
-
-			// case Node_FunctionDeclaration:
-			// 	const FuncDeclStmt* funcDecl = node->ptr;
-			// 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			// 	{
-			// 	}
-			// 	break;
-			// case Node_Block:
-			// 	break;
-			//
-			// case Node_If:
-			// 	break;
-			// case Node_While:
-			// 	break;
-			// case Node_For:
-			// 	break;
-			// case Node_LoopControl:
-			// 	break;
-			//
-			// case Node_Return:
-
-			// todo
-		default: break; unreachable();
+		case Node_FunctionDeclaration:
+			FuncDeclStmt* funcDecl = node->ptr;
+			for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+			{
+				const NodePtr* node = funcDecl->parameters.array[i];
+				assert(node->type == Node_VariableDeclaration);
+				VarDeclStmt* varDecl = node->ptr;
+				if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i))
+				{
+					ArrayAdd(&nodesToDelete, node);
+					ArrayRemove(&funcDecl->parameters, i);
+					i--;
+				}
+			}
+			break;
+		default: unreachable();
 		}
 	}
 }
