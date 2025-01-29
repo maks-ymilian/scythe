@@ -1,8 +1,9 @@
 #include "MemberExpansionPass.h"
 
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "StringUtils.h"
 
@@ -138,8 +139,16 @@ static void VisitExpression(NodePtr* node)
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
 		UpdateStructMemberAccess(*node);
-		break;
 
+		MemberAccessExpr* memberAccess = node->ptr;
+		assert(memberAccess->next.ptr == NULL);
+
+		const NodePtr value = memberAccess->value;
+		memberAccess->value = NULL_NODE;
+
+		FreeASTNode(*node);
+		*node = value;
+		break;
 	case Node_Binary:
 		BinaryExpr* binary = node->ptr;
 		VisitExpression(&binary->left);
