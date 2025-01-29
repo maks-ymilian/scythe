@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <math.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +44,7 @@ static bool IsDigitBase(const char c, const int base)
 	if (base == 16) return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 	if (base == 2) return c == '0' || c == '1';
 	if (base == 8) return c >= '0' && c <= '7';
-	unreachable();
+	INVALID_VALUE(base);
 }
 
 static Result StringToUInt64(const char* string, const int base, const int lineNumber, uint64_t* out)
@@ -275,7 +274,7 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 		};
 		return SUCCESS_RESULT;
 	}
-	default: unreachable();
+	default: INVALID_VALUE(token.type);
 	}
 }
 
@@ -362,7 +361,7 @@ static Result ParsePrimary(NodePtr* out)
 		*out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
-	default: unreachable();
+	default: INVALID_VALUE(token->type);
 	}
 }
 

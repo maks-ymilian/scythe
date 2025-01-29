@@ -1,7 +1,6 @@
 #include "SyntaxTree.h"
 
 #include <assert.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -209,8 +208,10 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
-		if (ptr->next.ptr != NULL) ptr->next = CopyASTNode(ptr->next);
-		else ptr->next = NULL_NODE;
+		if (ptr->next.ptr != NULL)
+			ptr->next = CopyASTNode(ptr->next);
+		else
+			ptr->next = NULL_NODE;
 		ptr->value = CopyASTNode(ptr->value);
 
 		return copy;
@@ -251,7 +252,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_For:
 	case Node_LoopControl:
 	case Node_Return:
-	default: unreachable();
+	default: INVALID_VALUE(node.type);
 	}
 }
 
@@ -410,7 +411,7 @@ void FreeASTNode(const NodePtr node)
 		break;
 	}
 
-	default: unreachable();
+	default: INVALID_VALUE(node.type);
 	}
 
 	free(node.ptr);

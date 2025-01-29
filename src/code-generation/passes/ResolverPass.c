@@ -1,7 +1,6 @@
 #include "ResolverPass.h"
 
 #include <assert.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +70,7 @@ static bool NodeIsPublicDeclaration(const NodePtr* node)
 	case Node_VariableDeclaration: return ((VarDeclStmt*)node->ptr)->public;
 	case Node_FunctionDeclaration: return ((FuncDeclStmt*)node->ptr)->public;
 	case Node_StructDeclaration: return ((StructDeclStmt*)node->ptr)->public;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -306,7 +305,7 @@ static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previ
 
 		return SUCCESS_RESULT;
 	}
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -355,7 +354,7 @@ static Result ResolveExpression(const NodePtr* node)
 		return SUCCESS_RESULT;
 	}
 	case Node_Null: return SUCCESS_RESULT;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -493,7 +492,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_LoopControl:
 	case Node_Null:
 		return SUCCESS_RESULT;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -508,7 +507,7 @@ static Result VisitModule(const ModuleNode* module)
 	Map declarations;
 	PopScope(&declarations);
 	if (!MapAdd(&modules, module->moduleName, &declarations))
-		unreachable();
+		assert(0);
 
 	return SUCCESS_RESULT;
 }

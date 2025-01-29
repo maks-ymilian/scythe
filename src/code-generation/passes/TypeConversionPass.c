@@ -17,7 +17,7 @@ static PrimitiveType GetIdentifierType(const IdentifierReference identifier)
 		const FuncDeclStmt* funcDecl = identifier.reference.ptr;
 		type = &funcDecl->type;
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(identifier.reference.type);
 	}
 
 	assert(type->type == Node_Literal);
@@ -42,7 +42,7 @@ static void VisitLiteral(LiteralExpr* literal, PrimitiveType* outType)
 		literal->intValue = literal->boolean ? 1 : 0;
 		*outType = Primitive_Bool;
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(literal->type);
 	}
 }
 
@@ -154,7 +154,7 @@ static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
 	case Primitive_Int: return Token_Int;
 	case Primitive_Bool: return Token_Bool;
 	case Primitive_String: return Token_String;
-	default: unreachable();
+	default: INVALID_VALUE(primitiveType);
 	}
 }
 
@@ -201,7 +201,7 @@ static Result ConvertExpression(
 	case Primitive_Void:
 		return error;
 
-	default: unreachable();
+	default: INVALID_VALUE(targetType);
 	}
 }
 
@@ -349,7 +349,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 		break;
 	}
 
-	default: unreachable();
+	default: INVALID_VALUE(binary->operatorType);
 	}
 
 	return SUCCESS_RESULT;
@@ -368,7 +368,7 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;
 }
@@ -410,7 +410,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 	case Primitive_String:
 		return ERROR_RESULT("Variables of type \"string\" must have an initializer", varDecl->lineNumber, currentFilePath);
 
-	default: unreachable();
+	default: INVALID_VALUE(GetType(varDecl->type));
 	}
 
 	return SUCCESS_RESULT;
@@ -512,7 +512,7 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, type, Primitive_Bool, ifStmt->lineNumber, NULL));
 		break;
 	}
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;
 }
@@ -541,7 +541,7 @@ static Result VisitModule(const ModuleNode* module)
 			break;
 		case Node_Import:
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(stmt->type);
 		}
 	}
 	return SUCCESS_RESULT;

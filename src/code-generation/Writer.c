@@ -1,7 +1,6 @@
 #include "Writer.h"
 
 #include <assert.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -78,7 +77,7 @@ static int GetUniqueName(const IdentifierReference* identifier)
 	{
 	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->uniqueName;
 	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->uniqueName;
-	default: unreachable();
+	default: INVALID_VALUE(identifier->reference.type);
 	}
 }
 
@@ -116,7 +115,7 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 		WriteString(literal->string);
 		WriteChar('\"');
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(literal->type);
 	}
 }
 
@@ -158,7 +157,7 @@ static void VisitBinaryExpression(const BinaryExpr* binary)
 	case Binary_BitOrAssign: operator= "|="; break;
 	case Binary_XORAssign: operator= "~="; break;
 
-	default: unreachable();
+	default: INVALID_VALUE(binary->operatorType);
 	}
 
 	WriteChar('(');
@@ -177,7 +176,7 @@ static void VisitExpression(const NodePtr node)
 	case Node_Binary: VisitBinaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
-	default: unreachable();
+	default: INVALID_VALUE(node.type);
 	}
 }
 
@@ -286,7 +285,7 @@ static void VisitStatement(const NodePtr* node)
 	case Node_If:
 		VisitIfStatement(node->ptr);
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -301,7 +300,7 @@ static void VisitSection(const SectionStmt* section)
 	case Section_Serialize: sectionText = "serialize"; break;
 	case Section_Slider: sectionText = "slider"; break;
 	case Section_GFX: sectionText = "gfx"; break;
-	default: unreachable();
+	default: INVALID_VALUE(section->sectionType);
 	}
 
 	WriteChar('@');
@@ -335,7 +334,7 @@ static void VisitModule(const ModuleNode* module)
 			break;
 		case Node_Import:
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(stmt->type);
 		}
 	}
 }

@@ -41,7 +41,7 @@ static StructDeclStmt* GetStructDecl(const NodePtr type)
 	case Node_Literal:
 		return NULL;
 
-	default: unreachable();
+	default: INVALID_VALUE(type.type);
 	}
 }
 
@@ -64,7 +64,7 @@ static VarDeclStmt* GetStructVarDeclFromMemberAccessValue(const NodePtr value)
 	case Node_FunctionCall:
 	case Node_ArrayAccess:
 		return NULL;
-	default: unreachable();
+	default: INVALID_VALUE(value.type);
 	}
 }
 
@@ -114,7 +114,7 @@ static ImportStmt* GetImportStmtFromMemberAccessValue(const NodePtr value)
 	case Node_FunctionCall:
 	case Node_ArrayAccess:
 		return NULL;
-	default: unreachable();
+	default: INVALID_VALUE(value.type);
 	}
 }
 
@@ -165,7 +165,7 @@ static void VisitExpression(NodePtr* node)
 			   literal->type == Literal_Boolean ||
 			   literal->type == Literal_PrimitiveType);
 		break;
-	default: unreachable();
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -232,7 +232,7 @@ static void VisitBlock(BlockStmt* block)
 				}
 			}
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(node->type);
 		}
 	}
 }
@@ -257,7 +257,7 @@ static void VisitModule(const ModuleNode* module)
 			break;
 		case Node_Import:
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(stmt->type);
 		}
 	}
 }

@@ -36,7 +36,7 @@ static void VisitStatement(const NodePtr node)
 		VisitStatement(ifStmt->trueStmt);
 		break;
 
-	default: unreachable();
+	default: INVALID_VALUE(node.type);
 	}
 }
 
@@ -58,7 +58,7 @@ static void VisitModule(const ModuleNode* module)
 			break;
 		case Node_Import:
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(stmt->type);
 		}
 	}
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h>
+#include "Common.h"
 
 typedef enum
 {
@@ -174,10 +174,10 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_At: return "@";
 	case Token_Tilde: return "~";
 	case Token_Percent: return "%";
-	case Token_Caret: return  "^";
+	case Token_Caret: return "^";
 
 	case Token_EndOfFile: return "EndOfFile";
 
-	default: unreachable();
+	default: INVALID_VALUE(tokenType);
 	}
 }

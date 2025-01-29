@@ -1,7 +1,6 @@
 #include "GlobalSectionPass.h"
 
 #include <assert.h>
-#include <stddef.h>
 #include <stdio.h>
 
 static NodePtr globalInitSection;
@@ -83,7 +82,7 @@ static void VisitBlock(const NodePtr* node)
 		case Node_ExpressionStatement:
 		case Node_VariableDeclaration:
 			break;
-		default: unreachable();
+		default: INVALID_VALUE(node->type);
 		}
 	}
 }
@@ -114,7 +113,7 @@ static void VisitModule(ModuleNode* module)
 			break;
 		}
 		case Node_Import: break;
-		default: unreachable();
+		default: INVALID_VALUE(stmt->type);
 		}
 	}
 }
