@@ -408,7 +408,14 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 		break;
 
 	case Primitive_String:
-		return ERROR_RESULT("Variables of type \"string\" must have an initializer", varDecl->lineNumber, currentFilePath);
+		varDecl->initializer = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = varDecl->lineNumber,
+				.type = Literal_String,
+				.string = AllocateString(""),
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		break;
 
 	default: INVALID_VALUE(GetType(varDecl->type));
 	}
