@@ -103,9 +103,7 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 
 ArgumentCountError:
-	return ERROR_RESULT(
-		AllocateString2Int("Function has %d parameter(s), but is called with %d argument(s)",
-			funcDecl->parameters.length, funcCall->arguments.length),
+	return ERROR_RESULT("Function is called with wrong number of arguments",
 		funcCall->lineNumber, currentFilePath);
 }
 
