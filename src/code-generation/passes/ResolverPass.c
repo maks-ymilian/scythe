@@ -417,7 +417,7 @@ static Result VisitStatement(const NodePtr* node)
 
 		if (funcDecl->block.ptr != NULL)
 		{
-			assert(funcDecl->block.type == Node_Block);
+			assert(funcDecl->block.type == Node_BlockStatement);
 			const BlockStmt* block = funcDecl->block.ptr;
 			for (size_t i = 0; i < block->statements.length; ++i)
 				PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
@@ -441,14 +441,14 @@ static Result VisitStatement(const NodePtr* node)
 		return SUCCESS_RESULT;
 	}
 
-	case Node_Block: return VisitBlock(node->ptr);
+	case Node_BlockStatement: return VisitBlock(node->ptr);
 	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr);
 	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr);
 
 	case Node_Section:
 	{
 		const SectionStmt* section = node->ptr;
-		assert(section->block.type == Node_Block);
+		assert(section->block.type == Node_BlockStatement);
 		return VisitBlock(section->block.ptr);
 	}
 	case Node_If:

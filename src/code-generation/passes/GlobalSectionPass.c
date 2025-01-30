@@ -9,14 +9,14 @@ static void AddToInitSection(const NodePtr* node)
 {
 	assert(globalInitSection.type == Node_Section);
 	const SectionStmt* section = globalInitSection.ptr;
-	assert(section->block.type == Node_Block);
+	assert(section->block.type == Node_BlockStatement);
 	BlockStmt* block = section->block.ptr;
 	ArrayAdd(&block->statements, node);
 }
 
 static void VisitBlock(const NodePtr* node)
 {
-	if (node->type != Node_Block)
+	if (node->type != Node_BlockStatement)
 		return;
 
 	BlockStmt* block = node->ptr;
@@ -53,7 +53,7 @@ static void VisitBlock(const NodePtr* node)
 			i--;
 			break;
 		}
-		case Node_Block:
+		case Node_BlockStatement:
 		{
 			VisitBlock(node);
 			break;
@@ -134,7 +134,7 @@ void GlobalSectionPass(const AST* ast)
 					&(BlockStmt){
 						.statements = AllocateArray(sizeof(NodePtr)),
 					},
-					sizeof(BlockStmt), Node_Block),
+					sizeof(BlockStmt), Node_BlockStatement),
 			},
 			sizeof(SectionStmt), Node_Section);
 

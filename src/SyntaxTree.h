@@ -25,7 +25,7 @@ typedef enum
 	Node_FunctionDeclaration,
 	Node_StructDeclaration,
 
-	Node_Block,
+	Node_BlockStatement,
 
 	Node_If,
 	Node_While,

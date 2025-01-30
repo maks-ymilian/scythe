@@ -246,7 +246,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	}
 	case Node_FunctionDeclaration:
 	case Node_StructDeclaration:
-	case Node_Block:
+	case Node_BlockStatement:
 	case Node_If:
 	case Node_While:
 	case Node_For:
@@ -359,7 +359,7 @@ void FreeASTNode(const NodePtr node)
 		break;
 	}
 
-	case Node_Block:
+	case Node_BlockStatement:
 	{
 		const BlockStmt* ptr = node.ptr;
 		for (size_t i = 0; i < ptr->statements.length; ++i)

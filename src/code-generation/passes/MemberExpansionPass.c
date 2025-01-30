@@ -384,7 +384,7 @@ static void VisitBlock(BlockStmt* block)
 					i--;
 				}
 			}
-			assert(funcDecl->block.type == Node_Block);
+			assert(funcDecl->block.type == Node_BlockStatement);
 			VisitBlock(funcDecl->block.ptr);
 			break;
 		default: INVALID_VALUE(node->type);
@@ -394,7 +394,7 @@ static void VisitBlock(BlockStmt* block)
 
 static void VisitSection(const SectionStmt* section)
 {
-	assert(section->block.type == Node_Block);
+	assert(section->block.type == Node_BlockStatement);
 	VisitBlock(section->block.ptr);
 }
 

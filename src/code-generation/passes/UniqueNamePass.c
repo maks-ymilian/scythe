@@ -23,13 +23,13 @@ static void VisitStatement(const NodePtr node)
 			assert(node->type == Node_VariableDeclaration);
 			VisitStatement(*node);
 		}
-		assert(funcDecl->block.type == Node_Block);
+		assert(funcDecl->block.type == Node_BlockStatement);
 		VisitStatement(funcDecl->block);
 		break;
 	case Node_StructDeclaration:
 		break;
 
-	case Node_Block:
+	case Node_BlockStatement:
 		const BlockStmt* block = node.ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 		{
@@ -50,7 +50,7 @@ static void VisitStatement(const NodePtr node)
 
 static void VisitSection(const SectionStmt* section)
 {
-	assert(section->block.type == Node_Block);
+	assert(section->block.type == Node_BlockStatement);
 	VisitStatement(section->block);
 }
 

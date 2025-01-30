@@ -277,7 +277,7 @@ static void VisitStatement(const NodePtr* node)
 		VisitExpression(expressionStmt->expr);
 		WriteString(";\n");
 		break;
-	case Node_Block:
+	case Node_BlockStatement:
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			VisitStatement(block->statements.array[i]);
@@ -307,7 +307,7 @@ static void VisitSection(const SectionStmt* section)
 	WriteString(sectionText);
 	WriteChar('\n');
 
-	assert(section->block.type == Node_Block);
+	assert(section->block.type == Node_BlockStatement);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
 		VisitStatement(block->statements.array[i]);

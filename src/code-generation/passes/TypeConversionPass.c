@@ -500,7 +500,7 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr, NULL));
 		break;
 	}
-	case Node_Block:
+	case Node_BlockStatement:
 	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
@@ -524,7 +524,7 @@ static Result VisitStatement(const NodePtr* node)
 
 static Result VisitSection(const SectionStmt* section)
 {
-	assert(section->block.type == Node_Block);
+	assert(section->block.type == Node_BlockStatement);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
 		PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));

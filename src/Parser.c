@@ -728,7 +728,7 @@ static Result ParseBlockStatement(NodePtr* out)
 			.lineNumber = openingBrace->lineNumber,
 			.statements = statements,
 		},
-		sizeof(BlockStmt), Node_Block);
+		sizeof(BlockStmt), Node_BlockStatement);
 	return SUCCESS_RESULT;
 }
 
@@ -778,7 +778,7 @@ static Result ParseSectionStatement(NodePtr* out)
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
 	if (block.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected block after section statement");
-	assert(block.type == Node_Block);
+	assert(block.type == Node_BlockStatement);
 
 	*out = AllocASTNode(
 		&(SectionStmt){
@@ -1141,7 +1141,7 @@ static Result ParseWhileStatement(NodePtr* out)
 				.lineNumber = whileToken->lineNumber,
 				.statements = statements,
 			},
-			sizeof(BlockStmt), Node_Block);
+			sizeof(BlockStmt), Node_BlockStatement);
 	}
 
 	*out = AllocASTNode(
@@ -1206,7 +1206,7 @@ static Result ParseForStatement(NodePtr* out)
 				.lineNumber = forToken->lineNumber,
 				.statements = statements,
 			},
-			sizeof(BlockStmt), Node_Block);
+			sizeof(BlockStmt), Node_BlockStatement);
 	}
 
 	*out = AllocASTNode(
