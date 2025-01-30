@@ -179,10 +179,11 @@ static void AddToEnd(const NodePtr startMemberAccessNode, const NodePtr endMembe
 }
 
 typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, void* data);
-static void ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data)
+static size_t ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data)
 {
 	assert(structDecl != NULL);
 
+	size_t totalMembers = 0;
 	for (size_t i = structDecl->members.length - 1; i + 1 >= 1; --i)
 	{
 		const NodePtr* memberNode = structDecl->members.array[i];
@@ -190,11 +191,47 @@ static void ForEachStructMember(const StructDeclStmt* structDecl, const StructMe
 		VarDeclStmt* varDecl = memberNode->ptr;
 
 		const StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
-		if (structDecl != NULL)
-			ForEachStructMember(structDecl, func, data);
-		else
+		if (structDecl == NULL)
+		{
 			func(varDecl, data);
+			totalMembers++;
+		}
+		else
+			totalMembers += ForEachStructMember(structDecl, func, data);
 	}
+	return totalMembers;
+}
+
+typedef struct
+{
+	NodePtr argumentNode;
+	FuncCallExpr* funcCall;
+	size_t argumentIndex;
+} ExpandArgumentData;
+
+static void ExpandArgument(VarDeclStmt* member, void* data)
+{
+	const ExpandArgumentData* d = data;
+
+	const NodePtr copy = CopyASTNode(d->argumentNode);
+	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex);
+
+	const NodePtr end = AllocASTNode(
+		&(MemberAccessExpr){
+			.next = NULL_NODE,
+			.value = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = -1,
+					.type = Literal_Identifier,
+					.identifier = (IdentifierReference){
+						.text = AllocateString(member->name),
+						.reference = (NodePtr){.ptr = member, .type = Node_VariableDeclaration},
+					},
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(MemberAccessExpr), Node_MemberAccess);
+	AddToEnd(copy, end);
 }
 
 static void VisitExpression(NodePtr* node);
@@ -211,7 +248,7 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	{
 		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[i];
 		if (argument.type != Node_MemberAccess)
-			continue;
+			continue; // todo a function call or array access could still return a struct
 
 		const MemberAccessExpr* memberAccess = argument.ptr;
 		const StructDeclStmt* structDecl = GetStructVariableFromMemberAccess(memberAccess);
@@ -219,34 +256,12 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 			continue;
 
 		ArrayRemove(&funcCall->arguments, i);
-		for (size_t j = 0; j < structDecl->members.length; ++j)
-		{
-			NodePtr copy = CopyASTNode(argument);
-			ArrayInsert(&funcCall->arguments, &copy, i);
-
-			const NodePtr* memberNode = structDecl->members.array[j];
-			assert(memberNode->type == Node_VariableDeclaration);
-			VarDeclStmt* member = memberNode->ptr;
-
-			const NodePtr end = AllocASTNode(
-				&(MemberAccessExpr){
-					.next = NULL_NODE,
-					.value = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = -1,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(member->name),
-								.reference = (NodePtr){.ptr = member, .type = Node_VariableDeclaration},
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
-				},
-				sizeof(MemberAccessExpr), Node_MemberAccess);
-			AddToEnd(copy, end);
-		}
-		i += structDecl->members.length;
-
+		i += ForEachStructMember(structDecl, ExpandArgument,
+			&(ExpandArgumentData){
+				.argumentNode = argument,
+				.funcCall = funcCall,
+				.argumentIndex = i,
+			});
 		FreeASTNode(argument);
 	}
 
