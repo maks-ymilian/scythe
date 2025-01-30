@@ -82,6 +82,16 @@ static int GetUniqueName(const IdentifierReference* identifier)
 }
 
 static void VisitExpression(NodePtr node);
+static void VisitStatement(const NodePtr* node);
+
+static void VisitBlockExpression(const BlockExpr* blockExpr)
+{
+	WriteString("(\n");
+	PushIndent();
+	VisitStatement(&blockExpr->block);
+	PopIndent();
+	WriteChar(')');
+}
 
 static void VisitFunctionCall(const FuncCallExpr* funcCall)
 {
@@ -176,6 +186,7 @@ static void VisitExpression(const NodePtr node)
 	case Node_Binary: VisitBinaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
+	case Node_BlockExpression: VisitBlockExpression(node.ptr); break;
 	default: INVALID_VALUE(node.type);
 	}
 }
@@ -201,8 +212,6 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 	});
 	WriteString(";\n");
 }
-
-static void VisitStatement(const NodePtr* node);
 
 static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {

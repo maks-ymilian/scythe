@@ -273,6 +273,8 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	}
 }
 
+static void VisitBlock(BlockStmt* block);
+
 static void VisitExpression(NodePtr* node)
 {
 	switch (node->type)
@@ -307,6 +309,11 @@ static void VisitExpression(NodePtr* node)
 			   literal->type == Literal_String ||
 			   literal->type == Literal_Boolean ||
 			   literal->type == Literal_PrimitiveType);
+		break;
+	case Node_BlockExpression:
+		const BlockExpr* block = node->ptr;
+		assert(block->block.type == Node_BlockStatement);
+		VisitBlock(block->block.ptr);
 		break;
 	default: INVALID_VALUE(node->type);
 	}

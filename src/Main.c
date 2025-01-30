@@ -1,12 +1,13 @@
+#include <libgen.h>
 #include <stdio.h>
 
 #include "Compiler.h"
 
-int main(const int argc, const char** argv)
+int main(const int argc, char** argv)
 {
 	if (argc < 2 || argc > 3)
 	{
-		printf("Usage: scythe <input_path> [output_path]\n");
+		printf("Usage: %s <input_path> [output_path]\n", basename(argv[0]));
 		return 1;
 	}
 

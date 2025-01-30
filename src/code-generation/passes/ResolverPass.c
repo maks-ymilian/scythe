@@ -309,6 +309,8 @@ static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previ
 	}
 }
 
+static Result VisitBlock(const BlockStmt* block);
+
 static Result ResolveExpression(const NodePtr* node)
 {
 	switch (node->type)
@@ -351,6 +353,13 @@ static Result ResolveExpression(const NodePtr* node)
 			current = current->next.ptr;
 		}
 
+		return SUCCESS_RESULT;
+	}
+	case Node_BlockExpression:
+	{
+		const BlockExpr* block = node->ptr;
+		assert(block->block.type == Node_BlockStatement);
+		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
 	case Node_Null: return SUCCESS_RESULT;
