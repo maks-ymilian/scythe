@@ -360,6 +360,8 @@ static void VisitBlock(BlockStmt* block)
 				ArrayRemove(&block->statements, i);
 				i--;
 			}
+			if (varDecl->initializer.ptr != NULL)
+				VisitExpression(&varDecl->initializer);
 			break;
 		case Node_StructDeclaration:
 			ArrayAdd(&nodesToDelete, node);
