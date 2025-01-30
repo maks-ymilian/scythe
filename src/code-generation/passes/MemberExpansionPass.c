@@ -178,6 +178,25 @@ static void AddToEnd(const NodePtr startMemberAccessNode, const NodePtr endMembe
 	end->next = endMemberAccessNode;
 }
 
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, void* data);
+static void ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data)
+{
+	assert(structDecl != NULL);
+
+	for (size_t i = structDecl->members.length - 1; i + 1 >= 1; --i)
+	{
+		const NodePtr* memberNode = structDecl->members.array[i];
+		assert(memberNode->type == Node_VariableDeclaration);
+		VarDeclStmt* varDecl = memberNode->ptr;
+
+		const StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
+		if (structDecl != NULL)
+			ForEachStructMember(structDecl, func, data);
+		else
+			func(varDecl, data);
+	}
+}
+
 static void VisitExpression(NodePtr* node);
 
 static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
@@ -277,27 +296,35 @@ static void VisitExpression(NodePtr* node)
 	}
 }
 
-static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const size_t index, VarDeclStmt* topLevel)
+typedef struct
+{
+	Array* array;
+	size_t index;
+	VarDeclStmt* topLevel;
+} InstantiateMemberData;
+
+static void InstantiateMember(VarDeclStmt* varDecl, void* data)
+{
+	const InstantiateMemberData* d = data;
+
+	const NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
+	ArrayInsert(d->array, &copy, d->index + 1);
+	ArrayAdd(&d->topLevel->instantiatedVariables, &copy.ptr);
+}
+
+static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const size_t index)
 {
 	const StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
 	if (structDecl == NULL)
 		return false;
 
-	if (topLevel == NULL)
-		topLevel = varDecl;
-
-	for (size_t i = 0; i < structDecl->members.length; ++i)
-	{
-		const NodePtr* node = structDecl->members.array[i];
-		assert(node->type == Node_VariableDeclaration);
-		VarDeclStmt* member = node->ptr;
-		if (!InstantiateStructMembers(member, array, index, varDecl))
-		{
-			const NodePtr copy = CopyASTNode((NodePtr){.ptr = member, .type = Node_VariableDeclaration});
-			ArrayInsert(array, &copy, index + 1);
-			ArrayAdd(&topLevel->instantiatedVariables, &copy.ptr);
-		}
-	}
+	ForEachStructMember(structDecl,
+		InstantiateMember,
+		&(InstantiateMemberData){
+			.array = array,
+			.index = index,
+			.topLevel = varDecl,
+		});
 
 	return true;
 }
@@ -311,7 +338,7 @@ static void VisitBlock(BlockStmt* block)
 		{
 		case Node_VariableDeclaration:
 			VarDeclStmt* varDecl = node->ptr;
-			if (InstantiateStructMembers(varDecl, &block->statements, i, NULL))
+			if (InstantiateStructMembers(varDecl, &block->statements, i))
 			{
 				ArrayAdd(&nodesToDelete, node);
 				ArrayRemove(&block->statements, i);
@@ -334,7 +361,7 @@ static void VisitBlock(BlockStmt* block)
 				const NodePtr* node = funcDecl->parameters.array[i];
 				assert(node->type == Node_VariableDeclaration);
 				VarDeclStmt* varDecl = node->ptr;
-				if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i, NULL))
+				if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i))
 				{
 					ArrayAdd(&nodesToDelete, node);
 					ArrayRemove(&funcDecl->parameters, i);
