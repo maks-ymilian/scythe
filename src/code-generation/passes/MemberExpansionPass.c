@@ -247,8 +247,9 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
 		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[i];
-		if (argument.type != Node_MemberAccess)
-			continue; // todo a function call or array access could still return a struct
+		if (argument.type == Node_Literal)
+			continue;
+		assert(argument.type == Node_MemberAccess); // todo a function call or array access could still return a struct
 
 		const MemberAccessExpr* memberAccess = argument.ptr;
 		const StructDeclStmt* structDecl = GetStructVariableFromMemberAccess(memberAccess);
