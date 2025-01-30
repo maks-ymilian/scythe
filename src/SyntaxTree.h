@@ -16,6 +16,7 @@ typedef enum
 	Node_FunctionCall,
 	Node_ArrayAccess,
 	Node_MemberAccess,
+	Node_BlockExpression,
 
 	Node_ExpressionStatement,
 
@@ -166,6 +167,12 @@ typedef struct
 	NodePtr value;
 	NodePtr next;
 } MemberAccessExpr;
+
+typedef struct
+{
+	NodePtr type;
+	NodePtr block;
+} BlockExpr;
 
 
 typedef struct
