@@ -294,6 +294,8 @@ static void VisitStatement(const NodePtr* node)
 	case Node_If:
 		VisitIfStatement(node->ptr);
 		break;
+	case Node_Null:
+		break;
 	default: INVALID_VALUE(node->type);
 	}
 }

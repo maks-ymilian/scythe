@@ -273,7 +273,7 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	}
 }
 
-static void VisitBlock(BlockStmt* block);
+static void VisitStatement(NodePtr* node);
 
 static void VisitExpression(NodePtr* node)
 {
@@ -311,9 +311,9 @@ static void VisitExpression(NodePtr* node)
 			   literal->type == Literal_PrimitiveType);
 		break;
 	case Node_BlockExpression:
-		const BlockExpr* block = node->ptr;
+		BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		VisitBlock(block->block.ptr);
+		VisitStatement(&block->block);
 		break;
 	default: INVALID_VALUE(node->type);
 	}
@@ -331,7 +331,7 @@ static void InstantiateMember(VarDeclStmt* varDecl, void* data)
 	const InstantiateMemberData* d = data;
 
 	const NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
-	ArrayInsert(d->array, &copy, d->index + 1);
+	ArrayInsert(d->array, &copy, d->index);
 	ArrayAdd(&d->topLevel->instantiatedVariables, &copy.ptr);
 }
 
@@ -352,59 +352,65 @@ static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const s
 	return true;
 }
 
-static void VisitBlock(BlockStmt* block)
+static void VisitStatement(NodePtr* node)
 {
-	for (size_t i = 0; i < block->statements.length; ++i)
+	switch (node->type)
 	{
-		const NodePtr* node = block->statements.array[i];
-		switch (node->type)
+	case Node_VariableDeclaration:
+		VarDeclStmt* varDecl = node->ptr;
+
+		if (varDecl->initializer.ptr != NULL)
+			VisitExpression(&varDecl->initializer);
+
+		Array statements = AllocateArray(sizeof(NodePtr));
+		if (InstantiateStructMembers(varDecl, &statements, 0))
 		{
-		case Node_VariableDeclaration:
+			ArrayAdd(&nodesToDelete, node);
+			*node = AllocASTNode(
+				&(BlockStmt){
+					.statements = statements,
+					.lineNumber = varDecl->lineNumber,
+				},
+				sizeof(BlockStmt), Node_BlockStatement);
+		}
+		else
+			FreeArray(&statements);
+
+		break;
+	case Node_StructDeclaration:
+		ArrayAdd(&nodesToDelete, node);
+		*node = NULL_NODE;
+		break;
+	case Node_ExpressionStatement:
+		ExpressionStmt* exprStmt = node->ptr;
+		VisitExpression(&exprStmt->expr);
+		break;
+	case Node_FunctionDeclaration:
+		FuncDeclStmt* funcDecl = node->ptr;
+		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+		{
+			const NodePtr* node = funcDecl->parameters.array[i];
+			assert(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
-			if (InstantiateStructMembers(varDecl, &block->statements, i))
+			if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i + 1))
 			{
 				ArrayAdd(&nodesToDelete, node);
-				ArrayRemove(&block->statements, i);
+				ArrayRemove(&funcDecl->parameters, i);
 				i--;
 			}
-			if (varDecl->initializer.ptr != NULL)
-				VisitExpression(&varDecl->initializer);
-			break;
-		case Node_StructDeclaration:
-			ArrayAdd(&nodesToDelete, node);
-			ArrayRemove(&block->statements, i);
-			i--;
-			break;
-		case Node_ExpressionStatement:
-			ExpressionStmt* exprStmt = node->ptr;
-			VisitExpression(&exprStmt->expr);
-			break;
-		case Node_FunctionDeclaration:
-			FuncDeclStmt* funcDecl = node->ptr;
-			for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			{
-				const NodePtr* node = funcDecl->parameters.array[i];
-				assert(node->type == Node_VariableDeclaration);
-				VarDeclStmt* varDecl = node->ptr;
-				if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i))
-				{
-					ArrayAdd(&nodesToDelete, node);
-					ArrayRemove(&funcDecl->parameters, i);
-					i--;
-				}
-			}
-			assert(funcDecl->block.type == Node_BlockStatement);
-			VisitBlock(funcDecl->block.ptr);
-			break;
-		default: INVALID_VALUE(node->type);
 		}
+		assert(funcDecl->block.type == Node_BlockStatement);
+		VisitStatement(&funcDecl->block);
+		break;
+	case Node_BlockStatement:
+	{
+		const BlockStmt* block = node->ptr;
+		for (size_t i = 0; i < block->statements.length; ++i)
+			VisitStatement(block->statements.array[i]);
+		break;
 	}
-}
-
-static void VisitSection(const SectionStmt* section)
-{
-	assert(section->block.type == Node_BlockStatement);
-	VisitBlock(section->block.ptr);
+	default: INVALID_VALUE(node->type);
+	}
 }
 
 static void VisitModule(const ModuleNode* module)
@@ -417,7 +423,8 @@ static void VisitModule(const ModuleNode* module)
 		switch (stmt->type)
 		{
 		case Node_Section:
-			VisitSection(stmt->ptr);
+			SectionStmt* section = stmt->ptr;
+			VisitStatement(&section->block);
 			break;
 		case Node_Import:
 			break;

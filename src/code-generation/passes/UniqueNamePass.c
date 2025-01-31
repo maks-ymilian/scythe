@@ -44,6 +44,9 @@ static void VisitStatement(const NodePtr node)
 		VisitStatement(ifStmt->trueStmt);
 		break;
 
+	case Node_Null:
+		break;
+
 	default: INVALID_VALUE(node.type);
 	}
 }
