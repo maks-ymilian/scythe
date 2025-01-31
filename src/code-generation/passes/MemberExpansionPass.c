@@ -403,12 +403,18 @@ static void VisitStatement(NodePtr* node)
 		VisitStatement(&funcDecl->block);
 		break;
 	case Node_BlockStatement:
-	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			VisitStatement(block->statements.array[i]);
 		break;
-	}
+	case Node_If:
+		IfStmt* ifStmt = node->ptr;
+		VisitStatement(&ifStmt->trueStmt);
+		VisitStatement(&ifStmt->falseStmt);
+		VisitExpression(&ifStmt->expr);
+		break;
+	case Node_Null:
+		break;
 	default: INVALID_VALUE(node->type);
 	}
 }
