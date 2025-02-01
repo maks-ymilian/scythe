@@ -368,7 +368,8 @@ static Result ParsePrimary(NodePtr* out)
 static Result ParseUnary(NodePtr* out)
 {
 	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
-	return ParsePrimary(out);
+	if (operator== NULL)
+		return ParsePrimary(out);
 
 	NodePtr expr;
 	if (ParseUnary(&expr).type != Result_Success)
