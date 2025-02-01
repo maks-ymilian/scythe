@@ -1,6 +1,7 @@
 #include "Writer.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -13,14 +14,23 @@ static MemoryStream* stream;
 
 static int indentationLevel;
 
-static void WriteInteger(const long integer)
+static void WriteUInt64(const uint64_t integer)
 {
-	assert(integer >= 0);
-
-	const int size = snprintf(NULL, 0, "%ld", integer);
+	const int size = snprintf(NULL, 0, "%" PRIu64, integer);
 	assert(size > 0);
 	char string[size + 1];
-	snprintf(string, sizeof(string), "%ld", integer);
+	snprintf(string, sizeof(string), "%" PRIu64, integer);
+	StreamWrite(stream, string, sizeof(string) - 1);
+}
+
+static void WriteUniqueName(const int uniqueName)
+{
+	assert(uniqueName > 0);
+
+	const int size = snprintf(NULL, 0, "%d", uniqueName);
+	assert(size > 0);
+	char string[size + 1];
+	snprintf(string, sizeof(string), "%d", uniqueName);
 	StreamWrite(stream, string, sizeof(string) - 1);
 }
 
@@ -99,7 +109,7 @@ static void VisitFunctionCall(const FuncCallExpr* funcCall)
 {
 	WriteString(funcCall->identifier.text);
 	WriteChar('_');
-	WriteInteger(GetUniqueName(&funcCall->identifier));
+	WriteUniqueName(GetUniqueName(&funcCall->identifier));
 
 	WriteChar('(');
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
@@ -116,11 +126,11 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	switch (literal->type)
 	{
 	case Literal_Float: WriteString(literal->floatValue); break;
-	case Literal_Int: WriteInteger(literal->intValue); break;
+	case Literal_Int: WriteUInt64(literal->intValue); break;
 	case Literal_Identifier:
 		WriteString(literal->identifier.text);
 		WriteChar('_');
-		WriteInteger(GetUniqueName(&literal->identifier));
+		WriteUniqueName(GetUniqueName(&literal->identifier));
 		break;
 	case Literal_String:
 		WriteChar('\"');
@@ -220,7 +230,7 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	WriteString("function ");
 	WriteString(funcDecl->name);
 	WriteChar('_');
-	WriteInteger(funcDecl->uniqueName);
+	WriteUniqueName(funcDecl->uniqueName);
 
 	WriteChar('(');
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -231,7 +241,7 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 		const VarDeclStmt* varDecl = node->ptr;
 		WriteString(varDecl->name);
 		WriteChar('_');
-		WriteInteger(varDecl->uniqueName);
+		WriteUniqueName(varDecl->uniqueName);
 
 		if (i < funcDecl->parameters.length - 1)
 			WriteString(", ");
