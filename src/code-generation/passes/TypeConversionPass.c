@@ -54,11 +54,6 @@ static PrimitiveType GetType(const NodePtr type)
 	return literal->primitiveType;
 }
 
-static size_t Max(const size_t a, const size_t b)
-{
-	return a > b ? a : b;
-}
-
 static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
 static Result ConvertExpression(
 	NodePtr* expr,
@@ -74,24 +69,16 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, PrimitiveType* outType)
 
 	if (outType != NULL) *outType = GetType(funcDecl->type);
 
-	for (size_t i = 0; i < Max(funcDecl->parameters.length, funcCall->arguments.length); ++i)
-	{
-		if (i >= funcDecl->parameters.length)
-			goto ArgumentCountError;
+	if (funcDecl->parameters.length != funcCall->arguments.length)
+		return ERROR_RESULT("Function is called with wrong number of arguments",
+			funcCall->lineNumber, currentFilePath);
 
+	for (size_t i = 0; i < funcCall->arguments.length; ++i)
+	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
-
-		if (i >= funcCall->arguments.length)
-		{
-			if (varDecl->initializer.ptr == NULL)
-				goto ArgumentCountError;
-
-			const NodePtr node = CopyASTNode(varDecl->initializer);
-			ArrayAdd(&funcCall->arguments, &node);
-			assert(i < funcCall->arguments.length);
-		}
+		assert(varDecl->initializer.ptr == NULL);
 
 		NodePtr* expr = funcCall->arguments.array[i];
 
@@ -101,10 +88,6 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, PrimitiveType* outType)
 	}
 
 	return SUCCESS_RESULT;
-
-ArgumentCountError:
-	return ERROR_RESULT("Function is called with wrong number of arguments",
-		funcCall->lineNumber, currentFilePath);
 }
 
 static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
@@ -457,29 +440,17 @@ static Result VisitVariableDeclaration(VarDeclStmt* varDecl, const bool addIniti
 
 static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
-	bool encounteredOptional = false;
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
+		assert(varDecl->initializer.ptr == NULL);
 
 		PROPAGATE_ERROR(VisitVariableDeclaration(varDecl, false));
-
-		if (varDecl->initializer.ptr == NULL)
-		{
-			if (encounteredOptional)
-				return ERROR_RESULT(
-					"Optional parameters must be at the end of the parameter list",
-					varDecl->lineNumber,
-					currentFilePath);
-		}
-		else
-			encounteredOptional = true;
 	}
 
 	PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
-
 	return SUCCESS_RESULT;
 }
 

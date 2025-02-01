@@ -392,6 +392,7 @@ static void VisitStatement(NodePtr* node)
 			const NodePtr* node = funcDecl->parameters.array[i];
 			assert(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
+			assert(varDecl->initializer.ptr == NULL);
 			if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i + 1))
 			{
 				ArrayAdd(&nodesToDelete, node);
