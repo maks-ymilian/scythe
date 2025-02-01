@@ -263,6 +263,7 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 				.funcCall = funcCall,
 				.argumentIndex = i,
 			});
+		i--;
 		FreeASTNode(argument);
 	}
 
