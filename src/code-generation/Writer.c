@@ -290,8 +290,12 @@ static void VisitStatement(const NodePtr* node)
 		break;
 	case Node_BlockStatement:
 		const BlockStmt* block = node->ptr;
+		WriteString("(\n");
+		PushIndent();
 		for (size_t i = 0; i < block->statements.length; ++i)
 			VisitStatement(block->statements.array[i]);
+		PopIndent();
+		WriteString(");\n");
 		break;
 	case Node_If:
 		VisitIfStatement(node->ptr);
@@ -321,9 +325,7 @@ static void VisitSection(const SectionStmt* section)
 	WriteChar('\n');
 
 	assert(section->block.type == Node_BlockStatement);
-	const BlockStmt* block = section->block.ptr;
-	for (size_t i = 0; i < block->statements.length; ++i)
-		VisitStatement(block->statements.array[i]);
+	VisitStatement(&section->block);
 
 	WriteChar('\n');
 }
