@@ -4,14 +4,51 @@
 
 static int uniqueNameCounter = 0;
 
+static void VisitStatement(NodePtr node);
+
+static void VisitExpression(const NodePtr node)
+{
+	switch (node.type)
+	{
+	case Node_Binary:
+		const BinaryExpr* binary = node.ptr;
+		VisitExpression(binary->left);
+		VisitExpression(binary->right);
+		break;
+	case Node_Unary:
+		const UnaryExpr* unary = node.ptr;
+		VisitExpression(unary->expression);
+		break;
+	case Node_Literal:
+		break;
+	case Node_FunctionCall:
+		const FuncCallExpr* funcCall = node.ptr;
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
+			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
+		break;
+	case Node_BlockExpression:
+		const BlockExpr* block = node.ptr;
+		assert(block->block.type == Node_BlockStatement);
+		VisitStatement(block->block);
+		break;
+	case Node_Null:
+		break;
+	default: INVALID_VALUE(node.type);
+	}
+}
+
 static void VisitStatement(const NodePtr node)
 {
 	switch (node.type)
 	{
 	case Node_ExpressionStatement:
+		const ExpressionStmt* exprStmt = node.ptr;
+		VisitExpression(exprStmt->expr);
 		break;
 	case Node_VariableDeclaration:
 		VarDeclStmt* varDecl = node.ptr;
+		VisitExpression(varDecl->initializer);
+		VisitExpression(varDecl->arrayLength);
 		varDecl->uniqueName = ++uniqueNameCounter;
 		break;
 	case Node_FunctionDeclaration:
@@ -40,6 +77,7 @@ static void VisitStatement(const NodePtr node)
 
 	case Node_If:
 		const IfStmt* ifStmt = node.ptr;
+		VisitExpression(ifStmt->expr);
 		VisitStatement(ifStmt->falseStmt);
 		VisitStatement(ifStmt->trueStmt);
 		break;
