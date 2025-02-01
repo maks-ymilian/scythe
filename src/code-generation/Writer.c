@@ -15,6 +15,8 @@ static int indentationLevel;
 
 static void WriteInteger(const long integer)
 {
+	assert(integer >= 0);
+
 	const int size = snprintf(NULL, 0, "%ld", integer);
 	assert(size > 0);
 	char string[size + 1];
