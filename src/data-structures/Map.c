@@ -10,8 +10,7 @@
 static Map AllocateMapSize(const size_t sizeOfValueType, const size_t count)
 {
 	Map map;
-	map.bucketsCap = count;
-	map.bucketCount = 0;
+	map.bucketsSize = count;
 	map.elementCount = 0;
 	map.sizeOfValueType = sizeOfValueType;
 	map.buckets = calloc(count, sizeof(Node*));
@@ -26,7 +25,7 @@ Map AllocateMap(const size_t sizeOfValueType)
 
 void FreeMap(const Map* map)
 {
-	for (size_t i = 0; i < map->bucketsCap; ++i)
+	for (size_t i = 0; i < map->bucketsSize; ++i)
 	{
 		Node* node = map->buckets[i];
 		while (true)
@@ -60,7 +59,7 @@ static size_t Hash(const char* string)
 static size_t GetIndex(const Map* map, const char* string)
 {
 	const size_t hash = Hash(string);
-	return hash % map->bucketsCap;
+	return hash % map->bucketsSize;
 }
 
 static void AddNode(Map* map, Node* node)
@@ -72,10 +71,6 @@ static void AddNode(Map* map, Node* node)
 	Node* get = map->buckets[index];
 	if (get == NULL)
 	{
-		map->bucketCount++;
-		assert(map->bucketCount <= map->bucketsCap);
-
-		assert(map->buckets[index] == NULL);
 		map->buckets[index] = node;
 	}
 	else
@@ -89,9 +84,9 @@ static void AddNode(Map* map, Node* node)
 
 static void Expand(Map* map)
 {
-	Map newMap = AllocateMapSize(map->sizeOfValueType, map->bucketsCap * 2);
+	Map newMap = AllocateMapSize(map->sizeOfValueType, map->bucketsSize * 2);
 
-	for (size_t i = 0; i < map->bucketsCap; ++i)
+	for (size_t i = 0; i < map->bucketsSize; ++i)
 	{
 		Node* node = map->buckets[i];
 		while (true)
@@ -129,7 +124,7 @@ void* MapGet(const Map* map, const char* key)
 
 static Node* NextBucket(const Map* map, const size_t startIndex)
 {
-	for (size_t i = startIndex; i < map->bucketsCap; ++i)
+	for (size_t i = startIndex; i < map->bucketsSize; ++i)
 	{
 		Node* node = map->buckets[i];
 		if (node != NULL)
@@ -184,7 +179,7 @@ bool MapAdd(Map* map, const char* key, const void* value)
 	if (MapGet(map, key) != NULL)
 		return false;
 
-	const float filled = (float)map->elementCount / map->bucketsCap;
+	const float filled = (float)map->elementCount / map->bucketsSize;
 	if (filled > LOAD_FACTOR)
 		Expand(map);
 
