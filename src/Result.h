@@ -5,10 +5,6 @@
 
 #include "Token.h"
 
-#define ADD(x, y) x##y
-#define ADD1(x, y) ADD(x, y)
-#define ADDLINE(x) ADD1(x, __LINE__)
-
 #define SUCCESS_RESULT          \
 	(Result)                    \
 	{                           \
@@ -36,22 +32,22 @@
 		.filePath = NULL,        \
 	}
 
-#define PROPAGATE_ERROR(function)                 \
-	do                                            \
-	{                                             \
-		const Result ADDLINE(result) = function;  \
-		if (ADDLINE(result).type == Result_Error) \
-			return ADDLINE(result);               \
-	}                                             \
+#define PROPAGATE_ERROR(function)                        \
+	do                                                   \
+	{                                                    \
+		const Result _propagateErrorResult = (function); \
+		if (_propagateErrorResult.type == Result_Error)  \
+			return _propagateErrorResult;                \
+	}                                                    \
 	while (0)
 
-#define PROPAGATE_FOUND(function)                    \
-	do                                               \
-	{                                                \
-		const Result ADDLINE(result) = function;     \
-		if (ADDLINE(result).type != Result_NotFound) \
-			return ADDLINE(result);                  \
-	}                                                \
+#define PROPAGATE_FOUND(function)                          \
+	do                                                     \
+	{                                                      \
+		const Result _propagateFoundResult = (function);   \
+		if (_propagateFoundResult.type != Result_NotFound) \
+			return _propagateFoundResult;                  \
+	}                                                      \
 	while (0)
 
 typedef enum
