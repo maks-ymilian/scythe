@@ -21,7 +21,7 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* struct
 	return NULL;
 }
 
-static StructDeclStmt* GetStructDecl(const NodePtr type)
+static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
 {
 	switch (type.type)
 	{
@@ -81,7 +81,7 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 	assert(memberAccessNode.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
 	const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
-	if (varDecl == NULL || GetStructDecl(varDecl->type) == NULL)
+	if (varDecl == NULL || GetStructDeclFromType(varDecl->type) == NULL)
 		return;
 
 	const MemberAccessExpr* next = memberAccess;
@@ -95,7 +95,7 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 
 		const VarDeclStmt* nextVarDecl = GetVarDeclFromMemberAccessValue(next->value);
 		assert(nextVarDecl != NULL);
-		if (GetStructDecl(nextVarDecl->type) == NULL)
+		if (GetStructDeclFromType(nextVarDecl->type) == NULL)
 			break;
 	}
 
@@ -148,6 +148,9 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 
 static StructDeclStmt* GetStructVariableFromMemberAccess(const MemberAccessExpr* memberAccess)
 {
+	if (memberAccess == NULL)
+		return NULL;
+
 	while (memberAccess->next.ptr != NULL)
 	{
 		assert(memberAccess->next.type == Node_MemberAccess);
@@ -158,7 +161,7 @@ static StructDeclStmt* GetStructVariableFromMemberAccess(const MemberAccessExpr*
 	if (varDecl == NULL)
 		return NULL;
 
-	StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
+	StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 	if (structDecl == NULL)
 		return NULL;
 
@@ -190,7 +193,7 @@ static size_t ForEachStructMember(const StructDeclStmt* structDecl, const Struct
 		assert(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
-		const StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
+		const StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 		if (structDecl == NULL)
 		{
 			func(varDecl, data);
@@ -274,6 +277,165 @@ static void ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	}
 }
 
+static StructDeclStmt* GetStructDecl(const NodePtr node)
+{
+	switch (node.type)
+	{
+	case Node_Literal:
+		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(node);
+		if (varDecl != NULL)
+			return GetStructDeclFromType(varDecl->type);
+		return NULL;
+
+	case Node_FunctionCall:
+		const FuncCallExpr* funcCall = node.ptr;
+		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
+		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+		return GetStructDeclFromType(funcDecl->type);
+
+	default: return NULL;
+	}
+}
+
+typedef struct
+{
+	VarDeclStmt* leftVarDecl;
+	VarDeclStmt* rightVarDecl;
+	Array* statements;
+} AssignmentThingData;
+
+static void AssignmentThing(VarDeclStmt* member, void* data)
+{
+	const AssignmentThingData* d = data;
+	VarDeclStmt* leftInstance = FindInstantiated(member->name, d->leftVarDecl);
+	assert(leftInstance != NULL);
+	VarDeclStmt* rightInstance = FindInstantiated(member->name, d->rightVarDecl);
+	assert(rightInstance != NULL);
+
+	const NodePtr statement = AllocASTNode(
+		&(ExpressionStmt){
+			.expr = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = -1,
+					.operatorType = Binary_Assignment,
+					.left = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = -1,
+							.type = Literal_Identifier,
+							.identifier = (IdentifierReference){
+								.text = AllocateString(leftInstance->name),
+								.reference = (NodePtr){.ptr = leftInstance, .type = Node_VariableDeclaration},
+							},
+						},
+						sizeof(LiteralExpr), Node_Literal),
+					.right = AllocASTNode( // clang-format is bad
+						&(LiteralExpr){
+							.lineNumber = -1,
+							.type = Literal_Identifier,
+							.identifier = (IdentifierReference){
+								.text = AllocateString(rightInstance->name),
+								.reference = (NodePtr){.ptr = rightInstance, .type = Node_VariableDeclaration},
+							},
+						},
+						sizeof(LiteralExpr), Node_Literal),
+				},
+				sizeof(BinaryExpr), Node_Binary),
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
+	ArrayAdd(d->statements, &statement);
+}
+
+static void VisitBinaryExpression(NodePtr* node)
+{
+	// todo add pass to break up chained assignment and equality
+
+	assert(node->type == Node_Binary);
+	BinaryExpr* binary = node->ptr;
+	VisitExpression(&binary->left);
+	VisitExpression(&binary->right);
+
+	// it could be a member access with more than 1 values all structs
+	// if a member access is found then assert that the corresponding struct decl is also found
+	assert(binary->left.type != Node_MemberAccess);
+	assert(binary->right.type != Node_MemberAccess);
+
+	const StructDeclStmt* structDecl;
+	{
+		const StructDeclStmt* leftStruct = GetStructDecl(binary->left);
+		const StructDeclStmt* rightStruct = GetStructDecl(binary->right);
+
+		if (leftStruct == NULL && rightStruct == NULL)
+			return;
+
+		if (leftStruct == NULL || rightStruct == NULL)
+			assert(!"one of them isnt a struct"); // todo return error
+
+		if (leftStruct != rightStruct)
+			assert(!"they must be the same struct"); // todo return error
+
+		structDecl = leftStruct;
+	}
+
+	switch (binary->operatorType)
+	{
+	case Binary_Assignment:
+		if (binary->left.type == Node_FunctionCall)
+			assert(!"r value error"); // todo return error
+		else
+			assert(binary->left.type == Node_Literal);
+
+		assert(binary->right.type == Node_Literal); // todo function assignment
+
+		Array statements = AllocateArray(sizeof(NodePtr));
+
+		VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(binary->left);
+		assert(leftVarDecl != NULL);
+		VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(binary->right);
+		assert(rightVarDecl != NULL);
+
+		ForEachStructMember(structDecl,
+			AssignmentThing,
+			&(AssignmentThingData){
+				.statements = &statements,
+				.leftVarDecl = leftVarDecl,
+				.rightVarDecl = rightVarDecl,
+			});
+
+		const NodePtr block = AllocASTNode(
+			&(BlockExpr){
+				.type = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = -1,
+						.type = Literal_PrimitiveType,
+						.primitiveType = Primitive_Void,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+				.block = AllocASTNode(
+					&(BlockStmt){
+						.statements = statements,
+						.lineNumber = -1,
+					},
+					sizeof(BlockStmt), Node_BlockStatement)},
+			sizeof(BlockExpr), Node_BlockExpression);
+
+		FreeASTNode(*node);
+		*node = block;
+		break;
+	case Binary_IsEqual:
+		assert(!"is equal");
+		break;
+	case Binary_NotEqual:
+		assert(!"not equal");
+		break;
+	default: assert(!"wrong operator"); // todo return error
+	}
+
+	// check if the expressions are struct types
+	// check the operator type
+	// only let it get through if member access or struct type was failed to get rid of
+	// so if the types are incompatible or the wrong operator was used then return an error
+}
+
 static void VisitStatement(NodePtr* node);
 
 static void VisitExpression(NodePtr* node)
@@ -286,7 +448,8 @@ static void VisitExpression(NodePtr* node)
 		ExpandFunctionCallArguments(node);
 
 		MemberAccessExpr* memberAccess = node->ptr;
-		assert(memberAccess->next.ptr == NULL);
+		if (memberAccess->next.ptr != NULL)
+			break;
 
 		const NodePtr value = memberAccess->value;
 		memberAccess->value = NULL_NODE;
@@ -295,13 +458,12 @@ static void VisitExpression(NodePtr* node)
 		*node = value;
 		break;
 	case Node_Binary:
-		BinaryExpr* binary = node->ptr;
-		VisitExpression(&binary->left);
-		VisitExpression(&binary->right);
+		VisitBinaryExpression(node);
 		break;
 	case Node_Unary:
 		UnaryExpr* unary = node->ptr;
 		VisitExpression(&unary->expression);
+		assert(!"unary"); // todo implement
 		break;
 	case Node_Literal:
 		const LiteralExpr* literal = node->ptr;
@@ -338,7 +500,7 @@ static void InstantiateMember(VarDeclStmt* varDecl, void* data)
 
 static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const size_t index)
 {
-	const StructDeclStmt* structDecl = GetStructDecl(varDecl->type);
+	const StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 	if (structDecl == NULL)
 		return false;
 
