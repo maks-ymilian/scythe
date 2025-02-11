@@ -435,7 +435,7 @@ static Result VisitBinaryExpression(NodePtr* node)
 	case Binary_NotEqual:
 		assert(!"not equal");
 		break;
-	default: ERROR_RESULT(
+	default: return ERROR_RESULT(
 		AllocateString1Str(
 			"Cannot use operator \"%s\" on struct types",
 			GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
