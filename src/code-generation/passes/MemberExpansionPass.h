@@ -1,5 +1,6 @@
 #pragma once
 
 #include "SyntaxTree.h"
+#include "Result.h"
 
-void MemberExpansionPass(const AST* ast);
+Result MemberExpansionPass(const AST* ast);

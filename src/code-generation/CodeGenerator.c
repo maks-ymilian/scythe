@@ -11,7 +11,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 {
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
 	GlobalSectionPass(syntaxTree);
-	MemberExpansionPass(syntaxTree);
+	PROPAGATE_ERROR(MemberExpansionPass(syntaxTree));
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
 	UniqueNamePass(syntaxTree);
 
