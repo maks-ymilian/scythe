@@ -1,11 +1,13 @@
 #include "Compiler.h"
 
 #include <assert.h>
-#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+
+#include <libgen.h>
+#include <unistd.h>
 
 #include "BuiltInImports.h"
 #include "FileUtils.h"
@@ -87,7 +89,9 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 	if (filePath != NULL)
 		result.filePath = filePath;
 
-	printf("%s error: ", errorStage);
+	if  (errorStage != NULL)
+		printf("%s error: ", errorStage);
+
 	PrintError(result);
 	printf("\n");
 
@@ -96,9 +100,8 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 	exit(1);
 }
 
-static Result WriteOutputFile(const char* path, const char* code, const size_t length)
+static Result WriteOutputFile(FILE* file, const char* path, const char* code, const size_t length)
 {
-	FILE* file = fopen(path, "wb");
 	if (file == NULL)
 	{
 		fclose(file);
@@ -179,7 +182,7 @@ static bool IsSameFileOrBuiltInPath(
 static char* AllocBaseFileName(const char* path)
 {
 	const size_t length = strlen(path) + 1;
-	char* string = malloc(length);
+	char string[length + 1];
 	memcpy(string, path, length);
 
 	char* fileName = basename(string);
@@ -188,7 +191,7 @@ static char* AllocBaseFileName(const char* path)
 	for (size_t i = 0; i < baseNameLength; ++i)
 		if (fileName[i] == '.') fileName[i] = '\0';
 
-	return fileName;
+	return AllocateString(fileName);
 }
 
 static void AddBuiltInImportStatement(AST* ast)
@@ -344,8 +347,21 @@ static void CompileProgramTree(const Array* programNodes, char** outCode, size_t
 	FreeAST(merged);
 }
 
+static void ChangeDirectoryToFileName(const char* fileName)
+{
+	const size_t length = strlen(fileName);
+	char copy[length + 1];
+	memcpy(copy, fileName, length + 1);
+
+	chdir(dirname(copy));
+}
+
 void Compile(const char* inputPath, const char* outputPath)
 {
+	FILE* outputFile = fopen(outputPath, "wb");
+
+	ChangeDirectoryToFileName(inputPath);
+
 	Array programNodes = AllocateArray(sizeof(ProgramNode*));
 	GenerateProgramNode(&programNodes, inputPath, NULL, -1, NULL);
 
@@ -356,7 +372,7 @@ void Compile(const char* inputPath, const char* outputPath)
 	FreeProgramTree(&programNodes);
 
 	printf("%.*s\n", (int)outputCodeLength, outputCode);
-	HandleError("Write", NULL, WriteOutputFile(outputPath, outputCode, outputCodeLength));
+	HandleError("Write", NULL, WriteOutputFile(outputFile, outputPath, outputCode, outputCodeLength));
 
 	free(outputCode);
 }
