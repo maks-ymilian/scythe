@@ -413,8 +413,8 @@ static Result VisitStatement(const NodePtr* node)
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength));
-		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->type));
+		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionDeclaration:
