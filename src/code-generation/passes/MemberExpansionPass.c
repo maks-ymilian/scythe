@@ -380,11 +380,6 @@ static Result VisitBinaryExpression(NodePtr* node)
 	PROPAGATE_ERROR(VisitExpression(&binary->left));
 	PROPAGATE_ERROR(VisitExpression(&binary->right));
 
-	// it could be a member access with more than 1 values all structs
-	// if a member access is found then assert that the corresponding struct decl is also found
-	assert(binary->left.type != Node_MemberAccess);
-	assert(binary->right.type != Node_MemberAccess);
-
 	const StructDeclStmt* structDecl;
 	{
 		const StructDeclStmt* leftStruct = GetStructDecl(binary->left);
@@ -413,16 +408,29 @@ static Result VisitBinaryExpression(NodePtr* node)
 	switch (binary->operatorType)
 	{
 	case Binary_Assignment:
-		if (binary->left.type != Node_Literal)
+		NodePtr leftExpr = binary->left;
+		NodePtr rightExpr = binary->right;
+		if (binary->left.type == Node_MemberAccess)
+		{
+			const MemberAccessExpr* memberAccess = binary->left.ptr;
+			leftExpr = memberAccess->value;
+		}
+		if (binary->right.type == Node_MemberAccess)
+		{
+			const MemberAccessExpr* memberAccess = binary->right.ptr;
+			rightExpr = memberAccess->value;
+		}
+
+		if (leftExpr.type != Node_Literal)
 			return ERROR_RESULT("Left operand of struct assignment must be a variable", binary->lineNumber, currentFilePath);
 
-		assert(binary->right.type == Node_Literal); // todo function assignment and block expression
+		assert(rightExpr.type == Node_Literal); // todo function assignment and block expression
 
 		Array statements = AllocateArray(sizeof(NodePtr));
 
-		VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(binary->left);
+		VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(leftExpr);
 		assert(leftVarDecl != NULL);
-		VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(binary->right);
+		VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(rightExpr);
 		assert(rightVarDecl != NULL);
 
 		ForEachStructMember(structDecl,
