@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data-structures/Array.h"
 #include "Token.h"
+#include "data-structures/Array.h"
 
 #define NULL_NODE \
 	(NodePtr) { .ptr = NULL, .type = Node_Null }

@@ -1,10 +1,10 @@
 #include "Compiler.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include <libgen.h>
 #include <unistd.h>
@@ -89,7 +89,7 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 	if (filePath != NULL)
 		result.filePath = filePath;
 
-	if  (errorStage != NULL)
+	if (errorStage != NULL)
 		printf("%s error: ", errorStage);
 
 	PrintError(result);
