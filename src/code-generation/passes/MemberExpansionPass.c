@@ -295,6 +295,10 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 		return GetStructDeclFromType(funcDecl->type);
 
+	case Node_BlockExpression:
+		const BlockExpr* block = node.ptr;
+		return GetStructDeclFromType(block->type);
+
 	default: return NULL;
 	}
 }
