@@ -328,11 +328,11 @@ typedef struct
 	VarDeclStmt* leftVarDecl;
 	VarDeclStmt* rightVarDecl;
 	Array* statements;
-} AssignmentThingData;
+} GenerateStructMemberAssignmentData;
 
-static void AssignmentThing(VarDeclStmt* member, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, void* data)
 {
-	const AssignmentThingData* d = data;
+	const GenerateStructMemberAssignmentData* d = data;
 	VarDeclStmt* leftInstance = FindInstantiated(member->name, d->leftVarDecl);
 	assert(leftInstance != NULL);
 	VarDeclStmt* rightInstance = FindInstantiated(member->name, d->rightVarDecl);
@@ -434,8 +434,8 @@ static Result VisitBinaryExpression(NodePtr* node)
 		assert(rightVarDecl != NULL);
 
 		ForEachStructMember(structDecl,
-			AssignmentThing,
-			&(AssignmentThingData){
+			GenerateStructMemberAssignment,
+			&(GenerateStructMemberAssignmentData){
 				.statements = &statements,
 				.leftVarDecl = leftVarDecl,
 				.rightVarDecl = rightVarDecl,
@@ -475,11 +475,6 @@ static Result VisitBinaryExpression(NodePtr* node)
 	}
 
 	return SUCCESS_RESULT;
-
-	// check if the expressions are struct types
-	// check the operator type
-	// only let it get through if member access or struct type was failed to get rid of
-	// so if the types are incompatible or the wrong operator was used then return an error
 }
 
 static Result VisitStatement(NodePtr* node);
