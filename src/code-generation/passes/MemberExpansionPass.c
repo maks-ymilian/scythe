@@ -284,20 +284,40 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 	switch (node.type)
 	{
 	case Node_Literal:
+	{
 		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(node);
 		if (varDecl != NULL)
 			return GetStructDeclFromType(varDecl->type);
 		return NULL;
+	}
 
 	case Node_FunctionCall:
+	{
 		const FuncCallExpr* funcCall = node.ptr;
 		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 		return GetStructDeclFromType(funcDecl->type);
+	}
 
 	case Node_BlockExpression:
+	{
 		const BlockExpr* block = node.ptr;
 		return GetStructDeclFromType(block->type);
+	}
+
+	case Node_MemberAccess:
+	{
+		const MemberAccessExpr* memberAccess = node.ptr;
+		while (memberAccess->next.ptr != NULL)
+		{
+			assert(memberAccess->next.type == Node_MemberAccess);
+			memberAccess = memberAccess->next.ptr;
+		}
+		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
+		if (varDecl != NULL)
+			return GetStructDeclFromType(varDecl->type);
+		return NULL;
+	}
 
 	default: return NULL;
 	}
@@ -396,7 +416,7 @@ static Result VisitBinaryExpression(NodePtr* node)
 		if (binary->left.type != Node_Literal)
 			return ERROR_RESULT("Left operand of struct assignment must be a variable", binary->lineNumber, currentFilePath);
 
-		assert(binary->right.type == Node_Literal); // todo function assignment
+		assert(binary->right.type == Node_Literal); // todo function assignment and block expression
 
 		Array statements = AllocateArray(sizeof(NodePtr));
 
