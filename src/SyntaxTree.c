@@ -443,4 +443,6 @@ void FreeAST(const AST root)
 		const NodePtr* node = root.nodes.array[i];
 		FreeASTNode(*node);
 	}
+
+	FreeArray(&root.nodes);
 }
