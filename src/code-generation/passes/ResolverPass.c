@@ -359,6 +359,7 @@ static Result ResolveExpression(const NodePtr* node)
 	{
 		const BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
+		PROPAGATE_ERROR(ResolveExpression(&block->type));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
