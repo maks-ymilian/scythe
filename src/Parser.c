@@ -219,6 +219,83 @@ static Result ParseFunctionCall(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
+static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
+{
+	const Token* primitiveType = Match(
+		(TokenType[]){
+			Token_Void,
+			Token_Int,
+			Token_Float,
+			Token_String,
+			Token_Bool,
+		},
+		5);
+
+	if (primitiveType == NULL)
+		return false;
+
+	*outLineNumber = primitiveType->lineNumber;
+	*out = tokenTypeToPrimitiveType[primitiveType->type];
+	return true;
+}
+
+static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr);
+
+static Result ParseType(NodePtr* out)
+{
+	const size_t oldPointer = pointer;
+
+	PrimitiveType primitiveType;
+	int lineNumber;
+	if (ParsePrimitiveType(&primitiveType, &lineNumber))
+	{
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = lineNumber,
+				.type = Literal_PrimitiveType,
+				.primitiveType = primitiveType,
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		return SUCCESS_RESULT;
+	}
+
+	PROPAGATE_ERROR(ParsePrimary(out, false));
+	if (out->type == Node_MemberAccess)
+		return SUCCESS_RESULT;
+
+	pointer = oldPointer;
+	*out = NULL_NODE;
+	return NOT_FOUND_RESULT;
+}
+
+static Result ParseBlockStatement(NodePtr* out);
+
+static Result ParseBlockExpression(NodePtr* out)
+{
+	const size_t oldPointer = pointer;
+
+	NodePtr type = NULL_NODE;
+	PROPAGATE_ERROR(ParseType(&type));
+	if (type.ptr == NULL)
+		return NOT_FOUND_RESULT;
+
+	NodePtr block = NULL_NODE;
+	PROPAGATE_ERROR(ParseBlockStatement(&block));
+	if (block.ptr == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
+
+	*out = AllocASTNode(
+		&(BlockExpr){
+			.type = type,
+			.block = block,
+		},
+		sizeof(BlockExpr), Node_BlockExpression);
+	return SUCCESS_RESULT;
+}
+
 static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 {
 	switch (token.type)
@@ -278,8 +355,11 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 	}
 }
 
-static Result ParsePrimary(NodePtr* out)
+static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
 {
+	if (parseBlockExpr)
+		PROPAGATE_FOUND(ParseBlockExpression(out));
+
 	const Token* token = Match(
 		(TokenType[]){
 			Token_NumberLiteral,
@@ -369,7 +449,7 @@ static Result ParseUnary(NodePtr* out)
 {
 	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
 	if (operator== NULL)
-		return ParsePrimary(out);
+		return ParsePrimary(out, true);
 
 	NodePtr expr;
 	if (ParseUnary(&expr).type != Result_Success)
@@ -604,88 +684,9 @@ static Result ParseAssignment(NodePtr* out)
 		10);
 }
 
-static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
-{
-	const Token* primitiveType = Match(
-		(TokenType[]){
-			Token_Void,
-			Token_Int,
-			Token_Float,
-			Token_String,
-			Token_Bool,
-		},
-		5);
-
-	if (primitiveType == NULL)
-		return false;
-
-	*outLineNumber = primitiveType->lineNumber;
-	*out = tokenTypeToPrimitiveType[primitiveType->type];
-	return true;
-}
-
-static Result ParsePrimary(NodePtr* out);
-
-static Result ParseType(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	PrimitiveType primitiveType;
-	int lineNumber;
-	if (ParsePrimitiveType(&primitiveType, &lineNumber))
-	{
-		*out = AllocASTNode(
-			&(LiteralExpr){
-				.lineNumber = lineNumber,
-				.type = Literal_PrimitiveType,
-				.primitiveType = primitiveType,
-			},
-			sizeof(LiteralExpr), Node_Literal);
-		return SUCCESS_RESULT;
-	}
-
-	PROPAGATE_ERROR(ParsePrimary(out));
-	if (out->type == Node_MemberAccess)
-		return SUCCESS_RESULT;
-
-	pointer = oldPointer;
-	*out = NULL_NODE;
-	return NOT_FOUND_RESULT;
-}
-
-static Result ParseBlockStatement(NodePtr* out);
-
-static Result ParseBlockExpression(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	NodePtr type = NULL_NODE;
-	PROPAGATE_ERROR(ParseType(&type));
-	if (type.ptr == NULL)
-		return NOT_FOUND_RESULT;
-
-	NodePtr block = NULL_NODE;
-	PROPAGATE_ERROR(ParseBlockStatement(&block));
-	if (block.ptr == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	*out = AllocASTNode(
-		&(BlockExpr){
-			.type = type,
-			.block = block,
-		},
-		sizeof(BlockExpr), Node_BlockExpression);
-	return SUCCESS_RESULT;
-}
-
 static Result ParseExpression(NodePtr* out)
 {
-	PROPAGATE_FOUND(ParseBlockExpression(out));
-	PROPAGATE_FOUND(ParseAssignment(out));
-	return NOT_FOUND_RESULT;
+	return ParseAssignment(out);
 }
 
 static Result ParseExpressionStatement(NodePtr* out)
