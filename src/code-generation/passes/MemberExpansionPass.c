@@ -589,7 +589,40 @@ static Result VisitStatement(NodePtr* node)
 		break;
 	case Node_ExpressionStatement:
 		ExpressionStmt* exprStmt = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
+
+		// remove the expression statement if it doesnt have any side effects
+		bool remove = false;
+		if (exprStmt->expr.type == Node_MemberAccess)
+		{
+			const MemberAccessExpr* memberAccess = exprStmt->expr.ptr;
+			while (true)
+			{
+				if (GetImportStmtFromMemberAccessValue(memberAccess->value) == NULL &&
+					GetVarDeclFromMemberAccessValue(memberAccess->value) == NULL)
+				{
+					remove = false;
+					break;
+				}
+
+				if (memberAccess->next.ptr == NULL)
+				{
+					remove = true;
+					break;
+				}
+
+				assert(memberAccess->next.type == Node_MemberAccess);
+				memberAccess = memberAccess->next.ptr;
+			}
+		}
+
+		if (remove)
+		{
+			ArrayAdd(&nodesToDelete, node);
+			*node = NULL_NODE;
+		}
+		else
+			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
+
 		break;
 	case Node_FunctionDeclaration:
 		FuncDeclStmt* funcDecl = node->ptr;
