@@ -237,9 +237,9 @@ static void ExpandArgument(VarDeclStmt* member, void* data)
 	AddToEnd(copy, end);
 }
 
-static Result VisitExpression(NodePtr* node);
+static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
-static Result ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
+static Result ExpandFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
 {
 	assert(memberAccessNode->type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = memberAccessNode->ptr;
@@ -273,7 +273,7 @@ static Result ExpandFunctionCallArguments(const NodePtr* memberAccessNode)
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
 		NodePtr* node = funcCall->arguments.array[i];
-		PROPAGATE_ERROR(VisitExpression(node));
+		PROPAGATE_ERROR(VisitExpression(node, containingStatement));
 	}
 
 	return SUCCESS_RESULT;
@@ -297,12 +297,6 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 		return GetStructDeclFromType(funcDecl->type);
-	}
-
-	case Node_BlockExpression:
-	{
-		const BlockExpr* block = node.ptr;
-		return GetStructDeclFromType(block->type);
 	}
 
 	case Node_MemberAccess:
@@ -371,14 +365,12 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, void* data)
 	ArrayAdd(d->statements, &statement);
 }
 
-static Result VisitBinaryExpression(NodePtr* node)
+static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 {
-	// todo add pass to break up chained assignment and equality
-
 	assert(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
-	PROPAGATE_ERROR(VisitExpression(&binary->left));
-	PROPAGATE_ERROR(VisitExpression(&binary->right));
+	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
+	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
 
 	const StructDeclStmt* structDecl;
 	{
@@ -424,7 +416,7 @@ static Result VisitBinaryExpression(NodePtr* node)
 		if (leftExpr.type != Node_Literal)
 			return ERROR_RESULT("Left operand of struct assignment must be a variable", binary->lineNumber, currentFilePath);
 
-		assert(rightExpr.type == Node_Literal); // todo function assignment and block expression
+		assert(rightExpr.type == Node_Literal); // todo function assignment
 
 		Array statements = AllocateArray(sizeof(NodePtr));
 
@@ -441,25 +433,18 @@ static Result VisitBinaryExpression(NodePtr* node)
 				.rightVarDecl = rightVarDecl,
 			});
 
-		const NodePtr block = AllocASTNode(
-			&(BlockExpr){
-				.type = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = -1,
-						.type = Literal_PrimitiveType,
-						.primitiveType = Primitive_Void,
-					},
-					sizeof(LiteralExpr), Node_Literal),
-				.block = AllocASTNode(
-					&(BlockStmt){
-						.statements = statements,
-						.lineNumber = -1,
-					},
-					sizeof(BlockStmt), Node_BlockStatement)},
-			sizeof(BlockExpr), Node_BlockExpression);
+		// the pass that breaks up chained assignment and equality will take care of this
+		// all struct assignment expressions will be unchained in an expression statement
+		// todo add the pass for this
+		assert(containingStatement->type == Node_ExpressionStatement);
 
-		FreeASTNode(*node);
-		*node = block;
+		FreeASTNode(*containingStatement);
+		*containingStatement = AllocASTNode(
+				&(BlockStmt){
+					.lineNumber = -1,
+					.statements = statements,
+				},
+				sizeof(BlockStmt), Node_BlockStatement);
 		break;
 	case Binary_IsEqual:
 		assert(!"is equal");
@@ -479,14 +464,14 @@ static Result VisitBinaryExpression(NodePtr* node)
 
 static Result VisitStatement(NodePtr* node);
 
-static Result VisitExpression(NodePtr* node)
+static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	switch (node->type)
 	{
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
 		UpdateStructMemberAccess(*node);
-		PROPAGATE_ERROR(ExpandFunctionCallArguments(node));
+		PROPAGATE_ERROR(ExpandFunctionCallArguments(node, containingStatement));
 
 		MemberAccessExpr* memberAccess = node->ptr;
 		if (memberAccess->next.ptr != NULL)
@@ -499,11 +484,11 @@ static Result VisitExpression(NodePtr* node)
 		*node = value;
 		break;
 	case Node_Binary:
-		PROPAGATE_ERROR(VisitBinaryExpression(node));
+		PROPAGATE_ERROR(VisitBinaryExpression(node, containingStatement));
 		break;
 	case Node_Unary:
 		UnaryExpr* unary = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&unary->expression));
+		PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
 		assert(!"unary"); // todo implement
 		break;
 	case Node_Literal:
@@ -513,11 +498,6 @@ static Result VisitExpression(NodePtr* node)
 			   literal->type == Literal_String ||
 			   literal->type == Literal_Boolean ||
 			   literal->type == Literal_PrimitiveType);
-		break;
-	case Node_BlockExpression:
-		BlockExpr* block = node->ptr;
-		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(VisitStatement(&block->block));
 		break;
 	default: INVALID_VALUE(node->type);
 	}
@@ -566,7 +546,7 @@ static Result VisitStatement(NodePtr* node)
 		VarDeclStmt* varDecl = node->ptr;
 
 		if (varDecl->initializer.ptr != NULL)
-			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer));
+			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
 
 		Array statements = AllocateArray(sizeof(NodePtr));
 		if (InstantiateStructMembers(varDecl, &statements, 0))
@@ -621,7 +601,7 @@ static Result VisitStatement(NodePtr* node)
 			*node = NULL_NODE;
 		}
 		else
-			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
+			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr, node));
 
 		break;
 	case Node_FunctionDeclaration:
@@ -651,7 +631,7 @@ static Result VisitStatement(NodePtr* node)
 		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
-		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr));
+		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
 		break;
 	case Node_Null:
 		break;

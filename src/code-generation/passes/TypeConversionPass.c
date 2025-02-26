@@ -336,8 +336,6 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitStatement(const NodePtr* node);
-
 static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	switch (node->type)
@@ -350,11 +348,6 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 		break;
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
-		break;
-	case Node_BlockExpression:
-		const BlockExpr* block = node->ptr;
-		if (outType != NULL) *outType = GetType(block->type);
-		PROPAGATE_ERROR(VisitStatement(&block->block));
 		break;
 	default: INVALID_VALUE(node->type);
 	}
@@ -437,6 +430,8 @@ static Result VisitVariableDeclaration(VarDeclStmt* varDecl, const bool addIniti
 
 	return SUCCESS_RESULT;
 }
+
+static Result VisitStatement(const NodePtr* node);
 
 static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {

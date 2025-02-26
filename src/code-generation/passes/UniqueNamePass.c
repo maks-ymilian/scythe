@@ -4,8 +4,6 @@
 
 static int uniqueNameCounter = 0;
 
-static void VisitStatement(NodePtr node);
-
 static void VisitExpression(const NodePtr node)
 {
 	switch (node.type)
@@ -25,11 +23,6 @@ static void VisitExpression(const NodePtr node)
 		const FuncCallExpr* funcCall = node.ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
-		break;
-	case Node_BlockExpression:
-		const BlockExpr* block = node.ptr;
-		assert(block->block.type == Node_BlockStatement);
-		VisitStatement(block->block);
 		break;
 	case Node_Null:
 		break;
