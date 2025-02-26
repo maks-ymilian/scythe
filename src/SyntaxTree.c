@@ -232,6 +232,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_ExpressionStatement:
 	case Node_Import:
 	case Node_Section:
+		goto unimplemented;
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* ptr = node.ptr;
@@ -264,6 +265,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_For:
 	case Node_LoopControl:
 	case Node_Return:
+unimplemented:
 	default: INVALID_VALUE(node.type);
 	}
 }
