@@ -1,13 +1,13 @@
 #include "CodeGenerator.h"
 
 #include "Writer.h"
+#include "passes/BlockExpressionPass.h"
+#include "passes/ControlFlowPass.h"
 #include "passes/GlobalSectionPass.h"
 #include "passes/MemberExpansionPass.h"
 #include "passes/ResolverPass.h"
 #include "passes/TypeConversionPass.h"
 #include "passes/UniqueNamePass.h"
-#include "passes/BlockExpressionPass.h"
-#include "passes/ControlFlowPass.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {

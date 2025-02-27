@@ -265,7 +265,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_For:
 	case Node_LoopControl:
 	case Node_Return:
-unimplemented:
+	unimplemented:
 	default: INVALID_VALUE(node.type);
 	}
 }

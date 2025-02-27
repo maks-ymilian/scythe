@@ -26,19 +26,19 @@ static NodePtr AllocHasReturned(const int lineNumber)
 			.external = false,
 			.uniqueName = -1,
 			.type = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = lineNumber,
-						.type = Literal_PrimitiveType,
-						.primitiveType = Primitive_Bool,
-					},
-					sizeof(LiteralExpr), Node_Literal),
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_PrimitiveType,
+					.primitiveType = Primitive_Bool,
+				},
+				sizeof(LiteralExpr), Node_Literal),
 			.initializer = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = lineNumber,
-						.type = Literal_Boolean,
-						.boolean = false,
-					},
-					sizeof(LiteralExpr), Node_Literal),
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Boolean,
+					.boolean = false,
+				},
+				sizeof(LiteralExpr), Node_Literal),
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
@@ -62,7 +62,7 @@ static NodePtr AllocSetReturnFlag(const NodePtr hasReturnedDecl, const int lineN
 							},
 						},
 						sizeof(LiteralExpr), Node_Literal),
-					.right = AllocASTNode(
+					.right = AllocASTNode( // clang-format is bad
 						&(LiteralExpr){
 							.lineNumber = lineNumber,
 							.type = Literal_Boolean,
@@ -95,7 +95,7 @@ static NodePtr AllocIfReturnFlagIsFalse(const NodePtr hasReturnedDecl, Array* st
 							},
 						},
 						sizeof(LiteralExpr), Node_Literal),
-					.right = AllocASTNode(
+					.right = AllocASTNode( // clang-format is bad
 						&(LiteralExpr){
 							.lineNumber = -1,
 							.type = Literal_Boolean,
@@ -104,7 +104,7 @@ static NodePtr AllocIfReturnFlagIsFalse(const NodePtr hasReturnedDecl, Array* st
 						sizeof(LiteralExpr), Node_Literal),
 				},
 				sizeof(BinaryExpr), Node_Binary),
-			.trueStmt = AllocASTNode(
+			.trueStmt = AllocASTNode( // clang-format is bad
 				&(BlockStmt){
 					.lineNumber = -1,
 					.statements = *statements,

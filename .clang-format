@@ -28,7 +28,7 @@ BraceWrapping:
 BreakBeforeBraces: Custom
 BreakBeforeBinaryOperators: None
 SpaceBeforeAssignmentOperators: true
-BinPackParameters: OnePerLine
+# BinPackParameters: OnePerLine
 ColumnLimit: 0
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ContinuationIndentWidth: 4

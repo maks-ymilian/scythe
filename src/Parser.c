@@ -747,11 +747,11 @@ static void WrapStatementInBlock(NodePtr* node, int lineNumber)
 	ArrayAdd(&statements, node);
 
 	*node = AllocASTNode(
-			&(BlockStmt){
-				.lineNumber = lineNumber,
-				.statements = statements,
-			},
-			sizeof(BlockStmt), Node_BlockStatement);
+		&(BlockStmt){
+			.lineNumber = lineNumber,
+			.statements = statements,
+		},
+		sizeof(BlockStmt), Node_BlockStatement);
 }
 
 static Result ParseIfStatement(NodePtr* out)

@@ -440,11 +440,11 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 		FreeASTNode(*containingStatement);
 		*containingStatement = AllocASTNode(
-				&(BlockStmt){
-					.lineNumber = -1,
-					.statements = statements,
-				},
-				sizeof(BlockStmt), Node_BlockStatement);
+			&(BlockStmt){
+				.lineNumber = -1,
+				.statements = statements,
+			},
+			sizeof(BlockStmt), Node_BlockStatement);
 		break;
 	case Binary_IsEqual:
 		assert(!"is equal");
