@@ -709,7 +709,12 @@ static Result ParseExpressionStatement(NodePtr* out)
 	if (MatchOne(Token_Semicolon) == NULL)
 		return ERROR_RESULT_LINE("Expected \";\"");
 
-	*out = AllocASTNode(&(ExpressionStmt){.expr = expr}, sizeof(ExpressionStmt), Node_ExpressionStatement);
+	*out = AllocASTNode(
+		&(ExpressionStmt){
+			.lineNumber = ((Token*)tokens.array[pointer])->lineNumber,
+			.expr = expr,
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
 	return SUCCESS_RESULT;
 }
 

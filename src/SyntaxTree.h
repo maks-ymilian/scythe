@@ -177,6 +177,7 @@ typedef struct
 
 typedef struct
 {
+	int lineNumber;
 	NodePtr expr;
 } ExpressionStmt;
 

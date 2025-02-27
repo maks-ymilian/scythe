@@ -34,7 +34,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 						.type = blockExpr->type,
 						.name = AllocateString(name),
 						.externalName = NULL,
-						.parameters = AllocateArray(sizeof(NodePtr)), // todo capturing
+						.parameters = AllocateArray(sizeof(NodePtr)),
 						.block = blockExpr->block,
 						.public = false,
 						.external = false,
@@ -53,7 +53,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 						.value = AllocASTNode(
 								&(FuncCallExpr){
 									.lineNumber = lineNumber,
-									.arguments = AllocateArray(sizeof(NodePtr)), // todo capturing
+									.arguments = AllocateArray(sizeof(NodePtr)),
 									.identifier = (IdentifierReference){
 										.text = AllocateString(name),
 										.reference = funcDecl,
@@ -64,17 +64,25 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 					sizeof(MemberAccessExpr), Node_MemberAccess);
 			break;
 		case Node_Binary:
+			BinaryExpr* binary = expr->ptr;
+			VisitExpression(&binary->left, statement, lineNumber);
+			VisitExpression(&binary->right, statement, lineNumber);
 			break;
 		case Node_Unary:
-			break;
-		case Node_Literal:
+			UnaryExpr* unary = expr->ptr;
+			VisitExpression(&unary->expression, statement, lineNumber);
 			break;
 		case Node_FunctionCall:
-			break;
-		case Node_ArrayAccess:
+			FuncCallExpr* funcCall = expr->ptr;
+			for (size_t i = 0; i < funcCall->arguments.length; i++)
+				VisitExpression(funcCall->arguments.array[i], statement, lineNumber);
 			break;
 		case Node_MemberAccess:
+			MemberAccessExpr* memberAccess = expr->ptr;
+			VisitExpression(&memberAccess->value, statement, lineNumber);
+			VisitExpression(&memberAccess->next, statement, lineNumber);
 			break;
+		case Node_Literal:
 		case Node_Null:
 			break;
 		default: INVALID_VALUE(expr->type);
@@ -92,7 +100,7 @@ static void VisitStatement(NodePtr* node)
 			break;
 		case Node_If:
 			IfStmt* ifStmt = node->ptr;
-			// ifStmt->expr todo
+			VisitExpression(&ifStmt->expr, node, ifStmt->lineNumber);
 			VisitStatement(&ifStmt->trueStmt);
 			VisitStatement(&ifStmt->falseStmt);
 			break;
@@ -106,9 +114,21 @@ static void VisitStatement(NodePtr* node)
 			VisitExpression(&varDecl->arrayLength, node, varDecl->lineNumber);
 			break;
 		case Node_ExpressionStatement:
-	 		break; // todo
+			ExpressionStmt* exprStmt = node->ptr;
+			VisitExpression(&exprStmt->expr, node, exprStmt->lineNumber);
+			break;
 		case Node_StructDeclaration:
-			break; // todo
+			// todo these could turn into blocks so get rid of blocks in the global scope
+			StructDeclStmt* structDecl = node->ptr;
+			for (size_t i = 0; i < structDecl->members.length; i++)
+			{
+				NodePtr* node = structDecl->members.array[i];
+				assert(node->type == Node_VariableDeclaration);
+				VarDeclStmt* varDecl = node->ptr;
+				VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
+				VisitExpression(&varDecl->arrayLength, node, varDecl->lineNumber);
+			}
+			break;
 		case Node_Section:
 			SectionStmt* section = node->ptr;
 			VisitStatement(&section->block);
