@@ -633,6 +633,11 @@ static Result VisitStatement(NodePtr* node)
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
 		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
 		break;
+	case Node_Return:
+		ReturnStmt* returnStmt = node->ptr;
+		if (returnStmt->expr.ptr != NULL)
+			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
+		break;
 	case Node_Null:
 		break;
 	default: INVALID_VALUE(node->type);

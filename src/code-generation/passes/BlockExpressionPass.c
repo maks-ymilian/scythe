@@ -118,7 +118,6 @@ static void VisitStatement(NodePtr* node)
 			VisitExpression(&exprStmt->expr, node, exprStmt->lineNumber);
 			break;
 		case Node_StructDeclaration:
-			// todo these could turn into blocks so get rid of blocks in the global scope
 			StructDeclStmt* structDecl = node->ptr;
 			for (size_t i = 0; i < structDecl->members.length; i++)
 			{
@@ -132,6 +131,10 @@ static void VisitStatement(NodePtr* node)
 		case Node_Section:
 			SectionStmt* section = node->ptr;
 			VisitStatement(&section->block);
+			break;
+		case Node_Return:
+			ReturnStmt* returnStmt = node->ptr;
+			VisitExpression(&returnStmt->expr, node, returnStmt->lineNumber);
 			break;
 		case Node_Import:
 		case Node_Null:
