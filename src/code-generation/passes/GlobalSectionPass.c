@@ -95,9 +95,15 @@ static void VisitModule(ModuleNode* module)
 		switch (stmt->type)
 		{
 		case Node_FunctionDeclaration:
+		{
 			const FuncDeclStmt* funcDecl = stmt->ptr;
 			VisitBlock(&funcDecl->block);
-			[[fallthrough]];
+
+			AddToInitSection(stmt);
+			ArrayRemove(&module->statements, i);
+			i--;
+			break;
+		}
 		case Node_StructDeclaration:
 		case Node_VariableDeclaration:
 		{
@@ -110,6 +116,18 @@ static void VisitModule(ModuleNode* module)
 		{
 			const SectionStmt* section = stmt->ptr;
 			VisitBlock(&section->block);
+			break;
+		}
+		case Node_BlockStatement:
+		{
+			BlockStmt* block = stmt->ptr;
+			for (size_t j = 0; j < block->statements.length; j++)
+				ArrayInsert(&module->statements, block->statements.array[j], i + j + 1);
+			ArrayClear(&block->statements);
+			FreeASTNode(*stmt);
+
+			ArrayRemove(&module->statements, i);
+			i--;
 			break;
 		}
 		case Node_Import: break;
