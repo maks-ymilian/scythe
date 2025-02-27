@@ -41,7 +41,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 						.uniqueName = -1,
 					},
 					sizeof(FuncDeclStmt), Node_FunctionDeclaration);
-			ArrayAdd(&blockStmt->statements, &funcDecl);
+			ArrayInsert(&blockStmt->statements, &funcDecl, 0);
 
 			blockExpr->type = NULL_NODE;
 			blockExpr->block = NULL_NODE;
