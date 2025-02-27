@@ -215,6 +215,17 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 	WriteString(";\n");
 }
 
+static void VisitBlock(const BlockStmt* block, const bool semicolon)
+{
+	WriteString("(\n");
+	PushIndent();
+	for (size_t i = 0; i < block->statements.length; ++i)
+		VisitStatement(block->statements.array[i]);
+	PopIndent();
+	WriteChar(')');
+	if (semicolon) WriteString(";\n");
+}
+
 static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
 	WriteString("function ");
@@ -238,36 +249,23 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	}
 	WriteString(")\n");
 
-	WriteString("(\n");
-
-	PushIndent();
-	VisitStatement(&funcDecl->block);
-	PopIndent();
-
-	WriteString(");\n");
+	assert(funcDecl->block.type == Node_BlockStatement);
+	VisitBlock(funcDecl->block.ptr, true);
 }
 
 static void VisitIfStatement(const IfStmt* ifStmt)
 {
 	VisitExpression(ifStmt->expr);
 	WriteString(" ?\n");
-	WriteString("(\n");
 
-	PushIndent();
-	VisitStatement(&ifStmt->trueStmt);
-	PopIndent();
-
-	WriteChar(')');
+	assert(ifStmt->trueStmt.type == Node_BlockStatement);
+	VisitBlock(ifStmt->trueStmt.ptr, false);
 
 	if (ifStmt->falseStmt.ptr != NULL)
 	{
-		WriteString(" : (\n");
-
-		PushIndent();
-		VisitStatement(&ifStmt->falseStmt);
-		PopIndent();
-
-		WriteChar(')');
+		WriteString(" : ");
+		assert(ifStmt->falseStmt.type == Node_BlockStatement);
+		VisitBlock(ifStmt->falseStmt.ptr, false);
 	}
 
 	WriteString(";\n");
@@ -289,13 +287,7 @@ static void VisitStatement(const NodePtr* node)
 		WriteString(";\n");
 		break;
 	case Node_BlockStatement:
-		const BlockStmt* block = node->ptr;
-		WriteString("(\n");
-		PushIndent();
-		for (size_t i = 0; i < block->statements.length; ++i)
-			VisitStatement(block->statements.array[i]);
-		PopIndent();
-		WriteString(");\n");
+		VisitBlock(node->ptr, true);
 		break;
 	case Node_If:
 		VisitIfStatement(node->ptr);
@@ -325,7 +317,7 @@ static void VisitSection(const SectionStmt* section)
 	WriteChar('\n');
 
 	assert(section->block.type == Node_BlockStatement);
-	VisitStatement(&section->block);
+	VisitBlock(section->block.ptr, true);
 
 	WriteChar('\n');
 }
