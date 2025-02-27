@@ -741,6 +741,19 @@ static Result ParseReturnStatement(NodePtr* out)
 
 static Result ParseStatement(NodePtr* out);
 
+static void WrapStatementInBlock(NodePtr* node, int lineNumber)
+{
+	Array statements = AllocateArray(sizeof(NodePtr));
+	ArrayAdd(&statements, node);
+
+	*node = AllocASTNode(
+			&(BlockStmt){
+				.lineNumber = lineNumber,
+				.statements = statements,
+			},
+			sizeof(BlockStmt), Node_BlockStatement);
+}
+
 static Result ParseIfStatement(NodePtr* out)
 {
 	const Token* ifToken = MatchOne(Token_If);
@@ -763,12 +776,19 @@ static Result ParseIfStatement(NodePtr* out)
 	if (stmt.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected statement");
 
+	if (stmt.type != Node_BlockStatement)
+		WrapStatementInBlock(&stmt, ifToken->lineNumber);
+
 	NodePtr elseStmt = NULL_NODE;
-	if (MatchOne(Token_Else))
+	const Token* elseToken = MatchOne(Token_Else);
+	if (elseToken != NULL)
 	{
 		PROPAGATE_ERROR(ParseStatement(&elseStmt));
 		if (elseStmt.ptr == NULL)
 			return ERROR_RESULT_LINE("Expected statement after \"else\"");
+
+		if (elseStmt.type != Node_BlockStatement)
+			WrapStatementInBlock(&elseStmt, elseToken->lineNumber);
 	}
 
 	*out = AllocASTNode(
@@ -1178,30 +1198,19 @@ static Result ParseWhileStatement(NodePtr* out)
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
 
-	NodePtr block = NULL_NODE;
-	PROPAGATE_ERROR(ParseBlockStatement(&block));
-	if (block.ptr == NULL)
-	{
-		NodePtr stmt = NULL_NODE;
-		PROPAGATE_ERROR(ParseStatement(&stmt));
-		if (stmt.ptr == NULL)
-			return ERROR_RESULT_LINE("Expected statement after while statement");
+	NodePtr stmt = NULL_NODE;
+	PROPAGATE_ERROR(ParseStatement(&stmt));
+	if (stmt.ptr == NULL)
+		return ERROR_RESULT_LINE("Expected statement for loop body");
 
-		Array statements = AllocateArray(sizeof(NodePtr));
-		ArrayAdd(&statements, &stmt);
-		block = AllocASTNode(
-			&(BlockStmt){
-				.lineNumber = whileToken->lineNumber,
-				.statements = statements,
-			},
-			sizeof(BlockStmt), Node_BlockStatement);
-	}
+	if (stmt.type != Node_BlockStatement)
+		WrapStatementInBlock(&stmt, whileToken->lineNumber);
 
 	*out = AllocASTNode(
 		&(WhileStmt){
 			.lineNumber = whileToken->lineNumber,
 			.expr = expr,
-			.stmt = block,
+			.stmt = stmt,
 		},
 		sizeof(WhileStmt), Node_While);
 	return SUCCESS_RESULT;
@@ -1243,24 +1252,13 @@ static Result ParseForStatement(NodePtr* out)
 	if (MatchOne(Token_RightBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \")\"");
 
-	NodePtr block = NULL_NODE;
-	PROPAGATE_ERROR(ParseBlockStatement(&block));
-	if (block.ptr == NULL)
-	{
-		NodePtr stmt = NULL_NODE;
-		PROPAGATE_ERROR(ParseStatement(&stmt));
-		if (stmt.ptr == NULL)
-			return ERROR_RESULT_LINE("Expected statement after for statement");
+	NodePtr stmt = NULL_NODE;
+	PROPAGATE_ERROR(ParseStatement(&stmt));
+	if (stmt.ptr == NULL)
+		return ERROR_RESULT_LINE("Expected statement for loop body");
 
-		Array statements = AllocateArray(sizeof(NodePtr));
-		ArrayAdd(&statements, &stmt);
-		block = AllocASTNode(
-			&(BlockStmt){
-				.lineNumber = forToken->lineNumber,
-				.statements = statements,
-			},
-			sizeof(BlockStmt), Node_BlockStatement);
-	}
+	if (stmt.type != Node_BlockStatement)
+		WrapStatementInBlock(&stmt, forToken->lineNumber);
 
 	*out = AllocASTNode(
 		&(ForStmt){
@@ -1268,7 +1266,7 @@ static Result ParseForStatement(NodePtr* out)
 			.initialization = initializer,
 			.condition = condition,
 			.increment = increment,
-			.stmt = block,
+			.stmt = stmt,
 		},
 		sizeof(ForStmt), Node_For);
 	return SUCCESS_RESULT;
