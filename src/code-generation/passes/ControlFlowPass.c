@@ -360,24 +360,30 @@ static Result VisitBlock(
 	return SUCCESS_RESULT;
 }
 
-static Result VisitModule(const ModuleNode* module)
+static Result VisitGlobalStatement(const NodePtr* node)
 {
-	currentFilePath = module->path;
-
-	for (size_t i = 0; i < module->statements.length; ++i)
+	switch (node->type)
 	{
-		const NodePtr* stmt = module->statements.array[i];
-		switch (stmt->type)
-		{
-		case Node_Section:
-			SectionStmt* section = stmt->ptr;
-			assert(section->block.type == Node_BlockStatement);
-			PROPAGATE_ERROR(VisitBlock(section->block.ptr, NULL_NODE, NULL, NULL, NULL));
-			break;
-		case Node_Import:
-			break;
-		default: INVALID_VALUE(stmt->type);
-		}
+	case Node_Section:
+		SectionStmt* section = node->ptr;
+		assert(section->block.type == Node_BlockStatement);
+		PROPAGATE_ERROR(VisitBlock(section->block.ptr, NULL_NODE, NULL, NULL, NULL));
+		break;
+	case Node_FunctionDeclaration:
+		FuncDeclStmt* funcDecl = node->ptr;
+		assert(funcDecl->block.type == Node_BlockStatement);
+		PROPAGATE_ERROR(VisitBlock(funcDecl->block.ptr, funcDecl->type, NULL, NULL, NULL));
+		break;
+	case Node_BlockStatement:
+		BlockStmt* block = node->ptr;
+		for (size_t i = 0; i < block->statements.length; i++)
+			PROPAGATE_ERROR(VisitGlobalStatement(block->statements.array[i]));
+		break;
+	case Node_VariableDeclaration:
+	case Node_Import:
+	case Node_Null:
+		break;
+	default: INVALID_VALUE(node->type);
 	}
 
 	return SUCCESS_RESULT;
@@ -388,8 +394,14 @@ Result ControlFlowPass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
+
 		assert(node->type == Node_Module);
-		PROPAGATE_ERROR(VisitModule(node->ptr));
+		const ModuleNode* module = node->ptr;
+
+		currentFilePath = module->path;
+
+		for (size_t i = 0; i < module->statements.length; ++i)
+			PROPAGATE_ERROR(VisitGlobalStatement(module->statements.array[i]));
 	}
 
 	return SUCCESS_RESULT;

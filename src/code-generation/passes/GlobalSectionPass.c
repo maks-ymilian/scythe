@@ -81,6 +81,7 @@ static void VisitBlock(const NodePtr* node)
 		case Node_LoopControl:
 		case Node_ExpressionStatement:
 		case Node_VariableDeclaration:
+		case Node_Null:
 			break;
 		default: INVALID_VALUE(node->type);
 		}
@@ -130,7 +131,9 @@ static void VisitModule(ModuleNode* module)
 			i--;
 			break;
 		}
-		case Node_Import: break;
+		case Node_Import:
+		case Node_Null:
+			break;
 		default: INVALID_VALUE(stmt->type);
 		}
 	}

@@ -488,37 +488,15 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, type, Primitive_Bool, ifStmt->lineNumber, NULL));
 		break;
 	}
-	default: INVALID_VALUE(node->type);
-	}
-	return SUCCESS_RESULT;
-}
-
-static Result VisitSection(const SectionStmt* section)
-{
-	assert(section->block.type == Node_BlockStatement);
-	const BlockStmt* block = section->block.ptr;
-	for (size_t i = 0; i < block->statements.length; ++i)
-		PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
-
-	return SUCCESS_RESULT;
-}
-
-static Result VisitModule(const ModuleNode* module)
-{
-	currentFilePath = module->path;
-
-	for (size_t i = 0; i < module->statements.length; ++i)
+	case Node_Section:
 	{
-		const NodePtr* stmt = module->statements.array[i];
-		switch (stmt->type)
-		{
-		case Node_Section:
-			PROPAGATE_ERROR(VisitSection(stmt->ptr));
-			break;
-		case Node_Import:
-			break;
-		default: INVALID_VALUE(stmt->type);
-		}
+		const SectionStmt* section = node->ptr;
+		PROPAGATE_ERROR(VisitStatement(&section->block));
+		break;
+	}
+	case Node_Import:
+		break;
+	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;
 }
@@ -528,8 +506,14 @@ Result TypeConversionPass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
+
 		assert(node->type == Node_Module);
-		PROPAGATE_ERROR(VisitModule(node->ptr));
+		const ModuleNode* module = node->ptr;
+
+		currentFilePath = module->path;
+
+		for (size_t i = 0; i < module->statements.length; ++i)
+			PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
 	}
 
 	return SUCCESS_RESULT;

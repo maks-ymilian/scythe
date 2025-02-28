@@ -340,6 +340,7 @@ static void VisitModule(const ModuleNode* module)
 			VisitSection(stmt->ptr);
 			break;
 		case Node_Import:
+		case Node_Null:
 			break;
 		default: INVALID_VALUE(stmt->type);
 		}

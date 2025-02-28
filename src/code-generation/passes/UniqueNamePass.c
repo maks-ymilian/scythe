@@ -58,7 +58,6 @@ static void VisitStatement(const NodePtr node)
 		break;
 	case Node_StructDeclaration:
 		break;
-
 	case Node_BlockStatement:
 		const BlockStmt* block = node.ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
@@ -67,41 +66,21 @@ static void VisitStatement(const NodePtr node)
 			VisitStatement(*node);
 		}
 		break;
-
 	case Node_If:
 		const IfStmt* ifStmt = node.ptr;
 		VisitExpression(ifStmt->expr);
 		VisitStatement(ifStmt->falseStmt);
 		VisitStatement(ifStmt->trueStmt);
 		break;
-
+	case Node_Section:
+		const SectionStmt* section = node.ptr;
+		assert(section->block.type == Node_BlockStatement);
+		VisitStatement(section->block);
+		break;
+	case Node_Import:
 	case Node_Null:
 		break;
-
 	default: INVALID_VALUE(node.type);
-	}
-}
-
-static void VisitSection(const SectionStmt* section)
-{
-	assert(section->block.type == Node_BlockStatement);
-	VisitStatement(section->block);
-}
-
-static void VisitModule(const ModuleNode* module)
-{
-	for (size_t i = 0; i < module->statements.length; ++i)
-	{
-		const NodePtr* stmt = module->statements.array[i];
-		switch (stmt->type)
-		{
-		case Node_Section:
-			VisitSection(stmt->ptr);
-			break;
-		case Node_Import:
-			break;
-		default: INVALID_VALUE(stmt->type);
-		}
 	}
 }
 
@@ -110,7 +89,11 @@ void UniqueNamePass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
+
 		assert(node->type == Node_Module);
-		VisitModule(node->ptr);
+		const ModuleNode* module = node->ptr;
+
+		for (size_t i = 0; i < module->statements.length; ++i)
+			VisitStatement(*((NodePtr*)module->statements.array[i]));
 	}
 }

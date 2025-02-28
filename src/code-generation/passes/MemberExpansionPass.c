@@ -621,6 +621,8 @@ static Result VisitStatement(NodePtr* node)
 		}
 		assert(funcDecl->block.type == Node_BlockStatement);
 		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
+
+		
 		break;
 	case Node_BlockStatement:
 		const BlockStmt* block = node->ptr;
@@ -638,31 +640,14 @@ static Result VisitStatement(NodePtr* node)
 		if (returnStmt->expr.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
 		break;
+	case Node_Section:
+		SectionStmt* section = node->ptr;
+		PROPAGATE_ERROR(VisitStatement(&section->block));
+		break;
+	case Node_Import:
 	case Node_Null:
 		break;
 	default: INVALID_VALUE(node->type);
-	}
-
-	return SUCCESS_RESULT;
-}
-
-static Result VisitModule(const ModuleNode* module)
-{
-	currentFilePath = module->path;
-
-	for (size_t i = 0; i < module->statements.length; ++i)
-	{
-		const NodePtr* stmt = module->statements.array[i];
-		switch (stmt->type)
-		{
-		case Node_Section:
-			SectionStmt* section = stmt->ptr;
-			PROPAGATE_ERROR(VisitStatement(&section->block));
-			break;
-		case Node_Import:
-			break;
-		default: INVALID_VALUE(stmt->type);
-		}
 	}
 
 	return SUCCESS_RESULT;
@@ -675,8 +660,14 @@ Result MemberExpansionPass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
+
 		assert(node->type == Node_Module);
-		PROPAGATE_ERROR(VisitModule(node->ptr));
+		const ModuleNode* module = node->ptr;
+
+		currentFilePath = module->path;
+
+		for (size_t i = 0; i < module->statements.length; ++i)
+			PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
 	}
 
 	for (size_t i = 0; i < nodesToDelete.length; ++i)

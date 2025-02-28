@@ -142,18 +142,16 @@ static void VisitStatement(NodePtr* node)
 	}
 }
 
-static void VisitModule(const ModuleNode* module)
-{
-	for (size_t i = 0; i < module->statements.length; ++i)
-		VisitStatement(module->statements.array[i]);
-}
-
 void BlockExpressionPass(const AST* ast)
 {
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
+
 		assert(node->type == Node_Module);
-		VisitModule(node->ptr);
+		const ModuleNode* module = node->ptr;
+
+		for (size_t i = 0; i < module->statements.length; ++i)
+			VisitStatement(module->statements.array[i]);
 	}
 }
