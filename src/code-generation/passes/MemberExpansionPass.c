@@ -446,12 +446,15 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			},
 			sizeof(BlockStmt), Node_BlockStatement);
 		break;
-	case Binary_IsEqual:
-		assert(!"is equal");
-		break;
-	case Binary_NotEqual:
-		assert(!"not equal");
-		break;
+
+		// todo should this be implemented
+	/*case Binary_IsEqual:*/
+	/*	assert(!"is equal");*/
+	/*	break;*/
+	/*case Binary_NotEqual:*/
+	/*	assert(!"not equal");*/
+	/*	break;*/
+
 	default: return ERROR_RESULT(
 		AllocateString1Str(
 			"Cannot use operator \"%s\" on struct types",
