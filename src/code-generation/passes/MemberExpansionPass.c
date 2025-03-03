@@ -46,6 +46,23 @@ static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
 	}
 }
 
+static FuncDeclStmt* GetFuncDeclFromMemberAccessValue(const NodePtr value)
+{
+	switch (value.type)
+	{
+	case Node_FunctionCall:
+		const FuncCallExpr* call = value.ptr;
+		assert(call->identifier.reference.type == Node_FunctionDeclaration);
+		FuncDeclStmt* funcDecl = call->identifier.reference.ptr;
+		return funcDecl;
+
+	case Node_Literal:
+	case Node_ArrayAccess:
+		return NULL;
+	default: INVALID_VALUE(value.type);
+	}
+}
+
 static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 {
 	switch (value.type)
@@ -59,6 +76,11 @@ static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 		return literal->identifier.reference.ptr;
 
 	case Node_FunctionCall:
+		const FuncCallExpr* funcCall = value.ptr;
+		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
+		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+		return funcDecl->globalReturn;
+
 	case Node_ArrayAccess:
 		return NULL;
 	default: INVALID_VALUE(value.type);
@@ -259,6 +281,11 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 		const FuncCallExpr* funcCall = node.ptr;
 		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+
+		StructDeclStmt* structDecl = GetStructDeclFromType(funcDecl->oldType);
+		if (structDecl != NULL)
+			return structDecl;
+
 		return GetStructDeclFromType(funcDecl->type);
 	}
 
@@ -361,49 +388,73 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 
 typedef struct
 {
-	VarDeclStmt* leftVarDecl;
-	VarDeclStmt* rightVarDecl;
+	NodePtr leftExpr;
+	NodePtr rightExpr;
 	Array* statements;
 } GenerateStructMemberAssignmentData;
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
+static NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNumber)
 {
-	const GenerateStructMemberAssignmentData* d = data;
-	VarDeclStmt* leftInstance = FindInstantiated(member->name, d->leftVarDecl);
-	assert(leftInstance != NULL);
-	VarDeclStmt* rightInstance = FindInstantiated(member->name, d->rightVarDecl);
-	assert(rightInstance != NULL);
-
-	const NodePtr statement = AllocASTNode(
+	return AllocASTNode(
 		&(ExpressionStmt){
 			.expr = AllocASTNode(
 				&(BinaryExpr){
-					.lineNumber = -1,
+					.lineNumber = lineNumber,
 					.operatorType = Binary_Assignment,
-					.left = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = -1,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(leftInstance->name),
-								.reference = (NodePtr){.ptr = leftInstance, .type = Node_VariableDeclaration},
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
-					.right = AllocASTNode( // clang-format is bad
-						&(LiteralExpr){
-							.lineNumber = -1,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(rightInstance->name),
-								.reference = (NodePtr){.ptr = rightInstance, .type = Node_VariableDeclaration},
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
+					.left = left,
+					.right = right,
 				},
 				sizeof(BinaryExpr), Node_Binary),
 		},
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
+}
+
+static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
+{
+	const GenerateStructMemberAssignmentData* d = data;
+
+	VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(d->leftExpr);
+	assert(leftVarDecl != NULL);
+	VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(d->rightExpr);
+	assert(rightVarDecl != NULL);
+
+	VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
+	assert(leftInstance != NULL);
+	VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
+	assert(rightInstance != NULL);
+
+	// todo function for this
+	NodePtr left = AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = -1,
+			.type = Literal_Identifier,
+			.identifier = (IdentifierReference){
+				.text = AllocateString(leftInstance->name),
+				.reference = (NodePtr){.ptr = leftInstance, .type = Node_VariableDeclaration},
+			},
+		},
+		sizeof(LiteralExpr), Node_Literal);
+
+	NodePtr statement = NULL_NODE;
+	if (index == 0 && d->rightExpr.type == Node_FunctionCall)
+	{
+		statement = AllocAssignmentStatement(left, CopyASTNode(d->rightExpr), -1);
+	}
+	else
+	{
+		statement = AllocAssignmentStatement(left,
+			AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = -1,
+					.type = Literal_Identifier,
+					.identifier = (IdentifierReference){
+						.text = AllocateString(rightInstance->name),
+						.reference = (NodePtr){.ptr = rightInstance, .type = Node_VariableDeclaration},
+					},
+				},
+				sizeof(LiteralExpr), Node_Literal),
+			-1);
+	}
 	ArrayAdd(d->statements, &statement);
 }
 
@@ -453,23 +504,18 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		}
 
 		if (leftExpr.type != Node_Literal)
-			return ERROR_RESULT("Left operand of struct assignment must be a variable", binary->lineNumber, currentFilePath);
-
-		assert(rightExpr.type == Node_Literal); // todo function assignment
+			return ERROR_RESULT("Left operand of struct assignment must be a variable",
+				binary->lineNumber,
+				currentFilePath);
 
 		BlockStmt* block = AllocBlockStmt(-1).ptr;
-
-		VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(leftExpr);
-		assert(leftVarDecl != NULL);
-		VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(rightExpr);
-		assert(rightVarDecl != NULL);
 
 		ForEachStructMember(structDecl,
 			GenerateStructMemberAssignment,
 			&(GenerateStructMemberAssignmentData){
 				.statements = &block->statements,
-				.leftVarDecl = leftVarDecl,
-				.rightVarDecl = rightVarDecl,
+				.leftExpr = leftExpr,
+				.rightExpr = rightExpr,
 			},
 			NULL);
 
