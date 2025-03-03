@@ -670,7 +670,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		if (structDecl != NULL)
 		{
 			InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
-			FreeASTNode(*node);
+			ArrayAdd(&nodesToDelete, node);
 			ArrayRemove(&funcDecl->parameters, i);
 			i--;
 		}
