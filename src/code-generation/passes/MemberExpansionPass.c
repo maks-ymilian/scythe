@@ -39,6 +39,7 @@ static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
 		return literal->identifier.reference.ptr;
 
 	case Node_Literal:
+	case Node_Null:
 		return NULL;
 
 	default: INVALID_VALUE(type.type);
@@ -579,7 +580,7 @@ static VarDeclStmt* GetStructMemberAtIndex(const StructDeclStmt* structDecl, siz
 	return varDecl;
 }
 
-static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
+static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
@@ -638,7 +639,7 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 
 		if (remove)
 		{
-			ArrayAdd(&nodesToDelete, node);
+			FreeASTNode(*node);
 			*node = NULL_NODE;
 		}
 		else
@@ -661,7 +662,7 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 			if (structDecl != NULL)
 			{
 				InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
-				ArrayAdd(&nodesToDelete, node);
+				FreeASTNode(*node);
 				ArrayRemove(&funcDecl->parameters, i);
 				i--;
 			}
@@ -689,7 +690,7 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 				},
 				sizeof(VarDeclStmt), Node_VariableDeclaration);
 			funcDecl->globalReturn = globalReturn.ptr;
-			PROPAGATE_ERROR(VisitStatement(&globalReturn, NULL));
+			PROPAGATE_ERROR(VisitStatement(&globalReturn));
 			ArrayAdd(&block->statements, &globalReturn);
 
 			ArrayAdd(&block->statements, node);
@@ -700,35 +701,35 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 			assert(funcDecl->oldType.ptr == NULL);
 			funcDecl->oldType = funcDecl->type;
 			funcDecl->type = CopyASTNode(first->type);
-
-			PROPAGATE_ERROR(VisitStatement(&funcDecl->block, funcDecl));
 		}
-		else
-			PROPAGATE_ERROR(VisitStatement(&funcDecl->block, NULL));
 
+		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 		break;
 	}
 	case Node_BlockStatement:
 	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(block->statements.array[i], structFuncDecl));
+			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
 	}
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;
-		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt, structFuncDecl));
-		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt, structFuncDecl));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
 		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
 		break;
 	}
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
-		StructDeclStmt* exprStruct = GetStructDecl(returnStmt->expr);
 
-		if (structFuncDecl == NULL)
+		assert(returnStmt->function != NULL);
+		StructDeclStmt* exprStruct = GetStructDecl(returnStmt->expr);
+		StructDeclStmt* returnStruct = GetStructDeclFromType(returnStmt->function->oldType);
+
+		if (returnStruct == NULL)
 		{
 			if (exprStruct != NULL)
 				return ERROR_RESULT(
@@ -745,8 +746,6 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 				"Cannot return a non-struct type in a function that returns a struct type",
 				returnStmt->lineNumber, currentFilePath);
 
-		assert(structFuncDecl->oldType.ptr != NULL);
-		StructDeclStmt* returnStruct = GetStructDeclFromType(structFuncDecl->oldType);
 		if (exprStruct != returnStruct)
 			return ERROR_RESULT(
 				AllocateString2Str(
@@ -757,6 +756,7 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 
 		BlockStmt* block = AllocBlockStmt(returnStmt->lineNumber).ptr;
 
+		VarDeclStmt* globalReturn = returnStmt->function->globalReturn;
 		NodePtr statement = AllocASTNode(
 			&(ExpressionStmt){
 				.expr = AllocASTNode(
@@ -772,8 +772,8 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 										.lineNumber = returnStmt->lineNumber,
 										.type = Literal_Identifier,
 										.identifier = (IdentifierReference){
-											.text = AllocateString(structFuncDecl->globalReturn->name),
-											.reference = (NodePtr){.ptr = structFuncDecl->globalReturn, .type = Node_VariableDeclaration},
+											.text = AllocateString(globalReturn->name),
+											.reference = (NodePtr){.ptr = globalReturn, .type = Node_VariableDeclaration},
 										},
 									},
 									sizeof(LiteralExpr), Node_Literal),
@@ -784,13 +784,13 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 					sizeof(BinaryExpr), Node_Binary),
 			},
 			sizeof(ExpressionStmt), Node_ExpressionStatement);
-		PROPAGATE_ERROR(VisitStatement(&statement, structFuncDecl));
+		PROPAGATE_ERROR(VisitStatement(&statement));
 		ArrayAdd(&block->statements, &statement);
 
 		ArrayAdd(&block->statements, node);
 		*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
-		VarDeclStmt* firstReturnVariable = *(VarDeclStmt**)structFuncDecl->globalReturn->instantiatedVariables.array[0];
+		VarDeclStmt* firstReturnVariable = *(VarDeclStmt**)globalReturn->instantiatedVariables.array[0];
 		returnStmt->expr = AllocASTNode(
 			&(LiteralExpr){
 				.lineNumber = returnStmt->lineNumber,
@@ -806,7 +806,7 @@ static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
-		PROPAGATE_ERROR(VisitStatement(&section->block, structFuncDecl));
+		PROPAGATE_ERROR(VisitStatement(&section->block));
 		break;
 	}
 	case Node_Import:
@@ -832,7 +832,7 @@ Result MemberExpansionPass(const AST* ast)
 		currentFilePath = module->path;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(module->statements.array[i], NULL));
+			PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
 	}
 
 	for (size_t i = 0; i < nodesToDelete.length; ++i)

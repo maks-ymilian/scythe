@@ -23,6 +23,7 @@ set(SOURCES
 		"src/code-generation/passes/MemberExpansionPass.c"
 		"src/code-generation/passes/UniqueNamePass.c"
 		"src/code-generation/passes/ControlFlowPass.c"
+		"src/code-generation/passes/ReturnTaggingPass.c"
 )
 
 project(scythe C)

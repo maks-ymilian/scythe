@@ -297,6 +297,7 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr expr;
+	FuncDeclStmt* function;
 } ReturnStmt;
 
 
