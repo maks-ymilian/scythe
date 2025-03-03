@@ -46,23 +46,6 @@ static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
 	}
 }
 
-static FuncDeclStmt* GetFuncDeclFromMemberAccessValue(const NodePtr value)
-{
-	switch (value.type)
-	{
-	case Node_FunctionCall:
-		const FuncCallExpr* call = value.ptr;
-		assert(call->identifier.reference.type == Node_FunctionDeclaration);
-		FuncDeclStmt* funcDecl = call->identifier.reference.ptr;
-		return funcDecl;
-
-	case Node_Literal:
-	case Node_ArrayAccess:
-		return NULL;
-	default: INVALID_VALUE(value.type);
-	}
-}
-
 static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 {
 	switch (value.type)
@@ -103,6 +86,8 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 {
 	assert(memberAccessNode.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
+	if (memberAccess->value.type != Node_Literal)
+		return;
 	const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
 	if (varDecl == NULL || GetStructDeclFromType(varDecl->type) == NULL)
 		return;
@@ -232,36 +217,18 @@ static size_t ForEachStructMember(const StructDeclStmt* structDecl, const Struct
 	return *currentIndex;
 }
 
-typedef struct
+static NodePtr AllocLiteralIdentifier(VarDeclStmt* varDecl, int lineNumber)
 {
-	NodePtr argumentNode;
-	FuncCallExpr* funcCall;
-	size_t argumentIndex;
-} ExpandArgumentData;
-
-static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
-{
-	const ExpandArgumentData* d = data;
-
-	const NodePtr copy = CopyASTNode(d->argumentNode);
-	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex + index);
-
-	const NodePtr end = AllocASTNode(
-		&(MemberAccessExpr){
-			.next = NULL_NODE,
-			.value = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = -1,
-					.type = Literal_Identifier,
-					.identifier = (IdentifierReference){
-						.text = AllocateString(member->name),
-						.reference = (NodePtr){.ptr = member, .type = Node_VariableDeclaration},
-					},
-				},
-				sizeof(LiteralExpr), Node_Literal),
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Identifier,
+			.identifier = (IdentifierReference){
+				.text = AllocateString(varDecl->name),
+				.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
+			},
 		},
-		sizeof(MemberAccessExpr), Node_MemberAccess);
-	AddToEnd(copy, end);
+		sizeof(LiteralExpr), Node_Literal);
 }
 
 static StructDeclStmt* GetStructDecl(const NodePtr node)
@@ -333,6 +300,29 @@ static Result CheckTypeConversion(const StructDeclStmt* from, const StructDeclSt
 	return SUCCESS_RESULT;
 }
 
+typedef struct
+{
+	NodePtr argumentNode;
+	FuncCallExpr* funcCall;
+	size_t argumentIndex;
+} ExpandArgumentData;
+
+static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
+{
+	const ExpandArgumentData* d = data;
+
+	const NodePtr copy = CopyASTNode(d->argumentNode);
+	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex + index);
+
+	const NodePtr end = AllocASTNode(
+		&(MemberAccessExpr){
+			.next = NULL_NODE,
+			.value = AllocLiteralIdentifier(member, -1),
+		},
+		sizeof(MemberAccessExpr), Node_MemberAccess);
+	AddToEnd(copy, end);
+}
+
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
 static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
@@ -346,7 +336,7 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 	FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 
-	// add a pass so this doesnt get hit
+	// todo add a pass so this doesnt get hit
 	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
 	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
 	{
@@ -423,36 +413,19 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, vo
 	VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
 	assert(rightInstance != NULL);
 
-	// todo function for this
-	NodePtr left = AllocASTNode(
-		&(LiteralExpr){
-			.lineNumber = -1,
-			.type = Literal_Identifier,
-			.identifier = (IdentifierReference){
-				.text = AllocateString(leftInstance->name),
-				.reference = (NodePtr){.ptr = leftInstance, .type = Node_VariableDeclaration},
-			},
-		},
-		sizeof(LiteralExpr), Node_Literal);
-
 	NodePtr statement = NULL_NODE;
 	if (index == 0 && d->rightExpr.type == Node_FunctionCall)
 	{
-		statement = AllocAssignmentStatement(left, CopyASTNode(d->rightExpr), -1);
+		statement = AllocAssignmentStatement(
+			AllocLiteralIdentifier(leftInstance, -1),
+			CopyASTNode(d->rightExpr),
+			-1);
 	}
 	else
 	{
-		statement = AllocAssignmentStatement(left,
-			AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = -1,
-					.type = Literal_Identifier,
-					.identifier = (IdentifierReference){
-						.text = AllocateString(rightInstance->name),
-						.reference = (NodePtr){.ptr = rightInstance, .type = Node_VariableDeclaration},
-					},
-				},
-				sizeof(LiteralExpr), Node_Literal),
+		statement = AllocAssignmentStatement(
+			AllocLiteralIdentifier(leftInstance, -1),
+			AllocLiteralIdentifier(rightInstance, -1),
 			-1);
 	}
 	ArrayAdd(d->statements, &statement);
@@ -792,16 +765,7 @@ static Result VisitReturnStatement(NodePtr* node)
 					.left = AllocASTNode(
 						&(MemberAccessExpr){
 							.next = NULL_NODE,
-							.value = AllocASTNode(
-								&(LiteralExpr){
-									.lineNumber = returnStmt->lineNumber,
-									.type = Literal_Identifier,
-									.identifier = (IdentifierReference){
-										.text = AllocateString(globalReturn->name),
-										.reference = (NodePtr){.ptr = globalReturn, .type = Node_VariableDeclaration},
-									},
-								},
-								sizeof(LiteralExpr), Node_Literal),
+							.value = AllocLiteralIdentifier(globalReturn, returnStmt->lineNumber),
 						},
 						sizeof(MemberAccessExpr), Node_MemberAccess),
 
@@ -816,17 +780,7 @@ static Result VisitReturnStatement(NodePtr* node)
 	*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
 	VarDeclStmt* firstReturnVariable = *(VarDeclStmt**)globalReturn->instantiatedVariables.array[0];
-	returnStmt->expr = AllocASTNode(
-		&(LiteralExpr){
-			.lineNumber = returnStmt->lineNumber,
-			.type = Literal_Identifier,
-			.identifier = (IdentifierReference){
-				.text = AllocateString(firstReturnVariable->name),
-				.reference = (NodePtr){.ptr = firstReturnVariable, .type = Node_VariableDeclaration},
-			},
-		},
-		sizeof(LiteralExpr), Node_Literal);
-
+	returnStmt->expr = AllocLiteralIdentifier(firstReturnVariable, returnStmt->lineNumber);
 	return SUCCESS_RESULT;
 }
 
