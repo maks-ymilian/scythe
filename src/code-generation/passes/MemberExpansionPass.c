@@ -176,19 +176,6 @@ static StructDeclStmt* GetStructDeclFromMemberAccess(const MemberAccessExpr* mem
 	return structDecl;
 }
 
-static void AddToEnd(const NodePtr startMemberAccessNode, const NodePtr endMemberAccessNode)
-{
-	assert(startMemberAccessNode.type == Node_MemberAccess);
-	assert(endMemberAccessNode.type == Node_MemberAccess);
-	MemberAccessExpr* end = startMemberAccessNode.ptr;
-	while (end->next.ptr != NULL)
-	{
-		assert(end->next.type == Node_MemberAccess);
-		end = end->next.ptr;
-	}
-	end->next = endMemberAccessNode;
-}
-
 typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
 static size_t ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data, size_t* currentIndex)
 {
@@ -311,16 +298,17 @@ static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
-	const NodePtr copy = CopyASTNode(d->argumentNode);
-	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex + index);
+	if (index == 0 && d->argumentNode.type == Node_FunctionCall)
+		return;
 
-	const NodePtr end = AllocASTNode(
-		&(MemberAccessExpr){
-			.next = NULL_NODE,
-			.value = AllocLiteralIdentifier(member, -1),
-		},
-		sizeof(MemberAccessExpr), Node_MemberAccess);
-	AddToEnd(copy, end);
+	VarDeclStmt* structVarDecl = GetVarDeclFromMemberAccessValue(d->argumentNode);
+	assert(structVarDecl != NULL);
+
+	VarDeclStmt* currentInstance = FindInstantiated(member->name, structVarDecl);
+	assert(currentInstance != NULL);
+
+	NodePtr expr = AllocLiteralIdentifier(currentInstance, -1);
+	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
@@ -340,6 +328,8 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
 	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
 	{
+		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
+
 		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
 
 		const NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
@@ -353,24 +343,17 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 			continue;
 		PROPAGATE_ERROR(CheckTypeConversion(argStruct, paramStruct, funcCall->lineNumber));
 
-		assert(argument.type == Node_MemberAccess);
+		if (argument.type == Node_Literal)
+			ArrayRemove(&funcCall->arguments, argIndex);
 
-		ArrayRemove(&funcCall->arguments, argIndex);
 		argIndex += ForEachStructMember(argStruct, ExpandArgument,
-			&(ExpandArgumentData){
-				.argumentNode = argument,
-				.funcCall = funcCall,
-				.argumentIndex = argIndex,
-			},
-			NULL);
-		argIndex--;
-		FreeASTNode(argument);
-	}
-
-	for (size_t i = 0; i < funcCall->arguments.length; ++i)
-	{
-		NodePtr* node = funcCall->arguments.array[i];
-		PROPAGATE_ERROR(VisitExpression(node, containingStatement));
+						&(ExpandArgumentData){
+							.argumentNode = argument,
+							.funcCall = funcCall,
+							.argumentIndex = argIndex,
+						},
+						NULL) -
+					1;
 	}
 
 	return SUCCESS_RESULT;
