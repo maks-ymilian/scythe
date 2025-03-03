@@ -280,6 +280,32 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 	}
 }
 
+static Result CheckTypeConversion(const StructDeclStmt* from, const StructDeclStmt* to, const int lineNumber)
+{
+	if (from == NULL && to == NULL)
+		assert(0);
+
+	if (from == NULL && to != NULL)
+		return ERROR_RESULT(
+			"Cannot convert a non-struct type to a struct type",
+			lineNumber, currentFilePath);
+
+	if (from != NULL && to == NULL)
+		return ERROR_RESULT(
+			"Cannot convert a struct type to a non-struct type",
+			lineNumber, currentFilePath);
+
+	if (from != to)
+		return ERROR_RESULT(
+			AllocateString2Str(
+				"Cannot convert struct type \"%s\" to struct type \"%s\"",
+				from->name,
+				to->name),
+			lineNumber, currentFilePath);
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
 static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
@@ -308,24 +334,7 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 
 		if (argStruct == NULL && paramStruct == NULL)
 			continue;
-
-		if (argStruct == NULL && paramStruct != NULL)
-			return ERROR_RESULT(
-				"Cannot convert a non-struct type to a struct type",
-				funcCall->lineNumber, currentFilePath);
-
-		if (paramStruct == NULL && argStruct != NULL)
-			return ERROR_RESULT(
-				"Cannot convert a struct type to a non-struct type",
-				funcCall->lineNumber, currentFilePath);
-
-		if (argStruct != paramStruct)
-			return ERROR_RESULT(
-				AllocateString2Str(
-					"Cannot convert struct type \"%s\" to struct type \"%s\"",
-					argStruct->name,
-					paramStruct->name),
-				funcCall->lineNumber, currentFilePath);
+		PROPAGATE_ERROR(CheckTypeConversion(argStruct, paramStruct, funcCall->lineNumber));
 
 		assert(argument.type == Node_MemberAccess);
 
@@ -422,22 +431,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 		if (leftStruct == NULL && rightStruct == NULL)
 			return SUCCESS_RESULT;
-
-		if (leftStruct == NULL || rightStruct == NULL)
-			return ERROR_RESULT(
-				AllocateString1Str(
-					"Cannot use operator \"%s\" on a struct type and a non-struct type",
-					GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
-				binary->lineNumber, currentFilePath);
-
-		if (leftStruct != rightStruct)
-			return ERROR_RESULT(
-				AllocateString3Str(
-					"Cannot use operator \"%s\" on struct type \"%s\" and struct type \"%s\"",
-					GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
-					leftStruct->name,
-					rightStruct->name),
-				binary->lineNumber, currentFilePath);
+		PROPAGATE_ERROR(CheckTypeConversion(rightStruct, leftStruct, binary->lineNumber));
 
 		structDecl = leftStruct;
 	}
@@ -729,31 +723,15 @@ static Result VisitReturnStatement(NodePtr* node)
 	StructDeclStmt* exprStruct = GetStructDecl(returnStmt->expr);
 	StructDeclStmt* returnStruct = GetStructDeclFromType(returnStmt->function->oldType);
 
-	if (returnStruct == NULL)
+	if (returnStruct == NULL && exprStruct == NULL)
 	{
-		if (exprStruct != NULL)
-			return ERROR_RESULT(
-				"Cannot return a struct type in a function that returns a non-struct type",
-				returnStmt->lineNumber, currentFilePath);
-
 		if (returnStmt->expr.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
 
 		return SUCCESS_RESULT;
 	}
 
-	if (exprStruct == NULL)
-		return ERROR_RESULT(
-			"Cannot return a non-struct type in a function that returns a struct type",
-			returnStmt->lineNumber, currentFilePath);
-
-	if (exprStruct != returnStruct)
-		return ERROR_RESULT(
-			AllocateString2Str(
-				"Cannot return struct type \"%s\" from function that returns struct type \"%s\"",
-				exprStruct->name,
-				returnStruct->name),
-			returnStmt->lineNumber, currentFilePath);
+	PROPAGATE_ERROR(CheckTypeConversion(exprStruct, returnStruct, returnStmt->lineNumber));
 
 	BlockStmt* block = AllocBlockStmt(returnStmt->lineNumber).ptr;
 
