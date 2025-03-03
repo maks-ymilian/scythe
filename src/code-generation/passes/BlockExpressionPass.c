@@ -32,10 +32,12 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 			&(FuncDeclStmt){
 				.lineNumber = lineNumber,
 				.type = blockExpr->type,
+				.oldType = NULL_NODE,
 				.name = AllocateString(name),
 				.externalName = NULL,
 				.parameters = AllocateArray(sizeof(NodePtr)),
 				.block = blockExpr->block,
+				.globalReturn = NULL,
 				.public = false,
 				.external = false,
 				.uniqueName = -1,

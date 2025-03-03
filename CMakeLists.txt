@@ -49,7 +49,7 @@ if (USE_DEBUG)
 
 	option(USE_SANITIZERS OFF)
 	if (USE_SANITIZERS)
-		target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract -g)
+		target_compile_options(${PROJECT_NAME} PRIVATE -O0 -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract -g)
 		target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
 	endif ()
 endif ()

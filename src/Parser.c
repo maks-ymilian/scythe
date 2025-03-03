@@ -1052,11 +1052,13 @@ static Result ParseFunctionDeclaration(
 	*out = AllocASTNode(
 		&(FuncDeclStmt){
 			.type = type,
+			.oldType = NULL_NODE,
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),
 			.parameters = params,
 			.block = block,
+			.globalReturn = NULL,
 			.public = public != NULL,
 			.external = external != NULL,
 			.uniqueName = -1,

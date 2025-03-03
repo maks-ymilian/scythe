@@ -356,6 +356,8 @@ static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 
 static Result AddVariableInitializer(VarDeclStmt* varDecl)
 {
+	assert(varDecl != NULL);
+
 	if (varDecl->array)
 		return SUCCESS_RESULT;
 
@@ -435,6 +437,7 @@ static Result VisitStatement(const NodePtr* node);
 
 static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
+
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];

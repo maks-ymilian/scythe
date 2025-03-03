@@ -181,13 +181,16 @@ static void AddToEnd(const NodePtr startMemberAccessNode, const NodePtr endMembe
 	end->next = endMemberAccessNode;
 }
 
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, void* data);
-static size_t ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data)
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
+static size_t ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data, size_t* currentIndex)
 {
 	assert(structDecl != NULL);
 
-	size_t totalMembers = 0;
-	for (size_t i = structDecl->members.length - 1; i + 1 >= 1; --i)
+	size_t index = 0;
+	if (currentIndex == NULL)
+		currentIndex = &index;
+
+	for (size_t i = 0; i < structDecl->members.length; i++)
 	{
 		const NodePtr* memberNode = structDecl->members.array[i];
 		assert(memberNode->type == Node_VariableDeclaration);
@@ -196,13 +199,14 @@ static size_t ForEachStructMember(const StructDeclStmt* structDecl, const Struct
 		const StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 		if (structDecl == NULL)
 		{
-			func(varDecl, data);
-			totalMembers++;
+			func(varDecl, *currentIndex, data);
+			(*currentIndex)++;
 		}
 		else
-			totalMembers += ForEachStructMember(structDecl, func, data);
+			ForEachStructMember(structDecl, func, data, currentIndex);
 	}
-	return totalMembers;
+
+	return *currentIndex;
 }
 
 typedef struct
@@ -212,12 +216,12 @@ typedef struct
 	size_t argumentIndex;
 } ExpandArgumentData;
 
-static void ExpandArgument(VarDeclStmt* member, void* data)
+static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
 	const NodePtr copy = CopyASTNode(d->argumentNode);
-	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex);
+	ArrayInsert(&d->funcCall->arguments, &copy, d->argumentIndex + index);
 
 	const NodePtr end = AllocASTNode(
 		&(MemberAccessExpr){
@@ -239,7 +243,7 @@ static void ExpandArgument(VarDeclStmt* member, void* data)
 
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
-static Result ExpandFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
+static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
 {
 	assert(memberAccessNode->type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = memberAccessNode->ptr;
@@ -265,7 +269,8 @@ static Result ExpandFunctionCallArguments(const NodePtr* memberAccessNode, NodeP
 				.argumentNode = argument,
 				.funcCall = funcCall,
 				.argumentIndex = i,
-			});
+			},
+			NULL);
 		i--;
 		FreeASTNode(argument);
 	}
@@ -324,7 +329,7 @@ typedef struct
 	Array* statements;
 } GenerateStructMemberAssignmentData;
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
 {
 	const GenerateStructMemberAssignmentData* d = data;
 	VarDeclStmt* leftInstance = FindInstantiated(member->name, d->leftVarDecl);
@@ -365,6 +370,16 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, void* data)
 	ArrayAdd(d->statements, &statement);
 }
 
+static NodePtr AllocBlockStmt(const int lineNumber)
+{
+	return AllocASTNode(
+		&(BlockStmt){
+			.statements = AllocateArray(sizeof(NodePtr)),
+			.lineNumber = lineNumber,
+		},
+		sizeof(BlockStmt), Node_BlockStatement);
+}
+
 static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	assert(node->type == Node_Binary);
@@ -389,9 +404,11 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 		if (leftStruct != rightStruct)
 			return ERROR_RESULT(
-				AllocateString1Str(
-					"Cannot use operator \"%s\" on two different struct types",
-					GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
+				AllocateString3Str(
+					"Cannot use operator \"%s\" on struct type \"%s\" and struct type \"%s\"",
+					GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
+					leftStruct->name,
+					rightStruct->name),
 				binary->lineNumber, currentFilePath);
 
 		structDecl = leftStruct;
@@ -418,7 +435,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 		assert(rightExpr.type == Node_Literal); // todo function assignment
 
-		Array statements = AllocateArray(sizeof(NodePtr));
+		BlockStmt* block = AllocBlockStmt(-1).ptr;
 
 		VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(leftExpr);
 		assert(leftVarDecl != NULL);
@@ -428,10 +445,11 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		ForEachStructMember(structDecl,
 			GenerateStructMemberAssignment,
 			&(GenerateStructMemberAssignmentData){
-				.statements = &statements,
+				.statements = &block->statements,
 				.leftVarDecl = leftVarDecl,
 				.rightVarDecl = rightVarDecl,
-			});
+			},
+			NULL);
 
 		// the pass that breaks up chained assignment and equality will take care of this
 		// all struct assignment expressions will be unchained in an expression statement
@@ -439,21 +457,16 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		assert(containingStatement->type == Node_ExpressionStatement);
 
 		FreeASTNode(*containingStatement);
-		*containingStatement = AllocASTNode(
-			&(BlockStmt){
-				.lineNumber = -1,
-				.statements = statements,
-			},
-			sizeof(BlockStmt), Node_BlockStatement);
+		*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 		break;
 
 		// todo should this be implemented
-	/*case Binary_IsEqual:*/
-	/*	assert(!"is equal");*/
-	/*	break;*/
-	/*case Binary_NotEqual:*/
-	/*	assert(!"not equal");*/
-	/*	break;*/
+		/*case Binary_IsEqual:*/
+		/*	assert(!"is equal");*/
+		/*	break;*/
+		/*case Binary_NotEqual:*/
+		/*	assert(!"not equal");*/
+		/*	break;*/
 
 	default: return ERROR_RESULT(
 		AllocateString1Str(
@@ -465,8 +478,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitStatement(NodePtr* node);
-
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	switch (node->type)
@@ -474,7 +485,7 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
 		UpdateStructMemberAccess(*node);
-		PROPAGATE_ERROR(ExpandFunctionCallArguments(node, containingStatement));
+		PROPAGATE_ERROR(VisitFunctionCallArguments(node, containingStatement));
 
 		MemberAccessExpr* memberAccess = node->ptr;
 		if (memberAccess->next.ptr != NULL)
@@ -510,67 +521,94 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 
 typedef struct
 {
-	Array* array;
+	Array* destination;
+	Array* instantiatedVariables;
 	size_t index;
-	VarDeclStmt* topLevel;
 } InstantiateMemberData;
 
-static void InstantiateMember(VarDeclStmt* varDecl, void* data)
+static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
 	const NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
-	ArrayInsert(d->array, &copy, d->index);
-	ArrayAdd(&d->topLevel->instantiatedVariables, &copy.ptr);
+	ArrayInsert(d->destination, &copy, d->index + index);
+	ArrayAdd(d->instantiatedVariables, &copy.ptr);
 }
 
-static bool InstantiateStructMembers(VarDeclStmt* varDecl, Array* array, const size_t index)
+static void InstantiateStructMembers(
+	StructDeclStmt* structDecl,
+	Array* instantiatedVariables,
+	Array* destination,
+	const size_t index)
 {
-	const StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
-	if (structDecl == NULL)
-		return false;
-
 	ForEachStructMember(structDecl,
 		InstantiateMember,
 		&(InstantiateMemberData){
-			.array = array,
+			.destination = destination,
+			.instantiatedVariables = instantiatedVariables,
 			.index = index,
-			.topLevel = varDecl,
-		});
-
-	return true;
+		},
+		NULL);
 }
 
-static Result VisitStatement(NodePtr* node)
+typedef struct
+{
+	size_t index;
+	VarDeclStmt** returnValue;
+} GetStructMemberAtIndexData;
+
+static void CheckStructMemberAtIndex(VarDeclStmt* varDecl, size_t index, void* data)
+{
+	const GetStructMemberAtIndexData* d = data;
+	if (index == d->index)
+		*d->returnValue = varDecl;
+}
+
+static VarDeclStmt* GetStructMemberAtIndex(const StructDeclStmt* structDecl, size_t index)
+{
+	VarDeclStmt* varDecl = NULL;
+
+	ForEachStructMember(structDecl,
+		CheckStructMemberAtIndex,
+		&(GetStructMemberAtIndexData){
+			.index = index,
+			.returnValue = &varDecl,
+		},
+		NULL);
+
+	return varDecl;
+}
+
+static Result VisitStatement(NodePtr* node, FuncDeclStmt* structFuncDecl)
 {
 	switch (node->type)
 	{
 	case Node_VariableDeclaration:
+	{
 		VarDeclStmt* varDecl = node->ptr;
 
 		if (varDecl->initializer.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
 
-		Array statements = AllocateArray(sizeof(NodePtr));
-		if (InstantiateStructMembers(varDecl, &statements, 0))
+		StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
+		if (structDecl != NULL)
 		{
+			BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
+			InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &block->statements, 0);
 			ArrayAdd(&nodesToDelete, node);
-			*node = AllocASTNode(
-				&(BlockStmt){
-					.statements = statements,
-					.lineNumber = varDecl->lineNumber,
-				},
-				sizeof(BlockStmt), Node_BlockStatement);
+			*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 		}
-		else
-			FreeArray(&statements);
 
 		break;
+	}
 	case Node_StructDeclaration:
+	{
 		ArrayAdd(&nodesToDelete, node);
 		*node = NULL_NODE;
 		break;
+	}
 	case Node_ExpressionStatement:
+	{
 		ExpressionStmt* exprStmt = node->ptr;
 
 		// remove the expression statement if it doesnt have any side effects
@@ -607,46 +645,170 @@ static Result VisitStatement(NodePtr* node)
 			PROPAGATE_ERROR(VisitExpression(&exprStmt->expr, node));
 
 		break;
+	}
 	case Node_FunctionDeclaration:
+	{
 		FuncDeclStmt* funcDecl = node->ptr;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
 			const NodePtr* node = funcDecl->parameters.array[i];
+
 			assert(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
 			assert(varDecl->initializer.ptr == NULL);
-			if (InstantiateStructMembers(varDecl, &funcDecl->parameters, i + 1))
+
+			StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
+			if (structDecl != NULL)
 			{
+				InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
 				ArrayAdd(&nodesToDelete, node);
 				ArrayRemove(&funcDecl->parameters, i);
 				i--;
 			}
 		}
 		assert(funcDecl->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 
-		
+		StructDeclStmt* structDecl = GetStructDeclFromType(funcDecl->type);
+		if (structDecl != NULL)
+		{
+			BlockStmt* block = AllocBlockStmt(funcDecl->lineNumber).ptr;
+
+			NodePtr globalReturn = AllocASTNode(
+				&(VarDeclStmt){
+					.lineNumber = funcDecl->lineNumber,
+					.type = CopyASTNode(funcDecl->type),
+					.name = AllocateString("return"),
+					.externalName = NULL,
+					.initializer = NULL_NODE,
+					.arrayLength = NULL_NODE,
+					.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
+					.array = false,
+					.public = false,
+					.external = false,
+					.uniqueName = -1,
+				},
+				sizeof(VarDeclStmt), Node_VariableDeclaration);
+			funcDecl->globalReturn = globalReturn.ptr;
+			PROPAGATE_ERROR(VisitStatement(&globalReturn, NULL));
+			ArrayAdd(&block->statements, &globalReturn);
+
+			ArrayAdd(&block->statements, node);
+			*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
+
+			VarDeclStmt* first = GetStructMemberAtIndex(structDecl, 0);
+			assert(first != NULL);
+			assert(funcDecl->oldType.ptr == NULL);
+			funcDecl->oldType = funcDecl->type;
+			funcDecl->type = CopyASTNode(first->type);
+
+			PROPAGATE_ERROR(VisitStatement(&funcDecl->block, funcDecl));
+		}
+		else
+			PROPAGATE_ERROR(VisitStatement(&funcDecl->block, NULL));
+
 		break;
+	}
 	case Node_BlockStatement:
+	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
+			PROPAGATE_ERROR(VisitStatement(block->statements.array[i], structFuncDecl));
 		break;
+	}
 	case Node_If:
+	{
 		IfStmt* ifStmt = node->ptr;
-		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
-		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt, structFuncDecl));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt, structFuncDecl));
 		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
 		break;
+	}
 	case Node_Return:
+	{
 		ReturnStmt* returnStmt = node->ptr;
-		if (returnStmt->expr.ptr != NULL)
-			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
+		StructDeclStmt* exprStruct = GetStructDecl(returnStmt->expr);
+
+		if (structFuncDecl == NULL)
+		{
+			if (exprStruct != NULL)
+				return ERROR_RESULT(
+					"Cannot return a struct type in a function that returns a non-struct type",
+					returnStmt->lineNumber, currentFilePath);
+
+			if (returnStmt->expr.ptr != NULL)
+				PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
+			break;
+		}
+
+		if (exprStruct == NULL)
+			return ERROR_RESULT(
+				"Cannot return a non-struct type in a function that returns a struct type",
+				returnStmt->lineNumber, currentFilePath);
+
+		assert(structFuncDecl->oldType.ptr != NULL);
+		StructDeclStmt* returnStruct = GetStructDeclFromType(structFuncDecl->oldType);
+		if (exprStruct != returnStruct)
+			return ERROR_RESULT(
+				AllocateString2Str(
+					"Cannot return struct type \"%s\" from function that returns struct type \"%s\"",
+					exprStruct->name,
+					returnStruct->name),
+				returnStmt->lineNumber, currentFilePath);
+
+		BlockStmt* block = AllocBlockStmt(returnStmt->lineNumber).ptr;
+
+		NodePtr statement = AllocASTNode(
+			&(ExpressionStmt){
+				.expr = AllocASTNode(
+					&(BinaryExpr){
+						.lineNumber = returnStmt->lineNumber,
+						.operatorType = Binary_Assignment,
+						.right = returnStmt->expr,
+						.left = AllocASTNode(
+							&(MemberAccessExpr){
+								.next = NULL_NODE,
+								.value = AllocASTNode(
+									&(LiteralExpr){
+										.lineNumber = returnStmt->lineNumber,
+										.type = Literal_Identifier,
+										.identifier = (IdentifierReference){
+											.text = AllocateString(structFuncDecl->globalReturn->name),
+											.reference = (NodePtr){.ptr = structFuncDecl->globalReturn, .type = Node_VariableDeclaration},
+										},
+									},
+									sizeof(LiteralExpr), Node_Literal),
+							},
+							sizeof(MemberAccessExpr), Node_MemberAccess),
+
+					},
+					sizeof(BinaryExpr), Node_Binary),
+			},
+			sizeof(ExpressionStmt), Node_ExpressionStatement);
+		PROPAGATE_ERROR(VisitStatement(&statement, structFuncDecl));
+		ArrayAdd(&block->statements, &statement);
+
+		ArrayAdd(&block->statements, node);
+		*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
+
+		VarDeclStmt* firstReturnVariable = *(VarDeclStmt**)structFuncDecl->globalReturn->instantiatedVariables.array[0];
+		returnStmt->expr = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = returnStmt->lineNumber,
+				.type = Literal_Identifier,
+				.identifier = (IdentifierReference){
+					.text = AllocateString(firstReturnVariable->name),
+					.reference = (NodePtr){.ptr = firstReturnVariable, .type = Node_VariableDeclaration},
+				},
+			},
+			sizeof(LiteralExpr), Node_Literal);
 		break;
+	}
 	case Node_Section:
+	{
 		SectionStmt* section = node->ptr;
-		PROPAGATE_ERROR(VisitStatement(&section->block));
+		PROPAGATE_ERROR(VisitStatement(&section->block, structFuncDecl));
 		break;
+	}
 	case Node_Import:
 	case Node_Null:
 		break;
@@ -670,7 +832,7 @@ Result MemberExpansionPass(const AST* ast)
 		currentFilePath = module->path;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
+			PROPAGATE_ERROR(VisitStatement(module->statements.array[i], NULL));
 	}
 
 	for (size_t i = 0; i < nodesToDelete.length; ++i)

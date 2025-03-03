@@ -228,10 +228,12 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr type;
+	NodePtr oldType;
 	char* name;
 	char* externalName;
 	Array parameters;
 	NodePtr block;
+	VarDeclStmt* globalReturn;
 	bool public;
 	bool external;
 	int uniqueName;
