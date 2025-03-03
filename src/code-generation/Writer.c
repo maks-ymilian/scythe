@@ -317,7 +317,9 @@ static void VisitSection(const SectionStmt* section)
 	WriteChar('\n');
 
 	assert(section->block.type == Node_BlockStatement);
-	VisitBlock(section->block.ptr, true);
+	const BlockStmt* block = section->block.ptr;
+	for (size_t i = 0; i < block->statements.length; ++i)
+		VisitStatement(block->statements.array[i]);
 
 	WriteChar('\n');
 }
