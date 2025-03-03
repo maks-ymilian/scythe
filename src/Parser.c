@@ -1058,6 +1058,7 @@ static Result ParseFunctionDeclaration(
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),
 			.parameters = params,
+			.oldParameters = AllocateArray(sizeof(NodePtr)),
 			.block = block,
 			.globalReturn = NULL,
 			.public = public != NULL,

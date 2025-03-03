@@ -232,6 +232,7 @@ typedef struct
 	char* name;
 	char* externalName;
 	Array parameters;
+	Array oldParameters;
 	NodePtr block;
 	VarDeclStmt* globalReturn;
 	bool public;

@@ -147,7 +147,7 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 	*memberAccessNode = next;
 }
 
-static StructDeclStmt* GetStructVariableFromMemberAccess(const MemberAccessExpr* memberAccess)
+static StructDeclStmt* GetStructDeclFromMemberAccess(const MemberAccessExpr* memberAccess)
 {
 	if (memberAccess == NULL)
 		return NULL;
@@ -242,49 +242,6 @@ static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
 	AddToEnd(copy, end);
 }
 
-static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
-
-static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
-{
-	assert(memberAccessNode->type == Node_MemberAccess);
-	const MemberAccessExpr* memberAccess = memberAccessNode->ptr;
-	if (memberAccess->value.type != Node_FunctionCall)
-		return SUCCESS_RESULT;
-
-	FuncCallExpr* funcCall = memberAccess->value.ptr;
-	for (size_t i = 0; i < funcCall->arguments.length; ++i)
-	{
-		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[i];
-		if (argument.type == Node_Literal)
-			continue;
-		assert(argument.type == Node_MemberAccess); // todo a function call or array access could still return a struct
-
-		const MemberAccessExpr* memberAccess = argument.ptr;
-		const StructDeclStmt* structDecl = GetStructVariableFromMemberAccess(memberAccess);
-		if (structDecl == NULL)
-			continue;
-
-		ArrayRemove(&funcCall->arguments, i);
-		i += ForEachStructMember(structDecl, ExpandArgument,
-			&(ExpandArgumentData){
-				.argumentNode = argument,
-				.funcCall = funcCall,
-				.argumentIndex = i,
-			},
-			NULL);
-		i--;
-		FreeASTNode(argument);
-	}
-
-	for (size_t i = 0; i < funcCall->arguments.length; ++i)
-	{
-		NodePtr* node = funcCall->arguments.array[i];
-		PROPAGATE_ERROR(VisitExpression(node, containingStatement));
-	}
-
-	return SUCCESS_RESULT;
-}
-
 static StructDeclStmt* GetStructDecl(const NodePtr node)
 {
 	switch (node.type)
@@ -321,6 +278,76 @@ static StructDeclStmt* GetStructDecl(const NodePtr node)
 
 	default: return NULL;
 	}
+}
+
+static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
+
+static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePtr* containingStatement)
+{
+	assert(memberAccessNode->type == Node_MemberAccess);
+	const MemberAccessExpr* memberAccess = memberAccessNode->ptr;
+	if (memberAccess->value.type != Node_FunctionCall)
+		return SUCCESS_RESULT;
+
+	FuncCallExpr* funcCall = memberAccess->value.ptr;
+	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
+	FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+
+	// add a pass so this doesnt get hit
+	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
+	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
+	{
+		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
+
+		const NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
+		assert(paramNode->type == Node_VariableDeclaration);
+		const VarDeclStmt* param = paramNode->ptr;
+
+		const StructDeclStmt* argStruct = GetStructDecl(argument);
+		const StructDeclStmt* paramStruct = GetStructDeclFromType(param->type);
+
+		if (argStruct == NULL && paramStruct == NULL)
+			continue;
+
+		if (argStruct == NULL && paramStruct != NULL)
+			return ERROR_RESULT(
+				"Cannot convert a non-struct type to a struct type",
+				funcCall->lineNumber, currentFilePath);
+
+		if (paramStruct == NULL && argStruct != NULL)
+			return ERROR_RESULT(
+				"Cannot convert a struct type to a non-struct type",
+				funcCall->lineNumber, currentFilePath);
+
+		if (argStruct != paramStruct)
+			return ERROR_RESULT(
+				AllocateString2Str(
+					"Cannot convert struct type \"%s\" to struct type \"%s\"",
+					argStruct->name,
+					paramStruct->name),
+				funcCall->lineNumber, currentFilePath);
+
+		assert(argument.type == Node_MemberAccess);
+
+		ArrayRemove(&funcCall->arguments, argIndex);
+		argIndex += ForEachStructMember(argStruct, ExpandArgument,
+			&(ExpandArgumentData){
+				.argumentNode = argument,
+				.funcCall = funcCall,
+				.argumentIndex = argIndex,
+			},
+			NULL);
+		argIndex--;
+		FreeASTNode(argument);
+	}
+
+	for (size_t i = 0; i < funcCall->arguments.length; ++i)
+	{
+		NodePtr* node = funcCall->arguments.array[i];
+		PROPAGATE_ERROR(VisitExpression(node, containingStatement));
+	}
+
+	return SUCCESS_RESULT;
 }
 
 typedef struct
@@ -627,6 +654,14 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 {
 	assert(node->type == Node_FunctionDeclaration);
 	FuncDeclStmt* funcDecl = node->ptr;
+
+	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+	{
+		const NodePtr* node = funcDecl->parameters.array[i];
+		NodePtr copy = CopyASTNode(*node);
+		ArrayAdd(&funcDecl->oldParameters, &copy);
+	}
+
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];

@@ -36,6 +36,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 				.name = AllocateString(name),
 				.externalName = NULL,
 				.parameters = AllocateArray(sizeof(NodePtr)),
+				.oldParameters = AllocateArray(sizeof(NodePtr)),
 				.block = blockExpr->block,
 				.globalReturn = NULL,
 				.public = false,
