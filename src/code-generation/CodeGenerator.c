@@ -6,9 +6,9 @@
 #include "passes/GlobalSectionPass.h"
 #include "passes/MemberExpansionPass.h"
 #include "passes/ResolverPass.h"
+#include "passes/ReturnTaggingPass.h"
 #include "passes/TypeConversionPass.h"
 #include "passes/UniqueNamePass.h"
-#include "passes/ReturnTaggingPass.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
