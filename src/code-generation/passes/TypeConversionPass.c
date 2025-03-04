@@ -331,12 +331,64 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitUnaryExpression(const NodePtr* node, PrimitiveType* outType)
+{
+	assert(node->type == Node_Unary);
+	UnaryExpr* unary = node->ptr;
+
+	PrimitiveType exprType;
+	PROPAGATE_ERROR(VisitExpression(&unary->expression, &exprType));
+
+	const char* errorMessage = AllocateString2Str(
+		"Cannot use operator \"%s\" on type \"%s\"",
+		GetTokenTypeString(unaryOperatorToTokenType[unary->operatorType]),
+		GetTokenTypeString(PrimitiveTypeToTokenType(exprType)));
+
+	switch (unary->operatorType)
+	{
+	case Unary_Decrement:
+	case Unary_Increment:
+	case Unary_Minus:
+	case Unary_Plus:
+	{
+		PROPAGATE_ERROR(ConvertExpression(
+			&unary->expression,
+			exprType,
+			Primitive_Float,
+			unary->lineNumber,
+			errorMessage));
+
+		if (outType != NULL) *outType = exprType;
+		break;
+	}
+	case Unary_Negate:
+	{
+		PROPAGATE_ERROR(ConvertExpression(
+			&unary->expression,
+			exprType,
+			Primitive_Bool,
+			unary->lineNumber,
+			errorMessage));
+
+		if (outType != NULL) *outType = Primitive_Bool;
+		break;
+	}
+
+	default: INVALID_VALUE(unary->operatorType);
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	switch (node->type)
 	{
 	case Node_Binary:
 		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
+		break;
+	case Node_Unary:
+		PROPAGATE_ERROR(VisitUnaryExpression(node, outType));
 		break;
 	case Node_Literal:
 		VisitLiteral(node->ptr, outType);

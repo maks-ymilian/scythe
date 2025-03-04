@@ -526,7 +526,6 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 	case Node_Unary:
 		UnaryExpr* unary = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
-		assert(!"unary"); // todo implement
 		break;
 	case Node_Literal:
 		const LiteralExpr* literal = node->ptr;
