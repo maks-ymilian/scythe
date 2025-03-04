@@ -107,19 +107,18 @@ static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumbe
 static NodePtr AllocIntToBoolConversion(const NodePtr expr, const int lineNumber)
 {
 	return AllocASTNode(
-		&(BinaryExpr){
+		&(UnaryExpr){
 			.lineNumber = lineNumber,
-			.operatorType = Binary_NotEqual,
-			.left = expr,
-			.right = AllocASTNode(
-				&(LiteralExpr){
+			.operatorType = Unary_Negate,
+			.expression = AllocASTNode(
+				&(UnaryExpr){
 					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = 0,
+					.operatorType = Unary_Negate,
+					.expression = expr,
 				},
-				sizeof(LiteralExpr), Node_Literal),
+				sizeof(UnaryExpr), Node_Unary),
 		},
-		sizeof(BinaryExpr), Node_Binary);
+		sizeof(UnaryExpr), Node_Unary);
 }
 
 static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
