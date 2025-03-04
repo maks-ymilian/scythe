@@ -33,6 +33,10 @@ static void VisitStatement(const NodePtr* node)
 		SectionStmt* section = node->ptr;
 		VisitStatement(&section->block);
 		break;
+	case Node_While:
+		WhileStmt* whileStmt = node->ptr;
+		VisitStatement(&whileStmt->stmt);
+		break;
 	case Node_VariableDeclaration:
 	case Node_StructDeclaration:
 	case Node_ExpressionStatement:

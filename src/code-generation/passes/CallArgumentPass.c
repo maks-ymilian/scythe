@@ -134,6 +134,11 @@ static Result VisitStatement(const NodePtr* node)
 		const ExpressionStmt* exprStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&exprStmt->expr));
 		break;
+	case Node_While:
+		const WhileStmt* whileStmt = node->ptr;
+		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr));
+		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
+		break;
 	case Node_Import:
 	case Node_Null:
 		break;

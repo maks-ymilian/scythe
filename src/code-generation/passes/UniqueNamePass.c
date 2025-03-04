@@ -77,6 +77,11 @@ static void VisitStatement(const NodePtr node)
 		assert(section->block.type == Node_BlockStatement);
 		VisitStatement(section->block);
 		break;
+	case Node_While:
+		const WhileStmt* whileStmt = node.ptr;
+		VisitExpression(whileStmt->expr);
+		VisitStatement(whileStmt->stmt);
+		break;
 	case Node_Import:
 	case Node_Null:
 		break;

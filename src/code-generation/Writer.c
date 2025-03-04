@@ -271,6 +271,17 @@ static void VisitIfStatement(const IfStmt* ifStmt)
 	WriteString(";\n");
 }
 
+static void VisitWhileStatement(const WhileStmt* whileStmt)
+{
+	WriteString("while (");
+	VisitExpression(whileStmt->expr);
+	WriteString(")\n");
+
+	assert(whileStmt->stmt.type == Node_BlockStatement);
+	VisitBlock(whileStmt->stmt.ptr, false);
+	WriteString(";\n");
+}
+
 static void VisitStatement(const NodePtr* node)
 {
 	switch (node->type)
@@ -291,6 +302,9 @@ static void VisitStatement(const NodePtr* node)
 		break;
 	case Node_If:
 		VisitIfStatement(node->ptr);
+		break;
+	case Node_While:
+		VisitWhileStatement(node->ptr);
 		break;
 	case Node_Null:
 		break;

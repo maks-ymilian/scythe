@@ -138,6 +138,11 @@ static void VisitStatement(NodePtr* node)
 		ReturnStmt* returnStmt = node->ptr;
 		VisitExpression(&returnStmt->expr, node, returnStmt->lineNumber);
 		break;
+	case Node_While:
+		WhileStmt* whileStmt = node->ptr;
+		VisitExpression(&whileStmt->expr, node, whileStmt->lineNumber);
+		VisitStatement(&whileStmt->stmt);
+		break;
 	case Node_Import:
 	case Node_Null:
 		break;

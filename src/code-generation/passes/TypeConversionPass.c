@@ -491,6 +491,15 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(VisitStatement(&section->block));
 		break;
 	}
+	case Node_While:
+	{
+		WhileStmt* whileStmt = node->ptr;
+		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
+		PrimitiveType type;
+		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, &type));
+		PROPAGATE_ERROR(ConvertExpression(&whileStmt->expr, type, Primitive_Bool, whileStmt->lineNumber, NULL));
+		break;
+	}
 	case Node_Import:
 		break;
 	default: INVALID_VALUE(node->type);

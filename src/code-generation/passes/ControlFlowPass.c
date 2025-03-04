@@ -334,6 +334,18 @@ static Result VisitBlock(
 			PROPAGATE_ERROR(VisitBlock(funcDecl->block.ptr, funcDecl->type, NULL, NULL, NULL));
 			break;
 		}
+		case Node_While:
+		{
+			const WhileStmt* whileStmt = node->ptr;
+			assert(whileStmt->stmt.type == Node_BlockStatement);
+
+			bool allReturn;
+			PROPAGATE_ERROR(VisitBlock(whileStmt->stmt.ptr, returnType, variables, &prevStatementReturns, &allReturn));
+			if (allReturn)
+				allPathsReturn = true;
+
+			break;
+		}
 		case Node_ExpressionStatement:
 		case Node_VariableDeclaration:
 		case Node_Null:

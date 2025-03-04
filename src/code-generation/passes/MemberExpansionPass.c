@@ -818,6 +818,11 @@ static Result VisitStatement(NodePtr* node)
 		SectionStmt* section = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&section->block));
 		break;
+	case Node_While:
+		WhileStmt* whileStmt = node->ptr;
+		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, node));
+		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
+		break;
 	case Node_Import:
 	case Node_Null:
 		break;
