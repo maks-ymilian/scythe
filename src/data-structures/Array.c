@@ -54,7 +54,7 @@ void ArrayInsert(Array* array, const void* item, const size_t index)
 		array->array = new;
 	}
 
-	memmove(array->array + index + 1, array->array + index, (array->length - index) * sizeof(void*));
+	memmove(array->array + index + 1, array->array + index, (array->length - 1 - index) * sizeof(void*));
 
 	void* ptr = malloc(array->sizeOfType);
 	array->array[index] = ptr;
