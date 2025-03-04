@@ -54,7 +54,8 @@ static PrimitiveType GetType(const NodePtr type)
 	return literal->primitiveType;
 }
 
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
+static Result VisitExpression(NodePtr* node, PrimitiveType* outType);
+
 static Result ConvertExpression(
 	NodePtr* expr,
 	PrimitiveType exprType,
@@ -133,8 +134,6 @@ static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
 	default: INVALID_VALUE(primitiveType);
 	}
 }
-
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType);
 
 static Result ConvertExpression(
 	NodePtr* expr,
@@ -331,7 +330,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitUnaryExpression(const NodePtr* node, PrimitiveType* outType)
+static Result VisitUnaryExpression(NodePtr* node, PrimitiveType* outType)
 {
 	assert(node->type == Node_Unary);
 	UnaryExpr* unary = node->ptr;
@@ -348,6 +347,30 @@ static Result VisitUnaryExpression(const NodePtr* node, PrimitiveType* outType)
 	{
 	case Unary_Decrement:
 	case Unary_Increment:
+	{
+		*node = AllocASTNode(
+			&(BinaryExpr){
+				.lineNumber = unary->lineNumber,
+				.operatorType =
+					unary->operatorType == Unary_Increment
+						? Binary_AddAssign
+						: Binary_SubtractAssign,
+				.left = unary->expression,
+				.right = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = unary->lineNumber,
+						.type = Literal_Int,
+						.intValue = 1,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
+			sizeof(BinaryExpr), Node_Binary);
+		unary->expression = NULL_NODE;
+		FreeASTNode((NodePtr){.ptr = unary, .type = Node_Unary});
+
+		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
+		break;
+	}
 	case Unary_Minus:
 	case Unary_Plus:
 	{
@@ -380,7 +403,7 @@ static Result VisitUnaryExpression(const NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitExpression(const NodePtr* node, PrimitiveType* outType)
+static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
 {
 	switch (node->type)
 	{
@@ -515,7 +538,7 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_ExpressionStatement:
 	{
-		const ExpressionStmt* expressionStmt = node->ptr;
+		ExpressionStmt* expressionStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr, NULL));
 		break;
 	}

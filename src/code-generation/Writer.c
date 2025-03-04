@@ -190,8 +190,6 @@ static void VisitUnaryExpression(const UnaryExpr* unary)
 	case Unary_Plus: operator= "+"; break;
 	case Unary_Minus: operator= "-"; break;
 	case Unary_Negate: operator= "!"; break;
-	case Unary_Increment: operator= "++"; break;
-	case Unary_Decrement: operator= "--"; break;
 	default: INVALID_VALUE(unary->operatorType);
 	}
 
