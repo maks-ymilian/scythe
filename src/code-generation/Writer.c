@@ -182,11 +182,29 @@ static void VisitBinaryExpression(const BinaryExpr* binary)
 	WriteChar(')');
 }
 
+static void VisitUnaryExpression(const UnaryExpr* unary)
+{
+	char* operator;
+	switch (unary->operatorType)
+	{
+	case Unary_Plus: operator= "+"; break;
+	case Unary_Minus: operator= "-"; break;
+	case Unary_Negate: operator= "!"; break;
+	case Unary_Increment: operator= "++"; break;
+	case Unary_Decrement: operator= "--"; break;
+	default: INVALID_VALUE(unary->operatorType);
+	}
+
+	WriteString(operator);
+	VisitExpression(unary->expression);
+}
+
 static void VisitExpression(const NodePtr node)
 {
 	switch (node.type)
 	{
 	case Node_Binary: VisitBinaryExpression(node.ptr); break;
+	case Node_Unary: VisitUnaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
 	default: INVALID_VALUE(node.type);
@@ -278,8 +296,7 @@ static void VisitWhileStatement(const WhileStmt* whileStmt)
 	WriteString(")\n");
 
 	assert(whileStmt->stmt.type == Node_BlockStatement);
-	VisitBlock(whileStmt->stmt.ptr, false);
-	WriteString(";\n");
+	VisitBlock(whileStmt->stmt.ptr, true);
 }
 
 static void VisitStatement(const NodePtr* node)
