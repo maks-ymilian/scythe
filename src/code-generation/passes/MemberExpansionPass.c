@@ -324,7 +324,6 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 	FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 
-	// todo add a pass so this doesnt get hit
 	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
 	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
 	{
@@ -664,11 +663,16 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
-		assert(varDecl->initializer.ptr == NULL);
 
 		StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 		if (structDecl != NULL)
 		{
+			if (varDecl->initializer.ptr != NULL)
+				PROPAGATE_ERROR(CheckTypeConversion(
+					GetStructDecl(varDecl->initializer),
+					structDecl,
+					varDecl->lineNumber));
+
 			InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
 			ArrayAdd(&nodesToDelete, node);
 			ArrayRemove(&funcDecl->parameters, i);

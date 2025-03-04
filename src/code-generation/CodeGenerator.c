@@ -2,6 +2,7 @@
 
 #include "Writer.h"
 #include "passes/BlockExpressionPass.h"
+#include "passes/CallArgumentPass.h"
 #include "passes/ControlFlowPass.h"
 #include "passes/GlobalSectionPass.h"
 #include "passes/MemberExpansionPass.h"
@@ -15,6 +16,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
 	BlockExpressionPass(syntaxTree);
 	ReturnTaggingPass(syntaxTree);
+	PROPAGATE_ERROR(CallArgumentPass(syntaxTree));
 	PROPAGATE_ERROR(MemberExpansionPass(syntaxTree));
 	PROPAGATE_ERROR(ControlFlowPass(syntaxTree));
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));

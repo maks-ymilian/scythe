@@ -69,16 +69,12 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, PrimitiveType* outType)
 
 	if (outType != NULL) *outType = GetType(funcDecl->type);
 
-	if (funcDecl->parameters.length != funcCall->arguments.length)
-		return ERROR_RESULT("Function is called with wrong number of arguments",
-			funcCall->lineNumber, currentFilePath);
-
+	assert(funcDecl->parameters.length == funcCall->arguments.length);
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
-		assert(varDecl->initializer.ptr == NULL);
 
 		NodePtr* expr = funcCall->arguments.array[i];
 
@@ -437,13 +433,11 @@ static Result VisitStatement(const NodePtr* node);
 
 static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
-
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
-		assert(varDecl->initializer.ptr == NULL);
 
 		PROPAGATE_ERROR(VisitVariableDeclaration(varDecl, false));
 	}

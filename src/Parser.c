@@ -1005,21 +1005,6 @@ static Result ParseArrayDeclaration(
 	return SUCCESS_RESULT;
 }
 
-static Result ParseVarDeclNoSemicolonNoInitializer(NodePtr* out)
-{
-	*out = NULL_NODE;
-	PROPAGATE_ERROR(ParseVarDeclNoSemicolon(out));
-	if (out->ptr == NULL)
-		return NOT_FOUND_RESULT;
-
-	assert(out->type == Node_VariableDeclaration);
-	const VarDeclStmt* varDecl = out->ptr;
-	if (varDecl->initializer.ptr != NULL)
-		return ERROR_RESULT_LINE("Variable initializers are not allowed here");
-
-	return SUCCESS_RESULT;
-}
-
 static Result ParseFunctionDeclaration(
 	NodePtr* out,
 	const Token* public,
@@ -1031,7 +1016,7 @@ static Result ParseFunctionDeclaration(
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolonNoInitializer, Token_RightBracket));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon, Token_RightBracket));
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
