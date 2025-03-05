@@ -40,6 +40,7 @@ static void VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	case Node_StructDeclaration:
 	case Node_ExpressionStatement:
+	case Node_LoopControl:
 	case Node_Import:
 	case Node_Null:
 		break;

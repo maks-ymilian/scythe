@@ -143,6 +143,7 @@ static void VisitStatement(NodePtr* node)
 		VisitExpression(&whileStmt->expr, node, whileStmt->lineNumber);
 		VisitStatement(&whileStmt->stmt);
 		break;
+	case Node_LoopControl:
 	case Node_Import:
 	case Node_Null:
 		break;

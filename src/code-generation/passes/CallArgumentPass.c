@@ -139,6 +139,7 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr));
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		break;
+	case Node_LoopControl:
 	case Node_Import:
 	case Node_Null:
 		break;
