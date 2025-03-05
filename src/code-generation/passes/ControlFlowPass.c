@@ -189,6 +189,128 @@ static void MoveStatements(BlockStmt* block, size_t startIndex, Array* dest)
 		ArrayRemove(&block->statements, i);
 }
 
+static bool StatementReturns(const NodePtr* node, bool allPaths)
+{
+	switch (node->type)
+	{
+	case Node_Return:
+		return true;
+	case Node_BlockStatement:
+		BlockStmt* block = node->ptr;
+		for (size_t i = 0; i < block->statements.length; ++i)
+			if (StatementReturns(block->statements.array[i], allPaths))
+				return true;
+		return false;
+	case Node_If:
+		const IfStmt* ifStmt = node->ptr;
+		const bool trueReturns = StatementReturns(&ifStmt->trueStmt, allPaths);
+		const bool falseReturns = StatementReturns(&ifStmt->falseStmt, allPaths);
+		return allPaths ? trueReturns && falseReturns : trueReturns || falseReturns;
+	case Node_While:
+		const WhileStmt* whileStmt = node->ptr;
+		return StatementReturns(&whileStmt->stmt, allPaths);
+	case Node_FunctionDeclaration:
+	case Node_ExpressionStatement:
+	case Node_VariableDeclaration:
+	case Node_Null:
+		return false;
+	default: INVALID_VALUE(node->type);
+	}
+}
+
+static Result VisitReturnStatement(NodePtr* node, const ReturnBlockVariables* variables, bool isVoid)
+{
+	assert(node->type == Node_Return);
+	ReturnStmt* returnStmt = node->ptr;
+
+	Array statements = AllocateArray(sizeof(NodePtr));
+
+	NodePtr setFlag = AllocSetReturnFlag(variables->returnFlagDecl, returnStmt->lineNumber);
+	ArrayAdd(&statements, &setFlag);
+
+	if (!isVoid)
+	{
+		if (returnStmt->expr.ptr == NULL)
+			return ERROR_RESULT("Non-void function must return a value", returnStmt->lineNumber, currentFilePath);
+
+		NodePtr setValue = AllocSetReturnValue(variables->returnValueDecl, returnStmt->expr, returnStmt->lineNumber);
+		ArrayAdd(&statements, &setValue);
+	}
+	else
+	{
+		if (returnStmt->expr.ptr != NULL)
+			return ERROR_RESULT("Void function cannot return a value", returnStmt->lineNumber, currentFilePath);
+	}
+
+	NodePtr new = AllocASTNode(
+		&(BlockStmt){
+			.lineNumber = returnStmt->lineNumber,
+			.statements = statements,
+		},
+		sizeof(BlockStmt), Node_BlockStatement);
+
+	FreeASTNode(*node);
+	*node = new;
+	return SUCCESS_RESULT;
+}
+
+static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType);
+
+static Result VisitBlock(NodePtr blockNode, const ReturnBlockVariables* variables, bool isVoid)
+{
+	assert(blockNode.type == Node_BlockStatement);
+	BlockStmt* block = blockNode.ptr;
+
+	for (size_t i = 1; i < block->statements.length; i++)
+	{
+		if (!StatementReturns(block->statements.array[i - 1], false))
+			continue;
+
+		Array statements = AllocateArray(sizeof(NodePtr));
+		MoveStatements(block, i, &statements);
+		NodePtr ifNode = AllocIfReturnFlagIsFalse(variables->returnFlagDecl, &statements, -1);
+		ArrayAdd(&block->statements, &ifNode);
+
+		assert(ifNode.type == Node_If);
+		assert(((NodePtr*)block->statements.array[i])->ptr == ifNode.ptr);
+	}
+
+	for (size_t i = 0; i < block->statements.length; i++)
+	{
+		NodePtr* node = block->statements.array[i];
+		switch (node->type)
+		{
+		case Node_Return:
+			PROPAGATE_ERROR(VisitReturnStatement(node, variables, isVoid));
+			break;
+		case Node_BlockStatement:
+			PROPAGATE_ERROR(VisitBlock(*node, variables, isVoid));
+			break;
+		case Node_If:
+			const IfStmt* ifStmt = node->ptr;
+			PROPAGATE_ERROR(VisitBlock(ifStmt->trueStmt, variables, isVoid));
+			if (ifStmt->falseStmt.ptr != NULL)
+				PROPAGATE_ERROR(VisitBlock(ifStmt->falseStmt, variables, isVoid));
+			break;
+		case Node_While:
+			const WhileStmt* whileStmt = node->ptr;
+			PROPAGATE_ERROR(VisitBlock(whileStmt->stmt, variables, isVoid));
+			break;
+		case Node_FunctionDeclaration:
+			const FuncDeclStmt* funcDecl = node->ptr;
+			PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, funcDecl->type));
+			break;
+		case Node_ExpressionStatement:
+		case Node_VariableDeclaration:
+		case Node_Null:
+			break;
+		default: INVALID_VALUE(node->type);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static bool TypeIsVoid(const NodePtr type)
 {
 	if (type.type != Node_Literal)
@@ -201,175 +323,48 @@ static bool TypeIsVoid(const NodePtr type)
 	return literal->primitiveType == Primitive_Void;
 }
 
-static Result VisitBlock(
-	BlockStmt* block,
-	const NodePtr returnType,
-	ReturnBlockVariables* variables,
-	bool* outReturns,
-	bool* outAllPathsReturn)
+static NodePtr CreateInnerBlock(BlockStmt* block)
 {
-	if (outReturns != NULL)
-		*outReturns = false;
+	NodePtr innerBlock = AllocASTNode(
+		&(BlockStmt){
+			.lineNumber = block->lineNumber,
+			.statements = block->statements,
+		},
+		sizeof(BlockStmt), Node_BlockStatement);
+
+	block->statements = AllocateArray(sizeof(NodePtr));
+	ArrayAdd(&block->statements, &innerBlock);
+
+	return innerBlock;
+}
+
+static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType)
+{
+	assert(blockNode.type == Node_BlockStatement);
+	BlockStmt* block = blockNode.ptr;
+
+	NodePtr innerBlock = CreateInnerBlock(block);
+
+	ReturnBlockVariables variables;
+	variables.returnFlagDecl = AllocReturnFlagDecl(block->lineNumber);
+	ArrayInsert(&block->statements, &variables.returnFlagDecl, 0);
+
+	variables.returnValueDecl = NULL_NODE;
 
 	const bool isVoid = returnType.ptr == NULL || TypeIsVoid(returnType);
-	const bool isTopLevel = variables == NULL;
-
-	ReturnBlockVariables _;
-	if (isTopLevel)
+	if (!isVoid)
 	{
-		variables = &_;
-		variables->returnFlagDecl = AllocReturnFlagDecl(block->lineNumber);
-		ArrayInsert(&block->statements, &variables->returnFlagDecl, 0);
+		variables.returnValueDecl = AllocReturnValueDecl(returnType, block->lineNumber);
+		ArrayInsert(&block->statements, &variables.returnValueDecl, 0);
 
-		variables->returnValueDecl = NULL_NODE;
-		if (!isVoid)
-		{
-			variables->returnValueDecl = AllocReturnValueDecl(returnType, block->lineNumber);
-			ArrayInsert(&block->statements, &variables->returnValueDecl, 0);
-		}
-	}
-
-	bool allPathsReturn = false;
-
-	bool prevStatementReturns = false;
-	for (size_t i = 0; i < block->statements.length; i++)
-	{
-		IfStmt* checkReturnIf = NULL;
-		if (prevStatementReturns)
-		{
-			Array statements = AllocateArray(sizeof(NodePtr));
-			MoveStatements(block, i, &statements);
-			NodePtr ifNode = AllocIfReturnFlagIsFalse(variables->returnFlagDecl, &statements, -1);
-			ArrayAdd(&block->statements, &ifNode);
-
-			assert(ifNode.type == Node_If);
-			checkReturnIf = ifNode.ptr;
-
-			assert(((NodePtr*)block->statements.array[i])->ptr == ifNode.ptr);
-		}
-
-		NodePtr* node = block->statements.array[i];
-		switch (node->type)
-		{
-		case Node_Return:
-		{
-			prevStatementReturns = true;
-			allPathsReturn = true;
-
-			ReturnStmt* returnStmt = node->ptr;
-
-			Array statements = AllocateArray(sizeof(NodePtr));
-
-			NodePtr setFlag = AllocSetReturnFlag(variables->returnFlagDecl, returnStmt->lineNumber);
-			ArrayAdd(&statements, &setFlag);
-
-			if (!isVoid)
-			{
-				if (returnStmt->expr.ptr == NULL)
-					return ERROR_RESULT("Non-void function must return a value", returnStmt->lineNumber, currentFilePath);
-
-				NodePtr setValue = AllocSetReturnValue(variables->returnValueDecl, returnStmt->expr, returnStmt->lineNumber);
-				ArrayAdd(&statements, &setValue);
-			}
-			else
-			{
-				if (returnStmt->expr.ptr != NULL)
-					return ERROR_RESULT("Void function cannot return a value", returnStmt->lineNumber, currentFilePath);
-			}
-
-			NodePtr new = AllocASTNode(
-				&(BlockStmt){
-					.lineNumber = returnStmt->lineNumber,
-					.statements = statements,
-				},
-				sizeof(BlockStmt), Node_BlockStatement);
-
-			FreeASTNode(*node);
-			*node = new;
-			break;
-		}
-		case Node_BlockStatement:
-		{
-			BlockStmt* block = node->ptr;
-			bool allReturn;
-			PROPAGATE_ERROR(VisitBlock(block, returnType, variables, &prevStatementReturns, &allReturn));
-			if (allReturn)
-				allPathsReturn = true;
-			break;
-		}
-		case Node_If:
-		{
-			const IfStmt* ifStmt = node->ptr;
-
-			bool returns;
-			bool allPathsReturnTrueStmt;
-			assert(ifStmt->trueStmt.type == Node_BlockStatement);
-			PROPAGATE_ERROR(VisitBlock(ifStmt->trueStmt.ptr, returnType, variables, &returns, &allPathsReturnTrueStmt));
-			if (returns)
-				prevStatementReturns = true;
-
-			if (ifStmt == checkReturnIf && allPathsReturnTrueStmt)
-			{
-				allPathsReturn = true;
-				break;
-			}
-
-			if (ifStmt->falseStmt.ptr != NULL)
-			{
-				bool allPathsReturnFalseStmt;
-				assert(ifStmt->falseStmt.type == Node_BlockStatement);
-				PROPAGATE_ERROR(VisitBlock(ifStmt->falseStmt.ptr, returnType, variables, &returns, &allPathsReturnFalseStmt));
-				if (returns)
-					prevStatementReturns = true;
-
-				if (allPathsReturnTrueStmt && allPathsReturnFalseStmt)
-					allPathsReturn = true;
-			}
-			break;
-		}
-		case Node_FunctionDeclaration:
-		{
-			const FuncDeclStmt* funcDecl = node->ptr;
-			assert(funcDecl->block.type == Node_BlockStatement);
-			PROPAGATE_ERROR(VisitBlock(funcDecl->block.ptr, funcDecl->type, NULL, NULL, NULL));
-			break;
-		}
-		case Node_While:
-		{
-			const WhileStmt* whileStmt = node->ptr;
-			assert(whileStmt->stmt.type == Node_BlockStatement);
-
-			bool allReturn;
-			PROPAGATE_ERROR(VisitBlock(whileStmt->stmt.ptr, returnType, variables, &prevStatementReturns, &allReturn));
-			if (allReturn)
-				allPathsReturn = true;
-
-			break;
-		}
-		case Node_ExpressionStatement:
-		case Node_VariableDeclaration:
-		case Node_Null:
-			break;
-		default: INVALID_VALUE(node->type);
-		}
-
-		if (prevStatementReturns && outReturns != NULL)
-			*outReturns = true;
-	}
-
-	if (!isVoid && isTopLevel)
-	{
-		if (!allPathsReturn)
+		if (!StatementReturns(&innerBlock, true))
 			return ERROR_RESULT("Not all control paths return a value", block->lineNumber, currentFilePath);
 
-		NodePtr returnValue = AllocReturnValueStatement(variables->returnValueDecl, -1);
+		NodePtr returnValue = AllocReturnValueStatement(variables.returnValueDecl, -1);
 		ArrayAdd(&block->statements, &returnValue);
 	}
 
-	if (outAllPathsReturn != NULL)
-		*outAllPathsReturn = allPathsReturn;
-
-	return SUCCESS_RESULT;
+	return VisitBlock(innerBlock, &variables, isVoid);
 }
 
 static Result VisitGlobalStatement(const NodePtr* node)
@@ -378,13 +373,11 @@ static Result VisitGlobalStatement(const NodePtr* node)
 	{
 	case Node_Section:
 		SectionStmt* section = node->ptr;
-		assert(section->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(VisitBlock(section->block.ptr, NULL_NODE, NULL, NULL, NULL));
+		PROPAGATE_ERROR(VisitFunctionBlock(section->block, NULL_NODE));
 		break;
 	case Node_FunctionDeclaration:
 		FuncDeclStmt* funcDecl = node->ptr;
-		assert(funcDecl->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(VisitBlock(funcDecl->block.ptr, funcDecl->type, NULL, NULL, NULL));
+		PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, funcDecl->type));
 		break;
 	case Node_BlockStatement:
 		BlockStmt* block = node->ptr;
