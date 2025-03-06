@@ -14,6 +14,42 @@ static MemoryStream* stream;
 
 static int indentationLevel;
 
+static const int binaryPrecedence[] = {
+	[Binary_Exponentiation] = 18,
+	[Binary_Modulo] = 17,
+	[Binary_LeftShift] = 16,
+	[Binary_RightShift] = 16,
+	[Binary_Multiply] = 15,
+	[Binary_Divide] = 15,
+	[Binary_Add] = 14,
+	[Binary_Subtract] = 14,
+
+	[Binary_BitOr] = 13,
+	[Binary_BitAnd] = 12,
+	[Binary_XOR] = 11,
+
+	[Binary_IsEqual] = 10,
+	[Binary_NotEqual] = 10,
+	[Binary_LessThan] = 10,
+	[Binary_GreaterThan] = 10,
+	[Binary_LessOrEqual] = 10,
+	[Binary_GreaterOrEqual] = 10,
+
+	[Binary_BoolOr] = 9,
+	[Binary_BoolAnd] = 8,
+
+	[Binary_Assignment] = 7,
+	[Binary_MultiplyAssign] = 6,
+	[Binary_DivideAssign] = 6,
+	[Binary_ModuloAssign] = 5,
+	[Binary_ExponentAssign] = 4,
+	[Binary_AddAssign] = 3,
+	[Binary_SubtractAssign] = 3,
+	[Binary_BitOrAssign] = 2,
+	[Binary_BitAndAssign] = 1,
+	[Binary_XORAssign] = 0,
+};
+
 static void WriteUInt64(const uint64_t integer)
 {
 	const int size = snprintf(NULL, 0, "%" PRIu64, integer);
@@ -93,26 +129,29 @@ static int GetUniqueName(const IdentifierReference* identifier)
 	}
 }
 
-static void VisitExpression(NodePtr node);
+static void VisitExpression(NodePtr node, const NodePtr* parentExpr);
 static void VisitStatement(const NodePtr* node);
 
-static void VisitFunctionCall(const FuncCallExpr* funcCall)
+static void VisitFunctionCall(FuncCallExpr* funcCall)
 {
 	WriteString(funcCall->identifier.text);
 	WriteChar('_');
 	WriteUniqueName(GetUniqueName(&funcCall->identifier));
 
+	NodePtr funcCallNode = (NodePtr){.ptr = funcCall, .type = Node_FunctionCall};
+
 	WriteChar('(');
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
-		VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
+		VisitExpression(*(NodePtr*)funcCall->arguments.array[i], &funcCallNode);
+
 		if (i < funcCall->arguments.length - 1)
 			WriteString(", ");
 	}
 	WriteChar(')');
 }
 
-static void VisitLiteralExpression(const LiteralExpr* literal)
+static void VisitLiteralExpression(LiteralExpr* literal)
 {
 	switch (literal->type)
 	{
@@ -132,7 +171,7 @@ static void VisitLiteralExpression(const LiteralExpr* literal)
 	}
 }
 
-static void VisitBinaryExpression(const BinaryExpr* binary)
+static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 {
 	char* operator;
 	switch (binary->operatorType)
@@ -173,16 +212,28 @@ static void VisitBinaryExpression(const BinaryExpr* binary)
 	default: INVALID_VALUE(binary->operatorType);
 	}
 
-	WriteChar('(');
-	VisitExpression(binary->left);
+	bool writeBrackets = true;
+	if (parentExpr == NULL)
+		writeBrackets = false;
+	else if (parentExpr->type == Node_Binary)
+	{
+		BinaryExpr* parent = parentExpr->ptr;
+		if (binaryPrecedence[binary->operatorType] >= binaryPrecedence[parent->operatorType])
+			writeBrackets = false;
+	}
+
+	NodePtr binaryNode = (NodePtr){.ptr = binary, .type = Node_Binary};
+
+	if (writeBrackets) WriteChar('(');
+	VisitExpression(binary->left, &binaryNode);
 	WriteChar(' ');
 	WriteString(operator);
 	WriteChar(' ');
-	VisitExpression(binary->right);
-	WriteChar(')');
+	VisitExpression(binary->right, &binaryNode);
+	if (writeBrackets) WriteChar(')');
 }
 
-static void VisitUnaryExpression(const UnaryExpr* unary)
+static void VisitUnaryExpression(UnaryExpr* unary)
 {
 	char* operator;
 	switch (unary->operatorType)
@@ -194,14 +245,14 @@ static void VisitUnaryExpression(const UnaryExpr* unary)
 	}
 
 	WriteString(operator);
-	VisitExpression(unary->expression);
+	VisitExpression(unary->expression, &(NodePtr){.ptr = unary, .type = Node_Unary});
 }
 
-static void VisitExpression(const NodePtr node)
+static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 {
 	switch (node.type)
 	{
-	case Node_Binary: VisitBinaryExpression(node.ptr); break;
+	case Node_Binary: VisitBinaryExpression(node.ptr, parentExpr); break;
 	case Node_Unary: VisitUnaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
@@ -213,21 +264,23 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
 	assert(varDecl->initializer.ptr != NULL);
 
-	VisitBinaryExpression(&(BinaryExpr){
-		.lineNumber = -1,
-		.operatorType = Binary_Assignment,
-		.right = varDecl->initializer,
-		.left = (NodePtr){
-			&(LiteralExpr){
-				.lineNumber = -1,
-				.type = Literal_Identifier,
-				.identifier = (IdentifierReference){
-					.text = varDecl->name,
-					.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
+	VisitBinaryExpression(
+		&(BinaryExpr){
+			.lineNumber = -1,
+			.operatorType = Binary_Assignment,
+			.right = varDecl->initializer,
+			.left = (NodePtr){
+				&(LiteralExpr){
+					.lineNumber = -1,
+					.type = Literal_Identifier,
+					.identifier = (IdentifierReference){
+						.text = varDecl->name,
+						.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
+					},
 				},
-			},
-			Node_Literal},
-	});
+				Node_Literal},
+		},
+		NULL);
 	WriteString(";\n");
 }
 
@@ -271,7 +324,7 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 
 static void VisitIfStatement(const IfStmt* ifStmt)
 {
-	VisitExpression(ifStmt->expr);
+	VisitExpression(ifStmt->expr, NULL);
 	WriteString(" ?\n");
 
 	assert(ifStmt->trueStmt.type == Node_BlockStatement);
@@ -290,7 +343,7 @@ static void VisitIfStatement(const IfStmt* ifStmt)
 static void VisitWhileStatement(const WhileStmt* whileStmt)
 {
 	WriteString("while (");
-	VisitExpression(whileStmt->expr);
+	VisitExpression(whileStmt->expr, NULL);
 	WriteString(")\n");
 
 	assert(whileStmt->stmt.type == Node_BlockStatement);
@@ -309,7 +362,7 @@ static void VisitStatement(const NodePtr* node)
 		break;
 	case Node_ExpressionStatement:
 		const ExpressionStmt* expressionStmt = node->ptr;
-		VisitExpression(expressionStmt->expr);
+		VisitExpression(expressionStmt->expr, NULL);
 		WriteString(";\n");
 		break;
 	case Node_BlockStatement:
