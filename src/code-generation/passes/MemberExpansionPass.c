@@ -666,6 +666,11 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 		if (structDecl != NULL)
 		{
+			if (funcDecl->external)
+				return ERROR_RESULT("External functions cannot have any struct parameters",
+					funcDecl->lineNumber,
+					currentFilePath);
+
 			if (varDecl->initializer.ptr != NULL)
 				PROPAGATE_ERROR(CheckTypeConversion(
 					GetStructDecl(varDecl->initializer),
@@ -678,11 +683,13 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 			i--;
 		}
 	}
-	assert(funcDecl->block.type == Node_BlockStatement);
 
 	StructDeclStmt* structDecl = GetStructDeclFromType(funcDecl->type);
 	if (structDecl != NULL)
 	{
+		if (funcDecl->external)
+			return ERROR_RESULT("External functions cannot return a struct", funcDecl->lineNumber, currentFilePath);
+
 		BlockStmt* block = AllocBlockStmt(funcDecl->lineNumber).ptr;
 
 		NodePtr globalReturn = AllocASTNode(
@@ -714,7 +721,11 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		funcDecl->type = CopyASTNode(first->type);
 	}
 
-	PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
+	if (!funcDecl->external)
+	{
+		assert(funcDecl->block.type == Node_BlockStatement);
+		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
+	}
 
 	return SUCCESS_RESULT;
 }
@@ -783,6 +794,12 @@ static Result VisitStatement(NodePtr* node)
 		StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
 		if (structDecl != NULL)
 		{
+			if (varDecl->external)
+				return ERROR_RESULT(
+					"External variable declarations cannot be struct variables",
+					varDecl->lineNumber,
+					currentFilePath);
+
 			BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
 			InstantiateStructMembers(structDecl, &varDecl->instantiatedVariables, &block->statements, 0);
 			ArrayAdd(&nodesToDelete, node);

@@ -53,7 +53,6 @@ static void VisitStatement(const NodePtr node)
 			assert(node->type == Node_VariableDeclaration);
 			VisitStatement(*node);
 		}
-		assert(funcDecl->block.type == Node_BlockStatement);
 		VisitStatement(funcDecl->block);
 		break;
 	case Node_StructDeclaration:

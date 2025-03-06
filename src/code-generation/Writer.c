@@ -129,14 +129,27 @@ static int GetUniqueName(const IdentifierReference* identifier)
 	}
 }
 
+static bool IsExternal(const IdentifierReference* identifier)
+{
+	switch (identifier->reference.type)
+	{
+	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->external;
+	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->external;
+	default: INVALID_VALUE(identifier->reference.type);
+	}
+}
+
 static void VisitExpression(NodePtr node, const NodePtr* parentExpr);
 static void VisitStatement(const NodePtr* node);
 
 static void VisitFunctionCall(FuncCallExpr* funcCall)
 {
 	WriteString(funcCall->identifier.text);
-	WriteChar('_');
-	WriteUniqueName(GetUniqueName(&funcCall->identifier));
+	if (!IsExternal(&funcCall->identifier))
+	{
+		WriteChar('_');
+		WriteUniqueName(GetUniqueName(&funcCall->identifier));
+	}
 
 	NodePtr funcCallNode = (NodePtr){.ptr = funcCall, .type = Node_FunctionCall};
 
@@ -159,8 +172,11 @@ static void VisitLiteralExpression(LiteralExpr* literal)
 	case Literal_Int: WriteUInt64(literal->intValue); break;
 	case Literal_Identifier:
 		WriteString(literal->identifier.text);
-		WriteChar('_');
-		WriteUniqueName(GetUniqueName(&literal->identifier));
+		if (!IsExternal(&literal->identifier))
+		{
+			WriteChar('_');
+			WriteUniqueName(GetUniqueName(&literal->identifier));
+		}
 		break;
 	case Literal_String:
 		WriteChar('\"');
@@ -262,6 +278,9 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 
 static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
+	if (varDecl->external)
+		return;
+
 	assert(varDecl->initializer.ptr != NULL);
 
 	VisitBinaryExpression(
@@ -297,6 +316,9 @@ static void VisitBlock(const BlockStmt* block, const bool semicolon)
 
 static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
+	if (funcDecl->external)
+		return;
+
 	WriteString("function ");
 	WriteString(funcDecl->name);
 	WriteChar('_');

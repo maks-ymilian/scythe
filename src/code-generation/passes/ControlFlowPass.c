@@ -467,6 +467,9 @@ static NodePtr CreateInnerBlock(BlockStmt* block)
 
 static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType)
 {
+	if (blockNode.ptr == NULL)
+		return SUCCESS_RESULT;
+
 	assert(blockNode.type == Node_BlockStatement);
 	BlockStmt* block = blockNode.ptr;
 

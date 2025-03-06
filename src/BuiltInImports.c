@@ -325,7 +325,6 @@ static constexpr char gfx[] = RAW_STRING_LITERAL(
 );
 
 static constexpr char mouse[] = RAW_STRING_LITERAL(
-
 	public external int x mouse_x;
 	public external int y mouse_y;
 	public external int cap mouse_cap;
