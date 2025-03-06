@@ -1159,6 +1159,9 @@ static void ParseModifiers(Token** public, Token** external)
 {
 	*public = MatchOne(Token_Public);
 	*external = MatchOne(Token_External);
+
+	if (*public == NULL && *external != NULL)
+		*public = MatchOne(Token_Public);
 }
 
 static Result ParseModifierDeclaration(NodePtr* out)
