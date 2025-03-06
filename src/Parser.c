@@ -1078,6 +1078,11 @@ static Result ParseStructDeclaration(NodePtr* out, const Token* public, const To
 		PROPAGATE_ERROR(ParseVarDeclNoSemicolon(&member));
 		if (member.ptr == NULL) break;
 
+		assert(member.type == Node_VariableDeclaration);
+		VarDeclStmt* varDecl = member.ptr;
+		if (varDecl->initializer.ptr != NULL)
+			return ERROR_RESULT_LINE("Variable initializers are not allowed here");
+
 		if (MatchOne(Token_Semicolon) == NULL)
 			return ERROR_RESULT_LINE("Expected \";\"");
 
