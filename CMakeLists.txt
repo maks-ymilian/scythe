@@ -26,6 +26,7 @@ set(SOURCES
 		"src/code-generation/passes/ReturnTaggingPass.c"
 		"src/code-generation/passes/CallArgumentPass.c"
 		"src/code-generation/passes/BlockRemoverPass.c"
+		"src/code-generation/passes/ForLoopPass.c"
 )
 
 project(scythe C)
@@ -36,7 +37,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD_REQUIRED ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_EXTENSIONS OFF)
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 
-option(USE_DEBUG OFF)
+option(USE_DEBUG "" OFF)
 if (USE_DEBUG)
 	target_compile_options(${PROJECT_NAME} PRIVATE
 			-Werror -Wall -Wextra -pedantic-errors
@@ -50,7 +51,7 @@ if (USE_DEBUG)
 			-Wno-unused-parameter
 	)
 
-	option(USE_SANITIZERS OFF)
+	option(USE_SANITIZERS "" ON)
 	if (USE_SANITIZERS)
 		target_compile_options(${PROJECT_NAME} PRIVATE -O0 -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract -g)
 		target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)

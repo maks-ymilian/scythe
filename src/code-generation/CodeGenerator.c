@@ -5,6 +5,7 @@
 #include "passes/BlockRemoverPass.h"
 #include "passes/CallArgumentPass.h"
 #include "passes/ControlFlowPass.h"
+#include "passes/ForLoopPass.h"
 #include "passes/GlobalSectionPass.h"
 #include "passes/MemberExpansionPass.h"
 #include "passes/ResolverPass.h"
@@ -16,6 +17,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 {
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
 	BlockExpressionPass(syntaxTree);
+	ForLoopPass(syntaxTree);
 	ReturnTaggingPass(syntaxTree);
 	PROPAGATE_ERROR(CallArgumentPass(syntaxTree));
 	PROPAGATE_ERROR(MemberExpansionPass(syntaxTree));
