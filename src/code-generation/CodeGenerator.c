@@ -2,6 +2,7 @@
 
 #include "Writer.h"
 #include "passes/BlockExpressionPass.h"
+#include "passes/BlockRemoverPass.h"
 #include "passes/CallArgumentPass.h"
 #include "passes/ControlFlowPass.h"
 #include "passes/GlobalSectionPass.h"
@@ -22,6 +23,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
 	UniqueNamePass(syntaxTree);
 	GlobalSectionPass(syntaxTree);
+	BlockRemoverPass(syntaxTree);
 
 	WriteOutput(syntaxTree, outputCode, outputLength);
 	return SUCCESS_RESULT;
