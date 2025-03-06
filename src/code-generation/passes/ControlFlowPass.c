@@ -6,19 +6,28 @@ typedef struct
 {
 	NodePtr returnFlagDecl;
 	NodePtr returnValueDecl;
-} ReturnBlockVariables;
+} ReturnVariables;
+
+typedef struct
+{
+	NodePtr breakFlagDecl;
+	NodePtr continueFlagDecl;
+} WhileVariables;
 
 static const char* currentFilePath = NULL;
 
-static const char* returnFlagName = "hasReturned";
+static const char* breakFlagName = "break";
+static const char* continueFlagName = "continue";
+
+static const char* returnFlagName = "return";
 static const char* returnValueName = "returnValue";
 
-static NodePtr AllocReturnFlagDecl(const int lineNumber)
+static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 {
 	return AllocASTNode(
 		&(VarDeclStmt){
 			.lineNumber = lineNumber,
-			.name = AllocateString(returnFlagName),
+			.name = AllocateString(name),
 			.externalName = NULL,
 			.arrayLength = NULL,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
@@ -44,7 +53,7 @@ static NodePtr AllocReturnFlagDecl(const int lineNumber)
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
 
-static NodePtr AllocSetReturnFlag(const NodePtr returnFlagDecl, const int lineNumber)
+static NodePtr AllocSetFlag(const char* name, const NodePtr flagDecl, const int lineNumber)
 {
 	return AllocASTNode(
 		&(ExpressionStmt){
@@ -58,8 +67,8 @@ static NodePtr AllocSetReturnFlag(const NodePtr returnFlagDecl, const int lineNu
 							.lineNumber = lineNumber,
 							.type = Literal_Identifier,
 							.identifier = (IdentifierReference){
-								.text = AllocateString(returnFlagName),
-								.reference = returnFlagDecl,
+								.text = AllocateString(name),
+								.reference = flagDecl,
 							},
 						},
 						sizeof(LiteralExpr), Node_Literal),
@@ -76,7 +85,34 @@ static NodePtr AllocSetReturnFlag(const NodePtr returnFlagDecl, const int lineNu
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
 
-static NodePtr AllocIfReturnFlagIsFalse(const NodePtr returnFlagDecl, Array* statements, const int lineNumber)
+static NodePtr AllocBreakFlagExpression(const NodePtr breakFlagDecl, const NodePtr inside, const int lineNumber)
+{
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_BoolAnd,
+			.right = inside,
+			.left = AllocASTNode(
+				&(UnaryExpr){
+					.lineNumber = lineNumber,
+					.operatorType = Unary_Negate,
+					.expression = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = lineNumber,
+							.type = Literal_Identifier,
+							.identifier = (IdentifierReference){
+								.text = AllocateString(breakFlagName),
+								.reference = breakFlagDecl,
+							},
+						},
+						sizeof(LiteralExpr), Node_Literal),
+				},
+				sizeof(UnaryExpr), Node_Unary),
+		},
+		sizeof(BinaryExpr), Node_Binary);
+}
+
+static NodePtr AllocIfFlagIsFalse(const char* name, const NodePtr flagDecl, Array* statements, const int lineNumber)
 {
 	return AllocASTNode(
 		&(IfStmt){
@@ -91,8 +127,8 @@ static NodePtr AllocIfReturnFlagIsFalse(const NodePtr returnFlagDecl, Array* sta
 							.lineNumber = lineNumber,
 							.type = Literal_Identifier,
 							.identifier = (IdentifierReference){
-								.text = AllocateString(returnFlagName),
-								.reference = returnFlagDecl,
+								.text = AllocateString(name),
+								.reference = flagDecl,
 							},
 						},
 						sizeof(LiteralExpr), Node_Literal),
@@ -194,6 +230,7 @@ static bool StatementReturns(const NodePtr* node, bool allPaths)
 	switch (node->type)
 	{
 	case Node_Return:
+	case Node_LoopControl:
 		return true;
 	case Node_BlockStatement:
 		BlockStmt* block = node->ptr;
@@ -218,14 +255,53 @@ static bool StatementReturns(const NodePtr* node, bool allPaths)
 	}
 }
 
-static Result VisitReturnStatement(NodePtr* node, const ReturnBlockVariables* variables, bool isVoid)
+static Result VisitLoopControlStatement(NodePtr* node, const WhileVariables* variables)
+{
+	assert(node->type == Node_LoopControl);
+	LoopControlStmt* loopControl = node->ptr;
+
+	if (variables == NULL)
+		return ERROR_RESULT(
+			loopControl->type == LoopControl_Break
+				? "\"break\" is not allowed here"
+				: "\"continue\" is not allowed here",
+			loopControl->lineNumber,
+			currentFilePath);
+
+	*node = AllocASTNode(
+		&(BlockStmt){
+			.lineNumber = loopControl->lineNumber,
+			.statements = AllocateArray(sizeof(NodePtr)),
+		},
+		sizeof(BlockStmt), Node_BlockStatement);
+	BlockStmt* block = node->ptr;
+
+	NodePtr continueFlag = AllocSetFlag(continueFlagName, variables->continueFlagDecl, loopControl->lineNumber);
+	ArrayAdd(&block->statements, &continueFlag);
+
+	if (loopControl->type == LoopControl_Break)
+	{
+		NodePtr breakFlag = AllocSetFlag(breakFlagName, variables->breakFlagDecl, loopControl->lineNumber);
+		ArrayAdd(&block->statements, &breakFlag);
+	}
+
+	FreeASTNode((NodePtr){.ptr = loopControl, .type = Node_LoopControl});
+
+	return SUCCESS_RESULT;
+}
+
+static Result VisitReturnStatement(
+	NodePtr* node,
+	const ReturnVariables* returnVars,
+	const WhileVariables* whileVars,
+	bool isVoid)
 {
 	assert(node->type == Node_Return);
 	ReturnStmt* returnStmt = node->ptr;
 
 	Array statements = AllocateArray(sizeof(NodePtr));
 
-	NodePtr setFlag = AllocSetReturnFlag(variables->returnFlagDecl, returnStmt->lineNumber);
+	NodePtr setFlag = AllocSetFlag(returnFlagName, returnVars->returnFlagDecl, returnStmt->lineNumber);
 	ArrayAdd(&statements, &setFlag);
 
 	if (!isVoid)
@@ -233,13 +309,25 @@ static Result VisitReturnStatement(NodePtr* node, const ReturnBlockVariables* va
 		if (returnStmt->expr.ptr == NULL)
 			return ERROR_RESULT("Non-void function must return a value", returnStmt->lineNumber, currentFilePath);
 
-		NodePtr setValue = AllocSetReturnValue(variables->returnValueDecl, returnStmt->expr, returnStmt->lineNumber);
+		NodePtr setValue = AllocSetReturnValue(returnVars->returnValueDecl, returnStmt->expr, returnStmt->lineNumber);
 		ArrayAdd(&statements, &setValue);
 	}
 	else
 	{
 		if (returnStmt->expr.ptr != NULL)
 			return ERROR_RESULT("Void function cannot return a value", returnStmt->lineNumber, currentFilePath);
+	}
+
+	if (whileVars != NULL)
+	{
+		NodePtr breakNode = AllocASTNode(
+			&(LoopControlStmt){
+				.lineNumber = returnStmt->lineNumber,
+				.type = LoopControl_Break,
+			},
+			sizeof(LoopControlStmt), Node_LoopControl);
+		PROPAGATE_ERROR(VisitLoopControlStatement(&breakNode, whileVars));
+		ArrayAdd(&statements, &breakNode);
 	}
 
 	NodePtr new = AllocASTNode(
@@ -255,8 +343,13 @@ static Result VisitReturnStatement(NodePtr* node, const ReturnBlockVariables* va
 }
 
 static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType);
+static Result VisitWhileStatement(NodePtr* whileNode, const ReturnVariables* returnVars, bool isVoid);
 
-static Result VisitBlock(NodePtr blockNode, const ReturnBlockVariables* variables, bool isVoid)
+static Result VisitBlock(
+	NodePtr blockNode,
+	const ReturnVariables* returnVars,
+	const WhileVariables* whileVars,
+	bool isVoid)
 {
 	assert(blockNode.type == Node_BlockStatement);
 	BlockStmt* block = blockNode.ptr;
@@ -268,7 +361,11 @@ static Result VisitBlock(NodePtr blockNode, const ReturnBlockVariables* variable
 
 		Array statements = AllocateArray(sizeof(NodePtr));
 		MoveStatements(block, i, &statements);
-		NodePtr ifNode = AllocIfReturnFlagIsFalse(variables->returnFlagDecl, &statements, -1);
+
+		NodePtr ifNode =
+			whileVars == NULL
+				? AllocIfFlagIsFalse(returnFlagName, returnVars->returnFlagDecl, &statements, -1)
+				: AllocIfFlagIsFalse(continueFlagName, whileVars->continueFlagDecl, &statements, -1);
 		ArrayAdd(&block->statements, &ifNode);
 
 		assert(ifNode.type == Node_If);
@@ -281,20 +378,22 @@ static Result VisitBlock(NodePtr blockNode, const ReturnBlockVariables* variable
 		switch (node->type)
 		{
 		case Node_Return:
-			PROPAGATE_ERROR(VisitReturnStatement(node, variables, isVoid));
+			PROPAGATE_ERROR(VisitReturnStatement(node, returnVars, whileVars, isVoid));
+			break;
+		case Node_LoopControl:
+			PROPAGATE_ERROR(VisitLoopControlStatement(node, whileVars));
 			break;
 		case Node_BlockStatement:
-			PROPAGATE_ERROR(VisitBlock(*node, variables, isVoid));
+			PROPAGATE_ERROR(VisitBlock(*node, returnVars, whileVars, isVoid));
 			break;
 		case Node_If:
 			const IfStmt* ifStmt = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(ifStmt->trueStmt, variables, isVoid));
+			PROPAGATE_ERROR(VisitBlock(ifStmt->trueStmt, returnVars, whileVars, isVoid));
 			if (ifStmt->falseStmt.ptr != NULL)
-				PROPAGATE_ERROR(VisitBlock(ifStmt->falseStmt, variables, isVoid));
+				PROPAGATE_ERROR(VisitBlock(ifStmt->falseStmt, returnVars, whileVars, isVoid));
 			break;
 		case Node_While:
-			const WhileStmt* whileStmt = node->ptr;
-			PROPAGATE_ERROR(VisitBlock(whileStmt->stmt, variables, isVoid));
+			PROPAGATE_ERROR(VisitWhileStatement(node, returnVars, isVoid));
 			break;
 		case Node_FunctionDeclaration:
 			const FuncDeclStmt* funcDecl = node->ptr;
@@ -309,6 +408,34 @@ static Result VisitBlock(NodePtr blockNode, const ReturnBlockVariables* variable
 	}
 
 	return SUCCESS_RESULT;
+}
+
+static Result VisitWhileStatement(NodePtr* node, const ReturnVariables* returnVars, bool isVoid)
+{
+	assert(node->type == Node_While);
+	WhileStmt* whileStmt = node->ptr;
+	assert(whileStmt->stmt.type == Node_BlockStatement);
+	BlockStmt* whileBlock = whileStmt->stmt.ptr;
+
+	BlockStmt* block = AllocASTNode(
+		&(BlockStmt){
+			.lineNumber = whileStmt->lineNumber,
+			.statements = AllocateArray(sizeof(NodePtr)),
+		},
+		sizeof(BlockStmt), Node_BlockStatement)
+						   .ptr; // clang format more like blang blormat
+	ArrayAdd(&block->statements, node);
+	*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
+
+	WhileVariables variables = (WhileVariables){
+		.breakFlagDecl = AllocFlagDecl(breakFlagName, whileStmt->lineNumber),
+		.continueFlagDecl = AllocFlagDecl(continueFlagName, whileStmt->lineNumber),
+	};
+	ArrayInsert(&block->statements, &variables.breakFlagDecl, 0);
+	ArrayInsert(&whileBlock->statements, &variables.continueFlagDecl, 0);
+	whileStmt->expr = AllocBreakFlagExpression(variables.breakFlagDecl, whileStmt->expr, whileStmt->lineNumber);
+
+	return VisitBlock(whileStmt->stmt, returnVars, &variables, isVoid);
 }
 
 static bool TypeIsVoid(const NodePtr type)
@@ -345,26 +472,26 @@ static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType)
 
 	NodePtr innerBlock = CreateInnerBlock(block);
 
-	ReturnBlockVariables variables;
-	variables.returnFlagDecl = AllocReturnFlagDecl(block->lineNumber);
+	ReturnVariables variables = (ReturnVariables){
+		.returnFlagDecl = AllocFlagDecl(returnFlagName, block->lineNumber),
+		.returnValueDecl = NULL_NODE,
+	};
 	ArrayInsert(&block->statements, &variables.returnFlagDecl, 0);
-
-	variables.returnValueDecl = NULL_NODE;
 
 	const bool isVoid = returnType.ptr == NULL || TypeIsVoid(returnType);
 	if (!isVoid)
 	{
-		variables.returnValueDecl = AllocReturnValueDecl(returnType, block->lineNumber);
-		ArrayInsert(&block->statements, &variables.returnValueDecl, 0);
-
 		if (!StatementReturns(&innerBlock, true))
 			return ERROR_RESULT("Not all control paths return a value", block->lineNumber, currentFilePath);
+
+		variables.returnValueDecl = AllocReturnValueDecl(returnType, block->lineNumber);
+		ArrayInsert(&block->statements, &variables.returnValueDecl, 0);
 
 		NodePtr returnValue = AllocReturnValueStatement(variables.returnValueDecl, -1);
 		ArrayAdd(&block->statements, &returnValue);
 	}
 
-	return VisitBlock(innerBlock, &variables, isVoid);
+	return VisitBlock(innerBlock, &variables, NULL, isVoid);
 }
 
 static Result VisitGlobalStatement(const NodePtr* node)

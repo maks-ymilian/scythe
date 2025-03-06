@@ -97,6 +97,8 @@ typedef struct
 
 typedef struct
 {
+	int lineNumber;
+
 	enum
 	{
 		Unary_Plus,
@@ -106,7 +108,6 @@ typedef struct
 		Unary_Decrement,
 	} operatorType;
 
-	int lineNumber;
 	NodePtr expression;
 } UnaryExpr;
 
@@ -282,13 +283,13 @@ typedef struct
 
 typedef struct
 {
+	int lineNumber;
+
 	enum
 	{
 		LoopControl_Break,
 		LoopControl_Continue,
 	} type;
-
-	int lineNumber;
 } LoopControlStmt;
 
 typedef typeof(((LoopControlStmt*)0)->type) LoopControlType;
