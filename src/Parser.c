@@ -258,19 +258,31 @@ static Result ParseType(Type* out)
 				.primitiveType = primitiveType,
 			},
 			sizeof(LiteralExpr), Node_Literal);
-		return SUCCESS_RESULT;
 	}
 
-	NodePtr expr = NULL_NODE;
-	PROPAGATE_ERROR(ParsePrimary(&expr, false));
-	if (expr.type == Node_MemberAccess)
+	if (out->expr.ptr == NULL)
 	{
-		out->expr = expr;
-		return SUCCESS_RESULT;
+		NodePtr expr = NULL_NODE;
+		PROPAGATE_ERROR(ParsePrimary(&expr, false));
+		if (expr.type == Node_MemberAccess)
+			out->expr = expr;
 	}
 
-	pointer = oldPointer;
-	return NOT_FOUND_RESULT;
+	if (out->expr.ptr == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
+
+	if (MatchOne(Token_LeftSquareBracket))
+	{
+		if (!MatchOne(Token_RightSquareBracket))
+			return ERROR_RESULT_LINE("Expected \"]\"");
+
+		out->array = true;
+	}
+
+	return SUCCESS_RESULT;
 }
 
 static Result ParseBlockStatement(NodePtr* out);
