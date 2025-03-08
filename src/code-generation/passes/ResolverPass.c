@@ -97,10 +97,8 @@ static bool GetModuleFromNode(const NodePtr* node, Map** outModule, char** outMo
 	return true;
 }
 
-static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** outStructDecl)
+static StructDeclStmt* GetStructDeclarationFromNode(const NodePtr* node)
 {
-	*outStructDecl = NULL;
-
 	const IdentifierReference* identifier = NULL;
 	if (node->type == Node_Literal)
 	{
@@ -119,7 +117,7 @@ static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** o
 		identifier = &arrayAccess->identifier;
 	}
 	else
-		return false;
+		return NULL;
 
 	Type type;
 
@@ -134,10 +132,10 @@ static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** o
 		type = funcDecl->type;
 	}
 	else
-		return false;
+		return NULL;
 
 	if (type.expr.type != Node_MemberAccess)
-		return false;
+		return NULL;
 
 	const MemberAccessExpr* last = type.expr.ptr;
 	while (last->next.ptr != NULL)
@@ -147,16 +145,15 @@ static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** o
 	}
 
 	if (last->value.type != Node_Literal)
-		return false;
+		return NULL;
 
 	const LiteralExpr* literal = last->value.ptr;
 	if (literal->type != Literal_Identifier)
-		return false;
+		return NULL;
 	if (literal->identifier.reference.type != Node_StructDeclaration)
-		return false;
+		return NULL;
 
-	*outStructDecl = literal->identifier.reference.ptr;
-	return true;
+	return literal->identifier.reference.ptr;
 }
 
 static Result InitializeIdentifierReference(
@@ -187,8 +184,8 @@ static Result InitializeIdentifierReference(
 			return SUCCESS_RESULT;
 		}
 
-		StructDeclStmt* structDecl;
-		if (GetStructDeclarationFromNode(previous, &structDecl))
+		StructDeclStmt* structDecl = GetStructDeclarationFromNode(previous);
+		if (structDecl)
 		{
 			for (size_t i = 0; i < structDecl->members.length; ++i)
 			{

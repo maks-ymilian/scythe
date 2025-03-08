@@ -154,28 +154,6 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 	*memberAccessNode = next;
 }
 
-static StructDeclStmt* GetStructDeclFromMemberAccess(const MemberAccessExpr* memberAccess)
-{
-	if (memberAccess == NULL)
-		return NULL;
-
-	while (memberAccess->next.ptr != NULL)
-	{
-		assert(memberAccess->next.type == Node_MemberAccess);
-		memberAccess = memberAccess->next.ptr;
-	}
-
-	const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
-	if (varDecl == NULL)
-		return NULL;
-
-	StructDeclStmt* structDecl = GetStructDeclFromType(varDecl->type);
-	if (structDecl == NULL)
-		return NULL;
-
-	return structDecl;
-}
-
 typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
 static size_t ForEachStructMember(const StructDeclStmt* structDecl, const StructMemberFunc func, void* data, size_t* currentIndex)
 {
@@ -218,7 +196,7 @@ static NodePtr AllocLiteralIdentifier(VarDeclStmt* varDecl, int lineNumber)
 		sizeof(LiteralExpr), Node_Literal);
 }
 
-static StructDeclStmt* GetStructDecl(const NodePtr node)
+static StructDeclStmt* GetStructDeclFromMemberAccessValue(const NodePtr node)
 {
 	switch (node.type)
 	{
@@ -335,7 +313,7 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 		assert(paramNode->type == Node_VariableDeclaration);
 		const VarDeclStmt* param = paramNode->ptr;
 
-		const StructDeclStmt* argStruct = GetStructDecl(argument);
+		const StructDeclStmt* argStruct = GetStructDeclFromMemberAccessValue(argument);
 		const StructDeclStmt* paramStruct = GetStructDeclFromType(param->type);
 
 		if (argStruct == NULL && paramStruct == NULL)
@@ -432,8 +410,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	const StructDeclStmt* structDecl;
 	{
-		const StructDeclStmt* leftStruct = GetStructDecl(binary->left);
-		const StructDeclStmt* rightStruct = GetStructDecl(binary->right);
+		const StructDeclStmt* leftStruct = GetStructDeclFromMemberAccessValue(binary->left);
+		const StructDeclStmt* rightStruct = GetStructDeclFromMemberAccessValue(binary->right);
 
 		if (leftStruct == NULL && rightStruct == NULL)
 			return SUCCESS_RESULT;
@@ -673,7 +651,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 			if (varDecl->initializer.ptr != NULL)
 				PROPAGATE_ERROR(CheckTypeConversion(
-					GetStructDecl(varDecl->initializer),
+					GetStructDeclFromMemberAccessValue(varDecl->initializer),
 					structDecl,
 					varDecl->lineNumber));
 
@@ -738,7 +716,7 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	assert(returnStmt->function != NULL);
-	StructDeclStmt* exprStruct = GetStructDecl(returnStmt->expr);
+	StructDeclStmt* exprStruct = GetStructDeclFromMemberAccessValue(returnStmt->expr);
 	StructDeclStmt* returnStruct = GetStructDeclFromType(returnStmt->function->oldType);
 
 	if (returnStruct == NULL && exprStruct == NULL)

@@ -980,48 +980,6 @@ static Result ParseVarDeclNoSemicolon(NodePtr* out)
 	return ParseVariableDeclaration(out, NULL, NULL, type, identifier, false);
 }
 
-static Result ParseArrayDeclaration(
-	NodePtr* out,
-	const Token* public,
-	const Token* external,
-	const Type type,
-	const Token* identifier)
-{
-	if (MatchOne(Token_LeftSquareBracket) == NULL)
-		return NOT_FOUND_RESULT;
-
-	if (external)
-		return ERROR_RESULT_LINE("\"external\" is not allowed here");
-
-	NodePtr length = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&length));
-	if (length.ptr == NULL)
-		return ERROR_RESULT_LINE("Expected array length");
-
-	if (MatchOne(Token_RightSquareBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \"]\"");
-
-	if (MatchOne(Token_Semicolon) == NULL)
-		return ERROR_RESULT_LINE("Expected \";\"");
-
-	*out = AllocASTNode(
-		&(VarDeclStmt){
-			.type = type,
-			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = NULL,
-			.arrayLength = length,
-			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-			.initializer = NULL_NODE,
-			.array = true,
-			.public = public != NULL,
-			.external = false,
-			.uniqueName = -1,
-		},
-		sizeof(VarDeclStmt), Node_VariableDeclaration);
-	return SUCCESS_RESULT;
-}
-
 static Result ParseFunctionDeclaration(
 	NodePtr* out,
 	const Token* public,
@@ -1167,7 +1125,6 @@ static Result ParseDeclaration(NodePtr* out, const Token* public, const Token* e
 		return NOT_FOUND_RESULT;
 
 	PROPAGATE_FOUND(ParseFunctionDeclaration(out, public, external, type, identifier));
-	PROPAGATE_FOUND(ParseArrayDeclaration(out, public, external, type, identifier));
 
 	return ParseVariableDeclaration(out, public, external, type, identifier, true);
 }
