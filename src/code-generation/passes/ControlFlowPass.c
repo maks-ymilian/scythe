@@ -151,7 +151,7 @@ static NodePtr AllocIfFlagIsFalse(const char* name, const NodePtr flagDecl, Arra
 		sizeof(IfStmt), Node_If);
 }
 
-static NodePtr AllocReturnValueDecl(const NodePtr type, const int lineNumber)
+static NodePtr AllocReturnValueDecl(const Type type, const int lineNumber)
 {
 	return AllocASTNode(
 		&(VarDeclStmt){
@@ -164,7 +164,8 @@ static NodePtr AllocReturnValueDecl(const NodePtr type, const int lineNumber)
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
-			.type = CopyASTNode(type),
+			.type.expr = CopyASTNode(type.expr),
+			.type.array = type.array,
 			.initializer = NULL_NODE,
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
@@ -342,7 +343,7 @@ static Result VisitReturnStatement(
 	return SUCCESS_RESULT;
 }
 
-static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType);
+static Result VisitFunctionBlock(NodePtr blockNode, const Type* returnType);
 static Result VisitWhileStatement(NodePtr* whileNode, const ReturnVariables* returnVars, bool isVoid);
 
 static Result VisitBlock(
@@ -397,7 +398,7 @@ static Result VisitBlock(
 			break;
 		case Node_FunctionDeclaration:
 			const FuncDeclStmt* funcDecl = node->ptr;
-			PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, funcDecl->type));
+			PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, &funcDecl->type));
 			break;
 		case Node_ExpressionStatement:
 		case Node_VariableDeclaration:
@@ -438,12 +439,12 @@ static Result VisitWhileStatement(NodePtr* node, const ReturnVariables* returnVa
 	return VisitBlock(whileStmt->stmt, returnVars, &variables, isVoid);
 }
 
-static bool TypeIsVoid(const NodePtr type)
+static bool TypeIsVoid(const Type type)
 {
-	if (type.type != Node_Literal)
+	if (type.expr.type != Node_Literal)
 		return false;
 
-	LiteralExpr* literal = type.ptr;
+	LiteralExpr* literal = type.expr.ptr;
 	if (literal->type != Literal_PrimitiveType)
 		return false;
 
@@ -465,7 +466,7 @@ static NodePtr CreateInnerBlock(BlockStmt* block)
 	return innerBlock;
 }
 
-static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType)
+static Result VisitFunctionBlock(NodePtr blockNode, const Type* returnType)
 {
 	if (blockNode.ptr == NULL)
 		return SUCCESS_RESULT;
@@ -481,13 +482,13 @@ static Result VisitFunctionBlock(NodePtr blockNode, const NodePtr returnType)
 	};
 	ArrayInsert(&block->statements, &variables.returnFlagDecl, 0);
 
-	const bool isVoid = returnType.ptr == NULL || TypeIsVoid(returnType);
+	const bool isVoid = returnType == NULL || TypeIsVoid(*returnType);
 	if (!isVoid)
 	{
 		if (!StatementReturns(&innerBlock, true))
 			return ERROR_RESULT("Not all control paths return a value", block->lineNumber, currentFilePath);
 
-		variables.returnValueDecl = AllocReturnValueDecl(returnType, block->lineNumber);
+		variables.returnValueDecl = AllocReturnValueDecl(*returnType, block->lineNumber);
 		ArrayInsert(&block->statements, &variables.returnValueDecl, 0);
 
 		NodePtr returnValue = AllocReturnValueStatement(variables.returnValueDecl, -1);
@@ -503,11 +504,11 @@ static Result VisitGlobalStatement(const NodePtr* node)
 	{
 	case Node_Section:
 		SectionStmt* section = node->ptr;
-		PROPAGATE_ERROR(VisitFunctionBlock(section->block, NULL_NODE));
+		PROPAGATE_ERROR(VisitFunctionBlock(section->block, NULL));
 		break;
 	case Node_FunctionDeclaration:
 		FuncDeclStmt* funcDecl = node->ptr;
-		PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, funcDecl->type));
+		PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, &funcDecl->type));
 		break;
 	case Node_BlockStatement:
 		BlockStmt* block = node->ptr;

@@ -121,7 +121,7 @@ static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** o
 	else
 		return false;
 
-	NodePtr type = NULL_NODE;
+	Type type;
 
 	if (identifier->reference.type == Node_VariableDeclaration)
 	{
@@ -136,10 +136,10 @@ static bool GetStructDeclarationFromNode(const NodePtr* node, StructDeclStmt** o
 	else
 		return false;
 
-	if (type.type != Node_MemberAccess)
+	if (type.expr.type != Node_MemberAccess)
 		return false;
 
-	const MemberAccessExpr* last = type.ptr;
+	const MemberAccessExpr* last = type.expr.ptr;
 	while (last->next.ptr != NULL)
 	{
 		assert(last->next.type == Node_MemberAccess);
@@ -359,7 +359,7 @@ static Result ResolveExpression(const NodePtr* node)
 	{
 		const BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveExpression(&block->type));
+		PROPAGATE_ERROR(ResolveExpression(&block->type.expr));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
@@ -413,7 +413,7 @@ static Result VisitStatement(const NodePtr* node)
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->type));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->type.expr));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -434,7 +434,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type));
+		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type.expr));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}

@@ -21,12 +21,12 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* struct
 	return NULL;
 }
 
-static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
+static StructDeclStmt* GetStructDeclFromType(const Type type)
 {
-	switch (type.type)
+	switch (type.expr.type)
 	{
 	case Node_MemberAccess:
-		const MemberAccessExpr* memberAccess = type.ptr;
+		const MemberAccessExpr* memberAccess = type.expr.ptr;
 		while (memberAccess->next.ptr != NULL)
 		{
 			assert(memberAccess->next.type == Node_MemberAccess);
@@ -42,7 +42,7 @@ static StructDeclStmt* GetStructDeclFromType(const NodePtr type)
 	case Node_Null:
 		return NULL;
 
-	default: INVALID_VALUE(type.type);
+	default: INVALID_VALUE(type.expr.type);
 	}
 }
 
@@ -695,7 +695,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		NodePtr globalReturn = AllocASTNode(
 			&(VarDeclStmt){
 				.lineNumber = funcDecl->lineNumber,
-				.type = CopyASTNode(funcDecl->type),
+				.type.expr = CopyASTNode(funcDecl->type.expr),
+				.type.array = funcDecl->type.array,
 				.name = AllocateString("return"),
 				.externalName = NULL,
 				.initializer = NULL_NODE,
@@ -716,9 +717,10 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 		VarDeclStmt* first = GetStructMemberAtIndex(structDecl, 0);
 		assert(first != NULL);
-		assert(funcDecl->oldType.ptr == NULL);
+		assert(funcDecl->oldType.expr.ptr == NULL);
 		funcDecl->oldType = funcDecl->type;
-		funcDecl->type = CopyASTNode(first->type);
+		funcDecl->type.expr = CopyASTNode(first->type.expr);
+		funcDecl->type.array = first->type.array;
 	}
 
 	if (!funcDecl->external)

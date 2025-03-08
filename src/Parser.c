@@ -241,15 +241,17 @@ static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 
 static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr);
 
-static Result ParseType(NodePtr* out)
+static Result ParseType(Type* out)
 {
 	const size_t oldPointer = pointer;
+
+	*out = (Type){.expr = NULL_NODE, .array = false};
 
 	PrimitiveType primitiveType;
 	int lineNumber;
 	if (ParsePrimitiveType(&primitiveType, &lineNumber))
 	{
-		*out = AllocASTNode(
+		out->expr = AllocASTNode(
 			&(LiteralExpr){
 				.lineNumber = lineNumber,
 				.type = Literal_PrimitiveType,
@@ -259,12 +261,15 @@ static Result ParseType(NodePtr* out)
 		return SUCCESS_RESULT;
 	}
 
-	PROPAGATE_ERROR(ParsePrimary(out, false));
-	if (out->type == Node_MemberAccess)
+	NodePtr expr = NULL_NODE;
+	PROPAGATE_ERROR(ParsePrimary(&expr, false));
+	if (expr.type == Node_MemberAccess)
+	{
+		out->expr = expr;
 		return SUCCESS_RESULT;
+	}
 
 	pointer = oldPointer;
-	*out = NULL_NODE;
 	return NOT_FOUND_RESULT;
 }
 
@@ -274,9 +279,9 @@ static Result ParseBlockExpression(NodePtr* out)
 {
 	const size_t oldPointer = pointer;
 
-	NodePtr type = NULL_NODE;
+	Type type;
 	PROPAGATE_ERROR(ParseType(&type));
-	if (type.ptr == NULL)
+	if (type.expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
 	NodePtr block = NULL_NODE;
@@ -899,7 +904,7 @@ static Result ParseVariableDeclaration(
 	NodePtr* out,
 	const Token* public,
 	const Token* external,
-	const NodePtr type,
+	const Type type,
 	const Token* identifier,
 	const bool expectSemicolon)
 {
@@ -950,14 +955,14 @@ static Result ParseVariableDeclaration(
 	return SUCCESS_RESULT;
 }
 
-static Result ParseTypeAndIdentifier(NodePtr* type, const Token** identifier);
+static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
 
 static Result ParseVarDeclNoSemicolon(NodePtr* out)
 {
-	NodePtr type = NULL_NODE;
+	Type type;
 	const Token* identifier;
 	PROPAGATE_ERROR(ParseTypeAndIdentifier(&type, &identifier));
-	if (type.ptr == NULL)
+	if (type.expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
 	return ParseVariableDeclaration(out, NULL, NULL, type, identifier, false);
@@ -967,7 +972,7 @@ static Result ParseArrayDeclaration(
 	NodePtr* out,
 	const Token* public,
 	const Token* external,
-	const NodePtr type,
+	const Type type,
 	const Token* identifier)
 {
 	if (MatchOne(Token_LeftSquareBracket) == NULL)
@@ -1009,7 +1014,7 @@ static Result ParseFunctionDeclaration(
 	NodePtr* out,
 	const Token* public,
 	const Token* external,
-	const NodePtr type,
+	const Type type,
 	const Token* identifier)
 {
 	if (MatchOne(Token_LeftBracket) == NULL)
@@ -1038,7 +1043,7 @@ static Result ParseFunctionDeclaration(
 	*out = AllocASTNode(
 		&(FuncDeclStmt){
 			.type = type,
-			.oldType = NULL_NODE,
+			.oldType = (Type){.expr = NULL_NODE, .array = false},
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),
@@ -1128,10 +1133,10 @@ static Result ParseImportStatement(NodePtr* out, const Token* public, const Toke
 	return SUCCESS_RESULT;
 }
 
-static Result ParseTypeAndIdentifier(NodePtr* type, const Token** identifier)
+static Result ParseTypeAndIdentifier(Type* type, const Token** identifier)
 {
 	PROPAGATE_ERROR(ParseType(type));
-	if (type->ptr == NULL)
+	if (type->expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
 	*identifier = MatchOne(Token_Identifier);
@@ -1143,10 +1148,10 @@ static Result ParseTypeAndIdentifier(NodePtr* type, const Token** identifier)
 
 static Result ParseDeclaration(NodePtr* out, const Token* public, const Token* external)
 {
-	NodePtr type = NULL_NODE;
+	Type type;
 	const Token* identifier;
 	PROPAGATE_ERROR(ParseTypeAndIdentifier(&type, &identifier));
-	if (type.ptr == NULL)
+	if (type.expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
 	PROPAGATE_FOUND(ParseFunctionDeclaration(out, public, external, type, identifier));

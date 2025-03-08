@@ -171,7 +171,13 @@ typedef struct
 
 typedef struct
 {
-	NodePtr type;
+	NodePtr expr;
+	bool array;
+} Type;
+
+typedef struct
+{
+	Type type;
 	NodePtr block;
 } BlockExpr;
 
@@ -213,7 +219,7 @@ typedef typeof(((SectionStmt*)0)->sectionType) SectionType;
 typedef struct
 {
 	int lineNumber;
-	NodePtr type;
+	Type type;
 	char* name;
 	char* externalName;
 	NodePtr initializer;
@@ -228,8 +234,8 @@ typedef struct
 typedef struct
 {
 	int lineNumber;
-	NodePtr type;
-	NodePtr oldType;
+	Type type;
+	Type oldType;
 	char* name;
 	char* externalName;
 	Array parameters;

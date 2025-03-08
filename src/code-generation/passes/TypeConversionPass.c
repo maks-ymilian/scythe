@@ -6,7 +6,7 @@ static const char* currentFilePath = NULL;
 
 static PrimitiveType GetIdentifierType(const IdentifierReference identifier)
 {
-	const NodePtr* type;
+	const Type* type;
 	switch (identifier.reference.type)
 	{
 	case Node_VariableDeclaration:
@@ -20,8 +20,8 @@ static PrimitiveType GetIdentifierType(const IdentifierReference identifier)
 	default: INVALID_VALUE(identifier.reference.type);
 	}
 
-	assert(type->type == Node_Literal);
-	const LiteralExpr* literal = type->ptr;
+	assert(type->expr.type == Node_Literal);
+	const LiteralExpr* literal = type->expr.ptr;
 	assert(literal->type == Literal_PrimitiveType);
 	return literal->primitiveType;
 }
@@ -46,10 +46,10 @@ static void VisitLiteral(LiteralExpr* literal, PrimitiveType* outType)
 	}
 }
 
-static PrimitiveType GetType(const NodePtr type)
+static PrimitiveType GetType(const Type type)
 {
-	assert(type.type == Node_Literal);
-	const LiteralExpr* literal = type.ptr;
+	assert(type.expr.type == Node_Literal);
+	const LiteralExpr* literal = type.expr.ptr;
 	assert(literal->type == Literal_PrimitiveType);
 	return literal->primitiveType;
 }

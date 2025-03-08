@@ -224,7 +224,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		ptr = copy.ptr;
 
 		ptr->block = CopyASTNode(ptr->block);
-		ptr->type = CopyASTNode(ptr->type);
+		ptr->type.expr = CopyASTNode(ptr->type.expr);
 
 		return copy;
 	}
@@ -242,7 +242,7 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		if (ptr->initializer.ptr) ptr->initializer = CopyASTNode(ptr->initializer);
 		if (ptr->arrayLength.ptr) ptr->arrayLength = CopyASTNode(ptr->arrayLength);
-		ptr->type = CopyASTNode(ptr->type);
+		ptr->type.expr = CopyASTNode(ptr->type.expr);
 
 		ptr->name = AllocateString(ptr->name);
 		ptr->externalName = AllocateString(ptr->externalName);
@@ -324,7 +324,7 @@ void FreeASTNode(const NodePtr node)
 	{
 		const BlockExpr* ptr = node.ptr;
 		FreeASTNode(ptr->block);
-		FreeASTNode(ptr->type);
+		FreeASTNode(ptr->type.expr);
 		break;
 	}
 
@@ -353,7 +353,7 @@ void FreeASTNode(const NodePtr node)
 		const VarDeclStmt* ptr = node.ptr;
 		free(ptr->name);
 		free(ptr->externalName);
-		FreeASTNode(ptr->type);
+		FreeASTNode(ptr->type.expr);
 		FreeASTNode(ptr->initializer);
 		FreeASTNode(ptr->arrayLength);
 		FreeArray(&ptr->instantiatedVariables);
@@ -364,7 +364,7 @@ void FreeASTNode(const NodePtr node)
 		const FuncDeclStmt* ptr = node.ptr;
 		free(ptr->name);
 		free(ptr->externalName);
-		FreeASTNode(ptr->type);
+		FreeASTNode(ptr->type.expr);
 		for (size_t i = 0; i < ptr->parameters.length; ++i)
 			FreeASTNode(*(NodePtr*)ptr->parameters.array[i]);
 		FreeArray(&ptr->parameters);

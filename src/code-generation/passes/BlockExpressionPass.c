@@ -32,7 +32,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 			&(FuncDeclStmt){
 				.lineNumber = lineNumber,
 				.type = blockExpr->type,
-				.oldType = NULL_NODE,
+				.oldType = (Type){.expr = NULL_NODE, .array = false},
 				.name = AllocateString(name),
 				.externalName = NULL,
 				.parameters = AllocateArray(sizeof(NodePtr)),
@@ -46,7 +46,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 			sizeof(FuncDeclStmt), Node_FunctionDeclaration);
 		ArrayInsert(&blockStmt->statements, &funcDecl, 0);
 
-		blockExpr->type = NULL_NODE;
+		blockExpr->type.expr = NULL_NODE;
 		blockExpr->block = NULL_NODE;
 		FreeASTNode((NodePtr){.ptr = blockExpr, Node_BlockExpression});
 
