@@ -55,6 +55,37 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
 
+static NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr right, int lineNumber)
+{
+	return AllocASTNode(
+		&(ExpressionStmt){
+			.lineNumber = lineNumber,
+			.expr = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = lineNumber,
+					.operatorType = Binary_Assignment,
+					.right = right,
+					.left = AllocASTNode(
+						&(MemberAccessExpr){
+							.next = NULL_NODE,
+							.value = AllocASTNode(
+								&(LiteralExpr){
+									.lineNumber = lineNumber,
+									.type = Literal_Identifier,
+									.identifier = (IdentifierReference){
+										.text = AllocateString(varDecl->name),
+										.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
+									},
+								},
+								sizeof(LiteralExpr), Node_Literal),
+						},
+						sizeof(MemberAccessExpr), Node_MemberAccess),
+				},
+				sizeof(BinaryExpr), Node_Binary),
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
+}
+
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
 	for (size_t i = 0; i < aggregateVarDecl->instantiatedVariables.length; ++i)
@@ -344,7 +375,7 @@ static Result CheckTypeConversion(AggregateType from, AggregateType to, const in
 			lineNumber, currentFilePath);
 
 	if (!AreAggregateTypesEqual(from, to))
-		assert(0); // todo
+		assert(!"Cannot convert aggregate type \"%s\" to aggregate type \"%s\""); // todo
 	/*return ERROR_RESULT(*/
 	/*	AllocateString2Str(*/
 	/*		"Cannot convert struct type \"%s\" to struct type \"%s\"",*/
@@ -505,7 +536,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 		if (leftAggregateType.type == AggregateType_None && rightAggregateType.type == AggregateType_None)
 			return SUCCESS_RESULT;
-		PROPAGATE_ERROR(CheckTypeConversion(rightAggregateType, leftAggregateType, binary->lineNumber));
+		PROPAGATE_ERROR(CheckTypeConversion(leftAggregateType, rightAggregateType, binary->lineNumber));
 
 		aggregateType = leftAggregateType;
 	}
@@ -835,7 +866,6 @@ static Result VisitReturnStatement(NodePtr* node)
 							.value = AllocLiteralIdentifier(globalReturn, returnStmt->lineNumber),
 						},
 						sizeof(MemberAccessExpr), Node_MemberAccess),
-
 				},
 				sizeof(BinaryExpr), Node_Binary),
 		},
@@ -851,30 +881,49 @@ static Result VisitReturnStatement(NodePtr* node)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitVariableDeclaration(NodePtr* node)
+{
+	assert(node->type == Node_VariableDeclaration);
+	VarDeclStmt* varDecl = node->ptr;
+
+	AggregateType aggregateType = GetAggregateFromType(varDecl->type);
+	if (aggregateType.type != AggregateType_None)
+	{
+		if (varDecl->external)
+			return ERROR_RESULT(
+				"External variable declarations cannot be struct variables",
+				varDecl->lineNumber,
+				currentFilePath);
+
+		BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
+		InstantiateMembers(aggregateType, &varDecl->instantiatedVariables, &block->statements, block->statements.length);
+
+		if (varDecl->initializer.ptr != NULL)
+		{
+			NodePtr node = AllocSetVariable(varDecl, varDecl->initializer, varDecl->lineNumber);
+			varDecl->initializer = NULL_NODE;
+			PROPAGATE_ERROR(VisitStatement(&node));
+			ArrayAdd(&block->statements, &node);
+		}
+
+		ArrayAdd(&nodesToDelete, node);
+		*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
+	}
+	else
+	{
+		if (varDecl->initializer.ptr != NULL)
+			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
 	case Node_VariableDeclaration:
-		VarDeclStmt* varDecl = node->ptr;
-
-		if (varDecl->initializer.ptr != NULL)
-			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
-
-		AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-		if (aggregateType.type != AggregateType_None)
-		{
-			if (varDecl->external)
-				return ERROR_RESULT(
-					"External variable declarations cannot be struct variables",
-					varDecl->lineNumber,
-					currentFilePath);
-
-			BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
-			InstantiateMembers(aggregateType, &varDecl->instantiatedVariables, &block->statements, 0);
-			ArrayAdd(&nodesToDelete, node);
-			*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
-		}
+		PROPAGATE_ERROR(VisitVariableDeclaration(node));
 		break;
 	case Node_StructDeclaration:
 		ArrayAdd(&nodesToDelete, node);
