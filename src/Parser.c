@@ -145,16 +145,16 @@ static Result ParseArrayAccess(NodePtr* out)
 		return ERROR_RESULT_LINE("Expected \"]\"");
 
 	*out = AllocASTNode(
-		&(ArrayAccessExpr){
+		&(SubscriptExpr){
 			.lineNumber = identifier->lineNumber,
-			.subscript = subscript,
+			.expr = subscript,
 			.identifier =
 				(IdentifierReference){
 					.text = AllocateString(identifier->text),
 					.reference = NULL_NODE,
 				},
 		},
-		sizeof(ArrayAccessExpr), Node_ArrayAccess);
+		sizeof(SubscriptExpr), Node_Subscript);
 	return SUCCESS_RESULT;
 }
 
@@ -957,8 +957,6 @@ static Result ParseVariableDeclaration(
 			.externalName = AllocateString(externalIdentifier.text),
 			.initializer = initializer,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-			.arrayLength = NULL_NODE,
-			.array = false,
 			.public = public != NULL,
 			.external = external != NULL,
 			.uniqueName = -1,

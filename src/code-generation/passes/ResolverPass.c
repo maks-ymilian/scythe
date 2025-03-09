@@ -111,10 +111,10 @@ static Type* GetTypeFromNode(const NodePtr* node)
 		const FuncCallExpr* funcCall = node->ptr;
 		identifier = &funcCall->identifier;
 	}
-	else if (node->type == Node_ArrayAccess)
+	else if (node->type == Node_Subscript)
 	{
-		const ArrayAccessExpr* arrayAccess = node->ptr;
-		identifier = &arrayAccess->identifier;
+		const SubscriptExpr* subscript = node->ptr;
+		identifier = &subscript->identifier;
 	}
 	else
 		return NULL;
@@ -265,7 +265,7 @@ static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previ
 
 			if (literal->identifier.reference.type == Node_FunctionDeclaration)
 				return ERROR_RESULT(
-					AllocateString1Str("\"%s\" is a function, not a variable", literal->identifier.text),
+					AllocateString1Str("\"%s\" is not a variable", literal->identifier.text),
 					literal->lineNumber,
 					currentFilePath);
 		}
@@ -297,26 +297,25 @@ static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previ
 
 		return SUCCESS_RESULT;
 	}
-	case Node_ArrayAccess:
+	case Node_Subscript:
 	{
-		ArrayAccessExpr* arrayAccess = node->ptr;
+		SubscriptExpr* subscript = node->ptr;
 
-		if (arrayAccess->identifier.reference.ptr == NULL)
+		if (subscript->identifier.reference.ptr == NULL)
 		{
 			PROPAGATE_ERROR(InitializeIdentifierReference(
-				&arrayAccess->identifier,
+				&subscript->identifier,
 				previous,
-				arrayAccess->lineNumber));
+				subscript->lineNumber));
 
-			if (arrayAccess->identifier.reference.type != Node_VariableDeclaration ||
-				!((VarDeclStmt*)arrayAccess->identifier.reference.ptr)->array)
+			if (subscript->identifier.reference.type != Node_VariableDeclaration)
 				return ERROR_RESULT(
-					AllocateString1Str("\"%s\" is not an array", arrayAccess->identifier.text),
-					arrayAccess->lineNumber,
+					AllocateString1Str("\"%s\" is not a variable", subscript->identifier.text),
+					subscript->lineNumber,
 					currentFilePath);
 		}
 
-		PROPAGATE_ERROR(ResolveExpression(&arrayAccess->subscript));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->expr));
 
 		return SUCCESS_RESULT;
 	}
@@ -427,7 +426,6 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->arrayLength));
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->type.expr));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;

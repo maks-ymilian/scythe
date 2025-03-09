@@ -123,7 +123,6 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 		const VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer));
-		PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength));
 		break;
 	case Node_StructDeclaration:
 		const StructDeclStmt* structDecl = node->ptr;

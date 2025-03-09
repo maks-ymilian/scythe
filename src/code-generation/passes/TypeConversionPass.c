@@ -428,9 +428,6 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 {
 	assert(varDecl != NULL);
 
-	if (varDecl->array)
-		return SUCCESS_RESULT;
-
 	if (varDecl->initializer.ptr != NULL)
 		return SUCCESS_RESULT;
 
@@ -491,13 +488,6 @@ static Result VisitVariableDeclaration(VarDeclStmt* varDecl, const bool addIniti
 			GetType(varDecl->type),
 			varDecl->lineNumber,
 			NULL));
-	}
-
-	if (varDecl->arrayLength.ptr != NULL)
-	{
-		PrimitiveType type;
-		PROPAGATE_ERROR(VisitExpression(&varDecl->arrayLength, &type));
-		PROPAGATE_ERROR(ConvertExpression(&varDecl->arrayLength, type, Primitive_Int, varDecl->lineNumber, NULL));
 	}
 
 	return SUCCESS_RESULT;

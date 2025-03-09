@@ -113,7 +113,6 @@ static void VisitStatement(NodePtr* node)
 	case Node_VariableDeclaration:
 		VarDeclStmt* varDecl = node->ptr;
 		VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
-		VisitExpression(&varDecl->arrayLength, node, varDecl->lineNumber);
 		break;
 	case Node_ExpressionStatement:
 		ExpressionStmt* exprStmt = node->ptr;
@@ -127,7 +126,6 @@ static void VisitStatement(NodePtr* node)
 			assert(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
 			VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
-			VisitExpression(&varDecl->arrayLength, node, varDecl->lineNumber);
 		}
 		break;
 	case Node_Section:

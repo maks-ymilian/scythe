@@ -41,7 +41,6 @@ static void VisitStatement(const NodePtr node)
 	case Node_VariableDeclaration:
 		VarDeclStmt* varDecl = node.ptr;
 		VisitExpression(varDecl->initializer);
-		VisitExpression(varDecl->arrayLength);
 		varDecl->uniqueName = ++uniqueNameCounter;
 		break;
 	case Node_FunctionDeclaration:

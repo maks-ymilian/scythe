@@ -38,9 +38,7 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 			.name = AllocateString(name),
 			.externalName = NULL,
 			.initializer = NULL_NODE,
-			.arrayLength = NULL_NODE,
 			.instantiatedVariables = AllocateArray(sizeof(NodePtr)),
-			.array = false,
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
@@ -153,7 +151,7 @@ static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 		return funcDecl->globalReturn;
 
-	case Node_ArrayAccess:
+	case Node_Subscript:
 		return NULL;
 	default: INVALID_VALUE(value.type);
 	}
@@ -225,7 +223,7 @@ static ImportStmt* GetImportStmtFromMemberAccessValue(const NodePtr value)
 		return literal->identifier.reference.ptr;
 
 	case Node_FunctionCall:
-	case Node_ArrayAccess:
+	case Node_Subscript:
 		return NULL;
 	default: INVALID_VALUE(value.type);
 	}
@@ -799,9 +797,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 				.name = AllocateString("return"),
 				.externalName = NULL,
 				.initializer = NULL_NODE,
-				.arrayLength = NULL_NODE,
 				.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-				.array = false,
 				.public = false,
 				.external = false,
 				.uniqueName = -1,

@@ -14,7 +14,7 @@ typedef enum
 	Node_Unary,
 	Node_Literal,
 	Node_FunctionCall,
-	Node_ArrayAccess,
+	Node_Subscript,
 	Node_MemberAccess,
 	Node_BlockExpression,
 
@@ -160,8 +160,8 @@ typedef struct
 {
 	int lineNumber;
 	IdentifierReference identifier;
-	NodePtr subscript;
-} ArrayAccessExpr;
+	NodePtr expr;
+} SubscriptExpr;
 
 typedef struct
 {
@@ -223,9 +223,7 @@ typedef struct
 	char* name;
 	char* externalName;
 	NodePtr initializer;
-	NodePtr arrayLength;
 	Array instantiatedVariables;
-	bool array;
 	bool public;
 	bool external;
 	int uniqueName;
