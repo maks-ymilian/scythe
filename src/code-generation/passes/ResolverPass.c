@@ -248,77 +248,110 @@ static Result InitializeIdentifierReference(
 
 static Result ResolveExpression(const NodePtr* node);
 
-static Result ResolveMemberAccessValue(const NodePtr* node, const NodePtr* previous)
+static Result ResolveMemberAccessValue(const MemberAccessExpr* memberAccess, const NodePtr* previous, bool isType)
 {
-	switch (node->type)
+	IdentifierReference* identifier = NULL;
+	int lineNumber = -1;
+	switch (memberAccess->value.type)
 	{
 	case Node_Literal:
-	{
-		LiteralExpr* literal = node->ptr;
+		LiteralExpr* literal = memberAccess->value.ptr;
 		assert(literal->type == Literal_Identifier);
-		if (literal->identifier.reference.ptr == NULL)
-		{
-			PROPAGATE_ERROR(InitializeIdentifierReference(
-				&literal->identifier,
-				previous,
-				literal->lineNumber));
-
-			if (literal->identifier.reference.type == Node_FunctionDeclaration)
-				return ERROR_RESULT(
-					AllocateString1Str("\"%s\" is not a variable", literal->identifier.text),
-					literal->lineNumber,
-					currentFilePath);
-		}
-		return SUCCESS_RESULT;
-	}
+		identifier = &literal->identifier;
+		lineNumber = literal->lineNumber;
+		break;
+	case Node_Subscript:
+		SubscriptExpr* subscript = memberAccess->value.ptr;
+		identifier = &subscript->identifier;
+		lineNumber = subscript->lineNumber;
+		break;
 	case Node_FunctionCall:
+		FuncCallExpr* funcCall = memberAccess->value.ptr;
+		identifier = &funcCall->identifier;
+		lineNumber = funcCall->lineNumber;
+		break;
+	default: INVALID_VALUE(memberAccess->value.type);
+	}
+
+	if (identifier->reference.ptr == NULL)
 	{
-		FuncCallExpr* funcCall = node->ptr;
+		PROPAGATE_ERROR(InitializeIdentifierReference(identifier, previous, lineNumber));
 
-		if (funcCall->identifier.reference.ptr == NULL)
+		if (identifier->reference.type == Node_Import && memberAccess->next.ptr == NULL)
+			return ERROR_RESULT("Cannot reference module name by itself", lineNumber, currentFilePath);
+
+		if (memberAccess->value.type == Node_FunctionCall)
 		{
-			PROPAGATE_ERROR(InitializeIdentifierReference(
-				&funcCall->identifier,
-				previous,
-				funcCall->lineNumber));
-
-			if (funcCall->identifier.reference.type != Node_FunctionDeclaration)
+			if (identifier->reference.type != Node_FunctionDeclaration)
 				return ERROR_RESULT(
-					AllocateString1Str("\"%s\" is not a function", funcCall->identifier.text),
-					funcCall->lineNumber,
+					AllocateString1Str("\"%s\" is not a function", identifier->text),
+					lineNumber,
 					currentFilePath);
 		}
+		else if (isType)
+		{
+			if (identifier->reference.type != Node_StructDeclaration &&
+				identifier->reference.type != Node_Import)
+				return ERROR_RESULT(
+					AllocateString1Str("\"%s\" is not a type", identifier->text),
+					lineNumber,
+					currentFilePath);
+		}
+		else
+		{
+			if (identifier->reference.type != Node_VariableDeclaration &&
+				identifier->reference.type != Node_Import &&
+				identifier->reference.type != Node_Null)
+				return ERROR_RESULT(
+					AllocateString1Str("\"%s\" is not a variable", identifier->text),
+					lineNumber,
+					currentFilePath);
+		}
+	}
 
+	if (memberAccess->value.type == Node_Subscript)
+	{
+		SubscriptExpr* subscript = memberAccess->value.ptr;
+		PROPAGATE_ERROR(ResolveExpression(&subscript->expr));
+	}
+	else if (memberAccess->value.type == Node_FunctionCall)
+	{
+		FuncCallExpr* funcCall = memberAccess->value.ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 		{
 			const NodePtr* node = funcCall->arguments.array[i];
 			PROPAGATE_ERROR(ResolveExpression(node));
 		}
-
-		return SUCCESS_RESULT;
 	}
-	case Node_Subscript:
+	return SUCCESS_RESULT;
+}
+
+static Result ResolveMemberAccess(const NodePtr* node, bool isType)
+{
+	assert(node->type == Node_MemberAccess);
+	const MemberAccessExpr* current = node->ptr;
+	const NodePtr* previousValue = NULL;
+	while (true)
 	{
-		SubscriptExpr* subscript = node->ptr;
+		PROPAGATE_ERROR(ResolveMemberAccessValue(current, previousValue, isType));
 
-		if (subscript->identifier.reference.ptr == NULL)
-		{
-			PROPAGATE_ERROR(InitializeIdentifierReference(
-				&subscript->identifier,
-				previous,
-				subscript->lineNumber));
+		if (current->next.ptr == NULL)
+			break;
 
-			if (subscript->identifier.reference.type != Node_VariableDeclaration)
-				return ERROR_RESULT(
-					AllocateString1Str("\"%s\" is not a variable", subscript->identifier.text),
-					subscript->lineNumber,
-					currentFilePath);
-		}
-
-		PROPAGATE_ERROR(ResolveExpression(&subscript->expr));
-
-		return SUCCESS_RESULT;
+		assert(current->next.type == Node_MemberAccess);
+		previousValue = &current->value;
+		current = current->next.ptr;
 	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result ResolveType(const NodePtr* node)
+{
+	switch (node->type)
+	{
+	case Node_MemberAccess: return ResolveMemberAccess(node, true);
+	case Node_Literal: return SUCCESS_RESULT;
 	default: INVALID_VALUE(node->type);
 	}
 }
@@ -353,27 +386,13 @@ static Result ResolveExpression(const NodePtr* node)
 	}
 	case Node_MemberAccess:
 	{
-		const MemberAccessExpr* current = node->ptr;
-		const NodePtr* previousValue = NULL;
-		while (true)
-		{
-			PROPAGATE_ERROR(ResolveMemberAccessValue(&current->value, previousValue));
-
-			if (current->next.ptr == NULL)
-				break;
-
-			assert(current->next.type == Node_MemberAccess);
-			previousValue = &current->value;
-			current = current->next.ptr;
-		}
-
-		return SUCCESS_RESULT;
+		return ResolveMemberAccess(node, false);
 	}
 	case Node_BlockExpression:
 	{
 		const BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveExpression(&block->type.expr));
+		PROPAGATE_ERROR(ResolveType(&block->type.expr));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
@@ -426,7 +445,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->type.expr));
+		PROPAGATE_ERROR(ResolveType(&varDecl->type.expr));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -447,7 +466,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(ResolveExpression(&funcDecl->type.expr));
+		PROPAGATE_ERROR(ResolveType(&funcDecl->type.expr));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
