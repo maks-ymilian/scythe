@@ -97,7 +97,7 @@ static bool GetModuleFromNode(const NodePtr* node, Map** outModule, char** outMo
 	return true;
 }
 
-static StructDeclStmt* GetStructDeclarationFromNode(const NodePtr* node)
+static Type* GetTypeFromNode(const NodePtr* node)
 {
 	const IdentifierReference* identifier = NULL;
 	if (node->type == Node_Literal)
@@ -119,25 +119,30 @@ static StructDeclStmt* GetStructDeclarationFromNode(const NodePtr* node)
 	else
 		return NULL;
 
-	Type type;
-
 	if (identifier->reference.type == Node_VariableDeclaration)
 	{
-		const VarDeclStmt* varDecl = identifier->reference.ptr;
-		type = varDecl->type;
+		VarDeclStmt* varDecl = identifier->reference.ptr;
+		return &varDecl->type;
 	}
 	else if (identifier->reference.type == Node_FunctionDeclaration)
 	{
-		const FuncDeclStmt* funcDecl = identifier->reference.ptr;
-		type = funcDecl->type;
+		FuncDeclStmt* funcDecl = identifier->reference.ptr;
+		return &funcDecl->type;
 	}
-	else
+
+	return NULL;
+}
+
+static StructDeclStmt* GetStructDeclarationFromNode(const NodePtr* node)
+{
+	Type* type = GetTypeFromNode(node);
+	if (type == NULL)
 		return NULL;
 
-	if (type.expr.type != Node_MemberAccess)
+	if (type->expr.type != Node_MemberAccess)
 		return NULL;
 
-	const MemberAccessExpr* last = type.expr.ptr;
+	const MemberAccessExpr* last = type->expr.ptr;
 	while (last->next.ptr != NULL)
 	{
 		assert(last->next.type == Node_MemberAccess);
@@ -205,6 +210,19 @@ static Result InitializeIdentifierReference(
 				AllocateString2Str("Member \"%s\" does not exist in struct \"%s\"", identifier->text, structDecl->name),
 				lineNumber,
 				currentFilePath);
+		}
+
+		Type* type = GetTypeFromNode(previous);
+		if (type != NULL && type->array)
+		{
+			if (strcmp(identifier->text, "offset") != 0 &&
+				strcmp(identifier->text, "length") != 0)
+				return ERROR_RESULT(
+					AllocateString1Str("Member \"%s\" does not exist in array type", identifier->text),
+					lineNumber,
+					currentFilePath);
+
+			return SUCCESS_RESULT;
 		}
 
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);

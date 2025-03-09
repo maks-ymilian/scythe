@@ -23,9 +23,37 @@ typedef struct
 	} type;
 } AggregateType;
 
+static Array arrayMembers;
+
 static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
+
+static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, int lineNumber)
+{
+	return AllocASTNode(
+		&(VarDeclStmt){
+			.lineNumber = lineNumber,
+			.type.array = false,
+			.name = AllocateString(name),
+			.externalName = NULL,
+			.initializer = NULL_NODE,
+			.arrayLength = NULL_NODE,
+			.instantiatedVariables = AllocateArray(sizeof(NodePtr)),
+			.array = false,
+			.public = false,
+			.external = false,
+			.uniqueName = -1,
+			.type.expr = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_PrimitiveType,
+					.primitiveType = primitiveType,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(VarDeclStmt), Node_VariableDeclaration);
+}
 
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
@@ -132,7 +160,8 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 		next = next->next.ptr;
 
 		const VarDeclStmt* nextVarDecl = GetVarDeclFromMemberAccessValue(next->value);
-		assert(nextVarDecl != NULL);
+		if (nextVarDecl == NULL) // if its accessing array
+			break;
 		if (GetAggregateFromType(nextVarDecl->type).type == AggregateType_None)
 			break;
 	}
@@ -197,11 +226,18 @@ static size_t ForEachStructMember(
 	if (currentIndex == NULL)
 		currentIndex = &index;
 
-	assert(aggregateType.type == AggregateType_Struct); // todo
+	Array* members = NULL;
+	if (aggregateType.type == AggregateType_StructArray ||
+		aggregateType.type == AggregateType_PrimitiveArray)
+		members = &arrayMembers;
+	else if (aggregateType.type == AggregateType_Struct)
+		members = &aggregateType.structDecl->members;
+	else
+		assert(0);
 
-	for (size_t i = 0; i < aggregateType.structDecl->members.length; i++)
+	for (size_t i = 0; i < members->length; i++)
 	{
-		const NodePtr* memberNode = aggregateType.structDecl->members.array[i];
+		const NodePtr* memberNode = members->array[i];
 		assert(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
@@ -885,6 +921,12 @@ static Result VisitStatement(NodePtr* node)
 
 Result MemberExpansionPass(const AST* ast)
 {
+	arrayMembers = AllocateArray(sizeof(NodePtr));
+	NodePtr node = AllocStructMember("offset", Primitive_Int, -1);
+	ArrayAdd(&arrayMembers, &node);
+	node = AllocStructMember("length", Primitive_Int, -1);
+	ArrayAdd(&arrayMembers, &node);
+
 	nodesToDelete = AllocateArray(sizeof(NodePtr));
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
@@ -901,11 +943,12 @@ Result MemberExpansionPass(const AST* ast)
 	}
 
 	for (size_t i = 0; i < nodesToDelete.length; ++i)
-	{
-		const NodePtr* node = nodesToDelete.array[i];
-		FreeASTNode(*node);
-	}
+		FreeASTNode(*(NodePtr*)nodesToDelete.array[i]);
 	FreeArray(&nodesToDelete);
+
+	for (size_t i = 0; i < arrayMembers.length; ++i)
+		FreeASTNode(*(NodePtr*)arrayMembers.array[i]);
+	FreeArray(&arrayMembers);
 
 	return SUCCESS_RESULT;
 }
