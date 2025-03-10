@@ -33,7 +33,9 @@ static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
-			.type = AllocASTNode(
+			.arrayType = (Type){.array = false, .expr = NULL_NODE},
+			.type.array = false,
+			.type.expr = AllocASTNode(
 				&(LiteralExpr){
 					.lineNumber = lineNumber,
 					.type = Literal_PrimitiveType,
@@ -160,6 +162,7 @@ static NodePtr AllocReturnValueDecl(const Type type, const int lineNumber)
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
+			.arrayType = (Type){.array = false, .expr = NULL_NODE},
 			.type.expr = CopyASTNode(type.expr),
 			.type.array = type.array,
 			.initializer = NULL_NODE,

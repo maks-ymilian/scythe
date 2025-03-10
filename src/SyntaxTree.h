@@ -165,6 +165,7 @@ typedef struct
 
 typedef struct
 {
+	int lineNumber;
 	NodePtr value;
 	NodePtr next;
 } MemberAccessExpr;
@@ -220,6 +221,7 @@ typedef struct
 {
 	int lineNumber;
 	Type type;
+	Type arrayType;
 	char* name;
 	char* externalName;
 	NodePtr initializer;

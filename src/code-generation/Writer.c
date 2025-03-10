@@ -264,6 +264,17 @@ static void VisitUnaryExpression(UnaryExpr* unary)
 	VisitExpression(unary->expression, &(NodePtr){.ptr = unary, .type = Node_Unary});
 }
 
+static void VisitSubscript(SubscriptExpr* subscript)
+{
+	WriteString(subscript->identifier.text);
+	WriteChar('_');
+	WriteUniqueName(GetUniqueName(&subscript->identifier));
+
+	WriteChar('[');
+	VisitExpression(subscript->expr, &(NodePtr){.ptr = subscript, .type = Node_Subscript});
+	WriteChar(']');
+}
+
 static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 {
 	switch (node.type)
@@ -272,6 +283,7 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 	case Node_Unary: VisitUnaryExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
+	case Node_Subscript: VisitSubscript(node.ptr); break;
 	default: INVALID_VALUE(node.type);
 	}
 }

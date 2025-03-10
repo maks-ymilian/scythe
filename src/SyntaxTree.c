@@ -242,6 +242,7 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		if (ptr->initializer.ptr) ptr->initializer = CopyASTNode(ptr->initializer);
 		ptr->type.expr = CopyASTNode(ptr->type.expr);
+		if (ptr->arrayType.expr.ptr) ptr->arrayType.expr = CopyASTNode(ptr->arrayType.expr);
 
 		ptr->name = AllocateString(ptr->name);
 		ptr->externalName = AllocateString(ptr->externalName);

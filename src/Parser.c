@@ -431,6 +431,7 @@ static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
 			assert(value.ptr != NULL);
 			const NodePtr memberAccess = AllocASTNode(
 				&(MemberAccessExpr){
+					.lineNumber = CurrentToken()->lineNumber,
 					.value = value,
 					.next = NULL_NODE,
 				},
@@ -952,6 +953,7 @@ static Result ParseVariableDeclaration(
 	*out = AllocASTNode(
 		&(VarDeclStmt){
 			.type = type,
+			.arrayType = (Type){.array = false, .expr = NULL_NODE},
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),

@@ -180,6 +180,30 @@ static Result ConvertExpression(
 	}
 }
 
+static Result VisitSubscriptExpression(NodePtr* node, PrimitiveType* outType)
+{
+	assert(node->type == Node_Subscript);
+	SubscriptExpr* subscript = node->ptr;
+
+	PrimitiveType exprType;
+	PROPAGATE_ERROR(VisitExpression(&subscript->expr, &exprType));
+	PROPAGATE_ERROR(ConvertExpression(
+		&subscript->expr,
+		exprType,
+		Primitive_Int,
+		subscript->lineNumber,
+		NULL));
+
+	assert(subscript->identifier.reference.type == Node_VariableDeclaration);
+	VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
+	PrimitiveType type = GetType(varDecl->type);
+	if (type != Primitive_Int)
+		return ERROR_RESULT("Cannot index a non-int type", subscript->lineNumber, currentFilePath);
+
+	if (outType != NULL) *outType = GetType(varDecl->arrayType);
+	return SUCCESS_RESULT;
+}
+
 static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	assert(node->type == Node_Binary);
@@ -270,24 +294,27 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 		// assignment
 	case Binary_Assignment:
 	{
-		LiteralExpr* literal = NULL;
 		if (binary->left.type == Node_Literal)
-			literal = binary->left.ptr;
+		{
+			LiteralExpr* literal = binary->left.ptr;
+			if (literal->type != Literal_Identifier)
+				goto assignmentError;
+		}
+		else if (binary->left.type != Node_Subscript)
+			goto assignmentError;
 
-		if (literal == NULL || literal->type != Literal_Identifier)
-			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
-
-		PrimitiveType variableType;
-		VisitLiteral(literal, &variableType);
 		PROPAGATE_ERROR(ConvertExpression(
 			&binary->right,
 			rightType,
-			variableType,
+			leftType,
 			binary->lineNumber,
 			NULL));
 
 		if (outType != NULL) *outType = leftType;
 		break;
+
+	assignmentError:
+		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 	}
 
 		// compound assignment
@@ -418,6 +445,9 @@ static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
 		break;
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
+		break;
+	case Node_Subscript:
+		PROPAGATE_ERROR(VisitSubscriptExpression(node, outType));
 		break;
 	default: INVALID_VALUE(node->type);
 	}

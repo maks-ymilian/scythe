@@ -24,6 +24,10 @@ static void VisitExpression(const NodePtr node)
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
 		break;
+	case Node_Subscript:
+		const SubscriptExpr* subscript = node.ptr;
+		VisitExpression(subscript->expr);
+		break;
 	case Node_Null:
 		break;
 	default: INVALID_VALUE(node.type);

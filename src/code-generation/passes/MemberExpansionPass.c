@@ -34,7 +34,6 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 	return AllocASTNode(
 		&(VarDeclStmt){
 			.lineNumber = lineNumber,
-			.type.array = false,
 			.name = AllocateString(name),
 			.externalName = NULL,
 			.initializer = NULL_NODE,
@@ -42,13 +41,17 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
-			.type.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_PrimitiveType,
-					.primitiveType = primitiveType,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.arrayType = (Type){.array = false, .expr = NULL_NODE},
+			.type = (Type){
+				.array = false,
+				.expr = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = lineNumber,
+						.type = Literal_PrimitiveType,
+						.primitiveType = primitiveType,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
@@ -65,6 +68,7 @@ static NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr right, int lineNum
 					.right = right,
 					.left = AllocASTNode(
 						&(MemberAccessExpr){
+							.lineNumber = lineNumber,
 							.next = NULL_NODE,
 							.value = AllocASTNode(
 								&(LiteralExpr){
@@ -152,21 +156,30 @@ static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 		return funcDecl->globalReturn;
 
 	case Node_Subscript:
-		return NULL;
+		const SubscriptExpr* subscript = value.ptr;
+		assert(subscript->identifier.reference.type == Node_VariableDeclaration ||
+			   subscript->identifier.reference.type == Node_Null);
+		return subscript->identifier.reference.ptr;
 	default: INVALID_VALUE(value.type);
 	}
 }
 
 static IdentifierReference* GetIdentifier(const MemberAccessExpr* memberAccess)
 {
-	if (memberAccess->value.type != Node_Literal)
-		return NULL;
+	switch (memberAccess->value.type)
+	{
+	case Node_Literal:
+		LiteralExpr* literal = memberAccess->value.ptr;
+		if (literal->type != Literal_Identifier)
+			return NULL;
+		return &literal->identifier;
 
-	LiteralExpr* literal = memberAccess->value.ptr;
-	if (literal->type != Literal_Identifier)
-		return NULL;
+	case Node_Subscript:
+		SubscriptExpr* subscript = memberAccess->value.ptr;
+		return &subscript->identifier;
 
-	return &literal->identifier;
+	default: INVALID_VALUE(memberAccess->value.type);
+	}
 }
 
 static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
@@ -202,9 +215,35 @@ static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
 
 	VarDeclStmt* instantiated = FindInstantiated(nextIdentifier->text, varDecl);
 	assert(instantiated != NULL);
-	currentIdentifier->reference = (NodePtr){.ptr = instantiated, .type = Node_VariableDeclaration};
-	free(currentIdentifier->text);
-	currentIdentifier->text = AllocateString(nextIdentifier->text);
+	IdentifierReference newIdentifier =
+		(IdentifierReference){
+			.reference = (NodePtr){.ptr = instantiated, .type = Node_VariableDeclaration},
+			.text = AllocateString(nextIdentifier->text),
+		};
+
+	if (next->value.type == Node_Subscript)
+	{
+		SubscriptExpr* subscript = next->value.ptr;
+
+		NodePtr new = AllocASTNode(
+			&(SubscriptExpr){
+				.lineNumber = memberAccess->lineNumber,
+				.identifier = newIdentifier,
+				.expr = subscript->expr,
+			},
+			sizeof(SubscriptExpr), Node_Subscript);
+		subscript->expr = NULL_NODE;
+
+		FreeASTNode(memberAccess->value);
+		memberAccess->value = new;
+	}
+	else
+	{
+		assert(next->value.type == Node_Literal);
+
+		free(currentIdentifier->text);
+		*currentIdentifier = newIdentifier;
+	}
 
 	FreeASTNode(memberAccess->next);
 	memberAccess->next = NULL_NODE;
@@ -297,7 +336,7 @@ static NodePtr AllocLiteralIdentifier(VarDeclStmt* varDecl, int lineNumber)
 		sizeof(LiteralExpr), Node_Literal);
 }
 
-static AggregateType GetAggregateFromMemberAccessValue(const NodePtr node)
+static AggregateType GetAggregateFromExpression(const NodePtr node)
 {
 	switch (node.type)
 	{
@@ -308,7 +347,6 @@ static AggregateType GetAggregateFromMemberAccessValue(const NodePtr node)
 			return GetAggregateFromType(varDecl->type);
 		return (AggregateType){.type = AggregateType_None};
 	}
-
 	case Node_FunctionCall:
 	{
 		const FuncCallExpr* funcCall = node.ptr;
@@ -321,7 +359,13 @@ static AggregateType GetAggregateFromMemberAccessValue(const NodePtr node)
 
 		return GetAggregateFromType(funcDecl->type);
 	}
-
+	case Node_Subscript:
+	{
+		const SubscriptExpr* subscript = node.ptr;
+		assert(subscript->identifier.reference.type == Node_VariableDeclaration);
+		const VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
+		return GetAggregateFromType(varDecl->type);
+	}
 	case Node_MemberAccess:
 	{
 		const MemberAccessExpr* memberAccess = node.ptr;
@@ -335,8 +379,10 @@ static AggregateType GetAggregateFromMemberAccessValue(const NodePtr node)
 			return GetAggregateFromType(varDecl->type);
 		return (AggregateType){.type = AggregateType_None};
 	}
-
-	default: return (AggregateType){.type = AggregateType_None};
+	case Node_Binary:
+	case Node_Unary:
+		return (AggregateType){.type = AggregateType_None};
+	default: INVALID_VALUE(node.type);
 	}
 }
 
@@ -432,7 +478,7 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 		assert(paramNode->type == Node_VariableDeclaration);
 		const VarDeclStmt* param = paramNode->ptr;
 
-		const AggregateType argAggregate = GetAggregateFromMemberAccessValue(argument);
+		const AggregateType argAggregate = GetAggregateFromExpression(argument);
 		const AggregateType paramAggregate = GetAggregateFromType(param->type);
 
 		if (argAggregate.type == AggregateType_None && paramAggregate.type == AggregateType_None)
@@ -450,6 +496,70 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 						},
 						NULL) -
 					1;
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result TransformSubscriptMemberAccess(NodePtr memberAccessNode)
+{
+	assert(memberAccessNode.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
+	while (true)
+	{
+		if (memberAccess->value.type == Node_Subscript)
+		{
+			SubscriptExpr* subscript = memberAccess->value.ptr;
+			if (subscript->identifier.reference.type == Node_VariableDeclaration)
+			{
+				VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
+				AggregateType aggregateType = GetAggregateFromType(varDecl->type);
+				if (aggregateType.type == AggregateType_Struct)
+					return ERROR_RESULT("Cannot use subscript on a struct type",
+						subscript->lineNumber,
+						currentFilePath);
+
+				if (aggregateType.type == AggregateType_StructArray ||
+					aggregateType.type == AggregateType_PrimitiveArray)
+				{
+					NodePtr newMemberAccess = AllocASTNode(
+						&(MemberAccessExpr){
+							.lineNumber = subscript->lineNumber,
+							.next = memberAccess->next,
+							.value = AllocASTNode(
+								&(SubscriptExpr){
+									.lineNumber = subscript->lineNumber,
+									.identifier = (IdentifierReference){
+										.text = AllocateString("offset"),
+										.reference = NULL_NODE,
+									},
+									.expr = subscript->expr,
+								},
+								sizeof(SubscriptExpr), Node_Subscript),
+						},
+						sizeof(MemberAccessExpr), Node_MemberAccess);
+
+					memberAccess->value = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = subscript->lineNumber,
+							.type = Literal_Identifier,
+							.identifier = (IdentifierReference){
+								.text = AllocateString(subscript->identifier.text),
+								.reference = subscript->identifier.reference,
+							},
+						},
+						sizeof(LiteralExpr), Node_Literal);
+					subscript->expr = NULL_NODE;
+					FreeASTNode((NodePtr){.ptr = subscript, .type = Node_Subscript});
+
+					memberAccess->next = newMemberAccess;
+				}
+			}
+		}
+
+		memberAccess = memberAccess->next.ptr;
+		if (memberAccess == NULL)
+			break;
 	}
 
 	return SUCCESS_RESULT;
@@ -529,8 +639,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	AggregateType aggregateType;
 	{
-		const AggregateType leftAggregateType = GetAggregateFromMemberAccessValue(binary->left);
-		const AggregateType rightAggregateType = GetAggregateFromMemberAccessValue(binary->right);
+		const AggregateType leftAggregateType = GetAggregateFromExpression(binary->left);
+		const AggregateType rightAggregateType = GetAggregateFromExpression(binary->right);
 
 		if (leftAggregateType.type == AggregateType_None && rightAggregateType.type == AggregateType_None)
 			return SUCCESS_RESULT;
@@ -604,6 +714,7 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 	{
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
+		PROPAGATE_ERROR(TransformSubscriptMemberAccess(*node));
 		UpdateStructMemberAccess(*node);
 		PROPAGATE_ERROR(VisitFunctionCallArguments(node, containingStatement));
 
@@ -634,7 +745,6 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		break;
 	default: INVALID_VALUE(node->type);
 	}
-
 	return SUCCESS_RESULT;
 }
 
@@ -642,14 +752,40 @@ typedef struct
 {
 	Array* destination;
 	Array* instantiatedVariables;
+	AggregateType aggregateType;
 	size_t index;
 } InstantiateMemberData;
+
+static void SetArrayType(VarDeclStmt* varDecl, AggregateType aggregateType)
+{
+	if (aggregateType.type == AggregateType_Struct ||
+		aggregateType.type == AggregateType_StructArray)
+		return;
+
+	varDecl->arrayType.array = aggregateType.type == AggregateType_PrimitiveArray;
+
+	assert(aggregateType.type == AggregateType_PrimitiveArray);
+	varDecl->arrayType.expr = AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = varDecl->lineNumber,
+			.type = Literal_PrimitiveType,
+			.primitiveType = aggregateType.primitiveType,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
 
 static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
-	const NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
+	NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
+
+	if (strcmp(varDecl->name, "offset") == 0)
+	{
+		VarDeclStmt* varDecl = copy.ptr;
+		SetArrayType(varDecl, d->aggregateType);
+	}
+
 	ArrayInsert(d->destination, &copy, d->index + index);
 	ArrayAdd(d->instantiatedVariables, &copy.ptr);
 }
@@ -665,6 +801,7 @@ static void InstantiateMembers(
 		&(InstantiateMemberData){
 			.destination = destination,
 			.instantiatedVariables = instantiatedVariables,
+			.aggregateType = aggregateType,
 			.index = index,
 		},
 		NULL);
@@ -703,25 +840,21 @@ static Result VisitExpressionStatement(NodePtr* node)
 	assert(node->type == Node_ExpressionStatement);
 	ExpressionStmt* exprStmt = node->ptr;
 
-	// remove the expression statement if it doesnt have any side effects
 	bool remove = false;
 	if (exprStmt->expr.type == Node_MemberAccess)
 	{
+		remove = true;
 		const MemberAccessExpr* memberAccess = exprStmt->expr.ptr;
 		while (true)
 		{
-			if (GetImportStmtFromMemberAccessValue(memberAccess->value) == NULL &&
-				GetVarDeclFromMemberAccessValue(memberAccess->value) == NULL)
+			if (memberAccess->value.type != Node_Literal)
 			{
 				remove = false;
 				break;
 			}
 
 			if (memberAccess->next.ptr == NULL)
-			{
-				remove = true;
 				break;
-			}
 
 			assert(memberAccess->next.type == Node_MemberAccess);
 			memberAccess = memberAccess->next.ptr;
@@ -770,7 +903,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 			if (varDecl->initializer.ptr != NULL)
 				PROPAGATE_ERROR(CheckTypeConversion(
-					GetAggregateFromMemberAccessValue(varDecl->initializer),
+					GetAggregateFromExpression(varDecl->initializer),
 					aggregateType,
 					varDecl->lineNumber));
 
@@ -794,6 +927,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 				.lineNumber = funcDecl->lineNumber,
 				.type.expr = CopyASTNode(funcDecl->type.expr),
 				.type.array = funcDecl->type.array,
+				.arrayType = (Type){.array = false, .expr = NULL_NODE},
 				.name = AllocateString("return"),
 				.externalName = NULL,
 				.initializer = NULL_NODE,
@@ -833,7 +967,7 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	assert(returnStmt->function != NULL);
-	AggregateType exprAggregateType = GetAggregateFromMemberAccessValue(returnStmt->expr);
+	AggregateType exprAggregateType = GetAggregateFromExpression(returnStmt->expr);
 	AggregateType returnAggregateType = GetAggregateFromType(returnStmt->function->oldType);
 
 	if (returnAggregateType.type == AggregateType_None && exprAggregateType.type == AggregateType_None)
@@ -858,6 +992,7 @@ static Result VisitReturnStatement(NodePtr* node)
 					.right = returnStmt->expr,
 					.left = AllocASTNode(
 						&(MemberAccessExpr){
+							.lineNumber = returnStmt->lineNumber,
 							.next = NULL_NODE,
 							.value = AllocLiteralIdentifier(globalReturn, returnStmt->lineNumber),
 						},

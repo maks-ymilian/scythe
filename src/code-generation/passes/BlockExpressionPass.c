@@ -52,6 +52,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 
 		*expr = AllocASTNode(
 			&(MemberAccessExpr){
+				.lineNumber = lineNumber,
 				.next = NULL_NODE,
 				.value = AllocASTNode(
 					&(FuncCallExpr){
@@ -83,6 +84,10 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		MemberAccessExpr* memberAccess = expr->ptr;
 		VisitExpression(&memberAccess->value, statement, lineNumber);
 		VisitExpression(&memberAccess->next, statement, lineNumber);
+		break;
+	case Node_Subscript:
+		SubscriptExpr* subscript = expr->ptr;
+		VisitExpression(&subscript->expr, statement, lineNumber);
 		break;
 	case Node_Literal:
 	case Node_Null:
