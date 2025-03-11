@@ -125,7 +125,7 @@ static Result EvaluateNumberLiteral(
 
 static Result ParseExpression(NodePtr* out);
 
-static Result ParseArrayAccess(NodePtr* out)
+static Result ParseSubscript(NodePtr* out)
 {
 	const size_t oldPointer = pointer;
 
@@ -136,9 +136,9 @@ static Result ParseArrayAccess(NodePtr* out)
 		return NOT_FOUND_RESULT;
 	}
 
-	NodePtr subscript = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&subscript));
-	if (subscript.ptr == NULL)
+	NodePtr expr = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&expr));
+	if (expr.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected subscript");
 
 	if (MatchOne(Token_RightSquareBracket) == NULL)
@@ -147,7 +147,7 @@ static Result ParseArrayAccess(NodePtr* out)
 	*out = AllocASTNode(
 		&(SubscriptExpr){
 			.lineNumber = identifier->lineNumber,
-			.expr = subscript,
+			.expr = expr,
 			.identifier =
 				(IdentifierReference){
 					.text = AllocateString(identifier->text),
@@ -416,7 +416,7 @@ static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
 			NodePtr value = NULL_NODE;
 			PROPAGATE_ERROR(ParseFunctionCall(&value));
 			if (value.ptr == NULL)
-				PROPAGATE_ERROR(ParseArrayAccess(&value));
+				PROPAGATE_ERROR(ParseSubscript(&value));
 			if (value.ptr == NULL)
 			{
 				const Token* token = MatchOne(Token_Identifier);
