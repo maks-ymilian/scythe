@@ -281,7 +281,7 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 	*memberAccessNode = next;
 }
 
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data);
 static size_t ForEachStructMember(
 	const AggregateType aggregateType,
 	const StructMemberFunc func,
@@ -309,14 +309,14 @@ static size_t ForEachStructMember(
 		assert(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
-		const AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-		if (aggregateType.type == AggregateType_None)
+		const AggregateType memberType = GetAggregateFromType(varDecl->type);
+		if (memberType.type == AggregateType_None)
 		{
-			func(varDecl, *currentIndex, data);
+			func(varDecl, aggregateType, *currentIndex, data);
 			(*currentIndex)++;
 		}
 		else
-			ForEachStructMember(aggregateType, func, data, currentIndex);
+			ForEachStructMember(memberType, func, data, currentIndex);
 	}
 
 	return *currentIndex;
@@ -437,7 +437,7 @@ typedef struct
 	size_t argumentIndex;
 } ExpandArgumentData;
 
-static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
+static void ExpandArgument(VarDeclStmt* member, AggregateType parentType, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
@@ -588,7 +588,7 @@ static NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNum
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType parentType, size_t index, void* data)
 {
 	const GenerateStructMemberAssignmentData* d = data;
 
@@ -752,7 +752,6 @@ typedef struct
 {
 	Array* destination;
 	Array* instantiatedVariables;
-	AggregateType aggregateType;
 	size_t index;
 } InstantiateMemberData;
 
@@ -774,7 +773,7 @@ static void SetArrayType(VarDeclStmt* varDecl, AggregateType aggregateType)
 		sizeof(LiteralExpr), Node_Literal);
 }
 
-static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
+static void InstantiateMember(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
@@ -783,7 +782,7 @@ static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
 	if (strcmp(varDecl->name, "offset") == 0)
 	{
 		VarDeclStmt* varDecl = copy.ptr;
-		SetArrayType(varDecl, d->aggregateType);
+		SetArrayType(varDecl, parentType);
 	}
 
 	ArrayInsert(d->destination, &copy, d->index + index);
@@ -801,7 +800,6 @@ static void InstantiateMembers(
 		&(InstantiateMemberData){
 			.destination = destination,
 			.instantiatedVariables = instantiatedVariables,
-			.aggregateType = aggregateType,
 			.index = index,
 		},
 		NULL);
@@ -813,7 +811,7 @@ typedef struct
 	VarDeclStmt** returnValue;
 } GetStructMemberAtIndexData;
 
-static void CheckMemberAtIndex(VarDeclStmt* varDecl, size_t index, void* data)
+static void CheckMemberAtIndex(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
 {
 	const GetStructMemberAtIndexData* d = data;
 	if (index == d->index)
