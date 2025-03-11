@@ -139,7 +139,10 @@ static Result ParseSubscript(NodePtr* out)
 	NodePtr expr = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&expr));
 	if (expr.ptr == NULL)
-		return ERROR_RESULT_LINE("Expected subscript");
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
 
 	if (MatchOne(Token_RightSquareBracket) == NULL)
 		return ERROR_RESULT_LINE("Expected \"]\"");
@@ -717,11 +720,22 @@ static Result ParseExpressionStatement(NodePtr* out)
 		return result;
 
 	// special case for variable declarations
-	if (expr.type == Node_MemberAccess &&
-		MatchOne(Token_Identifier))
+	if (expr.type == Node_MemberAccess)
 	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
+		const size_t beforeSpecialCases = pointer;
+		if (MatchOne(Token_Identifier))
+		{
+			pointer = oldPointer;
+			return NOT_FOUND_RESULT;
+		}
+		if (MatchOne(Token_LeftSquareBracket) &&
+			MatchOne(Token_RightSquareBracket) &&
+			MatchOne(Token_Identifier))
+		{
+			pointer = oldPointer;
+			return NOT_FOUND_RESULT;
+		}
+		pointer = beforeSpecialCases;
 	}
 
 	if (MatchOne(Token_Semicolon) == NULL)
