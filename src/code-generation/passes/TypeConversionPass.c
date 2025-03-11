@@ -142,6 +142,9 @@ static Result ConvertExpression(
 	const int lineNumber,
 	const char* errorMessage)
 {
+	if (exprType == Primitive_Void || targetType == Primitive_Void)
+		return SUCCESS_RESULT;
+
 	if (exprType == targetType)
 		return SUCCESS_RESULT;
 
@@ -165,7 +168,6 @@ static Result ConvertExpression(
 		return SUCCESS_RESULT;
 
 	case Primitive_String:
-	case Primitive_Void:
 		goto convertError;
 
 	default: INVALID_VALUE(targetType);
