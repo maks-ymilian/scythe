@@ -145,39 +145,41 @@ static Result ConvertExpression(
 	if (exprType == targetType)
 		return SUCCESS_RESULT;
 
-	if (errorMessage == NULL)
-		errorMessage = AllocateString2Str(
-			"Cannot convert type \"%s\" to \"%s\"",
-			GetTokenTypeString(PrimitiveTypeToTokenType(exprType)),
-			GetTokenTypeString(PrimitiveTypeToTokenType(targetType)));
-
-	const Result error = ERROR_RESULT(errorMessage, lineNumber, currentFilePath);
-
 	switch (targetType)
 	{
 	case Primitive_Float:
 		if (exprType != Primitive_Int)
-			return error;
+			goto convertError;
 		return SUCCESS_RESULT;
 
 	case Primitive_Int:
 		if (exprType != Primitive_Float)
-			return error;
+			goto convertError;
 		*expr = AllocFloatToIntConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
 
 	case Primitive_Bool:
 		if (exprType != Primitive_Float && exprType != Primitive_Int)
-			return error;
+			goto convertError;
 		*expr = AllocIntToBoolConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
 
 	case Primitive_String:
 	case Primitive_Void:
-		return error;
+		goto convertError;
 
 	default: INVALID_VALUE(targetType);
 	}
+
+convertError:
+	return ERROR_RESULT(
+		errorMessage != NULL
+			? errorMessage
+			: AllocateString2Str(
+				  "Cannot convert type \"%s\" to \"%s\"",
+				  GetTokenTypeString(PrimitiveTypeToTokenType(exprType)),
+				  GetTokenTypeString(PrimitiveTypeToTokenType(targetType))),
+		lineNumber, currentFilePath);
 }
 
 static Result VisitSubscriptExpression(NodePtr* node, PrimitiveType* outType)
