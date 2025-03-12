@@ -630,12 +630,17 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 	VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(d->rightExpr);
 	assert(rightVarDecl != NULL);
 
-	assert(d->leftExpr.type == Node_Literal);
+	NodePtr left = NULL_NODE;
+	if (d->leftExpr.type == Node_Literal)
+	{
+		VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
+		assert(leftInstance != NULL);
+		left = AllocLiteralIdentifier(leftInstance, -1);
+	}
+	else
+		assert(0);
 
-	VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
-	assert(leftInstance != NULL);
-
-	NodePtr statement = NULL_NODE;
+	NodePtr right = NULL_NODE;
 	if (d->rightExpr.type == Node_Literal ||
 		d->rightExpr.type == Node_FunctionCall)
 	{
@@ -643,15 +648,9 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 		assert(rightInstance != NULL);
 
 		if (index == 0 && d->rightExpr.type == Node_FunctionCall)
-			statement = AllocAssignmentStatement(
-				AllocLiteralIdentifier(leftInstance, -1),
-				CopyASTNode(d->rightExpr),
-				-1);
+			right = CopyASTNode(d->rightExpr);
 		else
-			statement = AllocAssignmentStatement(
-				AllocLiteralIdentifier(leftInstance, -1),
-				AllocLiteralIdentifier(rightInstance, -1),
-				-1);
+			right = AllocLiteralIdentifier(rightInstance, -1);
 	}
 	else if (d->rightExpr.type == Node_Subscript)
 	{
@@ -662,14 +661,12 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 			d->memberCount,
 			subscript->lineNumber);
 
-		statement = AllocAssignmentStatement(
-			AllocLiteralIdentifier(leftInstance, -1),
-			(NodePtr){.ptr = subscript, .type = Node_Subscript},
-			-1);
+		right = (NodePtr){.ptr = subscript, .type = Node_Subscript};
 	}
 	else
 		assert(0);
 
+	NodePtr statement = AllocAssignmentStatement(left, right, -1);
 	ArrayAdd(d->statements, &statement);
 }
 
@@ -724,7 +721,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	if (leftExpr.type != Node_Literal)
+	if (leftExpr.type != Node_Literal &&
+		leftExpr.type != Node_Subscript)
 		return ERROR_RESULT("Left operand of struct assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
