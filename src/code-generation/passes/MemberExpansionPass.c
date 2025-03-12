@@ -678,55 +678,49 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		aggregateType = leftAggregateType;
 	}
 
-	/////////////////////////////////////////////////////////////////////
-	switch (binary->operatorType)
+	if (binary->operatorType != Binary_Assignment)
+		return ERROR_RESULT(
+			AllocateString1Str(
+				"Cannot use operator \"%s\" on struct types",
+				GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
+			binary->lineNumber, currentFilePath);
+
+	NodePtr leftExpr = binary->left;
+	NodePtr rightExpr = binary->right;
+	if (binary->left.type == Node_MemberAccess)
 	{
-	case Binary_Assignment:
-		NodePtr leftExpr = binary->left;
-		NodePtr rightExpr = binary->right;
-		if (binary->left.type == Node_MemberAccess)
-		{
-			const MemberAccessExpr* memberAccess = binary->left.ptr;
-			leftExpr = memberAccess->value;
-		}
-		if (binary->right.type == Node_MemberAccess)
-		{
-			const MemberAccessExpr* memberAccess = binary->right.ptr;
-			rightExpr = memberAccess->value;
-		}
-
-		BlockStmt* block = AllocBlockStmt(-1).ptr;
-
-		if (leftExpr.type != Node_Literal)
-			return ERROR_RESULT("Left operand of struct assignment must be a variable",
-				binary->lineNumber,
-				currentFilePath);
-
-		ForEachStructMember(aggregateType,
-			GenerateStructMemberAssignment,
-			&(GenerateStructMemberAssignmentData){
-				.statements = &block->statements,
-				.leftExpr = leftExpr,
-				.rightExpr = rightExpr,
-			},
-			NULL);
-
-		// the pass that breaks up chained assignment and equality will take care of this
-		// all struct assignment expressions will be unchained in an expression statement
-		// todo add the pass for this
-		assert(containingStatement->type == Node_ExpressionStatement);
-
-		FreeASTNode(*containingStatement);
-		*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
-		break;
-
-	default: return ERROR_RESULT(
-		AllocateString1Str(
-			"Cannot use operator \"%s\" on struct types",
-			GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
-		binary->lineNumber, currentFilePath);
+		const MemberAccessExpr* memberAccess = binary->left.ptr;
+		leftExpr = memberAccess->value;
+	}
+	if (binary->right.type == Node_MemberAccess)
+	{
+		const MemberAccessExpr* memberAccess = binary->right.ptr;
+		rightExpr = memberAccess->value;
 	}
 
+	BlockStmt* block = AllocBlockStmt(-1).ptr;
+
+	if (leftExpr.type != Node_Literal)
+		return ERROR_RESULT("Left operand of struct assignment must be a variable",
+			binary->lineNumber,
+			currentFilePath);
+
+	ForEachStructMember(aggregateType,
+		GenerateStructMemberAssignment,
+		&(GenerateStructMemberAssignmentData){
+			.statements = &block->statements,
+			.leftExpr = leftExpr,
+			.rightExpr = rightExpr,
+		},
+		NULL);
+
+	// the pass that breaks up chained assignment and equality will take care of this
+	// all struct assignment expressions will be unchained in an expression statement
+	// todo add the pass for this
+	assert(containingStatement->type == Node_ExpressionStatement);
+
+	FreeASTNode(*containingStatement);
+	*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 	return SUCCESS_RESULT;
 }
 
