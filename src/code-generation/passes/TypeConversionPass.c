@@ -204,7 +204,13 @@ static Result VisitSubscriptExpression(NodePtr* node, PrimitiveType* outType)
 	if (type != Primitive_Int)
 		return ERROR_RESULT("Cannot index a non-int type", subscript->lineNumber, currentFilePath);
 
-	if (outType != NULL) *outType = GetType(varDecl->arrayType);
+	PrimitiveType arrayType;
+	if (varDecl->arrayType.expr.type == Node_MemberAccess)
+		arrayType = Primitive_Void;
+	else
+		arrayType = GetType(varDecl->arrayType);
+
+	if (outType != NULL) *outType = arrayType;
 	return SUCCESS_RESULT;
 }
 

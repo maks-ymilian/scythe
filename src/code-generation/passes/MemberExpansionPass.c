@@ -364,6 +364,11 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 		const SubscriptExpr* subscript = node.ptr;
 		assert(subscript->identifier.reference.type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
+
+		AggregateType aggregateType = GetAggregateFromType(varDecl->arrayType);
+		if (aggregateType.type != AggregateType_None)
+			return aggregateType;
+
 		return GetAggregateFromType(varDecl->type);
 	}
 	case Node_MemberAccess:
@@ -592,26 +597,55 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 	VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(d->rightExpr);
 	assert(rightVarDecl != NULL);
 
+	assert(d->leftExpr.type == Node_Literal);
+
 	VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
 	assert(leftInstance != NULL);
-	VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
-	assert(rightInstance != NULL);
 
 	NodePtr statement = NULL_NODE;
-	if (index == 0 && d->rightExpr.type == Node_FunctionCall)
+	if (d->rightExpr.type == Node_Literal ||
+		d->rightExpr.type == Node_FunctionCall)
 	{
+		VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
+		assert(rightInstance != NULL);
+
+		if (index == 0 && d->rightExpr.type == Node_FunctionCall)
+			statement = AllocAssignmentStatement(
+				AllocLiteralIdentifier(leftInstance, -1),
+				CopyASTNode(d->rightExpr),
+				-1);
+		else
+			statement = AllocAssignmentStatement(
+				AllocLiteralIdentifier(leftInstance, -1),
+				AllocLiteralIdentifier(rightInstance, -1),
+				-1);
+	}
+	else if (d->rightExpr.type == Node_Subscript)
+	{
+		SubscriptExpr* subscript = CopyASTNode(d->rightExpr).ptr;
+		subscript->expr = AllocASTNode(
+			&(BinaryExpr){
+				.lineNumber = -1,
+				.operatorType = Binary_Add,
+				.left = subscript->expr,
+				.right = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = -1,
+						.type = Literal_Int,
+						.intValue = index,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
+			sizeof(BinaryExpr), Node_Binary);
+
 		statement = AllocAssignmentStatement(
 			AllocLiteralIdentifier(leftInstance, -1),
-			CopyASTNode(d->rightExpr),
+			(NodePtr){.ptr = subscript, .type = Node_Subscript},
 			-1);
 	}
 	else
-	{
-		statement = AllocAssignmentStatement(
-			AllocLiteralIdentifier(leftInstance, -1),
-			AllocLiteralIdentifier(rightInstance, -1),
-			-1);
-	}
+		assert(0);
+
 	ArrayAdd(d->statements, &statement);
 }
 
@@ -644,6 +678,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		aggregateType = leftAggregateType;
 	}
 
+	/////////////////////////////////////////////////////////////////////
 	switch (binary->operatorType)
 	{
 	case Binary_Assignment:
@@ -660,12 +695,12 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			rightExpr = memberAccess->value;
 		}
 
+		BlockStmt* block = AllocBlockStmt(-1).ptr;
+
 		if (leftExpr.type != Node_Literal)
 			return ERROR_RESULT("Left operand of struct assignment must be a variable",
 				binary->lineNumber,
 				currentFilePath);
-
-		BlockStmt* block = AllocBlockStmt(-1).ptr;
 
 		ForEachStructMember(aggregateType,
 			GenerateStructMemberAssignment,
@@ -684,14 +719,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		FreeASTNode(*containingStatement);
 		*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 		break;
-
-		// todo should this be implemented
-		/*case Binary_IsEqual:*/
-		/*	assert(!"is equal");*/
-		/*	break;*/
-		/*case Binary_NotEqual:*/
-		/*	assert(!"not equal");*/
-		/*	break;*/
 
 	default: return ERROR_RESULT(
 		AllocateString1Str(
@@ -752,20 +779,46 @@ typedef struct
 
 static void SetArrayType(VarDeclStmt* varDecl, AggregateType aggregateType)
 {
-	if (aggregateType.type == AggregateType_Struct ||
-		aggregateType.type == AggregateType_StructArray)
+	assert(aggregateType.type != AggregateType_None);
+
+	if (aggregateType.type == AggregateType_Struct)
 		return;
 
-	varDecl->arrayType.array = aggregateType.type == AggregateType_PrimitiveArray;
-
-	assert(aggregateType.type == AggregateType_PrimitiveArray);
-	varDecl->arrayType.expr = AllocASTNode(
-		&(LiteralExpr){
-			.lineNumber = varDecl->lineNumber,
-			.type = Literal_PrimitiveType,
-			.primitiveType = aggregateType.primitiveType,
-		},
-		sizeof(LiteralExpr), Node_Literal);
+	if (aggregateType.type == AggregateType_PrimitiveArray)
+	{
+		varDecl->arrayType = (Type){
+			.array = false,
+			.expr = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = varDecl->lineNumber,
+					.type = Literal_PrimitiveType,
+					.primitiveType = aggregateType.primitiveType,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		};
+	}
+	else if (aggregateType.type == AggregateType_StructArray)
+	{
+		varDecl->arrayType = (Type){
+			.array = false,
+			.expr = AllocASTNode(
+				&(MemberAccessExpr){
+					.lineNumber = varDecl->lineNumber,
+					.next = NULL_NODE,
+					.value = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = varDecl->lineNumber,
+							.type = Literal_Identifier,
+							.identifier = (IdentifierReference){
+								.text = AllocateString(aggregateType.structDecl->name),
+								.reference = (NodePtr){.ptr = aggregateType.structDecl, .type = Node_StructDeclaration},
+							},
+						},
+						sizeof(LiteralExpr), Node_Literal),
+				},
+				sizeof(MemberAccessExpr), Node_MemberAccess),
+		};
+	}
 }
 
 static void InstantiateMember(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
