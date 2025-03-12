@@ -229,8 +229,12 @@ static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 	}
 
 	bool writeBrackets = true;
-	if (parentExpr == NULL)
+	if (parentExpr == NULL ||
+		parentExpr->type == Node_FunctionCall ||
+		parentExpr->type == Node_Subscript)
+	{
 		writeBrackets = false;
+	}
 	else if (parentExpr->type == Node_Binary)
 	{
 		BinaryExpr* parent = parentExpr->ptr;
