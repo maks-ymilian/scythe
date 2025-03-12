@@ -312,7 +312,8 @@ static size_t ForEachStructMember(
 		const AggregateType memberType = GetAggregateFromType(varDecl->type);
 		if (memberType.type == AggregateType_None)
 		{
-			func(varDecl, aggregateType, *currentIndex, data);
+			if (func != NULL)
+				func(varDecl, aggregateType, *currentIndex, data);
 			(*currentIndex)++;
 		}
 		else
@@ -334,6 +335,37 @@ static NodePtr AllocLiteralIdentifier(VarDeclStmt* varDecl, int lineNumber)
 			},
 		},
 		sizeof(LiteralExpr), Node_Literal);
+}
+
+static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
+{
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_Add,
+			.left = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = lineNumber,
+					.operatorType = Binary_Multiply,
+					.left = offset,
+					.right = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = lineNumber,
+							.type = Literal_Int,
+							.intValue = memberCount,
+						},
+						sizeof(LiteralExpr), Node_Literal),
+				},
+				sizeof(BinaryExpr), Node_Binary),
+			.right = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = memberIndex,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(BinaryExpr), Node_Binary);
 }
 
 static AggregateType GetAggregateFromExpression(const NodePtr node)
@@ -570,6 +602,7 @@ typedef struct
 	NodePtr leftExpr;
 	NodePtr rightExpr;
 	Array* statements;
+	size_t memberCount;
 } GenerateStructMemberAssignmentData;
 
 static NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNumber)
@@ -623,20 +656,11 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 	else if (d->rightExpr.type == Node_Subscript)
 	{
 		SubscriptExpr* subscript = CopyASTNode(d->rightExpr).ptr;
-		subscript->expr = AllocASTNode(
-			&(BinaryExpr){
-				.lineNumber = -1,
-				.operatorType = Binary_Add,
-				.left = subscript->expr,
-				.right = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = -1,
-						.type = Literal_Int,
-						.intValue = index,
-					},
-					sizeof(LiteralExpr), Node_Literal),
-			},
-			sizeof(BinaryExpr), Node_Binary);
+		subscript->expr = AllocStructOffsetCalculation(
+			subscript->expr,
+			index,
+			d->memberCount,
+			subscript->lineNumber);
 
 		statement = AllocAssignmentStatement(
 			AllocLiteralIdentifier(leftInstance, -1),
@@ -711,6 +735,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			.statements = &block->statements,
 			.leftExpr = leftExpr,
 			.rightExpr = rightExpr,
+			.memberCount = ForEachStructMember(aggregateType, NULL, NULL, NULL),
 		},
 		NULL);
 
