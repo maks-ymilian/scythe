@@ -189,6 +189,19 @@ static Result InitializeIdentifierReference(
 			return SUCCESS_RESULT;
 		}
 
+		Type* type = GetTypeFromNode(previous);
+		if (type != NULL && type->array)
+		{
+			if (strcmp(identifier->text, "offset") != 0 &&
+				strcmp(identifier->text, "length") != 0)
+				return ERROR_RESULT(
+					AllocateString1Str("Member \"%s\" does not exist in array type", identifier->text),
+					lineNumber,
+					currentFilePath);
+
+			return SUCCESS_RESULT;
+		}
+
 		StructDeclStmt* structDecl = GetStructDeclarationFromNode(previous);
 		if (structDecl)
 		{
@@ -210,19 +223,6 @@ static Result InitializeIdentifierReference(
 				AllocateString2Str("Member \"%s\" does not exist in struct \"%s\"", identifier->text, structDecl->name),
 				lineNumber,
 				currentFilePath);
-		}
-
-		Type* type = GetTypeFromNode(previous);
-		if (type != NULL && type->array)
-		{
-			if (strcmp(identifier->text, "offset") != 0 &&
-				strcmp(identifier->text, "length") != 0)
-				return ERROR_RESULT(
-					AllocateString1Str("Member \"%s\" does not exist in array type", identifier->text),
-					lineNumber,
-					currentFilePath);
-
-			return SUCCESS_RESULT;
 		}
 
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
