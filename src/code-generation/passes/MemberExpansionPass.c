@@ -504,62 +504,57 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 static Result TransformSubscriptMemberAccess(NodePtr memberAccessNode)
 {
 	assert(memberAccessNode.type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
-	while (true)
+	for (MemberAccessExpr* memberAccess = memberAccessNode.ptr; memberAccess != NULL; memberAccess = memberAccess->next.ptr)
 	{
-		if (memberAccess->value.type == Node_Subscript)
-		{
-			SubscriptExpr* subscript = memberAccess->value.ptr;
-			if (subscript->identifier.reference.type == Node_VariableDeclaration)
-			{
-				VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
-				AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-				if (aggregateType.type == AggregateType_Struct)
-					return ERROR_RESULT("Cannot use subscript on a struct type",
-						subscript->lineNumber,
-						currentFilePath);
+		if (memberAccess->value.type != Node_Subscript)
+			continue;
 
-				if (aggregateType.type == AggregateType_StructArray ||
-					aggregateType.type == AggregateType_PrimitiveArray)
-				{
-					NodePtr newMemberAccess = AllocASTNode(
-						&(MemberAccessExpr){
-							.lineNumber = subscript->lineNumber,
-							.next = memberAccess->next,
-							.value = AllocASTNode(
-								&(SubscriptExpr){
-									.lineNumber = subscript->lineNumber,
-									.identifier = (IdentifierReference){
-										.text = AllocateString("offset"),
-										.reference = NULL_NODE,
-									},
-									.expr = subscript->expr,
-								},
-								sizeof(SubscriptExpr), Node_Subscript),
+		SubscriptExpr* subscript = memberAccess->value.ptr;
+		if (subscript->identifier.reference.type != Node_VariableDeclaration)
+			continue;
+
+		VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
+		AggregateType aggregateType = GetAggregateFromType(varDecl->type);
+		if (aggregateType.type == AggregateType_Struct)
+			return ERROR_RESULT("Cannot use subscript on a struct type",
+				subscript->lineNumber,
+				currentFilePath);
+
+		if (aggregateType.type != AggregateType_StructArray &&
+			aggregateType.type != AggregateType_PrimitiveArray)
+			continue;
+
+		NodePtr newMemberAccess = AllocASTNode(
+			&(MemberAccessExpr){
+				.lineNumber = subscript->lineNumber,
+				.next = memberAccess->next,
+				.value = AllocASTNode(
+					&(SubscriptExpr){
+						.lineNumber = subscript->lineNumber,
+						.identifier = (IdentifierReference){
+							.text = AllocateString("offset"),
+							.reference = NULL_NODE,
 						},
-						sizeof(MemberAccessExpr), Node_MemberAccess);
+						.expr = subscript->expr,
+					},
+					sizeof(SubscriptExpr), Node_Subscript),
+			},
+			sizeof(MemberAccessExpr), Node_MemberAccess);
 
-					memberAccess->value = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = subscript->lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(subscript->identifier.text),
-								.reference = subscript->identifier.reference,
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal);
-					subscript->expr = NULL_NODE;
-					FreeASTNode((NodePtr){.ptr = subscript, .type = Node_Subscript});
+		memberAccess->value = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = subscript->lineNumber,
+				.type = Literal_Identifier,
+				.identifier = (IdentifierReference){
+					.text = AllocateString(subscript->identifier.text),
+					.reference = subscript->identifier.reference,
+				},
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		subscript->expr = NULL_NODE;
+		FreeASTNode((NodePtr){.ptr = subscript, .type = Node_Subscript});
 
-					memberAccess->next = newMemberAccess;
-				}
-			}
-		}
-
-		memberAccess = memberAccess->next.ptr;
-		if (memberAccess == NULL)
-			break;
+		memberAccess->next = newMemberAccess;
 	}
 
 	return SUCCESS_RESULT;
@@ -1016,33 +1011,32 @@ static Result VisitVariableDeclaration(NodePtr* node)
 	VarDeclStmt* varDecl = node->ptr;
 
 	AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-	if (aggregateType.type != AggregateType_None)
-	{
-		if (varDecl->external)
-			return ERROR_RESULT(
-				"External variable declarations cannot be struct variables",
-				varDecl->lineNumber,
-				currentFilePath);
-
-		BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
-		InstantiateMembers(aggregateType, &varDecl->instantiatedVariables, &block->statements, block->statements.length);
-
-		if (varDecl->initializer.ptr != NULL)
-		{
-			NodePtr node = AllocSetVariable(varDecl, varDecl->initializer, varDecl->lineNumber);
-			varDecl->initializer = NULL_NODE;
-			PROPAGATE_ERROR(VisitStatement(&node));
-			ArrayAdd(&block->statements, &node);
-		}
-
-		ArrayAdd(&nodesToDelete, node);
-		*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
-	}
-	else
+	if (aggregateType.type == AggregateType_None)
 	{
 		if (varDecl->initializer.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
+		return SUCCESS_RESULT;
 	}
+
+	if (varDecl->external)
+		return ERROR_RESULT(
+			"External variable declarations cannot be of an aggregate type",
+			varDecl->lineNumber,
+			currentFilePath);
+
+	BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
+	InstantiateMembers(aggregateType, &varDecl->instantiatedVariables, &block->statements, block->statements.length);
+
+	if (varDecl->initializer.ptr != NULL)
+	{
+		NodePtr node = AllocSetVariable(varDecl, varDecl->initializer, varDecl->lineNumber);
+		varDecl->initializer = NULL_NODE;
+		PROPAGATE_ERROR(VisitStatement(&node));
+		ArrayAdd(&block->statements, &node);
+	}
+
+	ArrayAdd(&nodesToDelete, node);
+	*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
 	return SUCCESS_RESULT;
 }
