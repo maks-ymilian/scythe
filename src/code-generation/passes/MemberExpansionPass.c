@@ -637,6 +637,17 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 		assert(leftInstance != NULL);
 		left = AllocLiteralIdentifier(leftInstance, -1);
 	}
+	else if (d->leftExpr.type == Node_Subscript)
+	{
+		SubscriptExpr* subscript = CopyASTNode(d->leftExpr).ptr;
+		subscript->expr = AllocStructOffsetCalculation(
+			subscript->expr,
+			index,
+			d->memberCount,
+			subscript->lineNumber);
+
+		left = (NodePtr){.ptr = subscript, .type = Node_Subscript};
+	}
 	else
 		assert(0);
 
