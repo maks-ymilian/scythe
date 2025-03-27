@@ -182,7 +182,7 @@ static IdentifierReference* GetIdentifier(const MemberAccessExpr* memberAccess)
 	}
 }
 
-static void UpdateStructMemberAccess(const NodePtr memberAccessNode)
+static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode)
 {
 	assert(memberAccessNode.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
@@ -538,7 +538,7 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 	return SUCCESS_RESULT;
 }
 
-static Result TransformSubscriptMemberAccess(NodePtr memberAccessNode)
+static Result MakeArrayAccessesUseOffsetVar(NodePtr memberAccessNode)
 {
 	assert(memberAccessNode.type == Node_MemberAccess);
 	for (MemberAccessExpr* memberAccess = memberAccessNode.ptr; memberAccess != NULL; memberAccess = memberAccess->next.ptr)
@@ -764,8 +764,8 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 	{
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
-		PROPAGATE_ERROR(TransformSubscriptMemberAccess(*node));
-		UpdateStructMemberAccess(*node);
+		PROPAGATE_ERROR(MakeArrayAccessesUseOffsetVar(*node));
+		MakeMemberAccessesPointToInstantiated(*node);
 		PROPAGATE_ERROR(VisitFunctionCallArguments(node, containingStatement));
 
 		MemberAccessExpr* memberAccess = node->ptr;
