@@ -397,7 +397,11 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 		assert(subscript->identifier.reference.type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
 
-		AggregateType aggregateType = GetAggregateFromType(varDecl->arrayType);
+		Type type = (Type){
+			.array = false,
+			.expr = varDecl->arrayType.expr,
+		};
+		AggregateType aggregateType = GetAggregateFromType(type);
 		if (aggregateType.type != AggregateType_None)
 			return aggregateType;
 
