@@ -1099,7 +1099,13 @@ static Result VisitVariableDeclaration(NodePtr* node)
 	if (aggregateType.type == AggregateType_None)
 	{
 		if (varDecl->initializer.ptr != NULL)
+		{
+			NodePtr setVariable = AllocSetVariable(varDecl, CopyASTNode(varDecl->initializer), varDecl->lineNumber);
+			PROPAGATE_ERROR(VisitStatement(&setVariable));
+			FreeASTNode(setVariable);
+
 			PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, node));
+		}
 		return SUCCESS_RESULT;
 	}
 
@@ -1114,10 +1120,10 @@ static Result VisitVariableDeclaration(NodePtr* node)
 
 	if (varDecl->initializer.ptr != NULL)
 	{
-		NodePtr node = AllocSetVariable(varDecl, varDecl->initializer, varDecl->lineNumber);
+		NodePtr setVariable = AllocSetVariable(varDecl, varDecl->initializer, varDecl->lineNumber);
 		varDecl->initializer = NULL_NODE;
-		PROPAGATE_ERROR(VisitStatement(&node));
-		ArrayAdd(&block->statements, &node);
+		PROPAGATE_ERROR(VisitStatement(&setVariable));
+		ArrayAdd(&block->statements, &setVariable);
 	}
 
 	ArrayAdd(&nodesToDelete, node);
