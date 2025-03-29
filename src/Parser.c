@@ -123,8 +123,6 @@ static Result EvaluateNumberLiteral(
 	return SUCCESS_RESULT;
 }
 
-static Result ParseExpression(NodePtr* out);
-
 typedef Result (*ParseFunction)(NodePtr*);
 static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken)
 {
@@ -156,6 +154,8 @@ static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction funct
 
 	return SUCCESS_RESULT;
 }
+
+static Result ParseExpression(NodePtr* out);
 
 static Result ParseFunctionCall(NodePtr* out)
 {
@@ -242,6 +242,14 @@ static Result ParseType(Type* out)
 
 	if (MatchOne(Token_LeftSquareBracket))
 	{
+		NodePtr expr = NULL_NODE;
+		PROPAGATE_ERROR(ParseExpression(&expr));
+		if (expr.ptr != NULL)
+		{
+			pointer = oldPointer;
+			return NOT_FOUND_RESULT;
+		}
+
 		if (!MatchOne(Token_RightSquareBracket))
 			return ERROR_RESULT_LINE("Expected \"]\"");
 
@@ -427,11 +435,46 @@ static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
 	}
 }
 
+static Result ParseSubscript(NodePtr* out)
+{
+	const size_t oldPointer = pointer;
+	const int lineNumber = CurrentToken()->lineNumber;
+
+	NodePtr expr = NULL_NODE;
+	Result result = ParsePrimary(&expr, true);
+	if (expr.ptr == NULL || MatchOne(Token_LeftSquareBracket) == NULL)
+	{
+		*out = expr;
+		return result;
+	}
+
+	NodePtr indexExpr = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&indexExpr));
+	if (indexExpr.ptr == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
+
+	if (MatchOne(Token_RightSquareBracket) == NULL)
+		return ERROR_RESULT_LINE("Expected \"]\"");
+
+	*out = AllocASTNode(
+		&(SubscriptExpr){
+			.lineNumber = lineNumber,
+			.expr = expr,
+			.indexExpr = indexExpr,
+		},
+		sizeof(SubscriptExpr), Node_Subscript);
+
+	return SUCCESS_RESULT;
+}
+
 static Result ParseUnary(NodePtr* out)
 {
 	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
 	if (operator== NULL)
-		return ParsePrimary(out, true);
+		return ParseSubscript(out);
 
 	NodePtr expr;
 	if (ParseUnary(&expr).type != Result_Success)

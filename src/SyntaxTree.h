@@ -12,6 +12,7 @@ typedef enum
 
 	Node_Binary,
 	Node_Unary,
+	Node_Subscript,
 	Node_Literal,
 	Node_FunctionCall,
 	Node_MemberAccess,
@@ -111,6 +112,13 @@ typedef struct
 } UnaryExpr;
 
 typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr expr;
+	NodePtr indexExpr;
+} SubscriptExpr;
 
 typedef enum
 {
