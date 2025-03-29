@@ -111,11 +111,6 @@ static Type* GetTypeFromNode(const NodePtr* node)
 		const FuncCallExpr* funcCall = node->ptr;
 		identifier = &funcCall->identifier;
 	}
-	else if (node->type == Node_Subscript)
-	{
-		const SubscriptExpr* subscript = node->ptr;
-		identifier = &subscript->identifier;
-	}
 	else
 		return NULL;
 
@@ -189,22 +184,6 @@ static Result InitializeIdentifierReference(
 			return SUCCESS_RESULT;
 		}
 
-		if (previous->type != Node_Subscript)
-		{
-			Type* type = GetTypeFromNode(previous);
-			if (type != NULL && type->array)
-			{
-				if (strcmp(identifier->text, "offset") != 0 &&
-					strcmp(identifier->text, "length") != 0)
-					return ERROR_RESULT(
-						AllocateString1Str("Member \"%s\" does not exist in array type", identifier->text),
-						lineNumber,
-						currentFilePath);
-
-				return SUCCESS_RESULT;
-			}
-		}
-
 		StructDeclStmt* structDecl = GetStructDeclarationFromNode(previous);
 		if (structDecl)
 		{
@@ -263,11 +242,6 @@ static Result ResolveMemberAccessValue(const MemberAccessExpr* memberAccess, con
 		identifier = &literal->identifier;
 		lineNumber = literal->lineNumber;
 		break;
-	case Node_Subscript:
-		SubscriptExpr* subscript = memberAccess->value.ptr;
-		identifier = &subscript->identifier;
-		lineNumber = subscript->lineNumber;
-		break;
 	case Node_FunctionCall:
 		FuncCallExpr* funcCall = memberAccess->value.ptr;
 		identifier = &funcCall->identifier;
@@ -312,12 +286,7 @@ static Result ResolveMemberAccessValue(const MemberAccessExpr* memberAccess, con
 		}
 	}
 
-	if (memberAccess->value.type == Node_Subscript)
-	{
-		SubscriptExpr* subscript = memberAccess->value.ptr;
-		PROPAGATE_ERROR(ResolveExpression(&subscript->expr));
-	}
-	else if (memberAccess->value.type == Node_FunctionCall)
+	if (memberAccess->value.type == Node_FunctionCall)
 	{
 		FuncCallExpr* funcCall = memberAccess->value.ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)

@@ -155,31 +155,18 @@ static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 		return funcDecl->globalReturn;
 
-	case Node_Subscript:
-		const SubscriptExpr* subscript = value.ptr;
-		assert(subscript->identifier.reference.type == Node_VariableDeclaration ||
-			   subscript->identifier.reference.type == Node_Null);
-		return subscript->identifier.reference.ptr;
 	default: INVALID_VALUE(value.type);
 	}
 }
 
 static IdentifierReference* GetIdentifier(const MemberAccessExpr* memberAccess)
 {
-	switch (memberAccess->value.type)
-	{
-	case Node_Literal:
-		LiteralExpr* literal = memberAccess->value.ptr;
-		if (literal->type != Literal_Identifier)
-			return NULL;
-		return &literal->identifier;
+	assert(memberAccess->value.type == Node_Literal);
+	LiteralExpr* literal = memberAccess->value.ptr;
+	if (literal->type != Literal_Identifier)
+		return NULL;
 
-	case Node_Subscript:
-		SubscriptExpr* subscript = memberAccess->value.ptr;
-		return &subscript->identifier;
-
-	default: INVALID_VALUE(memberAccess->value.type);
-	}
+	return &literal->identifier;
 }
 
 static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode)
@@ -202,8 +189,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 		next = next->next.ptr;
 
 		const VarDeclStmt* nextVarDecl = GetVarDeclFromMemberAccessValue(next->value);
-		if (nextVarDecl == NULL) // if its accessing array
-			break;
+		assert(nextVarDecl != NULL);
 		if (GetAggregateFromType(nextVarDecl->type).type == AggregateType_None)
 			break;
 	}
@@ -221,29 +207,10 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 			.text = AllocateString(nextIdentifier->text),
 		};
 
-	if (next->value.type == Node_Subscript)
-	{
-		SubscriptExpr* subscript = next->value.ptr;
+	assert(next->value.type == Node_Literal);
 
-		NodePtr new = AllocASTNode(
-			&(SubscriptExpr){
-				.lineNumber = memberAccess->lineNumber,
-				.identifier = newIdentifier,
-				.expr = subscript->expr,
-			},
-			sizeof(SubscriptExpr), Node_Subscript);
-		subscript->expr = NULL_NODE;
-
-		FreeASTNode(memberAccess->value);
-		memberAccess->value = new;
-	}
-	else
-	{
-		assert(next->value.type == Node_Literal);
-
-		free(currentIdentifier->text);
-		*currentIdentifier = newIdentifier;
-	}
+	free(currentIdentifier->text);
+	*currentIdentifier = newIdentifier;
 
 	FreeASTNode(memberAccess->next);
 	memberAccess->next = NULL_NODE;
@@ -262,7 +229,6 @@ static ImportStmt* GetImportStmtFromMemberAccessValue(const NodePtr value)
 		return literal->identifier.reference.ptr;
 
 	case Node_FunctionCall:
-	case Node_Subscript:
 		return NULL;
 	default: INVALID_VALUE(value.type);
 	}
@@ -390,22 +356,6 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 			return aggregateType;
 
 		return GetAggregateFromType(funcDecl->type);
-	}
-	case Node_Subscript:
-	{
-		const SubscriptExpr* subscript = node.ptr;
-		assert(subscript->identifier.reference.type == Node_VariableDeclaration);
-		const VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
-
-		Type type = (Type){
-			.array = false,
-			.expr = varDecl->arrayType.expr,
-		};
-		AggregateType aggregateType = GetAggregateFromType(type);
-		if (aggregateType.type != AggregateType_None)
-			return aggregateType;
-
-		return GetAggregateFromType(varDecl->type);
 	}
 	case Node_MemberAccess:
 	{
@@ -542,65 +492,6 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 	return SUCCESS_RESULT;
 }
 
-static Result MakeArrayAccessesUseOffsetVar(NodePtr memberAccessNode)
-{
-	assert(memberAccessNode.type == Node_MemberAccess);
-	for (MemberAccessExpr* memberAccess = memberAccessNode.ptr; memberAccess != NULL; memberAccess = memberAccess->next.ptr)
-	{
-		if (memberAccess->value.type != Node_Subscript)
-			continue;
-
-		SubscriptExpr* subscript = memberAccess->value.ptr;
-		if (subscript->identifier.reference.type != Node_VariableDeclaration)
-			continue;
-
-		VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
-		AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-		if (aggregateType.type == AggregateType_Struct)
-			return ERROR_RESULT("Cannot use subscript on a struct type",
-				subscript->lineNumber,
-				currentFilePath);
-
-		if (aggregateType.type != AggregateType_StructArray &&
-			aggregateType.type != AggregateType_PrimitiveArray)
-			continue;
-
-		NodePtr newMemberAccess = AllocASTNode(
-			&(MemberAccessExpr){
-				.lineNumber = subscript->lineNumber,
-				.next = memberAccess->next,
-				.value = AllocASTNode(
-					&(SubscriptExpr){
-						.lineNumber = subscript->lineNumber,
-						.identifier = (IdentifierReference){
-							.text = AllocateString("offset"),
-							.reference = NULL_NODE,
-						},
-						.expr = subscript->expr,
-					},
-					sizeof(SubscriptExpr), Node_Subscript),
-			},
-			sizeof(MemberAccessExpr), Node_MemberAccess);
-
-		memberAccess->value = AllocASTNode(
-			&(LiteralExpr){
-				.lineNumber = subscript->lineNumber,
-				.type = Literal_Identifier,
-				.identifier = (IdentifierReference){
-					.text = AllocateString(subscript->identifier.text),
-					.reference = subscript->identifier.reference,
-				},
-			},
-			sizeof(LiteralExpr), Node_Literal);
-		subscript->expr = NULL_NODE;
-		FreeASTNode((NodePtr){.ptr = subscript, .type = Node_Subscript});
-
-		memberAccess->next = newMemberAccess;
-	}
-
-	return SUCCESS_RESULT;
-}
-
 typedef struct
 {
 	NodePtr leftExpr;
@@ -635,51 +526,21 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 	assert(rightVarDecl != NULL);
 
 	NodePtr left = NULL_NODE;
-	if (d->leftExpr.type == Node_Literal)
-	{
-		VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
-		assert(leftInstance != NULL);
-		left = AllocLiteralIdentifier(leftInstance, -1);
-	}
-	else if (d->leftExpr.type == Node_Subscript)
-	{
-		SubscriptExpr* subscript = CopyASTNode(d->leftExpr).ptr;
-		subscript->expr = AllocStructOffsetCalculation(
-			subscript->expr,
-			index,
-			d->memberCount,
-			subscript->lineNumber);
-
-		left = (NodePtr){.ptr = subscript, .type = Node_Subscript};
-	}
-	else
-		assert(0);
+	assert(d->leftExpr.type == Node_Literal);
+	VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
+	assert(leftInstance != NULL);
+	left = AllocLiteralIdentifier(leftInstance, -1);
 
 	NodePtr right = NULL_NODE;
-	if (d->rightExpr.type == Node_Literal ||
-		d->rightExpr.type == Node_FunctionCall)
-	{
-		VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
-		assert(rightInstance != NULL);
+	assert(d->rightExpr.type == Node_Literal ||
+		   d->rightExpr.type == Node_FunctionCall);
+	VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
+	assert(rightInstance != NULL);
 
-		if (index == 0 && d->rightExpr.type == Node_FunctionCall)
-			right = CopyASTNode(d->rightExpr);
-		else
-			right = AllocLiteralIdentifier(rightInstance, -1);
-	}
-	else if (d->rightExpr.type == Node_Subscript)
-	{
-		SubscriptExpr* subscript = CopyASTNode(d->rightExpr).ptr;
-		subscript->expr = AllocStructOffsetCalculation(
-			subscript->expr,
-			index,
-			d->memberCount,
-			subscript->lineNumber);
-
-		right = (NodePtr){.ptr = subscript, .type = Node_Subscript};
-	}
+	if (index == 0 && d->rightExpr.type == Node_FunctionCall)
+		right = CopyASTNode(d->rightExpr);
 	else
-		assert(0);
+		right = AllocLiteralIdentifier(rightInstance, -1);
 
 	NodePtr statement = AllocAssignmentStatement(left, right, -1);
 	ArrayAdd(d->statements, &statement);
@@ -736,8 +597,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	if (leftExpr.type != Node_Literal &&
-		leftExpr.type != Node_Subscript)
+	if (leftExpr.type != Node_Literal)
 		return ERROR_RESULT("Left operand of struct assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
@@ -768,7 +628,6 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 	{
 	case Node_MemberAccess:
 		RemoveModuleAccess(node);
-		PROPAGATE_ERROR(MakeArrayAccessesUseOffsetVar(*node));
 		MakeMemberAccessesPointToInstantiated(*node);
 		PROPAGATE_ERROR(VisitFunctionCallArguments(node, containingStatement));
 

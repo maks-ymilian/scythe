@@ -188,19 +188,6 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
-	case Node_Subscript:
-	{
-		SubscriptExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(SubscriptExpr), Node_Subscript);
-		assert(copy.type == Node_Subscript);
-		ptr = copy.ptr;
-
-		ptr->expr = CopyASTNode(ptr->expr);
-
-		ptr->identifier.text = AllocateString(ptr->identifier.text);
-
-		return copy;
-	}
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* ptr = node.ptr;
@@ -304,13 +291,6 @@ void FreeASTNode(const NodePtr node)
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
 			FreeASTNode(*(NodePtr*)ptr->arguments.array[i]);
 		FreeArray(&ptr->arguments);
-		break;
-	}
-	case Node_Subscript:
-	{
-		const SubscriptExpr* ptr = node.ptr;
-		free(ptr->identifier.text);
-		FreeASTNode(ptr->expr);
 		break;
 	}
 	case Node_MemberAccess:

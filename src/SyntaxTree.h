@@ -14,7 +14,6 @@ typedef enum
 	Node_Unary,
 	Node_Literal,
 	Node_FunctionCall,
-	Node_Subscript,
 	Node_MemberAccess,
 	Node_BlockExpression,
 
@@ -155,13 +154,6 @@ typedef struct
 	IdentifierReference identifier;
 	Array arguments;
 } FuncCallExpr;
-
-typedef struct
-{
-	int lineNumber;
-	IdentifierReference identifier;
-	NodePtr expr;
-} SubscriptExpr;
 
 typedef struct
 {

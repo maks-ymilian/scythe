@@ -184,36 +184,6 @@ convertError:
 		lineNumber, currentFilePath);
 }
 
-static Result VisitSubscriptExpression(NodePtr* node, PrimitiveType* outType)
-{
-	assert(node->type == Node_Subscript);
-	SubscriptExpr* subscript = node->ptr;
-
-	PrimitiveType exprType;
-	PROPAGATE_ERROR(VisitExpression(&subscript->expr, &exprType));
-	PROPAGATE_ERROR(ConvertExpression(
-		&subscript->expr,
-		exprType,
-		Primitive_Int,
-		subscript->lineNumber,
-		NULL));
-
-	assert(subscript->identifier.reference.type == Node_VariableDeclaration);
-	VarDeclStmt* varDecl = subscript->identifier.reference.ptr;
-	PrimitiveType type = GetType(varDecl->type);
-	if (type != Primitive_Int)
-		return ERROR_RESULT("Cannot index a non-int type", subscript->lineNumber, currentFilePath);
-
-	PrimitiveType arrayType;
-	if (varDecl->arrayType.expr.type == Node_MemberAccess)
-		arrayType = Primitive_Void;
-	else
-		arrayType = GetType(varDecl->arrayType);
-
-	if (outType != NULL) *outType = arrayType;
-	return SUCCESS_RESULT;
-}
-
 static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 {
 	assert(node->type == Node_Binary);
@@ -310,7 +280,7 @@ static Result VisitBinaryExpression(const NodePtr* node, PrimitiveType* outType)
 			if (literal->type != Literal_Identifier)
 				goto assignmentError;
 		}
-		else if (binary->left.type != Node_Subscript)
+		else
 			goto assignmentError;
 
 		PROPAGATE_ERROR(ConvertExpression(
@@ -455,9 +425,6 @@ static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
 		break;
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
-		break;
-	case Node_Subscript:
-		PROPAGATE_ERROR(VisitSubscriptExpression(node, outType));
 		break;
 	default: INVALID_VALUE(node->type);
 	}

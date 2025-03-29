@@ -125,44 +125,7 @@ static Result EvaluateNumberLiteral(
 
 static Result ParseExpression(NodePtr* out);
 
-static Result ParseSubscript(NodePtr* out)
-{
-	const size_t oldPointer = pointer;
-
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL || MatchOne(Token_LeftSquareBracket) == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	NodePtr expr = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&expr));
-	if (expr.ptr == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	if (MatchOne(Token_RightSquareBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \"]\"");
-
-	*out = AllocASTNode(
-		&(SubscriptExpr){
-			.lineNumber = identifier->lineNumber,
-			.expr = expr,
-			.identifier =
-				(IdentifierReference){
-					.text = AllocateString(identifier->text),
-					.reference = NULL_NODE,
-				},
-		},
-		sizeof(SubscriptExpr), Node_Subscript);
-	return SUCCESS_RESULT;
-}
-
 typedef Result (*ParseFunction)(NodePtr*);
-
 static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken)
 {
 	*outArray = AllocateArray(sizeof(NodePtr));
@@ -418,8 +381,6 @@ static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
 		{
 			NodePtr value = NULL_NODE;
 			PROPAGATE_ERROR(ParseFunctionCall(&value));
-			if (value.ptr == NULL)
-				PROPAGATE_ERROR(ParseSubscript(&value));
 			if (value.ptr == NULL)
 			{
 				const Token* token = MatchOne(Token_Identifier);
