@@ -309,7 +309,7 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 			if (literal->type != Literal_Identifier)
 				goto assignmentError;
 		}
-		else
+		else if (binary->left.type != Node_Subscript)
 			goto assignmentError;
 
 		PROPAGATE_ERROR(ConvertExpression(
@@ -321,9 +321,6 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 
 		if (outType != NULL) *outType = NonPointerType(leftType);
 		break;
-
-	assignmentError:
-		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 	}
 
 		// compound assignment
@@ -337,19 +334,12 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 	case Binary_BitOrAssign:
 	case Binary_XORAssign:
 	{
-		LiteralExpr* literal = NULL;
-		if (binary->left.type == Node_Literal)
-			literal = binary->left.ptr;
-
-		if (literal == NULL || literal->type != Literal_Identifier)
-			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
-
 		binary->right = AllocASTNode(
 			&(BinaryExpr){
 				.lineNumber = binary->lineNumber,
 				.operatorType = getCompoundAssignmentOperator[binary->operatorType],
 				.right = binary->right,
-				.left = CopyASTNode((NodePtr){.ptr = literal, .type = Node_Literal}),
+				.left = CopyASTNode(binary->left),
 			},
 			sizeof(BinaryExpr), Node_Binary);
 		binary->operatorType = Binary_Assignment;
@@ -359,6 +349,9 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 		if (outType != NULL) *outType = NonPointerType(leftType);
 		break;
 	}
+
+	assignmentError:
+		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 	default: INVALID_VALUE(binary->operatorType);
 	}
