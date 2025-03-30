@@ -184,6 +184,22 @@ static Result InitializeIdentifierReference(
 			return SUCCESS_RESULT;
 		}
 
+		if (previous->type != Node_Subscript)
+		{
+			Type* type = GetTypeFromNode(previous);
+			if (type != NULL && type->array)
+			{
+				if (strcmp(identifier->text, "offset") != 0 &&
+					strcmp(identifier->text, "length") != 0)
+					return ERROR_RESULT(
+						AllocateString1Str("Member \"%s\" does not exist in array type", identifier->text),
+						lineNumber,
+						currentFilePath);
+
+				return SUCCESS_RESULT;
+			}
+		}
+
 		StructDeclStmt* structDecl = GetStructDeclarationFromNode(previous);
 		if (structDecl)
 		{
@@ -366,6 +382,13 @@ static Result ResolveExpression(const NodePtr* node)
 		assert(block->block.type == Node_BlockStatement);
 		PROPAGATE_ERROR(ResolveType(&block->type.expr));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
+		return SUCCESS_RESULT;
+	}
+	case Node_Subscript:
+	{
+		const SubscriptExpr* subscript = node->ptr;
+		PROPAGATE_ERROR(ResolveExpression(&subscript->addressExpr));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr));
 		return SUCCESS_RESULT;
 	}
 	case Node_Null: return SUCCESS_RESULT;

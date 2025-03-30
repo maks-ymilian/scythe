@@ -462,7 +462,7 @@ static Result ParseSubscript(NodePtr* out)
 	*out = AllocASTNode(
 		&(SubscriptExpr){
 			.lineNumber = lineNumber,
-			.expr = expr,
+			.addressExpr = expr,
 			.indexExpr = indexExpr,
 		},
 		sizeof(SubscriptExpr), Node_Subscript);

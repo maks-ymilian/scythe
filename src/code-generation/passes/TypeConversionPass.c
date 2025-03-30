@@ -410,6 +410,27 @@ static Result VisitUnaryExpression(NodePtr* node, PrimitiveType* outType)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitSubscriptExpression(SubscriptExpr* subscript, PrimitiveType* outType)
+{
+	PrimitiveType addressType;
+	PROPAGATE_ERROR(VisitExpression(&subscript->addressExpr, &addressType));
+	PROPAGATE_ERROR(ConvertExpression(
+		&subscript->addressExpr,
+		addressType,
+		Primitive_Int,
+		subscript->lineNumber, NULL));
+
+	PrimitiveType indexType;
+	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, &indexType));
+	PROPAGATE_ERROR(ConvertExpression(
+		&subscript->indexExpr,
+		indexType,
+		Primitive_Int,
+		subscript->lineNumber, NULL));
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
 {
 	switch (node->type)
@@ -425,6 +446,9 @@ static Result VisitExpression(NodePtr* node, PrimitiveType* outType)
 		break;
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
+		break;
+	case Node_Subscript:
+		PROPAGATE_ERROR(VisitSubscriptExpression(node->ptr, outType));
 		break;
 	default: INVALID_VALUE(node->type);
 	}

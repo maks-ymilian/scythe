@@ -85,6 +85,11 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		VisitExpression(&memberAccess->value, statement, lineNumber);
 		VisitExpression(&memberAccess->next, statement, lineNumber);
 		break;
+	case Node_Subscript:
+		SubscriptExpr* subscript = expr->ptr;
+		VisitExpression(&subscript->addressExpr, statement, lineNumber);
+		VisitExpression(&subscript->indexExpr, statement, lineNumber);
+		break;
 	case Node_Literal:
 	case Node_Null:
 		break;

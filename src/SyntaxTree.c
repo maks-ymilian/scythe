@@ -155,6 +155,18 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
+	case Node_Subscript:
+	{
+		SubscriptExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(SubscriptExpr), Node_Subscript);
+		assert(copy.type == Node_Subscript);
+		ptr = copy.ptr;
+
+		ptr->addressExpr = CopyASTNode(ptr->addressExpr);
+		ptr->indexExpr = CopyASTNode(ptr->indexExpr);
+
+		return copy;
+	}
 	case Node_Literal:
 	{
 		LiteralExpr* ptr = node.ptr;
@@ -274,6 +286,13 @@ void FreeASTNode(const NodePtr node)
 	{
 		const UnaryExpr* ptr = node.ptr;
 		FreeASTNode(ptr->expression);
+		break;
+	}
+	case Node_Subscript:
+	{
+		const SubscriptExpr* ptr = node.ptr;
+		FreeASTNode(ptr->addressExpr);
+		FreeASTNode(ptr->indexExpr);
 		break;
 	}
 	case Node_Literal:

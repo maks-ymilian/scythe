@@ -116,7 +116,7 @@ typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
 typedef struct
 {
 	int lineNumber;
-	NodePtr expr;
+	NodePtr addressExpr;
 	NodePtr indexExpr;
 } SubscriptExpr;
 

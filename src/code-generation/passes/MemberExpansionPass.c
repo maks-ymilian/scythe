@@ -656,6 +656,11 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 			   literal->type == Literal_Boolean ||
 			   literal->type == Literal_PrimitiveType);
 		break;
+	case Node_Subscript:
+		SubscriptExpr* subscript = node->ptr;
+		PROPAGATE_ERROR(VisitExpression(&subscript->addressExpr, containingStatement));
+		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
+		break;
 	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;
