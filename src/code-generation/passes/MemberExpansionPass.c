@@ -6,25 +6,6 @@
 
 #include "StringUtils.h"
 
-typedef struct
-{
-	union
-	{
-		StructDeclStmt* structDecl;
-		PrimitiveType primitiveType;
-	};
-
-	enum
-	{
-		AggregateType_None,
-		AggregateType_Struct,
-		AggregateType_StructArray,
-		AggregateType_PrimitiveArray,
-	} type;
-} AggregateType;
-
-static Array arrayMembers;
-
 static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
@@ -98,8 +79,13 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggreg
 	return NULL;
 }
 
-static AggregateType GetAggregateFromType(const Type type)
+static StructDeclStmt* GetAggregateFromType(const Type type)
 {
+	if (type.modifier == TypeModifier_Pointer)
+		return NULL;
+	else if (type.modifier != TypeModifier_None)
+		assert(0);
+
 	switch (type.expr.type)
 	{
 	case Node_MemberAccess:
@@ -113,24 +99,11 @@ static AggregateType GetAggregateFromType(const Type type)
 		const LiteralExpr* literal = memberAccess->value.ptr;
 		assert(literal->type == Literal_Identifier);
 		assert(literal->identifier.reference.type == Node_StructDeclaration);
-		return (AggregateType){
-			.type = type.modifier == TypeModifier_Array ? AggregateType_StructArray : AggregateType_Struct,
-			.structDecl = literal->identifier.reference.ptr,
-		};
+		return literal->identifier.reference.ptr;
 
 	case Node_Literal:
-		if (type.modifier != TypeModifier_Array)
-			return (AggregateType){.type = AggregateType_None};
-
-		const LiteralExpr* literalExpr = type.expr.ptr;
-		assert(literalExpr->type == Literal_PrimitiveType);
-		return (AggregateType){
-			.type = AggregateType_PrimitiveArray,
-			.primitiveType = literalExpr->primitiveType,
-		};
-
 	case Node_Null:
-		return (AggregateType){.type = AggregateType_None};
+		return NULL;
 
 	default: INVALID_VALUE(type.expr.type);
 	}
@@ -174,7 +147,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 	if (memberAccess->value.type != Node_Literal)
 		return;
 	const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
-	if (varDecl == NULL || GetAggregateFromType(varDecl->type).type == AggregateType_None)
+	if (varDecl == NULL || GetAggregateFromType(varDecl->type) == NULL)
 		return;
 
 	const MemberAccessExpr* next = memberAccess;
@@ -188,7 +161,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 
 		const VarDeclStmt* nextVarDecl = GetVarDeclFromExpression(next->value);
 		assert(nextVarDecl != NULL);
-		if (GetAggregateFromType(nextVarDecl->type).type == AggregateType_None)
+		if (GetAggregateFromType(nextVarDecl->type) == NULL)
 			break;
 	}
 
@@ -245,36 +218,27 @@ static void RemoveModuleAccess(NodePtr* memberAccessNode)
 	*memberAccessNode = next;
 }
 
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data);
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data);
 static size_t ForEachStructMember(
-	const AggregateType aggregateType,
+	StructDeclStmt* aggregateType,
 	const StructMemberFunc func,
 	void* data,
 	size_t* currentIndex)
 {
-	assert(aggregateType.type != AggregateType_None);
+	assert(aggregateType != NULL);
 
 	size_t index = 0;
 	if (currentIndex == NULL)
 		currentIndex = &index;
 
-	Array* members = NULL;
-	if (aggregateType.type == AggregateType_StructArray ||
-		aggregateType.type == AggregateType_PrimitiveArray)
-		members = &arrayMembers;
-	else if (aggregateType.type == AggregateType_Struct)
-		members = &aggregateType.structDecl->members;
-	else
-		assert(0);
-
-	for (size_t i = 0; i < members->length; i++)
+	for (size_t i = 0; i < aggregateType->members.length; i++)
 	{
-		const NodePtr* memberNode = members->array[i];
+		const NodePtr* memberNode = aggregateType->members.array[i];
 		assert(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
-		const AggregateType memberType = GetAggregateFromType(varDecl->type);
-		if (memberType.type == AggregateType_None)
+		StructDeclStmt* memberType = GetAggregateFromType(varDecl->type);
+		if (memberType == NULL)
 		{
 			if (func != NULL)
 				func(varDecl, aggregateType, *currentIndex, data);
@@ -332,7 +296,7 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static AggregateType GetAggregateFromExpression(const NodePtr node)
+static StructDeclStmt* GetAggregateFromExpression(const NodePtr node)
 {
 	switch (node.type)
 	{
@@ -341,7 +305,7 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 		const VarDeclStmt* varDecl = GetVarDeclFromExpression(node);
 		if (varDecl != NULL)
 			return GetAggregateFromType(varDecl->type);
-		return (AggregateType){.type = AggregateType_None};
+		return NULL;
 	}
 	case Node_FunctionCall:
 	{
@@ -349,8 +313,8 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 
-		AggregateType aggregateType = GetAggregateFromType(funcDecl->oldType);
-		if (aggregateType.type != AggregateType_None)
+		StructDeclStmt* aggregateType = GetAggregateFromType(funcDecl->oldType);
+		if (aggregateType != NULL)
 			return aggregateType;
 
 		return GetAggregateFromType(funcDecl->type);
@@ -366,48 +330,31 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 		const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
 		if (varDecl != NULL)
 			return GetAggregateFromType(varDecl->type);
-		return (AggregateType){.type = AggregateType_None};
+		return NULL;
 	}
 	case Node_Binary:
 	case Node_Unary:
-		return (AggregateType){.type = AggregateType_None};
+		return NULL;
 	default: INVALID_VALUE(node.type);
 	}
 }
 
-static bool AreAggregateTypesEqual(AggregateType a, AggregateType b)
+static Result CheckTypeConversion(StructDeclStmt* from, StructDeclStmt* to, const int lineNumber)
 {
-	assert(a.type != AggregateType_None && b.type != AggregateType_None);
-
-	if (a.type != b.type)
-		return false;
-
-	if (a.type == AggregateType_Struct)
-		return a.structDecl == b.structDecl;
-	else if (a.type == AggregateType_StructArray)
-		return a.structDecl == b.structDecl;
-	else if (a.type == AggregateType_PrimitiveArray)
-		return a.primitiveType == b.primitiveType;
-	else
-		assert(0);
-}
-
-static Result CheckTypeConversion(AggregateType from, AggregateType to, const int lineNumber)
-{
-	if (from.type == AggregateType_None && to.type == AggregateType_None)
+	if (from == NULL && to == NULL)
 		assert(0);
 
-	if (from.type == AggregateType_None && to.type != AggregateType_None)
+	if (from == NULL && to != NULL)
 		return ERROR_RESULT(
 			"Cannot convert a non-aggregate type to an aggregate type",
 			lineNumber, currentFilePath);
 
-	if (from.type != AggregateType_None && to.type == AggregateType_None)
+	if (from != NULL && to == NULL)
 		return ERROR_RESULT(
 			"Cannot convert an aggregate type to a non-aggregate type",
 			lineNumber, currentFilePath);
 
-	if (!AreAggregateTypesEqual(from, to))
+	if (from != to)
 		assert(!"Cannot convert aggregate type \"%s\" to aggregate type \"%s\""); // todo
 	/*return ERROR_RESULT(*/
 	/*	AllocateString2Str(*/
@@ -426,7 +373,7 @@ typedef struct
 	size_t argumentIndex;
 } ExpandArgumentData;
 
-static void ExpandArgument(VarDeclStmt* member, AggregateType parentType, size_t index, void* data)
+static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
@@ -467,10 +414,10 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 		assert(paramNode->type == Node_VariableDeclaration);
 		const VarDeclStmt* param = paramNode->ptr;
 
-		const AggregateType argAggregate = GetAggregateFromExpression(argument);
-		const AggregateType paramAggregate = GetAggregateFromType(param->type);
+		StructDeclStmt* argAggregate = GetAggregateFromExpression(argument);
+		StructDeclStmt* paramAggregate = GetAggregateFromType(param->type);
 
-		if (argAggregate.type == AggregateType_None && paramAggregate.type == AggregateType_None)
+		if (argAggregate == NULL && paramAggregate == NULL)
 			continue;
 		PROPAGATE_ERROR(CheckTypeConversion(argAggregate, paramAggregate, funcCall->lineNumber));
 
@@ -514,7 +461,7 @@ static NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNum
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType parentType, size_t index, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const GenerateStructMemberAssignmentData* d = data;
 
@@ -561,12 +508,12 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
 	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
 
-	AggregateType aggregateType;
+	StructDeclStmt* aggregateType;
 	{
-		const AggregateType leftAggregateType = GetAggregateFromExpression(binary->left);
-		const AggregateType rightAggregateType = GetAggregateFromExpression(binary->right);
+		StructDeclStmt* leftAggregateType = GetAggregateFromExpression(binary->left);
+		StructDeclStmt* rightAggregateType = GetAggregateFromExpression(binary->right);
 
-		if (leftAggregateType.type == AggregateType_None && rightAggregateType.type == AggregateType_None)
+		if (leftAggregateType == NULL && rightAggregateType == NULL)
 			return SUCCESS_RESULT;
 		PROPAGATE_ERROR(CheckTypeConversion(leftAggregateType, rightAggregateType, binary->lineNumber));
 
@@ -671,7 +618,7 @@ typedef struct
 	size_t index;
 } InstantiateMemberData;
 
-static void InstantiateMember(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
+static void InstantiateMember(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
@@ -682,7 +629,7 @@ static void InstantiateMember(VarDeclStmt* varDecl, AggregateType parentType, si
 }
 
 static void InstantiateMembers(
-	AggregateType aggregateType,
+	StructDeclStmt* aggregateType,
 	Array* instantiatedVariables,
 	Array* destination,
 	const size_t index)
@@ -703,14 +650,14 @@ typedef struct
 	VarDeclStmt** returnValue;
 } GetStructMemberAtIndexData;
 
-static void CheckMemberAtIndex(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
+static void CheckMemberAtIndex(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const GetStructMemberAtIndexData* d = data;
 	if (index == d->index)
 		*d->returnValue = varDecl;
 }
 
-static VarDeclStmt* GetMemberAtIndex(AggregateType aggregateType, size_t index)
+static VarDeclStmt* GetMemberAtIndex(StructDeclStmt* aggregateType, size_t index)
 {
 	VarDeclStmt* varDecl = NULL;
 
@@ -783,8 +730,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
-		AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-		if (aggregateType.type != AggregateType_None)
+		StructDeclStmt* aggregateType = GetAggregateFromType(varDecl->type);
+		if (aggregateType != NULL)
 		{
 			if (funcDecl->external)
 				return ERROR_RESULT("External functions cannot have any struct parameters",
@@ -804,8 +751,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		}
 	}
 
-	AggregateType aggregateType = GetAggregateFromType(funcDecl->type);
-	if (aggregateType.type != AggregateType_None)
+	StructDeclStmt* aggregateType = GetAggregateFromType(funcDecl->type);
+	if (aggregateType != NULL)
 	{
 		if (funcDecl->external)
 			return ERROR_RESULT("External functions cannot return a struct", funcDecl->lineNumber, currentFilePath);
@@ -856,10 +803,10 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	assert(returnStmt->function != NULL);
-	AggregateType exprAggregateType = GetAggregateFromExpression(returnStmt->expr);
-	AggregateType returnAggregateType = GetAggregateFromType(returnStmt->function->oldType);
+	StructDeclStmt* exprAggregateType = GetAggregateFromExpression(returnStmt->expr);
+	StructDeclStmt* returnAggregateType = GetAggregateFromType(returnStmt->function->oldType);
 
-	if (returnAggregateType.type == AggregateType_None && exprAggregateType.type == AggregateType_None)
+	if (returnAggregateType == NULL && exprAggregateType == NULL)
 	{
 		if (returnStmt->expr.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
@@ -906,8 +853,8 @@ static Result VisitVariableDeclaration(NodePtr* node)
 	assert(node->type == Node_VariableDeclaration);
 	VarDeclStmt* varDecl = node->ptr;
 
-	AggregateType aggregateType = GetAggregateFromType(varDecl->type);
-	if (aggregateType.type == AggregateType_None)
+	StructDeclStmt* aggregateType = GetAggregateFromType(varDecl->type);
+	if (aggregateType == NULL)
 	{
 		if (varDecl->initializer.ptr != NULL)
 		{
@@ -995,12 +942,6 @@ static Result VisitStatement(NodePtr* node)
 
 Result MemberExpansionPass(const AST* ast)
 {
-	arrayMembers = AllocateArray(sizeof(NodePtr));
-	NodePtr node = AllocStructMember("offset", Primitive_Int, -1);
-	ArrayAdd(&arrayMembers, &node);
-	node = AllocStructMember("length", Primitive_Int, -1);
-	ArrayAdd(&arrayMembers, &node);
-
 	nodesToDelete = AllocateArray(sizeof(NodePtr));
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
@@ -1019,10 +960,6 @@ Result MemberExpansionPass(const AST* ast)
 	for (size_t i = 0; i < nodesToDelete.length; ++i)
 		FreeASTNode(*(NodePtr*)nodesToDelete.array[i]);
 	FreeArray(&nodesToDelete);
-
-	for (size_t i = 0; i < arrayMembers.length; ++i)
-		FreeASTNode(*(NodePtr*)arrayMembers.array[i]);
-	FreeArray(&arrayMembers);
 
 	return SUCCESS_RESULT;
 }
