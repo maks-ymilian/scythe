@@ -991,7 +991,8 @@ static Result ParseVariableDeclaration(
 	{
 		const Token* semicolon = MatchOne(Token_Semicolon);
 		if (semicolon == NULL)
-			return ERROR_RESULT_LINE("Expected \";\"");
+			return ERROR_RESULT_LINE(
+				AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 	}
 
 	*out = AllocASTNode(
