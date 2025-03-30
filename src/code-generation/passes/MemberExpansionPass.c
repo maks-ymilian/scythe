@@ -6,6 +6,13 @@
 
 #include "StringUtils.h"
 
+typedef struct
+{
+	StructDeclStmt* effectiveType;
+	StructDeclStmt* underlyingType;
+	bool isPointer;
+} TypeInfo;
+
 static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
@@ -79,13 +86,12 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggreg
 	return NULL;
 }
 
-static StructDeclStmt* GetAggregateFromType(const Type type)
+static TypeInfo GetTypeInfoFromType(const Type type)
 {
-	if (type.modifier == TypeModifier_Pointer)
-		return NULL;
-	else if (type.modifier != TypeModifier_None)
-		assert(0);
+	assert(type.modifier == TypeModifier_None ||
+		   type.modifier == TypeModifier_Pointer);
 
+	StructDeclStmt* structDecl = NULL;
 	switch (type.expr.type)
 	{
 	case Node_MemberAccess:
@@ -99,14 +105,21 @@ static StructDeclStmt* GetAggregateFromType(const Type type)
 		const LiteralExpr* literal = memberAccess->value.ptr;
 		assert(literal->type == Literal_Identifier);
 		assert(literal->identifier.reference.type == Node_StructDeclaration);
-		return literal->identifier.reference.ptr;
+		structDecl = literal->identifier.reference.ptr;
+		break;
 
 	case Node_Literal:
 	case Node_Null:
-		return NULL;
+		break;
 
 	default: INVALID_VALUE(type.expr.type);
 	}
+
+	return (TypeInfo){
+		.effectiveType = type.modifier == TypeModifier_Pointer ? NULL : structDecl,
+		.underlyingType = structDecl,
+		.isPointer = type.modifier == TypeModifier_Pointer,
+	};
 }
 
 static VarDeclStmt* GetVarDeclFromExpression(const NodePtr value)
@@ -147,7 +160,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 	if (memberAccess->value.type != Node_Literal)
 		return;
 	const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
-	if (varDecl == NULL || GetAggregateFromType(varDecl->type) == NULL)
+	if (varDecl == NULL || GetTypeInfoFromType(varDecl->type).effectiveType == NULL)
 		return;
 
 	const MemberAccessExpr* next = memberAccess;
@@ -161,7 +174,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 
 		const VarDeclStmt* nextVarDecl = GetVarDeclFromExpression(next->value);
 		assert(nextVarDecl != NULL);
-		if (GetAggregateFromType(nextVarDecl->type) == NULL)
+		if (GetTypeInfoFromType(nextVarDecl->type).effectiveType == NULL)
 			break;
 	}
 
@@ -237,7 +250,7 @@ static size_t ForEachStructMember(
 		assert(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
-		StructDeclStmt* memberType = GetAggregateFromType(varDecl->type);
+		StructDeclStmt* memberType = GetTypeInfoFromType(varDecl->type).effectiveType;
 		if (memberType == NULL)
 		{
 			if (func != NULL)
@@ -296,7 +309,7 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static StructDeclStmt* GetAggregateFromExpression(const NodePtr node)
+static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 {
 	switch (node.type)
 	{
@@ -304,8 +317,13 @@ static StructDeclStmt* GetAggregateFromExpression(const NodePtr node)
 	{
 		const VarDeclStmt* varDecl = GetVarDeclFromExpression(node);
 		if (varDecl != NULL)
-			return GetAggregateFromType(varDecl->type);
-		return NULL;
+			return GetTypeInfoFromType(varDecl->type);
+
+		return (TypeInfo){
+			.effectiveType = NULL,
+			.underlyingType = NULL,
+			.isPointer = false,
+		};
 	}
 	case Node_FunctionCall:
 	{
@@ -313,11 +331,11 @@ static StructDeclStmt* GetAggregateFromExpression(const NodePtr node)
 		assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 
-		StructDeclStmt* aggregateType = GetAggregateFromType(funcDecl->oldType);
-		if (aggregateType != NULL)
-			return aggregateType;
+		TypeInfo typeInfo = GetTypeInfoFromType(funcDecl->oldType);
+		if (typeInfo.underlyingType != NULL)
+			return typeInfo;
 
-		return GetAggregateFromType(funcDecl->type);
+		return GetTypeInfoFromType(funcDecl->type);
 	}
 	case Node_MemberAccess:
 	{
@@ -329,12 +347,29 @@ static StructDeclStmt* GetAggregateFromExpression(const NodePtr node)
 		}
 		const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
 		if (varDecl != NULL)
-			return GetAggregateFromType(varDecl->type);
-		return NULL;
+			return GetTypeInfoFromType(varDecl->type);
+
+		return (TypeInfo){
+			.effectiveType = NULL,
+			.underlyingType = NULL,
+			.isPointer = false,
+		};
 	}
+	// case Node_Subscript:
+	// {
+	// 	const SubscriptExpr* subscript = node.ptr;
+	// 	bool isPointer;
+	// 	StructDeclStmt* aggregateType = GetTypeInfoFromExpression(subscript->addressExpr, &isPointer);
+	// 	return isPointer ? aggregateType : NULL;
+	// }
 	case Node_Binary:
 	case Node_Unary:
-		return NULL;
+		return (TypeInfo){
+			.effectiveType = NULL,
+			.underlyingType = NULL,
+			.isPointer = false,
+		};
+
 	default: INVALID_VALUE(node.type);
 	}
 }
@@ -414,8 +449,8 @@ static Result VisitFunctionCallArguments(const NodePtr* memberAccessNode, NodePt
 		assert(paramNode->type == Node_VariableDeclaration);
 		const VarDeclStmt* param = paramNode->ptr;
 
-		StructDeclStmt* argAggregate = GetAggregateFromExpression(argument);
-		StructDeclStmt* paramAggregate = GetAggregateFromType(param->type);
+		StructDeclStmt* argAggregate = GetTypeInfoFromExpression(argument).effectiveType;
+		StructDeclStmt* paramAggregate = GetTypeInfoFromType(param->type).effectiveType;
 
 		if (argAggregate == NULL && paramAggregate == NULL)
 			continue;
@@ -510,8 +545,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	StructDeclStmt* aggregateType;
 	{
-		StructDeclStmt* leftAggregateType = GetAggregateFromExpression(binary->left);
-		StructDeclStmt* rightAggregateType = GetAggregateFromExpression(binary->right);
+		StructDeclStmt* leftAggregateType = GetTypeInfoFromExpression(binary->left).effectiveType;
+		StructDeclStmt* rightAggregateType = GetTypeInfoFromExpression(binary->right).effectiveType;
 
 		if (leftAggregateType == NULL && rightAggregateType == NULL)
 			return SUCCESS_RESULT;
@@ -730,7 +765,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
-		StructDeclStmt* aggregateType = GetAggregateFromType(varDecl->type);
+		StructDeclStmt* aggregateType = GetTypeInfoFromType(varDecl->type).effectiveType;
 		if (aggregateType != NULL)
 		{
 			if (funcDecl->external)
@@ -740,7 +775,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 			if (varDecl->initializer.ptr != NULL)
 				PROPAGATE_ERROR(CheckTypeConversion(
-					GetAggregateFromExpression(varDecl->initializer),
+					GetTypeInfoFromExpression(varDecl->initializer).effectiveType,
 					aggregateType,
 					varDecl->lineNumber));
 
@@ -751,7 +786,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		}
 	}
 
-	StructDeclStmt* aggregateType = GetAggregateFromType(funcDecl->type);
+	StructDeclStmt* aggregateType = GetTypeInfoFromType(funcDecl->type).effectiveType;
 	if (aggregateType != NULL)
 	{
 		if (funcDecl->external)
@@ -803,8 +838,8 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	assert(returnStmt->function != NULL);
-	StructDeclStmt* exprAggregateType = GetAggregateFromExpression(returnStmt->expr);
-	StructDeclStmt* returnAggregateType = GetAggregateFromType(returnStmt->function->oldType);
+	StructDeclStmt* exprAggregateType = GetTypeInfoFromExpression(returnStmt->expr).effectiveType;
+	StructDeclStmt* returnAggregateType = GetTypeInfoFromType(returnStmt->function->oldType).effectiveType;
 
 	if (returnAggregateType == NULL && exprAggregateType == NULL)
 	{
@@ -853,7 +888,7 @@ static Result VisitVariableDeclaration(NodePtr* node)
 	assert(node->type == Node_VariableDeclaration);
 	VarDeclStmt* varDecl = node->ptr;
 
-	StructDeclStmt* aggregateType = GetAggregateFromType(varDecl->type);
+	StructDeclStmt* aggregateType = GetTypeInfoFromType(varDecl->type).effectiveType;
 	if (aggregateType == NULL)
 	{
 		if (varDecl->initializer.ptr != NULL)
