@@ -355,13 +355,19 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 			.isPointer = false,
 		};
 	}
-	// case Node_Subscript:
-	// {
-	// 	const SubscriptExpr* subscript = node.ptr;
-	// 	bool isPointer;
-	// 	StructDeclStmt* aggregateType = GetTypeInfoFromExpression(subscript->addressExpr, &isPointer);
-	// 	return isPointer ? aggregateType : NULL;
-	// }
+	case Node_Subscript:
+	{
+		const SubscriptExpr* subscript = node.ptr;
+		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->addressExpr);
+		if (typeInfo.isPointer)
+			return (TypeInfo){
+				.effectiveType = typeInfo.underlyingType,
+				.underlyingType = typeInfo.underlyingType,
+				.isPointer = false,
+			};
+
+		return typeInfo;
+	}
 	case Node_Binary:
 	case Node_Unary:
 		return (TypeInfo){
