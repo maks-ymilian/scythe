@@ -19,6 +19,7 @@ static const char* currentFilePath = NULL;
 
 static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, int lineNumber)
 {
+	assert(name != NULL);
 	return AllocASTNode(
 		&(VarDeclStmt){
 			.lineNumber = lineNumber,
@@ -45,6 +46,7 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 
 static NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr right, int lineNumber)
 {
+	assert(varDecl != NULL);
 	return AllocASTNode(
 		&(ExpressionStmt){
 			.lineNumber = lineNumber,
@@ -77,6 +79,7 @@ static NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr right, int lineNum
 
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
+	assert(aggregateVarDecl != NULL);
 	for (size_t i = 0; i < aggregateVarDecl->instantiatedVariables.length; ++i)
 	{
 		VarDeclStmt** varDecl = aggregateVarDecl->instantiatedVariables.array[i];
@@ -122,7 +125,7 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	};
 }
 
-static VarDeclStmt* GetVarDeclFromExpression(const NodePtr value)
+static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 {
 	switch (value.type)
 	{
@@ -159,7 +162,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
 	if (memberAccess->value.type != Node_Literal)
 		return;
-	const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
+	const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
 	if (varDecl == NULL || GetTypeInfoFromType(varDecl->type).effectiveType == NULL)
 		return;
 
@@ -172,7 +175,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 		assert(next->next.type == Node_MemberAccess);
 		next = next->next.ptr;
 
-		const VarDeclStmt* nextVarDecl = GetVarDeclFromExpression(next->value);
+		const VarDeclStmt* nextVarDecl = GetVarDeclFromMemberAccessValue(next->value);
 		assert(nextVarDecl != NULL);
 		if (GetTypeInfoFromType(nextVarDecl->type).effectiveType == NULL)
 			break;
@@ -266,6 +269,7 @@ static size_t ForEachStructMember(
 
 static NodePtr AllocLiteralIdentifier(VarDeclStmt* varDecl, int lineNumber)
 {
+	assert(varDecl != NULL);
 	return AllocASTNode(
 		&(LiteralExpr){
 			.lineNumber = lineNumber,
@@ -315,7 +319,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	{
 	case Node_Literal:
 	{
-		const VarDeclStmt* varDecl = GetVarDeclFromExpression(node);
+		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(node);
 		if (varDecl != NULL)
 			return GetTypeInfoFromType(varDecl->type);
 
@@ -345,7 +349,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 			assert(memberAccess->next.type == Node_MemberAccess);
 			memberAccess = memberAccess->next.ptr;
 		}
-		const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
+		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
 		if (varDecl != NULL)
 			return GetTypeInfoFromType(varDecl->type);
 
@@ -421,7 +425,7 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 	if (index == 0 && d->argumentNode.type == Node_FunctionCall)
 		return;
 
-	VarDeclStmt* aggregateVarDecl = GetVarDeclFromExpression(d->argumentNode);
+	VarDeclStmt* aggregateVarDecl = GetVarDeclFromMemberAccessValue(d->argumentNode);
 	assert(aggregateVarDecl != NULL);
 
 	VarDeclStmt* currentInstance = FindInstantiated(member->name, aggregateVarDecl);
@@ -506,27 +510,31 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 {
 	const GenerateStructMemberAssignmentData* d = data;
 
-	VarDeclStmt* leftVarDecl = GetVarDeclFromExpression(d->leftExpr);
-	assert(leftVarDecl != NULL);
-	VarDeclStmt* rightVarDecl = GetVarDeclFromExpression(d->rightExpr);
-	assert(rightVarDecl != NULL);
-
 	NodePtr left = NULL_NODE;
-	assert(d->leftExpr.type == Node_Literal);
-	VarDeclStmt* leftInstance = FindInstantiated(member->name, leftVarDecl);
-	assert(leftInstance != NULL);
-	left = AllocLiteralIdentifier(leftInstance, -1);
+	if (d->leftExpr.type == Node_Subscript)
+	{
+		assert(0); // todo
+	}
+	else
+	{
+		VarDeclStmt* leftInstance = FindInstantiated(member->name, GetVarDeclFromMemberAccessValue(d->leftExpr));
+		left = AllocLiteralIdentifier(leftInstance, -1);
+	}
 
 	NodePtr right = NULL_NODE;
-	assert(d->rightExpr.type == Node_Literal ||
-		   d->rightExpr.type == Node_FunctionCall);
-	VarDeclStmt* rightInstance = FindInstantiated(member->name, rightVarDecl);
-	assert(rightInstance != NULL);
-
-	if (index == 0 && d->rightExpr.type == Node_FunctionCall)
-		right = CopyASTNode(d->rightExpr);
+	if (d->rightExpr.type == Node_Subscript)
+	{
+		assert(0); // todo
+	}
 	else
-		right = AllocLiteralIdentifier(rightInstance, -1);
+	{
+		VarDeclStmt* rightInstance = FindInstantiated(member->name, GetVarDeclFromMemberAccessValue(d->rightExpr));
+
+		if (index == 0 && d->rightExpr.type == Node_FunctionCall)
+			right = CopyASTNode(d->rightExpr);
+		else
+			right = AllocLiteralIdentifier(rightInstance, -1);
+	}
 
 	NodePtr statement = AllocAssignmentStatement(left, right, -1);
 	ArrayAdd(d->statements, &statement);
@@ -584,7 +592,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
 	if (leftExpr.type != Node_Literal)
-		return ERROR_RESULT("Left operand of struct assignment must be a variable",
+		return ERROR_RESULT("Left operand of aggregate type assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
 
