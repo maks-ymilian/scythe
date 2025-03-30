@@ -318,12 +318,23 @@ static Result ResolveMemberAccess(const NodePtr* node, bool isType)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveType(const NodePtr* node)
+static Result ResolveType(const NodePtr* node, bool voidAllowed)
 {
 	switch (node->type)
 	{
-	case Node_MemberAccess: return ResolveMemberAccess(node, true);
-	case Node_Literal: return SUCCESS_RESULT;
+	case Node_MemberAccess:
+		return ResolveMemberAccess(node, true);
+	case Node_Literal:
+		if (voidAllowed)
+			return SUCCESS_RESULT;
+
+		LiteralExpr* literal = node->ptr;
+		assert(literal->type == Literal_PrimitiveType);
+		if (literal->primitiveType == Primitive_Void)
+			return ERROR_RESULT("\"void\" is not allowed here", literal->lineNumber, currentFilePath);
+
+		return SUCCESS_RESULT;
+
 	default: INVALID_VALUE(node->type);
 	}
 }
@@ -364,7 +375,7 @@ static Result ResolveExpression(const NodePtr* node)
 	{
 		const BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveType(&block->type.expr));
+		PROPAGATE_ERROR(ResolveType(&block->type.expr, false));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
@@ -424,7 +435,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer));
-		PROPAGATE_ERROR(ResolveType(&varDecl->type.expr));
+		PROPAGATE_ERROR(ResolveType(&varDecl->type.expr, false));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -445,7 +456,7 @@ static Result VisitStatement(const NodePtr* node)
 		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(ResolveType(&funcDecl->type.expr));
+		PROPAGATE_ERROR(ResolveType(&funcDecl->type.expr, true));
 		PROPAGATE_ERROR(RegisterDeclaration(funcDecl->name, node, funcDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
