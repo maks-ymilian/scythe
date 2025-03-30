@@ -48,6 +48,9 @@ static void VisitLiteral(LiteralExpr* literal, PrimitiveType* outType)
 
 static PrimitiveType GetType(const Type type)
 {
+	if (type.modifier == TypeModifier_Pointer)
+		return Primitive_Int;
+
 	assert(type.expr.type == Node_Literal);
 	const LiteralExpr* literal = type.expr.ptr;
 	assert(literal->type == Literal_PrimitiveType);
