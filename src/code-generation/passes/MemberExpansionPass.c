@@ -591,7 +591,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	if (leftExpr.type != Node_Literal)
+	if (leftExpr.type != Node_Literal &&
+		leftExpr.type != Node_Subscript)
 		return ERROR_RESULT("Left operand of aggregate type assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
