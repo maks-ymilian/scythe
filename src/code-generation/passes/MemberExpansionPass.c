@@ -577,7 +577,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	if (binary->operatorType != Binary_Assignment)
 		return ERROR_RESULT(
 			AllocateString1Str(
-				"Cannot use operator \"%s\" on struct types",
+				"Cannot use operator \"%s\" on aggregate types",
 				GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
 			binary->lineNumber, currentFilePath);
 
