@@ -137,7 +137,7 @@ static AggregateType GetAggregateFromType(const Type type)
 	}
 }
 
-static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
+static VarDeclStmt* GetVarDeclFromExpression(const NodePtr value)
 {
 	switch (value.type)
 	{
@@ -145,8 +145,7 @@ static VarDeclStmt* GetVarDeclFromMemberAccessValue(const NodePtr value)
 		const LiteralExpr* literal = value.ptr;
 		if (literal->type != Literal_Identifier)
 			return NULL;
-		if (literal->identifier.reference.type != Node_VariableDeclaration)
-			return NULL;
+		assert(literal->identifier.reference.type == Node_VariableDeclaration);
 		return literal->identifier.reference.ptr;
 
 	case Node_FunctionCall:
@@ -175,7 +174,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 	MemberAccessExpr* memberAccess = memberAccessNode.ptr;
 	if (memberAccess->value.type != Node_Literal)
 		return;
-	const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
+	const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
 	if (varDecl == NULL || GetAggregateFromType(varDecl->type).type == AggregateType_None)
 		return;
 
@@ -188,7 +187,7 @@ static void MakeMemberAccessesPointToInstantiated(const NodePtr memberAccessNode
 		assert(next->next.type == Node_MemberAccess);
 		next = next->next.ptr;
 
-		const VarDeclStmt* nextVarDecl = GetVarDeclFromMemberAccessValue(next->value);
+		const VarDeclStmt* nextVarDecl = GetVarDeclFromExpression(next->value);
 		assert(nextVarDecl != NULL);
 		if (GetAggregateFromType(nextVarDecl->type).type == AggregateType_None)
 			break;
@@ -340,7 +339,7 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 	{
 	case Node_Literal:
 	{
-		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(node);
+		const VarDeclStmt* varDecl = GetVarDeclFromExpression(node);
 		if (varDecl != NULL)
 			return GetAggregateFromType(varDecl->type);
 		return (AggregateType){.type = AggregateType_None};
@@ -365,7 +364,7 @@ static AggregateType GetAggregateFromExpression(const NodePtr node)
 			assert(memberAccess->next.type == Node_MemberAccess);
 			memberAccess = memberAccess->next.ptr;
 		}
-		const VarDeclStmt* varDecl = GetVarDeclFromMemberAccessValue(memberAccess->value);
+		const VarDeclStmt* varDecl = GetVarDeclFromExpression(memberAccess->value);
 		if (varDecl != NULL)
 			return GetAggregateFromType(varDecl->type);
 		return (AggregateType){.type = AggregateType_None};
@@ -435,7 +434,7 @@ static void ExpandArgument(VarDeclStmt* member, AggregateType parentType, size_t
 	if (index == 0 && d->argumentNode.type == Node_FunctionCall)
 		return;
 
-	VarDeclStmt* aggregateVarDecl = GetVarDeclFromMemberAccessValue(d->argumentNode);
+	VarDeclStmt* aggregateVarDecl = GetVarDeclFromExpression(d->argumentNode);
 	assert(aggregateVarDecl != NULL);
 
 	VarDeclStmt* currentInstance = FindInstantiated(member->name, aggregateVarDecl);
@@ -520,9 +519,9 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, AggregateType pa
 {
 	const GenerateStructMemberAssignmentData* d = data;
 
-	VarDeclStmt* leftVarDecl = GetVarDeclFromMemberAccessValue(d->leftExpr);
+	VarDeclStmt* leftVarDecl = GetVarDeclFromExpression(d->leftExpr);
 	assert(leftVarDecl != NULL);
-	VarDeclStmt* rightVarDecl = GetVarDeclFromMemberAccessValue(d->rightExpr);
+	VarDeclStmt* rightVarDecl = GetVarDeclFromExpression(d->rightExpr);
 	assert(rightVarDecl != NULL);
 
 	NodePtr left = NULL_NODE;
