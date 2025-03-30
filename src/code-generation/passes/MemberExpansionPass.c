@@ -41,9 +41,8 @@ static NodePtr AllocStructMember(const char* name, PrimitiveType primitiveType, 
 			.public = false,
 			.external = false,
 			.uniqueName = -1,
-			.arrayType = (Type){.array = false, .expr = NULL_NODE},
 			.type = (Type){
-				.array = false,
+				.modifier = TypeModifier_None,
 				.expr = AllocASTNode(
 					&(LiteralExpr){
 						.lineNumber = lineNumber,
@@ -115,12 +114,12 @@ static AggregateType GetAggregateFromType(const Type type)
 		assert(literal->type == Literal_Identifier);
 		assert(literal->identifier.reference.type == Node_StructDeclaration);
 		return (AggregateType){
-			.type = type.array ? AggregateType_StructArray : AggregateType_Struct,
+			.type = type.modifier == TypeModifier_Array ? AggregateType_StructArray : AggregateType_Struct,
 			.structDecl = literal->identifier.reference.ptr,
 		};
 
 	case Node_Literal:
-		if (!type.array)
+		if (type.modifier != TypeModifier_Array)
 			return (AggregateType){.type = AggregateType_None};
 
 		const LiteralExpr* literalExpr = type.expr.ptr;
@@ -672,61 +671,11 @@ typedef struct
 	size_t index;
 } InstantiateMemberData;
 
-static void SetArrayType(VarDeclStmt* varDecl, AggregateType aggregateType)
-{
-	assert(aggregateType.type != AggregateType_None);
-
-	if (aggregateType.type == AggregateType_Struct)
-		return;
-
-	if (aggregateType.type == AggregateType_PrimitiveArray)
-	{
-		varDecl->arrayType = (Type){
-			.array = false,
-			.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = varDecl->lineNumber,
-					.type = Literal_PrimitiveType,
-					.primitiveType = aggregateType.primitiveType,
-				},
-				sizeof(LiteralExpr), Node_Literal),
-		};
-	}
-	else if (aggregateType.type == AggregateType_StructArray)
-	{
-		varDecl->arrayType = (Type){
-			.array = false,
-			.expr = AllocASTNode(
-				&(MemberAccessExpr){
-					.lineNumber = varDecl->lineNumber,
-					.next = NULL_NODE,
-					.value = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = varDecl->lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(aggregateType.structDecl->name),
-								.reference = (NodePtr){.ptr = aggregateType.structDecl, .type = Node_StructDeclaration},
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
-				},
-				sizeof(MemberAccessExpr), Node_MemberAccess),
-		};
-	}
-}
-
 static void InstantiateMember(VarDeclStmt* varDecl, AggregateType parentType, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
 	NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
-
-	if (strcmp(varDecl->name, "offset") == 0)
-	{
-		VarDeclStmt* varDecl = copy.ptr;
-		SetArrayType(varDecl, parentType);
-	}
 
 	ArrayInsert(d->destination, &copy, d->index + index);
 	ArrayAdd(d->instantiatedVariables, &copy.ptr);
@@ -867,8 +816,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 			&(VarDeclStmt){
 				.lineNumber = funcDecl->lineNumber,
 				.type.expr = CopyASTNode(funcDecl->type.expr),
-				.type.array = funcDecl->type.array,
-				.arrayType = (Type){.array = false, .expr = NULL_NODE},
+				.type.modifier = funcDecl->type.modifier,
 				.name = AllocateString("return"),
 				.externalName = NULL,
 				.initializer = NULL_NODE,
@@ -890,7 +838,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		assert(funcDecl->oldType.expr.ptr == NULL);
 		funcDecl->oldType = funcDecl->type;
 		funcDecl->type.expr = CopyASTNode(first->type.expr);
-		funcDecl->type.array = first->type.array;
+		funcDecl->type.modifier = first->type.modifier;
 	}
 
 	if (!funcDecl->external)

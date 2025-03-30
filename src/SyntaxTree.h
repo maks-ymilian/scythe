@@ -170,10 +170,17 @@ typedef struct
 	NodePtr next;
 } MemberAccessExpr;
 
+typedef enum
+{
+	TypeModifier_None,
+	TypeModifier_Pointer,
+	TypeModifier_Array,
+} TypeModifier;
+
 typedef struct
 {
 	NodePtr expr;
-	bool array;
+	TypeModifier modifier;
 } Type;
 
 typedef struct
@@ -221,7 +228,6 @@ typedef struct
 {
 	int lineNumber;
 	Type type;
-	Type arrayType;
 	char* name;
 	char* externalName;
 	NodePtr initializer;

@@ -32,7 +32,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 			&(FuncDeclStmt){
 				.lineNumber = lineNumber,
 				.type = blockExpr->type,
-				.oldType = (Type){.expr = NULL_NODE, .array = false},
+				.oldType = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None},
 				.name = AllocateString(name),
 				.externalName = NULL,
 				.parameters = AllocateArray(sizeof(NodePtr)),

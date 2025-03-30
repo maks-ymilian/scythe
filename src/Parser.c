@@ -211,7 +211,7 @@ static Result ParseType(Type* out)
 {
 	const size_t oldPointer = pointer;
 
-	*out = (Type){.expr = NULL_NODE, .array = false};
+	*out = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None};
 
 	PrimitiveType primitiveType;
 	int lineNumber;
@@ -253,7 +253,11 @@ static Result ParseType(Type* out)
 		if (!MatchOne(Token_RightSquareBracket))
 			return ERROR_RESULT_LINE("Expected \"]\"");
 
-		out->array = true;
+		out->modifier = TypeModifier_Array;
+	}
+	else if (MatchOne(Token_Asterisk))
+	{
+		out->modifier = TypeModifier_Pointer;
 	}
 
 	return SUCCESS_RESULT;
@@ -723,10 +727,31 @@ static Result ParseExpressionStatement(NodePtr* out)
 	if (result.type != Result_Success)
 		return result;
 
-	// special case for variable declarations
+	// special case i mean hack for variable declarations
+	if (expr.type == Node_Binary)
+	{
+		BinaryExpr* binary = expr.ptr;
+		if (binary->operatorType == Binary_Assignment &&
+			binary->left.type == Node_Binary)
+		{
+			BinaryExpr* left = binary->left.ptr;
+			if (left->operatorType == Binary_Multiply)
+			{
+				pointer = oldPointer;
+				return NOT_FOUND_RESULT;
+			}
+		}
+		else if (binary->operatorType == Binary_Multiply)
+		{
+			pointer = oldPointer;
+			return NOT_FOUND_RESULT;
+		}
+	}
+
+	// special case i mean hack for variable declarations
 	if (expr.type == Node_MemberAccess)
 	{
-		const size_t beforeSpecialCases = pointer;
+		const size_t before = pointer;
 		if (MatchOne(Token_Identifier))
 		{
 			pointer = oldPointer;
@@ -739,7 +764,7 @@ static Result ParseExpressionStatement(NodePtr* out)
 			pointer = oldPointer;
 			return NOT_FOUND_RESULT;
 		}
-		pointer = beforeSpecialCases;
+		pointer = before;
 	}
 
 	if (MatchOne(Token_Semicolon) == NULL)
@@ -971,7 +996,6 @@ static Result ParseVariableDeclaration(
 	*out = AllocASTNode(
 		&(VarDeclStmt){
 			.type = type,
-			.arrayType = (Type){.array = false, .expr = NULL_NODE},
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),
@@ -1031,7 +1055,7 @@ static Result ParseFunctionDeclaration(
 	*out = AllocASTNode(
 		&(FuncDeclStmt){
 			.type = type,
-			.oldType = (Type){.expr = NULL_NODE, .array = false},
+			.oldType = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None},
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
 			.externalName = AllocateString(externalIdentifier.text),
