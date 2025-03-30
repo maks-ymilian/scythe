@@ -5,7 +5,7 @@
 typedef struct
 {
 	PrimitiveType effectiveType;
-	PrimitiveType underlyingType;
+	PrimitiveType pointerType;
 	bool isPointer;
 } TypeInfo;
 
@@ -15,7 +15,7 @@ static TypeInfo NonPointerType(PrimitiveType type)
 {
 	return (TypeInfo){
 		.effectiveType = type,
-		.underlyingType = type,
+		.pointerType = type,
 		.isPointer = false,
 	};
 }
@@ -31,7 +31,7 @@ static TypeInfo GetType(const Type type)
 
 		return (TypeInfo){
 			.effectiveType = isPointer ? Primitive_Int : literal->primitiveType,
-			.underlyingType = literal->primitiveType,
+			.pointerType = literal->primitiveType,
 			.isPointer = isPointer,
 		};
 	}
@@ -40,7 +40,7 @@ static TypeInfo GetType(const Type type)
 		assert(isPointer);
 		return (TypeInfo){
 			.effectiveType = Primitive_Int,
-			.underlyingType = Primitive_Void,
+			.pointerType = Primitive_Void,
 			.isPointer = true,
 		};
 	}
@@ -444,7 +444,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outTy
 		subscript->lineNumber, NULL));
 
 	if (addressType.isPointer)
-		*outType = NonPointerType(addressType.underlyingType);
+		*outType = NonPointerType(addressType.pointerType);
 	else
 		*outType = NonPointerType(Primitive_Void);
 

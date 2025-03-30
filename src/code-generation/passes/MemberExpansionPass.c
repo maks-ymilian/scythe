@@ -9,7 +9,7 @@
 typedef struct
 {
 	StructDeclStmt* effectiveType;
-	StructDeclStmt* underlyingType;
+	StructDeclStmt* pointerType;
 	bool isPointer;
 } TypeInfo;
 
@@ -117,7 +117,7 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 
 	return (TypeInfo){
 		.effectiveType = type.modifier == TypeModifier_Pointer ? NULL : structDecl,
-		.underlyingType = structDecl,
+		.pointerType = structDecl,
 		.isPointer = type.modifier == TypeModifier_Pointer,
 	};
 }
@@ -321,7 +321,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 
 		return (TypeInfo){
 			.effectiveType = NULL,
-			.underlyingType = NULL,
+			.pointerType = NULL,
 			.isPointer = false,
 		};
 	}
@@ -332,7 +332,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 		const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
 
 		TypeInfo typeInfo = GetTypeInfoFromType(funcDecl->oldType);
-		if (typeInfo.underlyingType != NULL)
+		if (typeInfo.pointerType != NULL)
 			return typeInfo;
 
 		return GetTypeInfoFromType(funcDecl->type);
@@ -351,7 +351,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 
 		return (TypeInfo){
 			.effectiveType = NULL,
-			.underlyingType = NULL,
+			.pointerType = NULL,
 			.isPointer = false,
 		};
 	}
@@ -361,8 +361,8 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->addressExpr);
 		if (typeInfo.isPointer)
 			return (TypeInfo){
-				.effectiveType = typeInfo.underlyingType,
-				.underlyingType = typeInfo.underlyingType,
+				.effectiveType = typeInfo.pointerType,
+				.pointerType = typeInfo.pointerType,
 				.isPointer = false,
 			};
 
@@ -372,7 +372,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_Unary:
 		return (TypeInfo){
 			.effectiveType = NULL,
-			.underlyingType = NULL,
+			.pointerType = NULL,
 			.isPointer = false,
 		};
 
