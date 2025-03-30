@@ -5,11 +5,12 @@
 typedef enum
 {
 	// keywords
-	Token_Void,
+	Token_Any,
 	Token_Int,
 	Token_Float,
 	Token_String,
 	Token_Bool,
+	Token_Void,
 
 	Token_Struct,
 	Token_Import,
@@ -100,11 +101,12 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	switch (tokenType)
 	{
 	// keywords
-	case Token_Void: return "void";
+	case Token_Any: return "any";
 	case Token_Int: return "int";
 	case Token_Float: return "float";
 	case Token_String: return "string";
 	case Token_Bool: return "bool";
+	case Token_Void: return "void";
 
 	case Token_Struct: return "struct";
 	case Token_Import: return "import";

@@ -122,11 +122,12 @@ typedef struct
 
 typedef enum
 {
-	Primitive_Void,
+	Primitive_Any,
 	Primitive_Float,
 	Primitive_Int,
 	Primitive_Bool,
 	Primitive_String,
+	Primitive_Void,
 } PrimitiveType;
 
 typedef struct

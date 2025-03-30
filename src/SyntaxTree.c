@@ -93,19 +93,21 @@ UnaryOperator tokenTypeToUnaryOperator[] = {
 };
 
 TokenType primitiveTypeToTokenType[] = {
-	[Primitive_Void] = Token_Void,
+	[Primitive_Any] = Token_Any,
 	[Primitive_Float] = Token_Float,
 	[Primitive_Int] = Token_Int,
 	[Primitive_Bool] = Token_Bool,
 	[Primitive_String] = Token_String,
+	[Primitive_Void] = Token_Void,
 };
 
 PrimitiveType tokenTypeToPrimitiveType[] = {
-	[Token_Void] = Primitive_Void,
+	[Token_Any] = Primitive_Any,
 	[Token_Float] = Primitive_Float,
 	[Token_Int] = Primitive_Int,
 	[Token_Bool] = Primitive_Bool,
 	[Token_String] = Primitive_String,
+	[Token_Void] = Primitive_Void,
 };
 
 BinaryOperator getCompoundAssignmentOperator[] =

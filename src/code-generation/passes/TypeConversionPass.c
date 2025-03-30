@@ -40,7 +40,7 @@ static TypeInfo GetType(const Type type)
 		assert(isPointer);
 		return (TypeInfo){
 			.effectiveType = Primitive_Int,
-			.pointerType = Primitive_Void,
+			.pointerType = Primitive_Any,
 			.isPointer = true,
 		};
 	}
@@ -149,19 +149,6 @@ static NodePtr AllocIntToBoolConversion(const NodePtr expr, const int lineNumber
 		sizeof(UnaryExpr), Node_Unary);
 }
 
-static TokenType PrimitiveTypeToTokenType(const PrimitiveType primitiveType)
-{
-	switch (primitiveType)
-	{
-	case Primitive_Void: return Token_Void;
-	case Primitive_Float: return Token_Float;
-	case Primitive_Int: return Token_Int;
-	case Primitive_Bool: return Token_Bool;
-	case Primitive_String: return Token_String;
-	default: INVALID_VALUE(primitiveType);
-	}
-}
-
 static Result ConvertExpression(
 	NodePtr* expr,
 	const PrimitiveType exprType,
@@ -170,6 +157,9 @@ static Result ConvertExpression(
 	const char* errorMessage)
 {
 	if (exprType == Primitive_Void || targetType == Primitive_Void)
+		goto convertError;
+
+	if (exprType == Primitive_Any || targetType == Primitive_Any)
 		return SUCCESS_RESULT;
 
 	if (exprType == targetType)
@@ -195,8 +185,6 @@ static Result ConvertExpression(
 		return SUCCESS_RESULT;
 
 	case Primitive_String:
-		goto convertError;
-
 	default: INVALID_VALUE(targetType);
 	}
 
@@ -206,8 +194,8 @@ convertError:
 			? errorMessage
 			: AllocateString2Str(
 				  "Cannot convert type \"%s\" to \"%s\"",
-				  GetTokenTypeString(PrimitiveTypeToTokenType(exprType)),
-				  GetTokenTypeString(PrimitiveTypeToTokenType(targetType))),
+				  GetTokenTypeString(primitiveTypeToTokenType[exprType]),
+				  GetTokenTypeString(primitiveTypeToTokenType[targetType])),
 		lineNumber, currentFilePath);
 }
 
@@ -226,8 +214,8 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 	const char* errorMessage = AllocateString3Str(
 		"Cannot use operator \"%s\" on type \"%s\" and \"%s\"",
 		GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
-		GetTokenTypeString(PrimitiveTypeToTokenType(leftType)),
-		GetTokenTypeString(PrimitiveTypeToTokenType(rightType)));
+		GetTokenTypeString(primitiveTypeToTokenType[leftType]),
+		GetTokenTypeString(primitiveTypeToTokenType[rightType]));
 
 	switch (binary->operatorType)
 	{
@@ -371,7 +359,7 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 	const char* errorMessage = AllocateString2Str(
 		"Cannot use operator \"%s\" on type \"%s\"",
 		GetTokenTypeString(unaryOperatorToTokenType[unary->operatorType]),
-		GetTokenTypeString(PrimitiveTypeToTokenType(exprType)));
+		GetTokenTypeString(primitiveTypeToTokenType[exprType]));
 
 	switch (unary->operatorType)
 	{
@@ -446,7 +434,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outTy
 	if (addressType.isPointer)
 		*outType = NonPointerType(addressType.pointerType);
 	else
-		*outType = NonPointerType(Primitive_Void);
+		*outType = NonPointerType(Primitive_Any);
 
 	TypeInfo indexType;
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, &indexType));
@@ -492,9 +480,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 
 	switch (GetType(varDecl->type).effectiveType)
 	{
-	case Primitive_Void:
-		return ERROR_RESULT("\"void\" is not allowed here", varDecl->lineNumber, currentFilePath);
-
+	case Primitive_Any:
 	case Primitive_Float:
 	case Primitive_Int:
 		varDecl->initializer = AllocASTNode(
