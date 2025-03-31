@@ -382,7 +382,7 @@ static Result ResolveExpression(const NodePtr* node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&subscript->addressExpr));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->expr));
 		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr));
 		return SUCCESS_RESULT;
 	}

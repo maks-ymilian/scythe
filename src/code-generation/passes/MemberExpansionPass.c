@@ -362,7 +362,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* subscript = node.ptr;
-		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->addressExpr);
+		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->expr);
 		if (typeInfo.isPointer)
 			return (TypeInfo){
 				.effectiveType = typeInfo.pointerType,
@@ -649,7 +649,7 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		break;
 	case Node_Subscript:
 		SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&subscript->addressExpr, containingStatement));
+		PROPAGATE_ERROR(VisitExpression(&subscript->expr, containingStatement));
 		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
 		break;
 	default: INVALID_VALUE(node->type);

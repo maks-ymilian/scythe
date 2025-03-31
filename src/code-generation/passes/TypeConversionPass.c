@@ -424,9 +424,9 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outType)
 {
 	TypeInfo addressType;
-	PROPAGATE_ERROR(VisitExpression(&subscript->addressExpr, &addressType));
+	PROPAGATE_ERROR(VisitExpression(&subscript->expr, &addressType));
 	PROPAGATE_ERROR(ConvertExpression(
-		&subscript->addressExpr,
+		&subscript->expr,
 		addressType.effectiveType,
 		Primitive_Int,
 		subscript->lineNumber, NULL));

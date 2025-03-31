@@ -164,7 +164,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_Subscript);
 		ptr = copy.ptr;
 
-		ptr->addressExpr = CopyASTNode(ptr->addressExpr);
+		ptr->expr = CopyASTNode(ptr->expr);
 		ptr->indexExpr = CopyASTNode(ptr->indexExpr);
 
 		return copy;
@@ -292,7 +292,7 @@ void FreeASTNode(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* ptr = node.ptr;
-		FreeASTNode(ptr->addressExpr);
+		FreeASTNode(ptr->expr);
 		FreeASTNode(ptr->indexExpr);
 		break;
 	}

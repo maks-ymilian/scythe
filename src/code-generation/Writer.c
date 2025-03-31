@@ -271,7 +271,7 @@ static void VisitSubscriptExpression(SubscriptExpr* subscript)
 {
 	NodePtr node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
 
-	VisitExpression(subscript->addressExpr, &node);
+	VisitExpression(subscript->expr, &node);
 	WriteChar('[');
 	VisitExpression(subscript->indexExpr, &node);
 	WriteChar(']');

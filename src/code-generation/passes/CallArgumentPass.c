@@ -85,7 +85,7 @@ static Result VisitExpression(const NodePtr* node)
 		break;
 	case Node_Subscript:
 		const SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&subscript->addressExpr));
+		PROPAGATE_ERROR(VisitExpression(&subscript->expr));
 		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr));
 		break;
 	case Node_Literal:
