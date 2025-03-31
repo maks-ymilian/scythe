@@ -431,10 +431,13 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outTy
 		Primitive_Int,
 		subscript->lineNumber, NULL));
 
-	if (addressType.isPointer)
-		*outType = NonPointerType(addressType.pointerType);
-	else
-		*outType = NonPointerType(Primitive_Any);
+	if (outType != NULL)
+	{
+		if (addressType.isPointer)
+			*outType = NonPointerType(addressType.pointerType);
+		else
+			*outType = NonPointerType(Primitive_Any);
+	}
 
 	TypeInfo indexType;
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, &indexType));
