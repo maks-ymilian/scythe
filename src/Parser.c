@@ -185,6 +185,43 @@ static Result ParseFunctionCall(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
+static Result ParsePrimary(NodePtr* out, bool parseBlockExpr);
+
+static Result ParseSubscript(NodePtr* out)
+{
+	const size_t oldPointer = pointer;
+	const int lineNumber = CurrentToken()->lineNumber;
+
+	NodePtr expr = NULL_NODE;
+	Result result = ParsePrimary(&expr, true);
+	if (expr.ptr == NULL || MatchOne(Token_LeftSquareBracket) == NULL)
+	{
+		*out = expr;
+		return result;
+	}
+
+	NodePtr indexExpr = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&indexExpr));
+	if (indexExpr.ptr == NULL)
+	{
+		pointer = oldPointer;
+		return NOT_FOUND_RESULT;
+	}
+
+	if (MatchOne(Token_RightSquareBracket) == NULL)
+		return ERROR_RESULT_LINE("Expected \"]\"");
+
+	*out = AllocASTNode(
+		&(SubscriptExpr){
+			.lineNumber = lineNumber,
+			.addressExpr = expr,
+			.indexExpr = indexExpr,
+		},
+		sizeof(SubscriptExpr), Node_Subscript);
+
+	return SUCCESS_RESULT;
+}
+
 static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 {
 	const Token* primitiveType = Match(
@@ -205,8 +242,6 @@ static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 	*out = tokenTypeToPrimitiveType[primitiveType->type];
 	return true;
 }
-
-static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr);
 
 static Result ParseType(Type* out)
 {
@@ -292,7 +327,24 @@ static Result ParseBlockExpression(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
+static Result ParseExpressionInBrackets(NodePtr* out)
+{
+	if (MatchOne(Token_LeftBracket) == NULL)
+		return NOT_FOUND_RESULT;
+
+	*out = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(out));
+	if (out->ptr == NULL)
+		return ERROR_RESULT_LINE("Expected expression");
+
+	const Token* closingBracket = MatchOne(Token_RightBracket);
+	if (closingBracket == NULL)
+		return ERROR_RESULT_LINE("Expected \")\"");
+
+	return SUCCESS_RESULT;
+}
+
+static Result LiteralExprFromToken(Token token, NodePtr* out)
 {
 	switch (token.type)
 	{
@@ -304,182 +356,143 @@ static Result LiteralExprFromToken(const Token token, LiteralExpr* out)
 		PROPAGATE_ERROR(EvaluateNumberLiteral(token.text, token.lineNumber, &isInteger, &floatValue, &intValue));
 
 		if (isInteger)
-			*out = (LiteralExpr){
-				.lineNumber = token.lineNumber,
-				.type = Literal_Int,
-				.intValue = intValue};
+			*out = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = token.lineNumber,
+					.type = Literal_Int,
+					.intValue = intValue,
+				},
+				sizeof(LiteralExpr), Node_Literal);
 		else
-			*out = (LiteralExpr){
-				.lineNumber = token.lineNumber,
-				.type = Literal_Float,
-				.floatValue = AllocateString(token.text)};
+			*out = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = token.lineNumber,
+					.type = Literal_Float,
+					.floatValue = AllocateString(token.text),
+				},
+				sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
 	case Token_StringLiteral:
 	{
-		*out = (LiteralExpr){
-			.lineNumber = token.lineNumber,
-			.type = Literal_String,
-			.string = AllocateString(token.text),
-		};
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = token.lineNumber,
+				.type = Literal_String,
+				.string = AllocateString(token.text),
+			},
+			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
 	case Token_Identifier:
 	{
-		*out = (LiteralExpr){
-			.lineNumber = token.lineNumber,
-			.type = Literal_Identifier,
-			.identifier =
-				(IdentifierReference){
-					.text = AllocateString(token.text),
-					.reference = NULL_NODE,
-				},
-		};
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = token.lineNumber,
+				.type = Literal_Identifier,
+				.identifier =
+					(IdentifierReference){
+						.text = AllocateString(token.text),
+						.reference = NULL_NODE,
+					},
+			},
+			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
 	case Token_True:
 	case Token_False:
 	{
-		*out = (LiteralExpr){
-			.lineNumber = token.lineNumber,
-			.type = Literal_Boolean,
-			.boolean = token.type == Token_True,
-		};
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = token.lineNumber,
+				.type = Literal_Boolean,
+				.boolean = token.type == Token_True,
+			},
+			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
 	default: INVALID_VALUE(token.type);
 	}
 }
 
-static Result ParsePrimary(NodePtr* out, const bool parseBlockExpr)
+static Result ParseLiteral(NodePtr* out)
 {
-	if (parseBlockExpr)
-		PROPAGATE_FOUND(ParseBlockExpression(out));
-
 	const Token* token = Match(
 		(TokenType[]){
 			Token_NumberLiteral,
 			Token_StringLiteral,
-			Token_Identifier,
-			Token_LeftBracket,
 			Token_True,
 			Token_False,
 		},
-		6);
+		4);
+
 	if (token == NULL)
 		return NOT_FOUND_RESULT;
 
-	switch (token->type)
-	{
-	case Token_LeftBracket:
-	{
-		*out = NULL_NODE;
-		PROPAGATE_ERROR(ParseExpression(out));
-		if (out->ptr == NULL)
-			return ERROR_RESULT_LINE("Expected expression");
-
-		const Token* closingBracket = MatchOne(Token_RightBracket);
-		if (closingBracket == NULL)
-			return ERROR_RESULT_LINE("Expected \")\"");
-
-		return SUCCESS_RESULT;
-	}
-	case Token_Identifier:
-	{
-		pointer--;
-
-		MemberAccessExpr* start = NULL;
-		MemberAccessExpr* current = NULL;
-		while (true)
-		{
-			NodePtr value = NULL_NODE;
-			PROPAGATE_ERROR(ParseFunctionCall(&value));
-			if (value.ptr == NULL)
-			{
-				const Token* token = MatchOne(Token_Identifier);
-				if (token == NULL)
-					return ERROR_RESULT_LINE("Expected identifier");
-
-				LiteralExpr literal;
-				PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
-				value = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
-			}
-
-			assert(value.ptr != NULL);
-			const NodePtr memberAccess = AllocASTNode(
-				&(MemberAccessExpr){
-					.lineNumber = CurrentToken()->lineNumber,
-					.value = value,
-					.next = NULL_NODE,
-				},
-				sizeof(MemberAccessExpr), Node_MemberAccess);
-			if (current != NULL) current->next = memberAccess;
-			current = memberAccess.ptr;
-
-			if (start == NULL)
-				start = memberAccess.ptr;
-
-			if (MatchOne(Token_Dot) == NULL)
-				break;
-		}
-
-		*out = (NodePtr){.ptr = start, .type = Node_MemberAccess};
-		return SUCCESS_RESULT;
-	}
-	case Token_NumberLiteral:
-	case Token_StringLiteral:
-	case Token_True:
-	case Token_False:
-	{
-		LiteralExpr literal;
-		PROPAGATE_ERROR(LiteralExprFromToken(*token, &literal));
-		*out = AllocASTNode(&literal, sizeof(LiteralExpr), Node_Literal);
-		return SUCCESS_RESULT;
-	}
-	default: INVALID_VALUE(token->type);
-	}
+	return LiteralExprFromToken(*token, out);
 }
 
-static Result ParseSubscript(NodePtr* out)
+static Result ParseMemberAccess(NodePtr* out)
 {
-	const size_t oldPointer = pointer;
-	const int lineNumber = CurrentToken()->lineNumber;
-
-	NodePtr expr = NULL_NODE;
-	Result result = ParsePrimary(&expr, true);
-	if (expr.ptr == NULL || MatchOne(Token_LeftSquareBracket) == NULL)
-	{
-		*out = expr;
-		return result;
-	}
-
-	NodePtr indexExpr = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&indexExpr));
-	if (indexExpr.ptr == NULL)
-	{
-		pointer = oldPointer;
+	if (MatchOne(Token_Identifier) == NULL)
 		return NOT_FOUND_RESULT;
+	pointer--;
+
+	MemberAccessExpr* start = NULL;
+	MemberAccessExpr* current = NULL;
+	while (true)
+	{
+		NodePtr value = NULL_NODE;
+		if (value.ptr == NULL)
+			PROPAGATE_ERROR(ParseFunctionCall(&value));
+		if (value.ptr == NULL)
+		{
+			const Token* token = MatchOne(Token_Identifier);
+			if (token == NULL)
+				return ERROR_RESULT_LINE("Expected identifier");
+
+			PROPAGATE_ERROR(LiteralExprFromToken(*token, &value));
+		}
+
+		assert(value.ptr != NULL);
+		const NodePtr memberAccess = AllocASTNode(
+			&(MemberAccessExpr){
+				.lineNumber = CurrentToken()->lineNumber,
+				.value = value,
+				.next = NULL_NODE,
+			},
+			sizeof(MemberAccessExpr), Node_MemberAccess);
+		if (current != NULL) current->next = memberAccess;
+		current = memberAccess.ptr;
+
+		if (start == NULL)
+			start = memberAccess.ptr;
+
+		if (MatchOne(Token_Dot) == NULL)
+			break;
 	}
 
-	if (MatchOne(Token_RightSquareBracket) == NULL)
-		return ERROR_RESULT_LINE("Expected \"]\"");
-
-	*out = AllocASTNode(
-		&(SubscriptExpr){
-			.lineNumber = lineNumber,
-			.addressExpr = expr,
-			.indexExpr = indexExpr,
-		},
-		sizeof(SubscriptExpr), Node_Subscript);
-
+	*out = (NodePtr){.ptr = start, .type = Node_MemberAccess};
 	return SUCCESS_RESULT;
+}
+
+static Result ParsePrimary(NodePtr* out, bool parseBlockExpr)
+{
+	if (parseBlockExpr)
+		PROPAGATE_FOUND(ParseBlockExpression(out));
+
+	PROPAGATE_FOUND(ParseMemberAccess(out));
+	PROPAGATE_FOUND(ParseLiteral(out));
+	PROPAGATE_FOUND(ParseExpressionInBrackets(out));
+
+	return NOT_FOUND_RESULT;
 }
 
 static Result ParseUnary(NodePtr* out)
 {
 	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
 	if (operator== NULL)
-		return ParseSubscript(out);
+		return ParsePrimary(out, true);
 
 	NodePtr expr;
 	if (ParseUnary(&expr).type != Result_Success)
