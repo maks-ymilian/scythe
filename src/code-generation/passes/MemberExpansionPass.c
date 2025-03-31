@@ -400,13 +400,9 @@ static Result CheckTypeConversion(StructDeclStmt* from, StructDeclStmt* to, cons
 			lineNumber, currentFilePath);
 
 	if (from != to)
-		assert(!"Cannot convert aggregate type \"%s\" to aggregate type \"%s\""); // todo
-	/*return ERROR_RESULT(*/
-	/*	AllocateString2Str(*/
-	/*		"Cannot convert struct type \"%s\" to struct type \"%s\"",*/
-	/*		from->name,*/
-	/*		to->name),*/
-	/*	lineNumber, currentFilePath);*/
+		return ERROR_RESULT(
+			"Cannot convert between incompatible aggregate types",
+			lineNumber, currentFilePath);
 
 	return SUCCESS_RESULT;
 }
