@@ -27,6 +27,7 @@ set(SOURCES
 		"src/code-generation/passes/CallArgumentPass.c"
 		"src/code-generation/passes/BlockRemoverPass.c"
 		"src/code-generation/passes/ForLoopPass.c"
+		"src/code-generation/passes/Printer.c"
 )
 
 project(scythe C)
