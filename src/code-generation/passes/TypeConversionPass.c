@@ -91,8 +91,10 @@ static Result ConvertExpression(
 
 static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 {
-	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
-	const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+	assert(funcCall->expr.type == Node_MemberAccess);
+	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+	assert(memberAccess->reference.type == Node_FunctionDeclaration);
+	const FuncDeclStmt* funcDecl = memberAccess->reference.ptr;
 
 	if (outType != NULL)
 		*outType = GetType(funcDecl->type);

@@ -157,6 +157,19 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
+	case Node_Literal:
+	{
+		LiteralExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(LiteralExpr), Node_Literal);
+		assert(copy.type == Node_Literal);
+		ptr = copy.ptr;
+
+		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
+		if (ptr->type == Literal_String) ptr->string = AllocateString(ptr->string);
+		if (ptr->type == Literal_Identifier) ptr->identifier.text = AllocateString(ptr->identifier.text);
+
+		return copy;
+	}
 	case Node_Subscript:
 	{
 		SubscriptExpr* ptr = node.ptr;
@@ -169,19 +182,6 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
-	case Node_Literal:
-	{
-		LiteralExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(LiteralExpr), Node_Literal);
-		assert(copy.type == Node_Literal);
-		ptr = copy.ptr;
-
-		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
-		if (ptr->type == Literal_Identifier) ptr->identifier.text = AllocateString(ptr->identifier.text);
-		if (ptr->type == Literal_String) ptr->string = AllocateString(ptr->string);
-
-		return copy;
-	}
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* ptr = node.ptr;
@@ -189,7 +189,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_FunctionCall);
 		ptr = copy.ptr;
 
-		ptr->identifier.text = AllocateString(ptr->identifier.text);
+		ptr->expr = CopyASTNode(ptr->expr);
 
 		Array arguments = AllocateArray(sizeof(NodePtr));
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
@@ -209,11 +209,16 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
-		if (ptr->next.ptr != NULL)
-			ptr->next = CopyASTNode(ptr->next);
-		else
-			ptr->next = NULL_NODE;
-		ptr->value = CopyASTNode(ptr->value);
+		ptr->start = CopyASTNode(ptr->start);
+
+		Array identifiers = AllocateArray(sizeof(char*));
+		for (size_t i = 0; i < ptr->identifiers.length; ++i)
+		{
+			char* str = *(char**)ptr->identifiers.array[i];
+			char* copy = AllocateString(str);
+			ArrayAdd(&identifiers, &copy);
+		}
+		ptr->identifiers = identifiers;
 
 		return copy;
 	}
@@ -299,15 +304,15 @@ void FreeASTNode(const NodePtr node)
 	case Node_Literal:
 	{
 		const LiteralExpr* ptr = node.ptr;
-		if (ptr->type == Literal_Identifier) free(ptr->identifier.text);
 		if (ptr->type == Literal_String) free(ptr->string);
 		if (ptr->type == Literal_Float) free(ptr->floatValue);
+		if (ptr->type == Literal_Identifier) free(ptr->identifier.text);
 		break;
 	}
 	case Node_FunctionCall:
 	{
 		const FuncCallExpr* ptr = node.ptr;
-		free(ptr->identifier.text);
+		FreeASTNode(ptr->expr);
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
 			FreeASTNode(*(NodePtr*)ptr->arguments.array[i]);
 		FreeArray(&ptr->arguments);
@@ -316,8 +321,11 @@ void FreeASTNode(const NodePtr node)
 	case Node_MemberAccess:
 	{
 		const MemberAccessExpr* ptr = node.ptr;
-		FreeASTNode(ptr->value);
-		FreeASTNode(ptr->next);
+		FreeASTNode(ptr->start);
+
+		for (size_t i = 0; i < ptr->identifiers.length; ++i)
+			free(*(char**)ptr->identifiers.array[i]);
+		FreeArray(&ptr->identifiers);
 		break;
 	}
 	case Node_BlockExpression:

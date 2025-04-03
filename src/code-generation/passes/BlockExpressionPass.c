@@ -51,20 +51,18 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		FreeASTNode((NodePtr){.ptr = blockExpr, Node_BlockExpression});
 
 		*expr = AllocASTNode(
-			&(MemberAccessExpr){
+			&(FuncCallExpr){
 				.lineNumber = lineNumber,
-				.next = NULL_NODE,
-				.value = AllocASTNode(
-					&(FuncCallExpr){
+				.arguments = AllocateArray(sizeof(NodePtr)),
+				.expr = AllocASTNode(
+					&(MemberAccessExpr){
 						.lineNumber = lineNumber,
-						.arguments = AllocateArray(sizeof(NodePtr)),
-						.identifier = (IdentifierReference){
-							.text = AllocateString(name),
-							.reference = funcDecl,
-						}},
-					sizeof(FuncCallExpr), Node_FunctionCall),
-			},
-			sizeof(MemberAccessExpr), Node_MemberAccess);
+						.identifiers.array = NULL,
+						.start = NULL_NODE,
+						.reference = funcDecl,
+					},
+					sizeof(MemberAccessExpr), Node_MemberAccess)},
+			sizeof(FuncCallExpr), Node_FunctionCall);
 		break;
 	case Node_Binary:
 		BinaryExpr* binary = expr->ptr;
@@ -82,8 +80,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		break;
 	case Node_MemberAccess:
 		MemberAccessExpr* memberAccess = expr->ptr;
-		VisitExpression(&memberAccess->value, statement, lineNumber);
-		VisitExpression(&memberAccess->next, statement, lineNumber);
+		VisitExpression(&memberAccess->start, statement, lineNumber);
 		break;
 	case Node_Subscript:
 		SubscriptExpr* subscript = expr->ptr;

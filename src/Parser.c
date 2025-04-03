@@ -159,29 +159,29 @@ static Result ParseExpression(NodePtr* out);
 
 static Result ParseFunctionCall(NodePtr* out)
 {
-	const size_t oldPointer = pointer;
-
-	const Token* identifier = MatchOne(Token_Identifier);
-	if (identifier == NULL || MatchOne(Token_LeftBracket) == NULL)
-	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
-	}
-
-	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket));
-
-	*out = AllocASTNode(
-		&(FuncCallExpr){
-			.lineNumber = identifier->lineNumber,
-			.arguments = params,
-			.identifier =
-				(IdentifierReference){
-					.text = AllocateString(identifier->text),
-					.reference = NULL_NODE,
-				},
-		},
-		sizeof(FuncCallExpr), Node_FunctionCall);
+	// const size_t oldPointer = pointer;
+	//
+	// const Token* identifier = MatchOne(Token_Identifier);
+	// if (identifier == NULL || MatchOne(Token_LeftBracket) == NULL)
+	// {
+	// 	pointer = oldPointer;
+	// 	return NOT_FOUND_RESULT;
+	// }
+	//
+	// Array params;
+	// PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket));
+	//
+	// *out = AllocASTNode(
+	// 	&(FuncCallExpr){
+	// 		.lineNumber = identifier->lineNumber,
+	// 		.arguments = params,
+	// 		.identifier =
+	// 			(IdentifierReference){
+	// 				.text = AllocateString(identifier->text),
+	// 				.reference = NULL_NODE,
+	// 			},
+	// 	},
+	// 	sizeof(FuncCallExpr), Node_FunctionCall);
 	return SUCCESS_RESULT;
 }
 
@@ -384,21 +384,21 @@ static Result LiteralExprFromToken(Token token, NodePtr* out)
 			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
-	case Token_Identifier:
-	{
-		*out = AllocASTNode(
-			&(LiteralExpr){
-				.lineNumber = token.lineNumber,
-				.type = Literal_Identifier,
-				.identifier =
-					(IdentifierReference){
-						.text = AllocateString(token.text),
-						.reference = NULL_NODE,
-					},
-			},
-			sizeof(LiteralExpr), Node_Literal);
-		return SUCCESS_RESULT;
-	}
+	// case Token_Identifier:
+	// {
+	// 	*out = AllocASTNode(
+	// 		&(LiteralExpr){
+	// 			.lineNumber = token.lineNumber,
+	// 			.type = Literal_Identifier,
+	// 			.identifier =
+	// 				(IdentifierReference){
+	// 					.text = AllocateString(token.text),
+	// 					.reference = NULL_NODE,
+	// 				},
+	// 		},
+	// 		sizeof(LiteralExpr), Node_Literal);
+	// 	return SUCCESS_RESULT;
+	// }
 	case Token_True:
 	case Token_False:
 	{
@@ -434,45 +434,45 @@ static Result ParseLiteral(NodePtr* out)
 
 static Result ParseMemberAccess(NodePtr* out)
 {
-	if (MatchOne(Token_Identifier) == NULL)
-		return NOT_FOUND_RESULT;
-	pointer--;
-
-	MemberAccessExpr* start = NULL;
-	MemberAccessExpr* current = NULL;
-	while (true)
-	{
-		NodePtr value = NULL_NODE;
-		if (value.ptr == NULL)
-			PROPAGATE_ERROR(ParseFunctionCall(&value));
-		if (value.ptr == NULL)
-		{
-			const Token* token = MatchOne(Token_Identifier);
-			if (token == NULL)
-				return ERROR_RESULT_LINE("Expected identifier");
-
-			PROPAGATE_ERROR(LiteralExprFromToken(*token, &value));
-		}
-
-		assert(value.ptr != NULL);
-		const NodePtr memberAccess = AllocASTNode(
-			&(MemberAccessExpr){
-				.lineNumber = CurrentToken()->lineNumber,
-				.value = value,
-				.next = NULL_NODE,
-			},
-			sizeof(MemberAccessExpr), Node_MemberAccess);
-		if (current != NULL) current->next = memberAccess;
-		current = memberAccess.ptr;
-
-		if (start == NULL)
-			start = memberAccess.ptr;
-
-		if (MatchOne(Token_Dot) == NULL)
-			break;
-	}
-
-	*out = (NodePtr){.ptr = start, .type = Node_MemberAccess};
+	// if (MatchOne(Token_Identifier) == NULL)
+	// 	return NOT_FOUND_RESULT;
+	// pointer--;
+	//
+	// MemberAccessExpr* start = NULL;
+	// MemberAccessExpr* current = NULL;
+	// while (true)
+	// {
+	// 	NodePtr value = NULL_NODE;
+	// 	if (value.ptr == NULL)
+	// 		PROPAGATE_ERROR(ParseFunctionCall(&value));
+	// 	if (value.ptr == NULL)
+	// 	{
+	// 		const Token* token = MatchOne(Token_Identifier);
+	// 		if (token == NULL)
+	// 			return ERROR_RESULT_LINE("Expected identifier");
+	//
+	// 		PROPAGATE_ERROR(LiteralExprFromToken(*token, &value));
+	// 	}
+	//
+	// 	assert(value.ptr != NULL);
+	// 	const NodePtr memberAccess = AllocASTNode(
+	// 		&(MemberAccessExpr){
+	// 			.lineNumber = CurrentToken()->lineNumber,
+	// 			.value = value,
+	// 			.next = NULL_NODE,
+	// 		},
+	// 		sizeof(MemberAccessExpr), Node_MemberAccess);
+	// 	if (current != NULL) current->next = memberAccess;
+	// 	current = memberAccess.ptr;
+	//
+	// 	if (start == NULL)
+	// 		start = memberAccess.ptr;
+	//
+	// 	if (MatchOne(Token_Dot) == NULL)
+	// 		break;
+	// }
+	//
+	// *out = (NodePtr){.ptr = start, .type = Node_MemberAccess};
 	return SUCCESS_RESULT;
 }
 
@@ -481,7 +481,7 @@ static Result ParsePrimary(NodePtr* out, bool parseBlockExpr)
 	if (parseBlockExpr)
 		PROPAGATE_FOUND(ParseBlockExpression(out));
 
-	PROPAGATE_FOUND(ParseMemberAccess(out));
+	// PROPAGATE_FOUND(ParseMemberAccess(out));
 	PROPAGATE_FOUND(ParseLiteral(out));
 	PROPAGATE_FOUND(ParseExpressionInBrackets(out));
 

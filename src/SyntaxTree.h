@@ -12,10 +12,10 @@ typedef enum
 
 	Node_Binary,
 	Node_Unary,
-	Node_Subscript,
 	Node_Literal,
-	Node_FunctionCall,
 	Node_MemberAccess,
+	Node_Subscript,
+	Node_FunctionCall,
 	Node_BlockExpression,
 
 	Node_ExpressionStatement,
@@ -43,13 +43,6 @@ typedef struct
 	void* ptr;
 	NodeType type;
 } NodePtr;
-
-typedef struct
-{
-	char* text;
-	NodePtr reference;
-} IdentifierReference;
-
 
 typedef enum
 {
@@ -95,30 +88,21 @@ typedef struct
 	NodePtr right;
 } BinaryExpr;
 
+typedef enum
+{
+	Unary_Plus,
+	Unary_Minus,
+	Unary_Negate,
+	Unary_Increment,
+	Unary_Decrement,
+} UnaryOperator;
+
 typedef struct
 {
 	int lineNumber;
-
-	enum
-	{
-		Unary_Plus,
-		Unary_Minus,
-		Unary_Negate,
-		Unary_Increment,
-		Unary_Decrement,
-	} operatorType;
-
+	UnaryOperator operatorType;
 	NodePtr expression;
 } UnaryExpr;
-
-typedef typeof(((UnaryExpr*)0)->operatorType) UnaryOperator;
-
-typedef struct
-{
-	int lineNumber;
-	NodePtr expr;
-	NodePtr indexExpr;
-} SubscriptExpr;
 
 typedef enum
 {
@@ -132,44 +116,57 @@ typedef enum
 
 typedef struct
 {
-	int lineNumber;
+	char* text;
+	NodePtr reference;
+} IdentifierReference;
 
-	enum
-	{
-		Literal_Float,
-		Literal_Int,
-		Literal_String,
-		Literal_Identifier,
-		Literal_Boolean,
-		Literal_PrimitiveType,
-	} type;
+typedef enum
+{
+	Literal_Float,
+	Literal_Int,
+	Literal_String,
+	Literal_Boolean,
+	Literal_PrimitiveType,
+	Literal_Identifier,
+} LiteralType;
+
+typedef struct
+{
+	int lineNumber;
+	LiteralType type;
 
 	union
 	{
 		char* floatValue;
 		uint64_t intValue;
 		char* string;
-		IdentifierReference identifier;
 		bool boolean;
 		PrimitiveType primitiveType;
+		IdentifierReference identifier;
 	};
 } LiteralExpr;
 
-typedef typeof(((LiteralExpr*)0)->type) LiteralType;
+typedef struct
+{
+	int lineNumber;
+	NodePtr start;
+	Array identifiers;
+	NodePtr reference;
+} MemberAccessExpr;
 
 typedef struct
 {
 	int lineNumber;
-	IdentifierReference identifier;
+	NodePtr expr;
+	NodePtr indexExpr;
+} SubscriptExpr;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr expr;
 	Array arguments;
 } FuncCallExpr;
-
-typedef struct
-{
-	int lineNumber;
-	NodePtr value;
-	NodePtr next;
-} MemberAccessExpr;
 
 typedef enum
 {
@@ -190,13 +187,11 @@ typedef struct
 	NodePtr block;
 } BlockExpr;
 
-
 typedef struct
 {
 	int lineNumber;
 	NodePtr expr;
 } ExpressionStmt;
-
 
 typedef struct
 {
@@ -206,24 +201,22 @@ typedef struct
 	bool public;
 } ImportStmt;
 
+typedef enum
+{
+	Section_Init,
+	Section_Slider,
+	Section_Block,
+	Section_Sample,
+	Section_Serialize,
+	Section_GFX,
+} SectionType;
 
 typedef struct
 {
-	enum
-	{
-		Section_Init,
-		Section_Slider,
-		Section_Block,
-		Section_Sample,
-		Section_Serialize,
-		Section_GFX,
-	} sectionType;
-
+	SectionType sectionType;
 	int lineNumber;
 	NodePtr block;
 } SectionStmt;
-
-typedef typeof(((SectionStmt*)0)->sectionType) SectionType;
 
 typedef struct
 {
@@ -262,13 +255,11 @@ typedef struct
 	bool public;
 } StructDeclStmt;
 
-
 typedef struct
 {
 	int lineNumber;
 	Array statements;
 } BlockStmt;
-
 
 typedef struct
 {
@@ -294,19 +285,17 @@ typedef struct
 	NodePtr stmt;
 } ForStmt;
 
+typedef enum
+{
+	LoopControl_Break,
+	LoopControl_Continue,
+} LoopControlType;
+
 typedef struct
 {
 	int lineNumber;
-
-	enum
-	{
-		LoopControl_Break,
-		LoopControl_Continue,
-	} type;
+	LoopControlType type;
 } LoopControlStmt;
-
-typedef typeof(((LoopControlStmt*)0)->type) LoopControlType;
-
 
 typedef struct
 {
@@ -315,14 +304,12 @@ typedef struct
 	FuncDeclStmt* function;
 } ReturnStmt;
 
-
 typedef struct
 {
 	char* path;
 	char* moduleName;
 	Array statements;
 } ModuleNode;
-
 
 typedef struct
 {

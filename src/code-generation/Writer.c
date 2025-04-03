@@ -144,14 +144,9 @@ static void VisitStatement(const NodePtr* node);
 
 static void VisitFunctionCall(FuncCallExpr* funcCall)
 {
-	WriteString(funcCall->identifier.text);
-	if (!IsExternal(&funcCall->identifier))
-	{
-		WriteChar('_');
-		WriteUniqueName(GetUniqueName(&funcCall->identifier));
-	}
-
 	NodePtr funcCallNode = (NodePtr){.ptr = funcCall, .type = Node_FunctionCall};
+
+	VisitExpression(funcCall->expr, &funcCallNode);
 
 	WriteChar('(');
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)

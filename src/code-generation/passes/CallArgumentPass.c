@@ -9,8 +9,10 @@ static size_t Max(size_t a, size_t b)
 
 static Result VisitFunctionCall(FuncCallExpr* funcCall)
 {
-	assert(funcCall->identifier.reference.type == Node_FunctionDeclaration);
-	const FuncDeclStmt* funcDecl = funcCall->identifier.reference.ptr;
+	assert(funcCall->expr.type == Node_MemberAccess);
+	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+	assert(memberAccess->reference.type == Node_FunctionDeclaration);
+	const FuncDeclStmt* funcDecl = memberAccess->reference.ptr;
 
 	bool foundInitializer = false;
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -80,8 +82,7 @@ static Result VisitExpression(const NodePtr* node)
 		break;
 	case Node_MemberAccess:
 		const MemberAccessExpr* memberAccess = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&memberAccess->value));
-		PROPAGATE_ERROR(VisitExpression(&memberAccess->next));
+		PROPAGATE_ERROR(VisitExpression(&memberAccess->start));
 		break;
 	case Node_Subscript:
 		const SubscriptExpr* subscript = node->ptr;
