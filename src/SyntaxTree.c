@@ -209,7 +209,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
-		ptr->start = CopyASTNode(ptr->start);
+		if (ptr->start.ptr != NULL) ptr->start = CopyASTNode(ptr->start);
 
 		Array identifiers = AllocateArray(sizeof(char*));
 		for (size_t i = 0; i < ptr->identifiers.length; ++i)
@@ -325,7 +325,7 @@ void FreeASTNode(const NodePtr node)
 
 		for (size_t i = 0; i < ptr->identifiers.length; ++i)
 			free(*(char**)ptr->identifiers.array[i]);
-		FreeArray(&ptr->identifiers);
+		if (ptr->identifiers.array != NULL) FreeArray(&ptr->identifiers);
 		break;
 	}
 	case Node_BlockExpression:
