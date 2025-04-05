@@ -76,8 +76,8 @@ static Result ValidateStructAccess(Type type, const char* text, NodePtr* current
 
 	assert(type.expr.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = type.expr.ptr;
-	assert(memberAccess->reference.type == Node_StructDeclaration);
-	StructDeclStmt* structDecl = memberAccess->reference.ptr;
+	assert(memberAccess->typeReference != NULL);
+	StructDeclStmt* structDecl = memberAccess->typeReference;
 	for (size_t i = 0; i < structDecl->members.length; ++i)
 	{
 		const NodePtr* node = structDecl->members.array[i];
@@ -142,8 +142,8 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 		const FuncCallExpr* funcCall = current->ptr;
 		assert(funcCall->expr.type == Node_MemberAccess);
 		const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
-		assert(memberAccess->reference.type == Node_FunctionDeclaration);
-		const FuncDeclStmt* funcDecl = memberAccess->reference.ptr;
+		assert(memberAccess->funcReference != NULL);
+		const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 		return ValidateStructAccess(funcDecl->type, text, current, lineNumber);
 	}
 	case Node_Subscript:
@@ -157,8 +157,8 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 		{
 			const MemberAccessExpr* memberAccess = subscript->expr.ptr;
 
-			assert(memberAccess->reference.type == Node_VariableDeclaration);
-			const VarDeclStmt* varDecl = memberAccess->reference.ptr;
+			assert(memberAccess->varReference != NULL);
+			const VarDeclStmt* varDecl = memberAccess->varReference;
 			return ValidateStructAccess(varDecl->type, text, current, lineNumber);
 		}
 		default: INVALID_VALUE(subscript->expr.type);
@@ -213,15 +213,35 @@ static Result ResolveMemberAccess(const NodePtr* node)
 	PROPAGATE_ERROR(ResolveExpression(&memberAccess->start, true));
 
 	NodePtr current = memberAccess->start;
-
 	assert(memberAccess->identifiers.array != NULL);
 	for (size_t i = 0; i < memberAccess->identifiers.length; ++i)
 	{
 		char* text = *(char**)memberAccess->identifiers.array[i];
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, memberAccess->lineNumber));
+
+		if (current.type == Node_VariableDeclaration &&
+			memberAccess->varReference == NULL)
+			memberAccess->varReference = current.ptr;
 	}
 
-	memberAccess->reference = current;
+	switch (current.type)
+	{
+	case Node_FunctionDeclaration:
+		memberAccess->funcReference = current.ptr;
+		break;
+	case Node_StructDeclaration:
+		memberAccess->typeReference = current.ptr;
+		break;
+	case Node_VariableDeclaration:
+		assert(memberAccess->varReference != NULL);
+		if (memberAccess->varReference != current.ptr)
+		{
+			memberAccess->parentReference = memberAccess->varReference;
+			memberAccess->varReference = current.ptr;
+		}
+		break;
+	default: INVALID_VALUE(current.type);
+	}
 
 	return SUCCESS_RESULT;
 }
@@ -235,7 +255,7 @@ static Result ResolveType(const NodePtr* node, bool voidAllowed)
 		PROPAGATE_ERROR(ResolveMemberAccess(node));
 
 		MemberAccessExpr* memberAccess = node->ptr;
-		if (memberAccess->reference.type != Node_StructDeclaration)
+		if (memberAccess->typeReference == NULL)
 			return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
 
 		return SUCCESS_RESULT;
@@ -268,7 +288,7 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 		if (checkForValue)
 		{
 			const MemberAccessExpr* memberAccess = node->ptr;
-			if (memberAccess->reference.type != Node_VariableDeclaration)
+			if (memberAccess->varReference == NULL)
 				return ERROR_RESULT("Expression is not a variable or value", memberAccess->lineNumber, currentFilePath);
 		}
 		return SUCCESS_RESULT;
@@ -311,7 +331,7 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 		if (funcCall->expr.type == Node_MemberAccess)
 		{
 			MemberAccessExpr* memberAccess = funcCall->expr.ptr;
-			if (memberAccess->reference.type != Node_FunctionDeclaration ||
+			if (memberAccess->funcReference == NULL ||
 				memberAccess->start.ptr != NULL)
 				goto notFunctionError;
 		}

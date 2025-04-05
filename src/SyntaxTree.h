@@ -149,14 +149,6 @@ typedef struct
 typedef struct
 {
 	int lineNumber;
-	NodePtr start;
-	Array identifiers;
-	NodePtr reference;
-} MemberAccessExpr;
-
-typedef struct
-{
-	int lineNumber;
 	NodePtr expr;
 	NodePtr indexExpr;
 } SubscriptExpr;
@@ -254,6 +246,17 @@ typedef struct
 	Array members;
 	bool public;
 } StructDeclStmt;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr start;
+	Array identifiers;
+	FuncDeclStmt* funcReference;
+	StructDeclStmt* typeReference;
+	VarDeclStmt* varReference;
+	VarDeclStmt* parentReference;
+} MemberAccessExpr;
 
 typedef struct
 {

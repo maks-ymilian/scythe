@@ -93,8 +93,8 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 {
 	assert(funcCall->expr.type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
-	assert(memberAccess->reference.type == Node_FunctionDeclaration);
-	const FuncDeclStmt* funcDecl = memberAccess->reference.ptr;
+	assert(memberAccess->funcReference != NULL);
+	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 
 	if (outType != NULL)
 		*outType = GetType(funcDecl->type);

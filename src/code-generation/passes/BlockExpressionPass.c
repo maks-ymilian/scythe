@@ -59,7 +59,10 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 						.lineNumber = lineNumber,
 						.identifiers.array = NULL,
 						.start = NULL_NODE,
-						.reference = funcDecl,
+						.funcReference = funcDecl.ptr,
+						.typeReference = NULL,
+						.varReference = NULL,
+						.parentReference = NULL,
 					},
 					sizeof(MemberAccessExpr), Node_MemberAccess)},
 			sizeof(FuncCallExpr), Node_FunctionCall);

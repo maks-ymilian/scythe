@@ -234,7 +234,10 @@ static Result ParseType(Type* out)
 					.lineNumber = lineNumber,
 					.identifiers = identifiers,
 					.start = NULL_NODE,
-					.reference = NULL_NODE,
+					.funcReference = NULL,
+					.typeReference = NULL,
+					.varReference = NULL,
+					.parentReference = NULL,
 				},
 				sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
@@ -448,7 +451,10 @@ static Result ContinueParsePrimary(NodePtr* inout)
 				.lineNumber = lineNumber,
 				.start = *inout,
 				.identifiers = identifiers,
-				.reference = NULL_NODE,
+				.funcReference = NULL,
+				.typeReference = NULL,
+				.varReference = NULL,
+				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
@@ -498,7 +504,10 @@ static Result ParsePrimary(NodePtr* out)
 				.lineNumber = lineNumber,
 				.identifiers = identifiers,
 				.start = NULL_NODE,
-				.reference = NULL_NODE,
+				.funcReference = NULL,
+				.typeReference = NULL,
+				.varReference = NULL,
+				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}

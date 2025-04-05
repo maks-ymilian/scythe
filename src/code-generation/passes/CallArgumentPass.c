@@ -11,8 +11,8 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall)
 {
 	assert(funcCall->expr.type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
-	assert(memberAccess->reference.type == Node_FunctionDeclaration);
-	const FuncDeclStmt* funcDecl = memberAccess->reference.ptr;
+	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
+	assert(funcDecl != NULL);
 
 	bool foundInitializer = false;
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
