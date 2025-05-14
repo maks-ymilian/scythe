@@ -516,7 +516,7 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 		return;
 
 	// if its primitive type
-	if (memberAccess->varReference->type.expr.type == Node_Literal)
+	if (GetTypeInfoFromExpression(*node).effectiveType == NULL)
 	{
 		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
 		assert(instantiated != NULL);
@@ -524,6 +524,39 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 		FreeASTNode(*node);
 		*node = new;
 	}
+}
+
+static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* containingStatement)
+{
+	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
+
+	TypeInfo type = GetTypeInfoFromExpression(subscript->expr);
+	if (!type.effectiveType)
+		return VisitExpression(&subscript->expr, containingStatement);
+
+	if (!type.effectiveType->isArrayType)
+		return ERROR_RESULT("Cannot index into non-array type",
+			subscript->lineNumber,
+			currentFilePath);
+
+	// todo add a pass to split it up into multiple variables or something
+	// so this doesnt get hit
+	assert(subscript->expr.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = subscript->expr.ptr;
+
+	// make the member access point to the ptr member inside the array type
+	assert(memberAccess->varReference != NULL);
+	if (!memberAccess->parentReference)
+		memberAccess->parentReference = memberAccess->varReference;
+
+	assert(type.effectiveType->members.length == 2);
+	NodePtr* node = type.effectiveType->members.array[0];
+	assert(node->type == Node_VariableDeclaration);
+	VarDeclStmt* member = node->ptr;
+	memberAccess->varReference = member;
+
+	PROPAGATE_ERROR(VisitExpression(&subscript->expr, containingStatement));
+	return SUCCESS_RESULT;
 }
 
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
@@ -541,13 +574,10 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
 		break;
 	case Node_FunctionCall:
-		FuncCallExpr* funcCall = node->ptr;
-		PROPAGATE_ERROR(VisitFunctionCallArguments(funcCall, containingStatement));
+		PROPAGATE_ERROR(VisitFunctionCallArguments(node->ptr, containingStatement));
 		break;
 	case Node_Subscript:
-		SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&subscript->expr, containingStatement));
-		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
+		PROPAGATE_ERROR(VisitSubscriptExpression(node->ptr, containingStatement));
 		break;
 	case Node_Literal:
 		break;
