@@ -283,6 +283,9 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 {
 	switch (node->type)
 	{
+	case Node_Literal:
+	case Node_Null:
+		return SUCCESS_RESULT;
 	case Node_MemberAccess:
 	{
 		PROPAGATE_ERROR(ResolveMemberAccess(node));
@@ -292,16 +295,6 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 			if (memberAccess->varReference == NULL)
 				return ERROR_RESULT("Expression is not a variable or value", memberAccess->lineNumber, currentFilePath);
 		}
-		return SUCCESS_RESULT;
-	}
-	case Node_Literal:
-	{
-		const LiteralExpr* literal = node->ptr;
-		assert(literal->type == Literal_Int ||
-			   literal->type == Literal_Float ||
-			   literal->type == Literal_String ||
-			   literal->type == Literal_Boolean ||
-			   literal->type == Literal_PrimitiveType);
 		return SUCCESS_RESULT;
 	}
 	case Node_Binary:
@@ -354,8 +347,6 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true));
 		return SUCCESS_RESULT;
 	}
-	case Node_Null:
-		return SUCCESS_RESULT;
 	default: INVALID_VALUE(node->type);
 	}
 }
