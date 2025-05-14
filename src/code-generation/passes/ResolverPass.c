@@ -117,7 +117,7 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 	NodePtr ptrMember = AllocMemberVarDecl("ptr",
 		(Type){
 			.modifier = TypeModifier_Pointer,
-			.expr = type.expr,
+			.expr = CopyASTNode(type.expr),
 		});
 	ArrayAdd(&structDecl->members, &ptrMember);
 
@@ -157,6 +157,7 @@ static void ChangeArrayTypeToStruct(Type* type)
 			return;
 	}
 
+	NodePtr oldExpr = type->expr;
 	*type = (Type){
 		.modifier = TypeModifier_None,
 		.expr = AllocASTNode(
@@ -171,6 +172,7 @@ static void ChangeArrayTypeToStruct(Type* type)
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess),
 	};
+	FreeASTNode(oldExpr);
 }
 
 static void PushScope()
