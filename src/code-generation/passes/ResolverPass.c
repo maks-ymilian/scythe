@@ -219,7 +219,8 @@ static Result ResolveMemberAccess(const NodePtr* node)
 		char* text = *(char**)memberAccess->identifiers.array[i];
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, memberAccess->lineNumber));
 
-		if (current.type == Node_VariableDeclaration &&
+		if (memberAccess->start.ptr == NULL &&
+			current.type == Node_VariableDeclaration &&
 			memberAccess->varReference == NULL)
 			memberAccess->varReference = current.ptr;
 	}

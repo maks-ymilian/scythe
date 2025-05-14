@@ -4,14 +4,14 @@
 
 typedef struct
 {
-	NodePtr returnFlagDecl;
-	NodePtr returnValueDecl;
+	VarDeclStmt* returnFlagDecl;
+	VarDeclStmt* returnValueDecl;
 } ReturnVariables;
 
 typedef struct
 {
-	NodePtr breakFlagDecl;
-	NodePtr continueFlagDecl;
+	VarDeclStmt* breakFlagDecl;
+	VarDeclStmt* continueFlagDecl;
 } WhileVariables;
 
 static const char* currentFilePath = NULL;
@@ -21,6 +21,22 @@ static const char* continueFlagName = "continue";
 
 static const char* returnFlagName = "return";
 static const char* returnValueName = "returnValue";
+
+static NodePtr AllocIdentifierExpr(VarDeclStmt* varDecl, int lineNumber)
+{
+	assert(varDecl != NULL);
+	return AllocASTNode(
+		&(MemberAccessExpr){
+			.lineNumber = lineNumber,
+			.start = NULL,
+			.identifiers = (Array){.array = NULL},
+			.funcReference = NULL,
+			.typeReference = NULL,
+			.varReference = varDecl,
+			.parentReference = NULL,
+		},
+		sizeof(MemberAccessExpr), Node_MemberAccess);
+}
 
 static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 {
@@ -52,7 +68,7 @@ static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
 
-static NodePtr AllocSetFlag(const char* name, const NodePtr flagDecl, const int lineNumber)
+static NodePtr AllocSetFlag(const char* name, VarDeclStmt* flagDecl, const int lineNumber)
 {
 	return AllocASTNode(
 		&(ExpressionStmt){
@@ -61,16 +77,7 @@ static NodePtr AllocSetFlag(const char* name, const NodePtr flagDecl, const int 
 				&(BinaryExpr){
 					.lineNumber = lineNumber,
 					.operatorType = Binary_Assignment,
-					.left = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(name),
-								.reference = flagDecl,
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
+					.left = AllocIdentifierExpr(flagDecl, lineNumber),
 					.right = AllocASTNode( // clang-format is bad
 						&(LiteralExpr){
 							.lineNumber = lineNumber,
@@ -84,7 +91,7 @@ static NodePtr AllocSetFlag(const char* name, const NodePtr flagDecl, const int 
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
 
-static NodePtr AllocBreakFlagExpression(const NodePtr breakFlagDecl, const NodePtr inside, const int lineNumber)
+static NodePtr AllocBreakFlagExpression(VarDeclStmt* breakFlagDecl, const NodePtr inside, const int lineNumber)
 {
 	return AllocASTNode(
 		&(BinaryExpr){
@@ -95,23 +102,14 @@ static NodePtr AllocBreakFlagExpression(const NodePtr breakFlagDecl, const NodeP
 				&(UnaryExpr){
 					.lineNumber = lineNumber,
 					.operatorType = Unary_Negate,
-					.expression = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(breakFlagName),
-								.reference = breakFlagDecl,
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
+					.expression = AllocIdentifierExpr(breakFlagDecl, lineNumber),
 				},
 				sizeof(UnaryExpr), Node_Unary),
 		},
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static NodePtr AllocIfFlagIsFalse(const char* name, const NodePtr flagDecl, Array* statements, const int lineNumber)
+static NodePtr AllocIfFlagIsFalse(const char* name, VarDeclStmt* flagDecl, Array* statements, const int lineNumber)
 {
 	return AllocASTNode(
 		&(IfStmt){
@@ -121,16 +119,7 @@ static NodePtr AllocIfFlagIsFalse(const char* name, const NodePtr flagDecl, Arra
 				&(BinaryExpr){
 					.lineNumber = lineNumber,
 					.operatorType = Binary_IsEqual,
-					.left = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(name),
-								.reference = flagDecl,
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
+					.left = AllocIdentifierExpr(flagDecl, lineNumber),
 					.right = AllocASTNode( // clang-format is bad
 						&(LiteralExpr){
 							.lineNumber = lineNumber,
@@ -168,7 +157,7 @@ static NodePtr AllocReturnValueDecl(const Type type, const int lineNumber)
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
 }
 
-static NodePtr AllocSetReturnValue(const NodePtr returnValueDecl, const NodePtr value, const int lineNumber)
+static NodePtr AllocSetReturnValue(VarDeclStmt* returnValueDecl, const NodePtr value, const int lineNumber)
 {
 	return AllocASTNode(
 		&(ExpressionStmt){
@@ -178,37 +167,19 @@ static NodePtr AllocSetReturnValue(const NodePtr returnValueDecl, const NodePtr 
 					.lineNumber = lineNumber,
 					.operatorType = Binary_Assignment,
 					.right = CopyASTNode(value),
-					.left = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Identifier,
-							.identifier = (IdentifierReference){
-								.text = AllocateString(returnValueName),
-								.reference = returnValueDecl,
-							},
-						},
-						sizeof(LiteralExpr), Node_Literal),
+					.left = AllocIdentifierExpr(returnValueDecl, lineNumber),
 				},
 				sizeof(BinaryExpr), Node_Binary),
 		},
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
 
-static NodePtr AllocReturnValueStatement(const NodePtr returnValueDecl, const int lineNumber)
+static NodePtr AllocReturnValueStatement(VarDeclStmt* returnValueDecl, const int lineNumber)
 {
 	return AllocASTNode(
 		&(ExpressionStmt){
 			.lineNumber = lineNumber,
-			.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Identifier,
-					.identifier = (IdentifierReference){
-						.text = AllocateString(returnValueName),
-						.reference = returnValueDecl,
-					},
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.expr = AllocIdentifierExpr(returnValueDecl, lineNumber),
 		},
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 }
@@ -426,11 +397,11 @@ static Result VisitWhileStatement(NodePtr* node, const ReturnVariables* returnVa
 	*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
 	WhileVariables variables = (WhileVariables){
-		.breakFlagDecl = AllocFlagDecl(breakFlagName, whileStmt->lineNumber),
-		.continueFlagDecl = AllocFlagDecl(continueFlagName, whileStmt->lineNumber),
+		.breakFlagDecl = AllocFlagDecl(breakFlagName, whileStmt->lineNumber).ptr,
+		.continueFlagDecl = AllocFlagDecl(continueFlagName, whileStmt->lineNumber).ptr,
 	};
-	ArrayInsert(&block->statements, &variables.breakFlagDecl, 0);
-	ArrayInsert(&whileBlock->statements, &variables.continueFlagDecl, 0);
+	ArrayInsert(&block->statements, &(NodePtr){.ptr = variables.breakFlagDecl, .type = Node_VariableDeclaration}, 0);
+	ArrayInsert(&whileBlock->statements, &(NodePtr){.ptr = variables.continueFlagDecl, .type = Node_VariableDeclaration}, 0);
 	whileStmt->expr = AllocBreakFlagExpression(variables.breakFlagDecl, whileStmt->expr, whileStmt->lineNumber);
 
 	return VisitBlock(whileStmt->stmt, returnVars, &variables, isVoid);
@@ -474,10 +445,10 @@ static Result VisitFunctionBlock(NodePtr blockNode, const Type* returnType)
 	NodePtr innerBlock = CreateInnerBlock(block);
 
 	ReturnVariables variables = (ReturnVariables){
-		.returnFlagDecl = AllocFlagDecl(returnFlagName, block->lineNumber),
-		.returnValueDecl = NULL_NODE,
+		.returnFlagDecl = AllocFlagDecl(returnFlagName, block->lineNumber).ptr,
+		.returnValueDecl = NULL,
 	};
-	ArrayInsert(&block->statements, &variables.returnFlagDecl, 0);
+	ArrayInsert(&block->statements, &(NodePtr){.ptr = variables.returnFlagDecl, .type = Node_VariableDeclaration}, 0);
 
 	const bool isVoid = returnType == NULL || TypeIsVoid(*returnType);
 	if (!isVoid)
@@ -485,8 +456,8 @@ static Result VisitFunctionBlock(NodePtr blockNode, const Type* returnType)
 		if (!StatementReturns(&innerBlock, true))
 			return ERROR_RESULT("Not all control paths return a value", block->lineNumber, currentFilePath);
 
-		variables.returnValueDecl = AllocReturnValueDecl(*returnType, block->lineNumber);
-		ArrayInsert(&block->statements, &variables.returnValueDecl, 0);
+		variables.returnValueDecl = AllocReturnValueDecl(*returnType, block->lineNumber).ptr;
+		ArrayInsert(&block->statements, &(NodePtr){.ptr = variables.returnValueDecl, .type = Node_VariableDeclaration}, 0);
 
 		NodePtr returnValue = AllocReturnValueStatement(variables.returnValueDecl, -1);
 		ArrayAdd(&block->statements, &returnValue);

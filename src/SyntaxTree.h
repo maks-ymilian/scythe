@@ -114,12 +114,6 @@ typedef enum
 	Primitive_Void,
 } PrimitiveType;
 
-typedef struct
-{
-	char* text;
-	NodePtr reference;
-} IdentifierReference;
-
 typedef enum
 {
 	Literal_Float,
@@ -127,7 +121,6 @@ typedef enum
 	Literal_String,
 	Literal_Boolean,
 	Literal_PrimitiveType,
-	Literal_Identifier,
 } LiteralType;
 
 typedef struct
@@ -142,7 +135,6 @@ typedef struct
 		char* string;
 		bool boolean;
 		PrimitiveType primitiveType;
-		IdentifierReference identifier;
 	};
 } LiteralExpr;
 

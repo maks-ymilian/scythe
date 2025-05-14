@@ -119,26 +119,6 @@ static void PopIndent()
 	indentationLevel--;
 }
 
-static int GetUniqueName(const IdentifierReference* identifier)
-{
-	switch (identifier->reference.type)
-	{
-	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->uniqueName;
-	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->uniqueName;
-	default: INVALID_VALUE(identifier->reference.type);
-	}
-}
-
-static bool IsExternal(const IdentifierReference* identifier)
-{
-	switch (identifier->reference.type)
-	{
-	case Node_VariableDeclaration: return ((VarDeclStmt*)identifier->reference.ptr)->external;
-	case Node_FunctionDeclaration: return ((FuncDeclStmt*)identifier->reference.ptr)->external;
-	default: INVALID_VALUE(identifier->reference.type);
-	}
-}
-
 static void VisitExpression(NodePtr node, const NodePtr* parentExpr);
 static void VisitStatement(const NodePtr* node);
 
@@ -165,14 +145,6 @@ static void VisitLiteralExpression(LiteralExpr* literal)
 	{
 	case Literal_Float: WriteString(literal->floatValue); break;
 	case Literal_Int: WriteUInt64(literal->intValue); break;
-	case Literal_Identifier:
-		WriteString(literal->identifier.text);
-		if (!IsExternal(&literal->identifier))
-		{
-			WriteChar('_');
-			WriteUniqueName(GetUniqueName(&literal->identifier));
-		}
-		break;
 	case Literal_String:
 		WriteChar('\"');
 		WriteString(literal->string);
@@ -272,12 +244,52 @@ static void VisitSubscriptExpression(SubscriptExpr* subscript)
 	WriteChar(']');
 }
 
+static bool IsExternal(const MemberAccessExpr* identifier)
+{
+	if (identifier->funcReference != NULL)
+		return identifier->funcReference->external;
+	if (identifier->varReference != NULL)
+		return identifier->varReference->external;
+	unreachable();
+}
+
+static int GetUniqueName(const MemberAccessExpr* identifier)
+{
+	if (identifier->funcReference != NULL)
+		return identifier->funcReference->uniqueName;
+	if (identifier->varReference != NULL)
+		return identifier->varReference->uniqueName;
+	unreachable();
+}
+
+static char* GetName(const MemberAccessExpr* identifier)
+{
+	if (identifier->funcReference != NULL)
+		return identifier->funcReference->name;
+	if (identifier->typeReference != NULL)
+		return identifier->typeReference->name;
+	if (identifier->varReference != NULL)
+		return identifier->varReference->name;
+	unreachable();
+}
+
+static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
+{
+	WriteString(GetName(identifier));
+	if (!IsExternal(identifier))
+	{
+		WriteChar('_');
+		WriteUniqueName(GetUniqueName(identifier));
+	}
+}
+
 static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 {
 	switch (node.type)
 	{
 	case Node_Binary: VisitBinaryExpression(node.ptr, parentExpr); break;
 	case Node_Unary: VisitUnaryExpression(node.ptr); break;
+	case Node_MemberAccess: VisitMemberAccessExpression(node.ptr); break;
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
 	case Node_Subscript: VisitSubscriptExpression(node.ptr); break;
@@ -287,6 +299,7 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 
 static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
+	assert(varDecl != NULL);
 	if (varDecl->external)
 		return;
 
@@ -298,15 +311,16 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 			.operatorType = Binary_Assignment,
 			.right = varDecl->initializer,
 			.left = (NodePtr){
-				&(LiteralExpr){
+				&(MemberAccessExpr){
 					.lineNumber = -1,
-					.type = Literal_Identifier,
-					.identifier = (IdentifierReference){
-						.text = varDecl->name,
-						.reference = (NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration},
-					},
+					.start = NULL_NODE,
+					.identifiers.array = NULL,
+					.funcReference = NULL,
+					.typeReference = NULL,
+					.varReference = varDecl,
+					.parentReference = NULL,
 				},
-				Node_Literal},
+				Node_MemberAccess},
 		},
 		NULL);
 	WriteString(";\n");

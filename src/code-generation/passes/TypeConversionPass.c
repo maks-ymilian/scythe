@@ -61,23 +61,22 @@ static void VisitLiteral(LiteralExpr* literal, TypeInfo* outType)
 		literal->intValue = literal->boolean ? 1 : 0;
 		*outType = NonPointerType(Primitive_Bool);
 		break;
-
-	case Literal_Identifier:
-		NodePtr reference = literal->identifier.reference;
-
-		Type* type = NULL;
-		if (reference.type == Node_VariableDeclaration)
-			type = &((VarDeclStmt*)reference.ptr)->type;
-		else if (reference.type == Node_FunctionDeclaration)
-			type = &((FuncDeclStmt*)reference.ptr)->type;
-		else
-			assert(0);
-
-		*outType = GetType(*type);
-		break;
-
 	default: INVALID_VALUE(literal->type);
 	}
+}
+
+static void VisitMemberAccess(MemberAccessExpr* memberAccess, TypeInfo* outType)
+{
+	Type* type = NULL;
+	if (memberAccess->funcReference != NULL)
+		type = &memberAccess->funcReference->type;
+	else if (memberAccess->varReference != NULL)
+		type = &memberAccess->varReference->type;
+	else
+		assert(0);
+
+	if (outType != NULL)
+		*outType = GetType(*type);
 }
 
 static Result VisitExpression(NodePtr* node, TypeInfo* outType);
@@ -293,14 +292,9 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 		// assignment
 	case Binary_Assignment:
 	{
-		if (binary->left.type == Node_Literal)
-		{
-			LiteralExpr* literal = binary->left.ptr;
-			if (literal->type != Literal_Identifier)
-				goto assignmentError;
-		}
-		else if (binary->left.type != Node_Subscript)
-			goto assignmentError;
+		if (binary->left.type != Node_MemberAccess &&
+			binary->left.type != Node_Subscript)
+			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 		PROPAGATE_ERROR(ConvertExpression(
 			&binary->right,
@@ -339,9 +333,6 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 		if (outType != NULL) *outType = NonPointerType(leftType);
 		break;
 	}
-
-	assignmentError:
-		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 	default: INVALID_VALUE(binary->operatorType);
 	}
@@ -461,6 +452,9 @@ static Result VisitExpression(NodePtr* node, TypeInfo* outType)
 		break;
 	case Node_Unary:
 		PROPAGATE_ERROR(VisitUnaryExpression(node, outType));
+		break;
+	case Node_MemberAccess:
+		VisitMemberAccess(node->ptr, outType);
 		break;
 	case Node_Literal:
 		VisitLiteral(node->ptr, outType);

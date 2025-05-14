@@ -17,6 +17,8 @@ static void VisitExpression(const NodePtr node)
 		const UnaryExpr* unary = node.ptr;
 		VisitExpression(unary->expression);
 		break;
+	case Node_MemberAccess:
+		break;
 	case Node_Literal:
 		break;
 	case Node_FunctionCall:
