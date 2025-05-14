@@ -186,6 +186,7 @@ static Result ConvertExpression(
 		return SUCCESS_RESULT;
 
 	case Primitive_String:
+		goto convertError;
 	default: INVALID_VALUE(targetType);
 	}
 
