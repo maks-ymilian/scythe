@@ -383,7 +383,10 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 	}
 	case Node_Subscript:
 	{
-		assert(!"todo");
+		SubscriptExpr* subscript = d->leftExpr.ptr;
+		left = CopyASTNode(d->leftExpr);
+		SubscriptExpr* new = left.ptr;
+		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, d->memberCount, subscript->lineNumber);
 		break;
 	}
 	default: INVALID_VALUE(d->leftExpr.type);
@@ -424,7 +427,10 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 	}
 	case Node_Subscript:
 	{
-		assert(!"todo");
+		SubscriptExpr* subscript = d->rightExpr.ptr;
+		right = CopyASTNode(d->rightExpr);
+		SubscriptExpr* new = right.ptr;
+		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, d->memberCount, subscript->lineNumber);
 		break;
 	}
 	default: INVALID_VALUE(d->rightExpr.type);
