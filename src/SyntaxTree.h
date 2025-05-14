@@ -237,6 +237,7 @@ typedef struct
 	char* name;
 	Array members;
 	bool public;
+	bool isArrayType;
 } StructDeclStmt;
 
 typedef struct

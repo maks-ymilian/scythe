@@ -72,7 +72,6 @@ void ArrayRemove(Array* array, const size_t index)
 
 void FreeArray(const Array* array)
 {
-	assert(array->array != NULL);
 	for (size_t i = 0; i < array->length; ++i)
 		free(array->array[i]);
 	free(array->array);

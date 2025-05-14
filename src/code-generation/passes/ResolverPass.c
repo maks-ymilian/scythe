@@ -8,10 +8,6 @@
 #include "StringUtils.h"
 #include "data-structures/Map.h"
 
-static const char* currentFilePath = NULL;
-
-static Map modules;
-
 typedef struct Scope Scope;
 struct Scope
 {
@@ -19,7 +15,163 @@ struct Scope
 	Map declarations;
 };
 
+static const char* currentFilePath = NULL;
+
+static Map modules;
+
 static Scope* currentScope = NULL;
+
+static ModuleNode* currentModule = NULL;
+static Map structTypeToArrayStruct;
+static StructDeclStmt* primitiveTypeToArrayStruct[] = {
+	[Primitive_Any] = NULL,
+	[Primitive_Float] = NULL,
+	[Primitive_Int] = NULL,
+	[Primitive_Bool] = NULL,
+	[Primitive_String] = NULL,
+};
+
+static Result VisitStatement(const NodePtr* node);
+static Result ResolveExpression(const NodePtr* node, bool checkForValue);
+static Result ResolveType(Type* type, bool voidAllowed);
+static Result VisitBlock(const BlockStmt* block);
+
+static NodePtr AllocMemberVarDecl(const char* name, Type type)
+{
+	return AllocASTNode(
+		&(VarDeclStmt){
+			.lineNumber = -1,
+			.type = type,
+			.name = AllocateString(name),
+			.externalName = NULL,
+			.initializer = NULL_NODE,
+			.instantiatedVariables = (Array){.array = NULL},
+			.public = false,
+			.external = false,
+			.uniqueName = -1,
+		},
+		sizeof(VarDeclStmt), Node_VariableDeclaration);
+}
+
+static StructDeclStmt* GetSetArrayStructDecl(Type type, StructDeclStmt* structDecl)
+{
+	switch (type.expr.type)
+	{
+	case Node_Literal:
+	{
+		LiteralExpr* literal = type.expr.ptr;
+		assert(literal->type == Literal_PrimitiveType);
+
+		if (structDecl)
+		{
+			assert(primitiveTypeToArrayStruct[literal->primitiveType] == NULL);
+			primitiveTypeToArrayStruct[literal->primitiveType] = structDecl;
+			return structDecl;
+		}
+		else
+			return primitiveTypeToArrayStruct[literal->primitiveType];
+	}
+	case Node_MemberAccess:
+	{
+		MemberAccessExpr* memberAccess = type.expr.ptr;
+		assert(memberAccess->typeReference != NULL);
+
+		char lookup[64];
+		snprintf(lookup, sizeof(lookup), "%p", (void*)memberAccess->typeReference);
+
+		if (structDecl)
+		{
+			bool success = MapAdd(&structTypeToArrayStruct, lookup, &structDecl);
+			assert(success);
+			return structDecl;
+		}
+		else
+		{
+			StructDeclStmt** get = MapGet(&structTypeToArrayStruct, lookup);
+			return get ? *get : NULL;
+		}
+	}
+	default: INVALID_VALUE(type.expr.type);
+	}
+}
+
+static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
+{
+	// find struct
+	StructDeclStmt* structDecl = GetSetArrayStructDecl(type, NULL);
+	if (structDecl)
+		return structDecl;
+
+	// create struct
+	structDecl = AllocASTNode(
+		&(StructDeclStmt){
+			.lineNumber = -1,
+			.name = NULL,
+			.members = AllocateArray(sizeof(NodePtr)),
+			.public = false,
+			.isArrayType = true,
+		},
+		sizeof(StructDeclStmt), Node_StructDeclaration)
+					 .ptr;
+
+	NodePtr ptrMember = AllocMemberVarDecl("ptr",
+		(Type){
+			.modifier = TypeModifier_Pointer,
+			.expr = type.expr,
+		});
+	ArrayAdd(&structDecl->members, &ptrMember);
+
+	NodePtr lengthMember = AllocMemberVarDecl("length",
+		(Type){
+			.modifier = TypeModifier_None,
+			.expr = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = -1,
+					.type = Literal_PrimitiveType,
+					.primitiveType = Primitive_Int,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		});
+	ArrayAdd(&structDecl->members, &lengthMember);
+
+	assert(currentModule != NULL);
+	ArrayAdd(&currentModule->statements, &(NodePtr){.ptr = structDecl, .type = Node_StructDeclaration});
+
+	// add so it can be found
+	GetSetArrayStructDecl(type, structDecl);
+
+	return structDecl;
+}
+
+static void ChangeArrayTypeToStruct(Type* type)
+{
+	if (type->modifier != TypeModifier_Array)
+		return;
+
+	// if its void just return
+	if (type->expr.type == Node_Literal)
+	{
+		LiteralExpr* literal = type->expr.ptr;
+		assert(literal->type == Literal_PrimitiveType);
+		if (literal->primitiveType == Primitive_Void)
+			return;
+	}
+
+	*type = (Type){
+		.modifier = TypeModifier_None,
+		.expr = AllocASTNode(
+			&(MemberAccessExpr){
+				.lineNumber = -1,
+				.start = NULL_NODE,
+				.identifiers = (Array){.array = NULL},
+				.funcReference = NULL,
+				.typeReference = CreateOrGetArrayStructDecl(*type),
+				.varReference = NULL,
+				.parentReference = NULL,
+			},
+			sizeof(MemberAccessExpr), Node_MemberAccess),
+	};
+}
 
 static void PushScope()
 {
@@ -92,10 +244,16 @@ static Result ValidateStructAccess(Type type, const char* text, NodePtr* current
 		}
 	}
 
-	return ERROR_RESULT(
-		AllocateString2Str("Member \"%s\" does not exist in type \"%s\"", text, structDecl->name),
-		lineNumber,
-		currentFilePath);
+	if (structDecl->isArrayType)
+		return ERROR_RESULT(
+			AllocateString1Str("Member \"%s\" does not exist in array type", text),
+			lineNumber,
+			currentFilePath);
+	else
+		return ERROR_RESULT(
+			AllocateString2Str("Member \"%s\" does not exist in type \"%s\"", text, structDecl->name),
+			lineNumber,
+			currentFilePath);
 }
 
 static bool NodeIsPublicDeclaration(const NodePtr* node)
@@ -203,8 +361,6 @@ static NodePtr GetBaseExpression(NodePtr node)
 	}
 }
 
-static Result ResolveExpression(const NodePtr* node, bool checkForValue);
-
 static Result ResolveMemberAccess(const NodePtr* node)
 {
 	assert(node->type == Node_MemberAccess);
@@ -247,37 +403,38 @@ static Result ResolveMemberAccess(const NodePtr* node)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveType(const NodePtr* node, bool voidAllowed)
+static Result ResolveType(Type* type, bool voidAllowed)
 {
-	switch (node->type)
+	switch (type->expr.type)
 	{
 	case Node_MemberAccess:
 	{
-		PROPAGATE_ERROR(ResolveMemberAccess(node));
+		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr));
 
-		MemberAccessExpr* memberAccess = node->ptr;
+		MemberAccessExpr* memberAccess = type->expr.ptr;
 		if (memberAccess->typeReference == NULL)
 			return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
 
-		return SUCCESS_RESULT;
+		break;
 	}
 	case Node_Literal:
 	{
 		if (voidAllowed)
-			return SUCCESS_RESULT;
+			break;
 
-		LiteralExpr* literal = node->ptr;
+		LiteralExpr* literal = type->expr.ptr;
 		assert(literal->type == Literal_PrimitiveType);
 		if (literal->primitiveType == Primitive_Void)
 			return ERROR_RESULT("\"void\" is not allowed here", literal->lineNumber, currentFilePath);
 
-		return SUCCESS_RESULT;
+		break;
 	}
-	default: INVALID_VALUE(node->type);
+	default: INVALID_VALUE(type->expr.type);
 	}
-}
 
-static Result VisitBlock(const BlockStmt* block);
+	ChangeArrayTypeToStruct(type);
+	return SUCCESS_RESULT;
+}
 
 static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 {
@@ -311,9 +468,9 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	}
 	case Node_BlockExpression:
 	{
-		const BlockExpr* block = node->ptr;
+		BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveType(&block->type.expr, false));
+		PROPAGATE_ERROR(ResolveType(&block->type, false));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
@@ -350,8 +507,6 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	default: INVALID_VALUE(node->type);
 	}
 }
-
-static Result VisitStatement(const NodePtr* node);
 
 static Result VisitBlock(const BlockStmt* block)
 {
@@ -395,7 +550,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true));
-		PROPAGATE_ERROR(ResolveType(&varDecl->type.expr, false));
+		PROPAGATE_ERROR(ResolveType(&varDecl->type, false));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -403,7 +558,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
 
-		PROPAGATE_ERROR(ResolveType(&funcDecl->type.expr, true));
+		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true));
 
 		PushScope();
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -424,6 +579,10 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_StructDeclaration:
 	{
 		const StructDeclStmt* structDecl = node->ptr;
+
+		// if it was generated by an array type skip it
+		if (structDecl->isArrayType)
+			return SUCCESS_RESULT;
 
 		PushScope();
 		for (size_t i = 0; i < structDecl->members.length; ++i)
@@ -489,9 +648,10 @@ static Result VisitStatement(const NodePtr* node)
 	}
 }
 
-static Result VisitModule(const ModuleNode* module)
+static Result VisitModule(ModuleNode* module)
 {
 	currentFilePath = module->path;
+	currentModule = module;
 
 	PushScope();
 	for (size_t i = 0; i < module->statements.length; ++i)
@@ -507,6 +667,8 @@ static Result VisitModule(const ModuleNode* module)
 
 Result ResolverPass(const AST* ast)
 {
+	structTypeToArrayStruct = AllocateMap(sizeof(StructDeclStmt*));
+
 	modules = AllocateMap(sizeof(Map));
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -519,5 +681,6 @@ Result ResolverPass(const AST* ast)
 		FreeMap(i->value);
 	FreeMap(&modules);
 
+	FreeMap(&structTypeToArrayStruct);
 	return SUCCESS_RESULT;
 }
