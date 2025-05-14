@@ -159,11 +159,13 @@ typedef enum
 	TypeModifier_Array,
 } TypeModifier;
 
-typedef struct
+typedef struct Type Type;
+struct Type
 {
 	NodePtr expr;
 	TypeModifier modifier;
-} Type;
+	Type* pointerTypeReference;
+};
 
 typedef struct
 {

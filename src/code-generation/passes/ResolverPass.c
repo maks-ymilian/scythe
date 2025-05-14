@@ -157,6 +157,15 @@ static void ChangeArrayTypeToStruct(Type* type)
 			return;
 	}
 
+	StructDeclStmt* typeReference = CreateOrGetArrayStructDecl(*type);
+
+	// get underlying ptr member variables type
+	assert(typeReference->members.length == 2);
+	NodePtr* node = typeReference->members.array[0];
+	assert(node->type == Node_VariableDeclaration);
+	VarDeclStmt* ptrMember = node->ptr;
+	Type* pointerTypeReference = &ptrMember->type;
+
 	NodePtr oldExpr = type->expr;
 	*type = (Type){
 		.modifier = TypeModifier_None,
@@ -166,11 +175,12 @@ static void ChangeArrayTypeToStruct(Type* type)
 				.start = NULL_NODE,
 				.identifiers = (Array){.array = NULL},
 				.funcReference = NULL,
-				.typeReference = CreateOrGetArrayStructDecl(*type),
+				.typeReference = typeReference,
 				.varReference = NULL,
 				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess),
+		.pointerTypeReference = pointerTypeReference,
 	};
 	FreeASTNode(oldExpr);
 }
@@ -218,6 +228,9 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 
 static Result ValidateStructAccess(Type type, const char* text, NodePtr* current, int lineNumber)
 {
+	if (type.modifier == TypeModifier_Pointer)
+		return ERROR_RESULT("Cannot access members in pointer type", lineNumber, currentFilePath);
+
 	if (type.expr.type == Node_Literal)
 	{
 		LiteralExpr* literal = type.expr.ptr;
@@ -319,7 +332,21 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 
 			assert(memberAccess->varReference != NULL);
 			const VarDeclStmt* varDecl = memberAccess->varReference;
-			return ValidateStructAccess(varDecl->type, text, current, lineNumber);
+
+			// dereference
+			Type type = varDecl->type;
+			if (type.pointerTypeReference) // array
+			{
+				type = *type.pointerTypeReference;
+				assert(type.modifier == TypeModifier_Pointer);
+				type.modifier = TypeModifier_None;
+			}
+			else if (type.modifier == TypeModifier_Pointer) // pointer
+			{
+				type.modifier = TypeModifier_None;
+			}
+
+			return ValidateStructAccess(type, text, current, lineNumber);
 		}
 		default: INVALID_VALUE(subscript->expr.type);
 		}
