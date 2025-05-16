@@ -408,8 +408,7 @@ static Result ResolveMemberAccess(NodePtr* node)
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, memberAccess->lineNumber));
 
 		// set varReference to the first one for now
-		if (memberAccess->start.ptr == NULL &&
-			current.type == Node_VariableDeclaration &&
+		if (current.type == Node_VariableDeclaration &&
 			memberAccess->varReference == NULL)
 			memberAccess->varReference = current.ptr;
 	}

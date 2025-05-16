@@ -18,6 +18,8 @@ static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
 
+static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
+
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
 	assert(aggregateVarDecl != NULL);
@@ -448,25 +450,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	return SUCCESS_RESULT;
 }
 
-static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
-{
-	assert(node->type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = node->ptr;
-	assert(memberAccess->start.ptr == NULL);
-	if (memberAccess->parentReference == NULL)
-		return;
-
-	// if its primitive type
-	if (GetTypeInfoFromExpression(*node).effectiveType == NULL)
-	{
-		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
-		assert(instantiated != NULL);
-		NodePtr new = AllocIdentifier(instantiated, memberAccess->lineNumber);
-		FreeASTNode(*node);
-		*node = new;
-	}
-}
-
 static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* containingStatement)
 {
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
@@ -500,12 +483,107 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 	return SUCCESS_RESULT;
 }
 
+static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
+{
+	assert(node->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = node->ptr;
+
+	if (memberAccess->parentReference == NULL)
+		return;
+
+	// if its primitive type
+	if (GetTypeInfoFromExpression(*node).effectiveType == NULL)
+	{
+		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
+		assert(instantiated != NULL);
+		NodePtr new = AllocIdentifier(instantiated, memberAccess->lineNumber);
+		FreeASTNode(*node);
+		*node = new;
+	}
+}
+
+typedef struct
+{
+	VarDeclStmt* member;
+	size_t* returnValue;
+} GetIndexOfMemberData;
+
+static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+{
+	const GetIndexOfMemberData* d = data;
+	if (d->member == varDecl)
+		*d->returnValue = index;
+}
+
+static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
+{
+	size_t index = 0;
+
+	ForEachStructMember(type,
+		GetIndexOfMemberInternal,
+		&(GetIndexOfMemberData){
+			.member = member,
+			.returnValue = &index,
+		},
+		NULL);
+
+	return index;
+}
+
+static void CollapseSubscriptMemberAccess(NodePtr* node)
+{
+	assert(node->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = node->ptr;
+	assert(memberAccess->start.type == Node_Subscript);
+	SubscriptExpr* subscript = memberAccess->start.ptr;
+
+	// if the member being accessed is a struct it gets collapsed later
+	if (memberAccess->varReference->type.expr.type != Node_Literal)
+		return;
+
+	StructDeclStmt* underlyingType = GetTypeInfoFromExpression(subscript->expr).pointerType;
+	// get underlying type
+	assert(underlyingType);
+
+	subscript->indexExpr = AllocStructOffsetCalculation(
+		subscript->indexExpr,
+		GetIndexOfMember(underlyingType, memberAccess->varReference),
+		ForEachStructMember(underlyingType, NULL, NULL, NULL),
+		subscript->lineNumber);
+
+	// collapse
+	memberAccess->start = NULL_NODE;
+	FreeASTNode(*node);
+	*node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
+}
+
+static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
+{
+	assert(node->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = node->ptr;
+
+	if (memberAccess->start.ptr != NULL)
+	{
+		PROPAGATE_ERROR(VisitExpression(&memberAccess->start, containingStatement));
+
+		if (memberAccess->start.type == Node_Subscript)
+		{
+			CollapseSubscriptMemberAccess(node);
+			return SUCCESS_RESULT;
+		}
+		assert(memberAccess->start.ptr == NULL);
+	}
+
+	MakeMemberAccessesPointToInstantiated(node);
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	switch (node->type)
 	{
 	case Node_MemberAccess:
-		MakeMemberAccessesPointToInstantiated(node);
+		PROPAGATE_ERROR(VisitMemberAccess(node, containingStatement));
 		break;
 	case Node_Binary:
 		PROPAGATE_ERROR(VisitBinaryExpression(node, containingStatement));
@@ -566,7 +644,7 @@ typedef struct
 	VarDeclStmt** returnValue;
 } GetStructMemberAtIndexData;
 
-static void CheckMemberAtIndex(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+static void GetMemberAtIndexInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const GetStructMemberAtIndexData* d = data;
 	if (index == d->index)
@@ -578,7 +656,7 @@ static VarDeclStmt* GetMemberAtIndex(StructDeclStmt* type, size_t index)
 	VarDeclStmt* varDecl = NULL;
 
 	ForEachStructMember(type,
-		CheckMemberAtIndex,
+		GetMemberAtIndexInternal,
 		&(GetStructMemberAtIndexData){
 			.index = index,
 			.returnValue = &varDecl,
