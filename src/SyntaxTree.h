@@ -250,7 +250,7 @@ typedef struct
 	int lineNumber;
 	NodePtr baseExpr;
 	NodePtr indexExpr;
-	VarDeclStmt* originalVarReference;
+	Type typeBeforeCollapse;
 } SubscriptExpr;
 
 typedef struct

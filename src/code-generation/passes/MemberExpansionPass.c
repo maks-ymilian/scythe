@@ -136,8 +136,8 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* subscript = node.ptr;
-		if (subscript->originalVarReference)
-			return GetTypeInfoFromType(subscript->originalVarReference->type);
+		if (subscript->typeBeforeCollapse.expr.ptr)
+			return GetTypeInfoFromType(subscript->typeBeforeCollapse);
 		else
 		{
 			TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
@@ -357,7 +357,8 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 		ForEachStructMember(type, NULL, NULL, NULL),
 		subscript->lineNumber);
 
-	subscript->originalVarReference = memberAccess->varReference;
+	subscript->typeBeforeCollapse = memberAccess->varReference->type;
+	subscript->typeBeforeCollapse.expr = CopyASTNode(subscript->typeBeforeCollapse.expr);
 
 	memberAccess->start = NULL_NODE;
 	FreeASTNode(*node);

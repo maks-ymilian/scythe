@@ -425,14 +425,6 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outTy
 		Primitive_Int,
 		subscript->lineNumber, NULL));
 
-	if (outType != NULL)
-	{
-		if (addressType.isPointer)
-			*outType = NonPointerType(addressType.pointerType);
-		else
-			*outType = NonPointerType(Primitive_Any);
-	}
-
 	TypeInfo indexType;
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, &indexType));
 	PROPAGATE_ERROR(ConvertExpression(
@@ -441,6 +433,18 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outTy
 		Primitive_Int,
 		subscript->lineNumber, NULL));
 
+	if (outType != NULL)
+	{
+		if (subscript->typeBeforeCollapse.expr.ptr)
+			*outType = GetType(subscript->typeBeforeCollapse);
+		else
+		{
+			if (addressType.isPointer)
+				*outType = NonPointerType(addressType.pointerType);
+			else
+				*outType = NonPointerType(Primitive_Any);
+		}
+	}
 	return SUCCESS_RESULT;
 }
 

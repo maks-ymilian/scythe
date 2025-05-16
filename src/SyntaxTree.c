@@ -298,6 +298,7 @@ void FreeASTNode(const NodePtr node)
 		const SubscriptExpr* ptr = node.ptr;
 		FreeASTNode(ptr->baseExpr);
 		FreeASTNode(ptr->indexExpr);
+		FreeASTNode(ptr->typeBeforeCollapse.expr);
 		break;
 	}
 	case Node_Literal:
