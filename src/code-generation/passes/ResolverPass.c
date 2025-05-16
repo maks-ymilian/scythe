@@ -233,7 +233,7 @@ static Result ValidateStructAccess(Type type, const char* text, NodePtr* current
 		return ERROR_RESULT(
 			AllocateString1Str("Type \"%s\" is not an aggregate type",
 				GetTokenTypeString(primitiveTypeToTokenType[literal->primitiveType])),
-			literal->lineNumber, currentFilePath);
+			lineNumber, currentFilePath);
 	}
 
 	assert(type.expr.type == Node_MemberAccess);
