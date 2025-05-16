@@ -345,7 +345,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node, VarDeclStmt* member)
 		member = memberAccess->varReference;
 
 	// if the member being accessed is a struct it gets collapsed later
-	if (memberAccess->varReference->type.expr.type != Node_Literal &&
+	if (GetTypeInfoFromType(memberAccess->varReference->type).effectiveType &&
 		member == memberAccess->varReference)
 		return;
 
@@ -354,8 +354,10 @@ static void CollapseSubscriptMemberAccess(NodePtr* node, VarDeclStmt* member)
 	if (!type)
 	{
 		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
-		assert(typeInfo.isPointer);
-		type = typeInfo.pointerType;
+		if (typeInfo.isPointer)
+			type = typeInfo.pointerType;
+		else
+			type = typeInfo.effectiveType;
 	}
 	assert(type);
 
