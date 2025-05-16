@@ -115,7 +115,7 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 		sizeof(StructDeclStmt), Node_StructDeclaration)
 					 .ptr;
 
-	NodePtr ptrMember = AllocMemberVarDecl("ptr",
+	NodePtr ptrMember = AllocMemberVarDecl("offset",
 		(Type){
 			.modifier = TypeModifier_Pointer,
 			.expr = CopyASTNode(type.expr),
