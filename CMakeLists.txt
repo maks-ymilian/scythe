@@ -17,6 +17,7 @@ set(SOURCES
 		"src/code-generation/CodeGenerator.c"
 		"src/code-generation/passes/ResolverPass.c"
 		"src/code-generation/Writer.c"
+		"src/code-generation/passes/Common.c"
 		"src/code-generation/passes/BlockExpressionPass.c"
 		"src/code-generation/passes/GlobalSectionPass.c"
 		"src/code-generation/passes/TypeConversionPass.c"

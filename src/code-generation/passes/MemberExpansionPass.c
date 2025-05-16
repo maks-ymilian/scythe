@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Common.h"
 #include "StringUtils.h"
 
 typedef struct
@@ -16,34 +17,6 @@ typedef struct
 static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
-
-static NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr right, int lineNumber)
-{
-	assert(varDecl != NULL);
-	return AllocASTNode(
-		&(ExpressionStmt){
-			.lineNumber = lineNumber,
-			.expr = AllocASTNode(
-				&(BinaryExpr){
-					.lineNumber = lineNumber,
-					.operatorType = Binary_Assignment,
-					.right = right,
-					.left = AllocASTNode(
-						&(MemberAccessExpr){
-							.lineNumber = lineNumber,
-							.start = NULL,
-							.identifiers = (Array){.array = NULL},
-							.funcReference = NULL,
-							.typeReference = NULL,
-							.varReference = varDecl,
-							.parentReference = NULL,
-						},
-						sizeof(MemberAccessExpr), Node_MemberAccess),
-				},
-				sizeof(BinaryExpr), Node_Binary),
-		},
-		sizeof(ExpressionStmt), Node_ExpressionStatement);
-}
 
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
@@ -85,22 +58,6 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	};
 }
 
-static NodePtr AllocIdentifierExpr(VarDeclStmt* varDecl, int lineNumber)
-{
-	assert(varDecl != NULL);
-	return AllocASTNode(
-		&(MemberAccessExpr){
-			.lineNumber = lineNumber,
-			.start = NULL,
-			.identifiers = (Array){.array = NULL},
-			.funcReference = NULL,
-			.typeReference = NULL,
-			.varReference = varDecl,
-			.parentReference = NULL,
-		},
-		sizeof(MemberAccessExpr), Node_MemberAccess);
-}
-
 typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data);
 static size_t ForEachStructMember(
 	StructDeclStmt* type,
@@ -132,37 +89,6 @@ static size_t ForEachStructMember(
 	}
 
 	return *currentIndex;
-}
-
-static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
-{
-	return AllocASTNode(
-		&(BinaryExpr){
-			.lineNumber = lineNumber,
-			.operatorType = Binary_Add,
-			.left = AllocASTNode(
-				&(BinaryExpr){
-					.lineNumber = lineNumber,
-					.operatorType = Binary_Multiply,
-					.left = offset,
-					.right = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Int,
-							.intValue = memberCount,
-						},
-						sizeof(LiteralExpr), Node_Literal),
-				},
-				sizeof(BinaryExpr), Node_Binary),
-			.right = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = memberIndex,
-				},
-				sizeof(LiteralExpr), Node_Literal),
-		},
-		sizeof(BinaryExpr), Node_Binary);
 }
 
 static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
@@ -289,7 +215,7 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 	VarDeclStmt* currentInstance = FindInstantiated(member->name, aggregateVarDecl);
 	assert(currentInstance != NULL);
 
-	NodePtr expr = AllocIdentifierExpr(currentInstance, -1);
+	NodePtr expr = AllocIdentifier(currentInstance, -1);
 	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
@@ -347,20 +273,35 @@ typedef struct
 	size_t memberCount;
 } GenerateStructMemberAssignmentData;
 
-static NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNumber)
+static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
 {
 	return AllocASTNode(
-		&(ExpressionStmt){
-			.expr = AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_Add,
+			.left = AllocASTNode(
 				&(BinaryExpr){
 					.lineNumber = lineNumber,
-					.operatorType = Binary_Assignment,
-					.left = left,
-					.right = right,
+					.operatorType = Binary_Multiply,
+					.left = offset,
+					.right = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = lineNumber,
+							.type = Literal_Int,
+							.intValue = memberCount,
+						},
+						sizeof(LiteralExpr), Node_Literal),
 				},
 				sizeof(BinaryExpr), Node_Binary),
+			.right = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = memberIndex,
+				},
+				sizeof(LiteralExpr), Node_Literal),
 		},
-		sizeof(ExpressionStmt), Node_ExpressionStatement);
+		sizeof(BinaryExpr), Node_Binary);
 }
 
 static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
@@ -378,7 +319,7 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 								   : identifier->varReference;
 		VarDeclStmt* leftInstance = FindInstantiated(member->name, varDecl);
 		assert(leftInstance != NULL);
-		left = AllocIdentifierExpr(leftInstance, -1);
+		left = AllocIdentifier(leftInstance, -1);
 		break;
 	}
 	case Node_Subscript:
@@ -403,7 +344,7 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 								   : identifier->varReference;
 		VarDeclStmt* rightInstance = FindInstantiated(member->name, varDecl);
 		assert(rightInstance != NULL);
-		right = AllocIdentifierExpr(rightInstance, -1);
+		right = AllocIdentifier(rightInstance, -1);
 		break;
 	}
 	case Node_FunctionCall:
@@ -421,7 +362,7 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 
 			VarDeclStmt* rightInstance = FindInstantiated(member->name, funcDecl->globalReturn);
 			assert(rightInstance != NULL);
-			right = AllocIdentifierExpr(rightInstance, -1);
+			right = AllocIdentifier(rightInstance, -1);
 		}
 		break;
 	}
@@ -520,7 +461,7 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 	{
 		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
 		assert(instantiated != NULL);
-		NodePtr new = AllocIdentifierExpr(instantiated, memberAccess->lineNumber);
+		NodePtr new = AllocIdentifier(instantiated, memberAccess->lineNumber);
 		FreeASTNode(*node);
 		*node = new;
 	}
@@ -549,8 +490,8 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 	if (!memberAccess->parentReference)
 		memberAccess->parentReference = memberAccess->varReference;
 
-	assert(type.effectiveType->members.length == 2);
-	NodePtr* node = type.effectiveType->members.array[0];
+	assert(type.effectiveType->members.length == ARRAY_STRUCT_MEMBER_COUNT);
+	NodePtr* node = type.effectiveType->members.array[ARRAY_STRUCT_PTR_MEMBER_INDEX];
 	assert(node->type == Node_VariableDeclaration);
 	VarDeclStmt* member = node->ptr;
 	memberAccess->varReference = member;
@@ -799,7 +740,7 @@ static Result VisitReturnStatement(NodePtr* node)
 	*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
 	VarDeclStmt* firstReturnVariable = *(VarDeclStmt**)globalReturn->instantiatedVariables.array[0];
-	returnStmt->expr = AllocIdentifierExpr(firstReturnVariable, returnStmt->lineNumber);
+	returnStmt->expr = AllocIdentifier(firstReturnVariable, returnStmt->lineNumber);
 	return SUCCESS_RESULT;
 }
 

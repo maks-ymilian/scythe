@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Common.h"
 #include "StringUtils.h"
 #include "data-structures/Map.h"
 
@@ -32,7 +33,7 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 };
 
 static Result VisitStatement(const NodePtr* node);
-static Result ResolveExpression(const NodePtr* node, bool checkForValue);
+static Result ResolveExpression(NodePtr* node, bool checkForValue);
 static Result ResolveType(Type* type, bool voidAllowed);
 static Result VisitBlock(const BlockStmt* block);
 
@@ -119,7 +120,7 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 			.modifier = TypeModifier_Pointer,
 			.expr = CopyASTNode(type.expr),
 		});
-	ArrayAdd(&structDecl->members, &ptrMember);
+	ArrayInsert(&structDecl->members, &ptrMember, ARRAY_STRUCT_PTR_MEMBER_INDEX);
 
 	NodePtr lengthMember = AllocMemberVarDecl("length",
 		(Type){
@@ -132,7 +133,9 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 				},
 				sizeof(LiteralExpr), Node_Literal),
 		});
-	ArrayAdd(&structDecl->members, &lengthMember);
+	ArrayInsert(&structDecl->members, &lengthMember, ARRAY_STRUCT_LENGTH_MEMBER_INDEX);
+
+	assert(structDecl->members.length == ARRAY_STRUCT_MEMBER_COUNT);
 
 	assert(currentModule != NULL);
 	ArrayAdd(&currentModule->statements, &(NodePtr){.ptr = structDecl, .type = Node_StructDeclaration});
@@ -160,8 +163,8 @@ static void ChangeArrayTypeToStruct(Type* type)
 	StructDeclStmt* typeReference = CreateOrGetArrayStructDecl(*type);
 
 	// get underlying ptr member variables type
-	assert(typeReference->members.length == 2);
-	NodePtr* node = typeReference->members.array[0];
+	assert(typeReference->members.length == ARRAY_STRUCT_MEMBER_COUNT);
+	NodePtr* node = typeReference->members.array[ARRAY_STRUCT_PTR_MEMBER_INDEX];
 	assert(node->type == Node_VariableDeclaration);
 	VarDeclStmt* ptrMember = node->ptr;
 	Type* pointerTypeReference = &ptrMember->type;
@@ -390,7 +393,7 @@ static NodePtr GetBaseExpression(NodePtr node)
 	}
 }
 
-static Result ResolveMemberAccess(const NodePtr* node)
+static Result ResolveMemberAccess(NodePtr* node)
 {
 	assert(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
@@ -404,6 +407,7 @@ static Result ResolveMemberAccess(const NodePtr* node)
 		char* text = *(char**)memberAccess->identifiers.array[i];
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, memberAccess->lineNumber));
 
+		// set varReference to the first one for now
 		if (memberAccess->start.ptr == NULL &&
 			current.type == Node_VariableDeclaration &&
 			memberAccess->varReference == NULL)
@@ -420,6 +424,7 @@ static Result ResolveMemberAccess(const NodePtr* node)
 		break;
 	case Node_VariableDeclaration:
 		assert(memberAccess->varReference != NULL);
+		// if there is more identifiers after varReference then change it to parent
 		if (memberAccess->varReference != current.ptr)
 		{
 			memberAccess->parentReference = memberAccess->varReference;
@@ -440,6 +445,7 @@ static Result ResolveType(Type* type, bool voidAllowed)
 	{
 		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr));
 
+		assert(type->expr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = type->expr.ptr;
 		if (memberAccess->typeReference == NULL)
 			return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
@@ -465,7 +471,7 @@ static Result ResolveType(Type* type, bool voidAllowed)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveExpression(const NodePtr* node, bool checkForValue)
+static Result ResolveExpression(NodePtr* node, bool checkForValue)
 {
 	switch (node->type)
 	{
@@ -475,7 +481,7 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	case Node_MemberAccess:
 	{
 		PROPAGATE_ERROR(ResolveMemberAccess(node));
-		if (checkForValue)
+		if (node->type == Node_MemberAccess && checkForValue)
 		{
 			const MemberAccessExpr* memberAccess = node->ptr;
 			if (memberAccess->varReference == NULL)
@@ -485,14 +491,14 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	}
 	case Node_Binary:
 	{
-		const BinaryExpr* binary = node->ptr;
+		BinaryExpr* binary = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&binary->left, true));
 		PROPAGATE_ERROR(ResolveExpression(&binary->right, true));
 		return SUCCESS_RESULT;
 	}
 	case Node_Unary:
 	{
-		const UnaryExpr* unary = node->ptr;
+		UnaryExpr* unary = node->ptr;
 		return ResolveExpression(&unary->expression, true);
 	}
 	case Node_BlockExpression:
@@ -505,7 +511,7 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	}
 	case Node_FunctionCall:
 	{
-		const FuncCallExpr* funcCall = node->ptr;
+		FuncCallExpr* funcCall = node->ptr;
 
 		PROPAGATE_ERROR(ResolveExpression(&funcCall->expr, false));
 		if (funcCall->expr.type == Node_MemberAccess)
@@ -528,7 +534,7 @@ static Result ResolveExpression(const NodePtr* node, bool checkForValue)
 	}
 	case Node_Subscript:
 	{
-		const SubscriptExpr* subscript = node->ptr;
+		SubscriptExpr* subscript = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&subscript->expr, true));
 		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true));
 		return SUCCESS_RESULT;
@@ -634,7 +640,7 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_If:
 	{
-		const IfStmt* ifStmt = node->ptr;
+		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, true));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
@@ -646,7 +652,7 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_While:
 	{
-		const WhileStmt* whileStmt = node->ptr;
+		WhileStmt* whileStmt = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, true));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
@@ -655,7 +661,7 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_For:
 	{
-		const ForStmt* forStmt = node->ptr;
+		ForStmt* forStmt = node->ptr;
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
 		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, true));
