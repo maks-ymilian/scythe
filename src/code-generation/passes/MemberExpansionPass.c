@@ -269,6 +269,34 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 
 typedef struct
 {
+	VarDeclStmt* member;
+	size_t* returnValue;
+} GetIndexOfMemberData;
+
+static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+{
+	const GetIndexOfMemberData* d = data;
+	if (d->member == varDecl)
+		*d->returnValue = index;
+}
+
+static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
+{
+	size_t index = 0;
+
+	ForEachStructMember(type,
+		GetIndexOfMemberInternal,
+		&(GetIndexOfMemberData){
+			.member = member,
+			.returnValue = &index,
+		},
+		NULL);
+
+	return index;
+}
+
+typedef struct
+{
 	NodePtr leftExpr;
 	NodePtr rightExpr;
 	Array* statements;
@@ -306,6 +334,43 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		sizeof(BinaryExpr), Node_Binary);
 }
 
+static void CollapseSubscriptMemberAccess(NodePtr* node, VarDeclStmt* member)
+{
+	assert(node->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = node->ptr;
+	assert(memberAccess->start.type == Node_Subscript);
+	SubscriptExpr* subscript = memberAccess->start.ptr;
+
+	if (!member)
+		member = memberAccess->varReference;
+
+	// if the member being accessed is a struct it gets collapsed later
+	if (memberAccess->varReference->type.expr.type != Node_Literal &&
+		member == memberAccess->varReference)
+		return;
+
+	StructDeclStmt* type = GetTypeInfoFromExpression(*node).effectiveType;
+	// if the member pointed to is not a struct, get the underlying type
+	if (!type)
+	{
+		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->expr);
+		assert(typeInfo.isPointer);
+		type = typeInfo.pointerType;
+	}
+	assert(type);
+
+	subscript->indexExpr = AllocStructOffsetCalculation(
+		subscript->indexExpr,
+		GetIndexOfMember(type, member),
+		ForEachStructMember(type, NULL, NULL, NULL),
+		subscript->lineNumber);
+
+	// collapse
+	memberAccess->start = NULL_NODE;
+	FreeASTNode(*node);
+	*node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
+}
+
 static NodePtr AllocStructMemberAssignmentExpr(
 	NodePtr node,
 	VarDeclStmt* member,
@@ -318,12 +383,34 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = node.ptr;
-		VarDeclStmt* varDecl = memberAccess->parentReference != NULL
-								   ? memberAccess->parentReference
-								   : memberAccess->varReference;
-		VarDeclStmt* instance = FindInstantiated(member->name, varDecl);
-		assert(instance != NULL);
-		return AllocIdentifier(instance, -1);
+
+		if (memberAccess->start.ptr)
+		{
+			if (memberAccess->start.type == Node_Subscript)
+			{
+				NodePtr new = CopyASTNode(node);
+				CollapseSubscriptMemberAccess(&new, member);
+				return new;
+			}
+			else if (memberAccess->start.type == Node_FunctionCall)
+			{
+				if (isLeft)
+					assert(0);
+
+				assert(!"todo");
+			}
+			else
+				assert(0);
+		}
+		else // its an identifier
+		{
+			VarDeclStmt* varDecl = memberAccess->parentReference != NULL
+									   ? memberAccess->parentReference
+									   : memberAccess->varReference;
+			VarDeclStmt* instance = FindInstantiated(member->name, varDecl);
+			assert(instance != NULL);
+			return AllocIdentifier(instance, -1);
+		}
 	}
 	case Node_FunctionCall:
 	{
@@ -405,13 +492,10 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 				GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType])),
 			binary->lineNumber, currentFilePath);
 
-	NodePtr leftExpr = binary->left;
-	NodePtr rightExpr = binary->right;
-
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	if (leftExpr.type != Node_MemberAccess &&
-		leftExpr.type != Node_Subscript)
+	if (binary->left.type != Node_MemberAccess &&
+		binary->left.type != Node_Subscript)
 		return ERROR_RESULT("Left operand of aggregate type assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
@@ -420,8 +504,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		GenerateStructMemberAssignment,
 		&(GenerateStructMemberAssignmentData){
 			.statements = &block->statements,
-			.leftExpr = leftExpr,
-			.rightExpr = rightExpr,
+			.leftExpr = binary->left,
+			.rightExpr = binary->right,
 			.memberCount = ForEachStructMember(type, NULL, NULL, NULL),
 		},
 		NULL);
@@ -488,61 +572,6 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 	}
 }
 
-typedef struct
-{
-	VarDeclStmt* member;
-	size_t* returnValue;
-} GetIndexOfMemberData;
-
-static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
-{
-	const GetIndexOfMemberData* d = data;
-	if (d->member == varDecl)
-		*d->returnValue = index;
-}
-
-static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
-{
-	size_t index = 0;
-
-	ForEachStructMember(type,
-		GetIndexOfMemberInternal,
-		&(GetIndexOfMemberData){
-			.member = member,
-			.returnValue = &index,
-		},
-		NULL);
-
-	return index;
-}
-
-static void CollapseSubscriptMemberAccess(NodePtr* node)
-{
-	assert(node->type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = node->ptr;
-	assert(memberAccess->start.type == Node_Subscript);
-	SubscriptExpr* subscript = memberAccess->start.ptr;
-
-	// if the member being accessed is a struct it gets collapsed later
-	if (memberAccess->varReference->type.expr.type != Node_Literal)
-		return;
-
-	StructDeclStmt* underlyingType = GetTypeInfoFromExpression(subscript->expr).pointerType;
-	// get underlying type
-	assert(underlyingType);
-
-	subscript->indexExpr = AllocStructOffsetCalculation(
-		subscript->indexExpr,
-		GetIndexOfMember(underlyingType, memberAccess->varReference),
-		ForEachStructMember(underlyingType, NULL, NULL, NULL),
-		subscript->lineNumber);
-
-	// collapse
-	memberAccess->start = NULL_NODE;
-	FreeASTNode(*node);
-	*node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
-}
-
 static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 {
 	assert(node->type == Node_MemberAccess);
@@ -554,7 +583,7 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 
 		if (memberAccess->start.type == Node_Subscript)
 		{
-			CollapseSubscriptMemberAccess(node);
+			CollapseSubscriptMemberAccess(node, NULL);
 			return SUCCESS_RESULT;
 		}
 		assert(memberAccess->start.ptr == NULL);
