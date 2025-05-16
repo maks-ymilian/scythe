@@ -306,80 +306,66 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
+static NodePtr AllocStructMemberAssignmentExpr(
+	NodePtr node,
+	VarDeclStmt* member,
+	size_t index,
+	size_t memberCount,
+	bool isLeft)
 {
-	const GenerateStructMemberAssignmentData* d = data;
-
-	NodePtr left = NULL_NODE;
-	switch (d->leftExpr.type)
+	switch (node.type)
 	{
 	case Node_MemberAccess:
 	{
-		MemberAccessExpr* identifier = d->leftExpr.ptr;
-		VarDeclStmt* varDecl = identifier->parentReference != NULL
-								   ? identifier->parentReference
-								   : identifier->varReference;
-		VarDeclStmt* leftInstance = FindInstantiated(member->name, varDecl);
-		assert(leftInstance != NULL);
-		left = AllocIdentifier(leftInstance, -1);
-		break;
-	}
-	case Node_Subscript:
-	{
-		SubscriptExpr* subscript = d->leftExpr.ptr;
-		left = CopyASTNode(d->leftExpr);
-		SubscriptExpr* new = left.ptr;
-		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, d->memberCount, subscript->lineNumber);
-		break;
-	}
-	default: INVALID_VALUE(d->leftExpr.type);
-	}
-
-	NodePtr right = NULL_NODE;
-	switch (d->rightExpr.type)
-	{
-	case Node_MemberAccess:
-	{
-		MemberAccessExpr* identifier = d->rightExpr.ptr;
-		VarDeclStmt* varDecl = identifier->parentReference != NULL
-								   ? identifier->parentReference
-								   : identifier->varReference;
-		VarDeclStmt* rightInstance = FindInstantiated(member->name, varDecl);
-		assert(rightInstance != NULL);
-		right = AllocIdentifier(rightInstance, -1);
-		break;
+		MemberAccessExpr* memberAccess = node.ptr;
+		VarDeclStmt* varDecl = memberAccess->parentReference != NULL
+								   ? memberAccess->parentReference
+								   : memberAccess->varReference;
+		VarDeclStmt* instance = FindInstantiated(member->name, varDecl);
+		assert(instance != NULL);
+		return AllocIdentifier(instance, -1);
 	}
 	case Node_FunctionCall:
 	{
+		if (isLeft)
+			assert(0);
+
 		if (index == 0)
-			right = CopyASTNode(d->rightExpr);
+			return CopyASTNode(node);
 		else
 		{
-			FuncCallExpr* funcCall = d->rightExpr.ptr;
+			FuncCallExpr* funcCall = node.ptr;
 			assert(funcCall->expr.type == Node_MemberAccess);
 			MemberAccessExpr* identifier = funcCall->expr.ptr;
 			FuncDeclStmt* funcDecl = identifier->funcReference;
 			assert(funcDecl != NULL);
 			assert(funcDecl->globalReturn != NULL);
 
-			VarDeclStmt* rightInstance = FindInstantiated(member->name, funcDecl->globalReturn);
-			assert(rightInstance != NULL);
-			right = AllocIdentifier(rightInstance, -1);
+			VarDeclStmt* instance = FindInstantiated(member->name, funcDecl->globalReturn);
+			assert(instance != NULL);
+			return AllocIdentifier(instance, -1);
 		}
 		break;
 	}
 	case Node_Subscript:
 	{
-		SubscriptExpr* subscript = d->rightExpr.ptr;
-		right = CopyASTNode(d->rightExpr);
-		SubscriptExpr* new = right.ptr;
-		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, d->memberCount, subscript->lineNumber);
-		break;
+		SubscriptExpr* subscript = node.ptr;
+		NodePtr copy = CopyASTNode(node);
+		SubscriptExpr* new = copy.ptr;
+		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, memberCount, subscript->lineNumber);
+		return copy;
 	}
-	default: INVALID_VALUE(d->rightExpr.type);
+	default: INVALID_VALUE(node.type);
 	}
+}
 
-	NodePtr statement = AllocAssignmentStatement(left, right, -1);
+static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
+{
+	const GenerateStructMemberAssignmentData* d = data;
+	NodePtr statement = AllocAssignmentStatement(
+		AllocStructMemberAssignmentExpr(d->leftExpr, member, index, d->memberCount, true),
+		AllocStructMemberAssignmentExpr(d->rightExpr, member, index, d->memberCount, false),
+		-1);
 	ArrayAdd(d->statements, &statement);
 }
 
