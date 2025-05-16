@@ -142,13 +142,6 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr baseExpr;
-	NodePtr indexExpr;
-} SubscriptExpr;
-
-typedef struct
-{
-	int lineNumber;
-	NodePtr baseExpr;
 	Array arguments;
 } FuncCallExpr;
 
@@ -251,6 +244,14 @@ typedef struct
 	VarDeclStmt* varReference;
 	VarDeclStmt* parentReference;
 } MemberAccessExpr;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr baseExpr;
+	NodePtr indexExpr;
+	VarDeclStmt* originalVarReference;
+} SubscriptExpr;
 
 typedef struct
 {

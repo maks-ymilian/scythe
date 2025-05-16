@@ -136,15 +136,20 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* subscript = node.ptr;
-		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
-		if (typeInfo.isPointer)
-			return (TypeInfo){
-				.effectiveType = typeInfo.pointerType,
-				.pointerType = typeInfo.pointerType,
-				.isPointer = false,
-			};
+		if (subscript->originalVarReference)
+			return GetTypeInfoFromType(subscript->originalVarReference->type);
+		else
+		{
+			TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
+			if (typeInfo.isPointer)
+				return (TypeInfo){
+					.effectiveType = typeInfo.pointerType,
+					.pointerType = typeInfo.pointerType,
+					.isPointer = false,
+				};
 
-		return typeInfo;
+			return typeInfo;
+		}
 	}
 	case Node_Binary:
 	case Node_Unary:
@@ -334,40 +339,26 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static void CollapseSubscriptMemberAccess(NodePtr* node, VarDeclStmt* member)
+static void CollapseSubscriptMemberAccess(NodePtr* node)
 {
 	assert(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 	assert(memberAccess->start.type == Node_Subscript);
 	SubscriptExpr* subscript = memberAccess->start.ptr;
 
-	if (!member)
-		member = memberAccess->varReference;
-
-	// if the member being accessed is a struct it gets collapsed later
-	if (GetTypeInfoFromType(memberAccess->varReference->type).effectiveType &&
-		member == memberAccess->varReference)
-		return;
-
-	StructDeclStmt* type = GetTypeInfoFromExpression(*node).effectiveType;
-	// if the member pointed to is not a struct, get the underlying type
-	if (!type)
-	{
-		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
-		if (typeInfo.isPointer)
-			type = typeInfo.pointerType;
-		else
-			type = typeInfo.effectiveType;
-	}
+	TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
+	assert(typeInfo.isPointer);
+	StructDeclStmt* type = typeInfo.pointerType;
 	assert(type);
 
 	subscript->indexExpr = AllocStructOffsetCalculation(
 		subscript->indexExpr,
-		GetIndexOfMember(type, member),
+		GetIndexOfMember(type, memberAccess->varReference),
 		ForEachStructMember(type, NULL, NULL, NULL),
 		subscript->lineNumber);
 
-	// collapse
+	subscript->originalVarReference = memberAccess->varReference;
+
 	memberAccess->start = NULL_NODE;
 	FreeASTNode(*node);
 	*node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
@@ -391,7 +382,10 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			if (memberAccess->start.type == Node_Subscript)
 			{
 				NodePtr new = CopyASTNode(node);
-				CollapseSubscriptMemberAccess(&new, member);
+				assert(new.type == Node_MemberAccess);
+				MemberAccessExpr* memberAccess = new.ptr;
+				memberAccess->varReference = member;
+				CollapseSubscriptMemberAccess(&new);
 				return new;
 			}
 			else if (memberAccess->start.type == Node_FunctionCall)
@@ -581,7 +575,9 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 
 		if (memberAccess->start.type == Node_Subscript)
 		{
-			CollapseSubscriptMemberAccess(node, NULL);
+			// only if its a primitive type
+			if (!GetTypeInfoFromType(memberAccess->varReference->type).effectiveType)
+				CollapseSubscriptMemberAccess(node);
 			return SUCCESS_RESULT;
 		}
 		assert(memberAccess->start.ptr == NULL);
@@ -681,6 +677,8 @@ static VarDeclStmt* GetMemberAtIndex(StructDeclStmt* type, size_t index)
 
 static Result VisitExpressionStatement(NodePtr* node)
 {
+	// todo a statement that does something could actually be removed e.g a[funcCall()].n;
+
 	assert(node->type == Node_ExpressionStatement);
 	ExpressionStmt* exprStmt = node->ptr;
 
