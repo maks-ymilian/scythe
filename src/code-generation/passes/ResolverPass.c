@@ -162,13 +162,6 @@ static void ChangeArrayTypeToStruct(Type* type)
 
 	StructDeclStmt* typeReference = CreateOrGetArrayStructDecl(*type);
 
-	// get underlying ptr member variables type
-	assert(typeReference->members.length == ARRAY_STRUCT_MEMBER_COUNT);
-	NodePtr* node = typeReference->members.array[ARRAY_STRUCT_PTR_MEMBER_INDEX];
-	assert(node->type == Node_VariableDeclaration);
-	VarDeclStmt* ptrMember = node->ptr;
-	Type* pointerTypeReference = &ptrMember->type;
-
 	NodePtr oldExpr = type->expr;
 	*type = (Type){
 		.modifier = TypeModifier_None,
@@ -183,7 +176,6 @@ static void ChangeArrayTypeToStruct(Type* type)
 				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess),
-		.pointerTypeReference = pointerTypeReference,
 	};
 	FreeASTNode(oldExpr);
 }
@@ -338,15 +330,18 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 
 			// dereference
 			Type type = varDecl->type;
-			if (type.pointerTypeReference) // array
-			{
-				type = *type.pointerTypeReference;
-				assert(type.modifier == TypeModifier_Pointer);
+			if (type.modifier == TypeModifier_Pointer) // pointer
 				type.modifier = TypeModifier_None;
-			}
-			else if (type.modifier == TypeModifier_Pointer) // pointer
+			else if (type.expr.type == Node_MemberAccess)
 			{
-				type.modifier = TypeModifier_None;
+				StructDeclStmt* structDecl = ((MemberAccessExpr*)type.expr.ptr)->typeReference;
+				assert(structDecl);
+				if (structDecl->isArrayType) // array
+				{
+					type = GetPtrMember(structDecl)->type;
+					assert(type.modifier == TypeModifier_Pointer);
+					type.modifier = TypeModifier_None;
+				}
 			}
 
 			return ValidateStructAccess(type, text, current, lineNumber);

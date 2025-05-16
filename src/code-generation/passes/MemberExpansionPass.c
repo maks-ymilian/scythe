@@ -543,11 +543,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 	if (!memberAccess->parentReference)
 		memberAccess->parentReference = memberAccess->varReference;
 
-	assert(type.effectiveType->members.length == ARRAY_STRUCT_MEMBER_COUNT);
-	NodePtr* node = type.effectiveType->members.array[ARRAY_STRUCT_PTR_MEMBER_INDEX];
-	assert(node->type == Node_VariableDeclaration);
-	VarDeclStmt* member = node->ptr;
-	memberAccess->varReference = member;
+	memberAccess->varReference = GetPtrMember(type.effectiveType);
 
 	PROPAGATE_ERROR(VisitExpression(&subscript->expr, containingStatement));
 	return SUCCESS_RESULT;

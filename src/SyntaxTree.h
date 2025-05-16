@@ -164,7 +164,6 @@ struct Type
 {
 	NodePtr expr;
 	TypeModifier modifier;
-	Type* pointerTypeReference;
 };
 
 typedef struct
