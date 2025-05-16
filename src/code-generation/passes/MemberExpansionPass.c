@@ -111,8 +111,8 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node.ptr;
-		assert(funcCall->expr.type == Node_MemberAccess);
-		MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+		assert(funcCall->baseExpr.type == Node_MemberAccess);
+		MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		FuncDeclStmt* funcDecl = memberAccess->funcReference;
 		assert(funcDecl != NULL);
 
@@ -136,7 +136,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* subscript = node.ptr;
-		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->expr);
+		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
 		if (typeInfo.isPointer)
 			return (TypeInfo){
 				.effectiveType = typeInfo.pointerType,
@@ -204,8 +204,8 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = d->argumentNode.ptr;
-		assert(funcCall->expr.type == Node_MemberAccess);
-		MemberAccessExpr* identifier = funcCall->expr.ptr;
+		assert(funcCall->baseExpr.type == Node_MemberAccess);
+		MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
 		FuncDeclStmt* funcDecl = identifier->funcReference;
 		assert(funcDecl != NULL);
 		aggregateVarDecl = funcDecl->globalReturn;
@@ -225,8 +225,8 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
 static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* containingStatement)
 {
-	assert(funcCall->expr.type == Node_MemberAccess);
-	MemberAccessExpr* identifier = funcCall->expr.ptr;
+	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
 	FuncDeclStmt* funcDecl = identifier->funcReference;
 	assert(funcDecl != NULL);
 
@@ -353,7 +353,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node, VarDeclStmt* member)
 	// if the member pointed to is not a struct, get the underlying type
 	if (!type)
 	{
-		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->expr);
+		TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
 		assert(typeInfo.isPointer);
 		type = typeInfo.pointerType;
 	}
@@ -422,8 +422,8 @@ static NodePtr AllocStructMemberAssignmentExpr(
 		else
 		{
 			FuncCallExpr* funcCall = node.ptr;
-			assert(funcCall->expr.type == Node_MemberAccess);
-			MemberAccessExpr* identifier = funcCall->expr.ptr;
+			assert(funcCall->baseExpr.type == Node_MemberAccess);
+			MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
 			FuncDeclStmt* funcDecl = identifier->funcReference;
 			assert(funcDecl != NULL);
 			assert(funcDecl->globalReturn != NULL);
@@ -524,9 +524,9 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 {
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
 
-	TypeInfo type = GetTypeInfoFromExpression(subscript->expr);
+	TypeInfo type = GetTypeInfoFromExpression(subscript->baseExpr);
 	if (!type.effectiveType)
-		return VisitExpression(&subscript->expr, containingStatement);
+		return VisitExpression(&subscript->baseExpr, containingStatement);
 
 	if (!type.effectiveType->isArrayType)
 		return ERROR_RESULT("Cannot index into non-array type",
@@ -535,8 +535,8 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 
 	// todo add a pass to split it up into multiple variables or something
 	// so this doesnt get hit
-	assert(subscript->expr.type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = subscript->expr.ptr;
+	assert(subscript->baseExpr.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
 	// make the member access point to the ptr member inside the array type
 	assert(memberAccess->varReference != NULL);
@@ -545,7 +545,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 
 	memberAccess->varReference = GetPtrMember(type.effectiveType);
 
-	PROPAGATE_ERROR(VisitExpression(&subscript->expr, containingStatement));
+	PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr, containingStatement));
 	return SUCCESS_RESULT;
 }
 

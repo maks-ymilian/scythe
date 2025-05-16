@@ -126,7 +126,7 @@ static void VisitFunctionCall(FuncCallExpr* funcCall)
 {
 	NodePtr funcCallNode = (NodePtr){.ptr = funcCall, .type = Node_FunctionCall};
 
-	VisitExpression(funcCall->expr, &funcCallNode);
+	VisitExpression(funcCall->baseExpr, &funcCallNode);
 
 	WriteChar('(');
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
@@ -238,7 +238,7 @@ static void VisitSubscriptExpression(SubscriptExpr* subscript)
 {
 	NodePtr node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
 
-	VisitExpression(subscript->expr, &node);
+	VisitExpression(subscript->baseExpr, &node);
 	WriteChar('[');
 	VisitExpression(subscript->indexExpr, &node);
 	WriteChar(']');

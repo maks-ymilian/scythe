@@ -29,13 +29,13 @@ static void VisitExpression(const NodePtr* node)
 	case Node_Subscript:
 		printf("Subscript");
 		const SubscriptExpr* subscript = node->ptr;
-		VisitExpression(&subscript->expr);
+		VisitExpression(&subscript->baseExpr);
 		VisitExpression(&subscript->indexExpr);
 		break;
 	case Node_FunctionCall:
 		const FuncCallExpr* funcCall = node->ptr;
 		printf("FunctionCall %d ", funcCall->lineNumber);
-		VisitExpression(&funcCall->expr);
+		VisitExpression(&funcCall->baseExpr);
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 			VisitExpression(funcCall->arguments.array[i]);
 		break;

@@ -141,14 +141,14 @@ typedef struct
 typedef struct
 {
 	int lineNumber;
-	NodePtr expr;
+	NodePtr baseExpr;
 	NodePtr indexExpr;
 } SubscriptExpr;
 
 typedef struct
 {
 	int lineNumber;
-	NodePtr expr;
+	NodePtr baseExpr;
 	Array arguments;
 } FuncCallExpr;
 

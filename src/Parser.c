@@ -397,7 +397,7 @@ static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 	*out = AllocASTNode(
 		&(FuncCallExpr){
 			.lineNumber = lineNumber,
-			.expr = expr,
+			.baseExpr = expr,
 			.arguments = params,
 		},
 		sizeof(FuncCallExpr), Node_FunctionCall);
@@ -419,7 +419,7 @@ static Result ParseSubscript(NodePtr expr, NodePtr* out)
 	*out = AllocASTNode(
 		&(SubscriptExpr){
 			.lineNumber = leftBracket->lineNumber,
-			.expr = expr,
+			.baseExpr = expr,
 			.indexExpr = indexExpr,
 		},
 		sizeof(SubscriptExpr), Node_Subscript);

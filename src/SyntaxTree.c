@@ -176,7 +176,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_Subscript);
 		ptr = copy.ptr;
 
-		ptr->expr = CopyASTNode(ptr->expr);
+		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
 		ptr->indexExpr = CopyASTNode(ptr->indexExpr);
 
 		return copy;
@@ -188,7 +188,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		assert(copy.type == Node_FunctionCall);
 		ptr = copy.ptr;
 
-		ptr->expr = CopyASTNode(ptr->expr);
+		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
 
 		Array arguments = AllocateArray(sizeof(NodePtr));
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
@@ -296,7 +296,7 @@ void FreeASTNode(const NodePtr node)
 	case Node_Subscript:
 	{
 		const SubscriptExpr* ptr = node.ptr;
-		FreeASTNode(ptr->expr);
+		FreeASTNode(ptr->baseExpr);
 		FreeASTNode(ptr->indexExpr);
 		break;
 	}
@@ -310,7 +310,7 @@ void FreeASTNode(const NodePtr node)
 	case Node_FunctionCall:
 	{
 		const FuncCallExpr* ptr = node.ptr;
-		FreeASTNode(ptr->expr);
+		FreeASTNode(ptr->baseExpr);
 		for (size_t i = 0; i < ptr->arguments.length; ++i)
 			FreeASTNode(*(NodePtr*)ptr->arguments.array[i]);
 		FreeArray(&ptr->arguments);

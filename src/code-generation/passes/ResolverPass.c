@@ -308,8 +308,8 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 	case Node_FunctionCall:
 	{
 		const FuncCallExpr* funcCall = current->ptr;
-		assert(funcCall->expr.type == Node_MemberAccess);
-		const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+		assert(funcCall->baseExpr.type == Node_MemberAccess);
+		const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		assert(memberAccess->funcReference != NULL);
 		const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 		return ValidateStructAccess(funcDecl->type, text, current, lineNumber);
@@ -319,11 +319,11 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 		const SubscriptExpr* subscript = current->ptr;
 
 		// todo
-		switch (subscript->expr.type)
+		switch (subscript->baseExpr.type)
 		{
 		case Node_MemberAccess:
 		{
-			const MemberAccessExpr* memberAccess = subscript->expr.ptr;
+			const MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
 			assert(memberAccess->varReference != NULL);
 			const VarDeclStmt* varDecl = memberAccess->varReference;
@@ -346,7 +346,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 
 			return ValidateStructAccess(type, text, current, lineNumber);
 		}
-		default: INVALID_VALUE(subscript->expr.type);
+		default: INVALID_VALUE(subscript->baseExpr.type);
 		}
 	}
 	case Node_Import:
@@ -382,8 +382,8 @@ static NodePtr GetBaseExpression(NodePtr node)
 {
 	switch (node.type)
 	{
-	case Node_FunctionCall: return ((FuncCallExpr*)node.ptr)->expr;
-	case Node_Subscript: return ((SubscriptExpr*)node.ptr)->expr;
+	case Node_FunctionCall: return ((FuncCallExpr*)node.ptr)->baseExpr;
+	case Node_Subscript: return ((SubscriptExpr*)node.ptr)->baseExpr;
 	default: INVALID_VALUE(node.type);
 	}
 }
@@ -507,10 +507,10 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	{
 		FuncCallExpr* funcCall = node->ptr;
 
-		PROPAGATE_ERROR(ResolveExpression(&funcCall->expr, false));
-		if (funcCall->expr.type == Node_MemberAccess)
+		PROPAGATE_ERROR(ResolveExpression(&funcCall->baseExpr, false));
+		if (funcCall->baseExpr.type == Node_MemberAccess)
 		{
-			MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+			MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 			if (memberAccess->funcReference == NULL ||
 				memberAccess->start.ptr != NULL)
 				goto notFunctionError;
@@ -529,7 +529,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	case Node_Subscript:
 	{
 		SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&subscript->expr, true));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->baseExpr, true));
 		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true));
 		return SUCCESS_RESULT;
 	}

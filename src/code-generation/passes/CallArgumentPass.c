@@ -9,8 +9,8 @@ static size_t Max(size_t a, size_t b)
 
 static Result VisitFunctionCall(FuncCallExpr* funcCall)
 {
-	assert(funcCall->expr.type == Node_MemberAccess);
-	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 	assert(funcDecl != NULL);
 
@@ -86,7 +86,7 @@ static Result VisitExpression(const NodePtr* node)
 		break;
 	case Node_Subscript:
 		const SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&subscript->expr));
+		PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr));
 		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr));
 		break;
 	case Node_Literal:

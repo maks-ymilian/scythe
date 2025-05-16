@@ -54,7 +54,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 			&(FuncCallExpr){
 				.lineNumber = lineNumber,
 				.arguments = AllocateArray(sizeof(NodePtr)),
-				.expr = AllocASTNode(
+				.baseExpr = AllocASTNode(
 					&(MemberAccessExpr){
 						.lineNumber = lineNumber,
 						.identifiers.array = NULL,
@@ -87,7 +87,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		break;
 	case Node_Subscript:
 		SubscriptExpr* subscript = expr->ptr;
-		VisitExpression(&subscript->expr, statement, lineNumber);
+		VisitExpression(&subscript->baseExpr, statement, lineNumber);
 		VisitExpression(&subscript->indexExpr, statement, lineNumber);
 		break;
 	case Node_Literal:

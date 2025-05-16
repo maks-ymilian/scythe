@@ -90,8 +90,8 @@ static Result ConvertExpression(
 
 static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 {
-	assert(funcCall->expr.type == Node_MemberAccess);
-	const MemberAccessExpr* memberAccess = funcCall->expr.ptr;
+	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 	assert(memberAccess->funcReference != NULL);
 	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 
@@ -418,9 +418,9 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outType)
 {
 	TypeInfo addressType;
-	PROPAGATE_ERROR(VisitExpression(&subscript->expr, &addressType));
+	PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr, &addressType));
 	PROPAGATE_ERROR(ConvertExpression(
-		&subscript->expr,
+		&subscript->baseExpr,
 		addressType.effectiveType,
 		Primitive_Int,
 		subscript->lineNumber, NULL));

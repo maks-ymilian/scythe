@@ -28,7 +28,7 @@ static void VisitExpression(const NodePtr node)
 		break;
 	case Node_Subscript:
 		const SubscriptExpr* subscript = node.ptr;
-		VisitExpression(subscript->expr);
+		VisitExpression(subscript->baseExpr);
 		VisitExpression(subscript->indexExpr);
 		break;
 	case Node_Null:
