@@ -163,7 +163,9 @@ static Result ConvertExpression(
 	if (exprType == Primitive_Any || targetType == Primitive_Any)
 		return SUCCESS_RESULT;
 
-	if (exprType == targetType)
+	// we want int to int conversions
+	if (exprType == targetType &&
+		exprType != Primitive_Int)
 		return SUCCESS_RESULT;
 
 	switch (targetType)
@@ -174,7 +176,9 @@ static Result ConvertExpression(
 		return SUCCESS_RESULT;
 
 	case Primitive_Int:
-		if (exprType != Primitive_Float)
+		// we want int to int conversions
+		if (exprType != Primitive_Float &&
+			exprType != Primitive_Int)
 			goto convertError;
 		*expr = AllocFloatToIntConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
@@ -261,13 +265,12 @@ static Result VisitBinaryExpression(const NodePtr* node, TypeInfo* outType)
 	case Binary_Divide:
 	case Binary_Exponentiation:
 	{
-		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, Primitive_Float, binary->lineNumber, errorMessage));
-		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, Primitive_Float, binary->lineNumber, errorMessage));
+		// convert it to itself because of integers
+		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, leftType, binary->lineNumber, errorMessage));
+		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, leftType, binary->lineNumber, errorMessage));
 
 		PrimitiveType type;
-		if (leftType == Primitive_Int && rightType == Primitive_Int &&
-			binary->operatorType != Binary_Divide &&
-			binary->operatorType != Binary_Exponentiation)
+		if (leftType == Primitive_Int && rightType == Primitive_Int)
 			type = Primitive_Int;
 		else
 			type = Primitive_Float;
