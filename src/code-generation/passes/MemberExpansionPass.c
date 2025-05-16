@@ -682,15 +682,20 @@ static Result VisitExpressionStatement(NodePtr* node)
 	assert(node->type == Node_ExpressionStatement);
 	ExpressionStmt* exprStmt = node->ptr;
 
-	if (exprStmt->expr.type == Node_MemberAccess &&
-		((MemberAccessExpr*)exprStmt->expr.ptr)->start.ptr == NULL)
+	if (exprStmt->expr.type == Node_MemberAccess)
 	{
-		FreeASTNode(*node);
-		*node = NULL_NODE;
+		MemberAccessExpr* memberAccess = exprStmt->expr.ptr;
+		if (memberAccess->start.ptr == NULL ||
+			(memberAccess->start.type == Node_Subscript &&
+				GetTypeInfoFromExpression(exprStmt->expr).effectiveType))
+		{
+			FreeASTNode(*node);
+			*node = NULL_NODE;
+			return SUCCESS_RESULT;
+		}
 	}
-	else
-		PROPAGATE_ERROR(VisitExpression(&exprStmt->expr, node));
 
+	PROPAGATE_ERROR(VisitExpression(&exprStmt->expr, node));
 	return SUCCESS_RESULT;
 }
 
