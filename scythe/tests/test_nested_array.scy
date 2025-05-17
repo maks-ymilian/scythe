@@ -1,0 +1,79 @@
+struct Row
+{
+	any padding1;
+	any padding2;
+	any padding3;
+	any padding4;
+	any padding5;
+	int[] array;
+}
+int sizeOfRow = 7;
+
+struct Matrix
+{
+	any padding1;
+	any padding2;
+	any padding3;
+	Row[] rows;
+}
+int sizeOfMatrix = 5;
+
+void Multiply(Matrix a, Matrix b, Matrix* c)
+{
+	int n = a.rows.length;               // number of rows in a
+	int m = a.rows[0].array.length;      // number of columns in a (and rows in b)
+	int p = b.rows[0].array.length;      // number of columns in b
+
+	for (int i = 0; i < n; ++i)
+	{
+		for (int j = 0; j < p; ++j)
+		{
+			int sum = 0;
+
+			// Compute dot product of row i of a and column j of b
+			for (int k = 0; k < m; ++k)
+				sum += a.rows[i].array[k] * b.rows[k].array[j];
+
+			c[0].rows[i].array[j] = sum;
+		}
+	}
+}
+
+// [ 1,  2,  3,  4,  5,  6]
+// [ 7,  8,  9, 10, 11, 12]
+// [13, 14, 15, 16, 17, 18]
+// [19, 20, 21, 22, 23, 24]
+// [25, 26, 27, 28, 29, 30]
+// [31, 32, 33, 34, 35, 36]
+// [37, 38, 39, 40, 41, 42]
+//
+// [ 1,  2,  3,  4,  5,  6,  7]
+// [ 7,  8,  9, 10, 11, 12, 13]
+// [13, 14, 15, 16, 17, 18, 19]
+// [19, 20, 21, 22, 23, 24, 25]
+// [25, 26, 27, 28, 29, 30, 31]
+// [31, 32, 33, 34, 35, 36, 37]
+//
+// [ 441,  462,  483,  504,  525,  546,  567]
+// [1017, 1074, 1131, 1188, 1245, 1302, 1359]
+// [1593, 1686, 1779, 1872, 1965, 2058, 2151]
+// [2169, 2298, 2427, 2556, 2685, 2814, 2943]
+// [2745, 2910, 3075, 3240, 3405, 3570, 3735]
+// [3321, 3522, 3723, 3924, 4125, 4326, 4527]
+// [3897, 4134, 4371, 4608, 4845, 5082, 5319]
+
+@init
+{
+	int currentOffset = 0;
+	
+	Matrix[] matrices;
+	matrices.offset = currentOffset;
+	matrices.length = 3;
+	currentOffset += matrices.length * sizeofMatrix;
+
+	matrices[0].rows.offset = currentOffset;
+	matrices[0].rows.length = 7;
+	currentOffset += rows.length * sizeOfRow;
+
+	bool AAA_test_nested_array = false;
+}

@@ -1,0 +1,110 @@
+struct Level3
+{
+	int w;
+}
+
+struct Level2
+{
+	string z;
+	Level3 deep;
+}
+
+public struct Level1
+{
+	string x;
+	int y;
+	Level2 deep;
+}
+
+Level1 Level1_passthrough(Level1 value)
+{
+	return value;
+}
+
+Level1 doShit(int param1, Level1 value, string z, int w)
+{
+	Level1 new;
+	new.x = value.deep.z;
+	new.y = value.y + value.deep.deep.w;
+	new.deep.z = z;
+	new.deep.deep.w = w;
+	return new;
+}
+
+struct TestValues
+{
+	int num1;
+	int num2;
+	int num3;
+	string str1;
+	string str2;
+}
+
+@init
+{
+	TestValues testValues;
+	testValues.num1 = 19;
+	testValues.num2 = 48;
+	testValues.num3 = 54;
+	testValues.str1 = "yeahe";
+	testValues.str2 = "other";
+
+	Level1 value;
+	value.y = testValues.num1;
+	value.deep.z = testValues.str1;
+	value.deep.deep.w = testValues.num2;
+
+	Level1 value1;
+	value1.x = "irrelevant";
+	value1.y = -1;
+	value1.deep.z = "irrelevant1";
+	value1.deep.deep.w = -1;
+
+	Level1 value2 = value1;
+	Level1 value3 = value1;
+	Level1 value4 = value1;
+	Level1 value5 = value1;
+	Level1 value6 = value1;
+	Level1 value7 = value1;
+	Level1 value8 = value1;
+	Level1 value9 = value1;
+
+	Level1 ret = value8 = value9 = Level1 {
+		return value7 = Level1_passthrough(
+			value5 = value6 = doShit(
+				1,
+				value4 = Level1_passthrough(value3 = value2 = value1 = value),
+				testValues.str2,
+				testValues.num3));
+	};
+
+	bool test_the_values(Level1 value, TestValues testValues)
+	{
+		return
+			value.y == testValues.num1 + testValues.num2 &&
+			value.x == testValues.str1 &&
+			value.deep.z == testValues.str2 &&
+			value.deep.deep.w == testValues.num3;
+	}
+
+	bool test_equality(Level1 value1, Level1 value2)
+	{
+		return
+			value1.x == value2.x &&
+			value1.y == value2.y &&
+			value1.deep.z == value2.deep.z &&
+			value1.deep.deep.w == value2.deep.deep.w;
+	}
+
+	bool AAA_test_struct_assignment_passing_chained =
+		test_the_values(ret, testValues) &&
+		test_equality(value, value1) &&
+		test_equality(value, value2) &&
+		test_equality(value, value3) &&
+		test_equality(value, value4) &&
+		test_equality(ret, value5) &&
+		test_equality(ret, value6) &&
+		test_equality(ret, value7) &&
+		test_equality(ret, value8) &&
+		test_equality(ret, value9);
+}

@@ -1,0 +1,11 @@
+int num = 4;
+
+@init
+{
+    int num = 5;
+    {
+        int num = 6;
+    }
+
+	bool AAA_test_scope = num == 5;
+}

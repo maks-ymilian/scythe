@@ -1,0 +1,244 @@
+// make the private and public work
+// completely rewrite all the file io in compiler.c or actually the whole file idk
+
+/*
+
+x.y;
+var = y, parent = x
+
+x().y;
+var = y, parent = NULL
+var = x, parent = NULL
+
+x.y;
+var = y
+var = x
+
+x().y;
+var = y
+var = x
+
+x.y[0].z = 1
+x().y[0 + 0] = 1
+
+all function calls with anything after must
+be changed to use temporary variable
+all subscripts with anything after must be
+collapsed e.g.
+	x().y[0].z[0].w = 1;
+to
+	any a = x();
+	a.y[0 + 0][0 + 0] = 1;
+so they will always have start = NULL
+
+x[0].y;
+*/
+
+import "tests/tests.scy"
+
+/*
+
+i1.Type copy(i1.Type value)
+{
+	return value;
+}
+
+i1.Type new()
+{
+	i1.Type value;
+	return value;
+}
+
+int sum(int param1, i1.Type st = copy(i1.example), string param = "default")
+{
+	return st.y + st.n.w;
+}
+
+@init
+{
+	i1.example.x;
+	i1.example.y;
+	i1.example.n.z;
+	i1.example.n.w;
+
+	i1.example1.x;
+	i1.example1.y;
+	i1.example1.n.z;
+	i1.example1.n.w;
+}
+
+@init
+{
+	// 1 = i1.example1;
+	// i1.example1 = 1;
+
+	// new() = i1.example1;
+	i1.example1 = new();
+
+	// int a = new().y; // todo
+
+	i1.example = i1.example1;
+
+	// i1.example = i1.example1 = i1.example; // todo pass
+
+	// i1.Type {} = i1.example1;
+	i1.example1 = i1.Type { return i1.example1; };
+
+	i1.example1.n;
+	i1.example1.n = i1.example.n;
+	i1.example1.n = i1.example2;
+}
+
+@init
+{
+	int a = 5 * (1 / 2.0);
+
+	bool b = 25 ^ 8;
+
+	a += 5 * (1 / 2);
+
+	if (true)
+		int a;
+	else
+		int b;
+
+	any {
+		int a;
+		a = 1;
+		return a;
+	};
+
+	int c = int {
+		int a;
+		a = 1;
+		return a;
+	};
+}
+
+int returnTest()
+{
+	if (true)
+		return 50;
+
+	int a;
+	a = 1 + 2 * 3;
+
+	if (true)
+	{
+		for (int i = 0; true; ++i)
+		{
+			if (i >= 10)
+				break;
+			else
+				return 95;
+		}
+	}
+	else
+	{
+		if (true)
+			return 69;
+
+		int a;
+		a = 1;
+	}
+	return 4;
+}
+
+@init
+{
+	public external int todoFixMe;
+	// todoFixMe a;
+}
+
+float[] getArray(float[] arr)
+{
+	return arr;
+}
+
+struct ArrayTest
+{
+	any padding1;
+	any padding2;
+	string[] arr;
+}
+
+struct ArrayTest1
+{
+	any padding1;
+	ArrayTest[] innerArray;
+}
+
+// @init
+// {
+// 	i1.Type[] arr1;
+// 	arr1.offset = 0;
+// 	arr1.length = 10;
+// 	float[] arr2;
+// 	// arr2.offset = lengthof(arr1);
+// 	arr2.offset = sizeof(arr1[0]) * arr1.length;
+// 	arr2.length = 5;
+// }
+
+@init
+{
+	string* a = 16;
+	a[0] = "string at address a";
+	// a[0] = true; // not allowed
+	string b = a[0];
+
+	int { return 16; }[0] = 5;
+	// i1.Type { i1.Type t; return t; }[0].offset = 5; // todo
+
+	16[0] = "changed";
+	b = a[1];
+
+	i1.Type test;
+	i1.Type* structPtr = 4;
+	structPtr[0] = test;
+	test = structPtr[0];
+
+	i1.Type[] test1;
+	test1[15];
+	i1.example2 = test1[6969].n;
+	test1[15].n.w;
+	structPtr[15].n.z;
+	// (test = test)[0] = 5; // todo fix
+
+	a = structPtr; // should this be allowed?
+
+	ArrayTest1[] arrayTest;
+	// bool typeTest = arrayTest[8].innerArray[9].arr[10]; // not allowed
+	string typeTest1 = arrayTest[8].innerArray[9].arr[10]; // allowed
+}
+
+@init
+{
+	bool value = true;
+
+	float[] array1;
+	array1.offset = 32;
+	array1.length = 10;
+
+	array1[1] += 2;
+
+	// array1[5] = value; // not allowed
+
+	bool[] array2;
+	array2.offset = 32;
+	array2.length = 10;
+
+	array2[5] = value; // allowed
+
+	array2[0];
+	array2.offset[24] = 23 + 0;
+
+	"yeaaah oh oh theres something in the yeaah";
+	i1.Type[] typeArr;
+	typeArr[420] = i1.example;
+	i1.example = typeArr[420 + 1];
+
+	// int a = typeArr[420]; // not allowed
+	// int b = i1.example; // not allowed
+
+	typeArr[0].x = "aj";
+}

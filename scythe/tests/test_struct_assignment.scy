@@ -1,0 +1,70 @@
+struct Level3
+{
+	int w;
+}
+
+struct Level2
+{
+	string z;
+	Level3 deep;
+}
+
+public struct Level1
+{
+	string x;
+	int y;
+	Level2 deep;
+}
+
+bool test_equality3(Level3 value1, Level3 value2)
+{
+	return value1.w == value2.w;
+}
+
+bool test_equality2(Level2 value1, Level2 value2)
+{
+	return
+		value1.z == value2.z &&
+		test_equality3(value1.deep, value2.deep);
+}
+
+bool test_equality1(Level1 value1, Level1 value2)
+{
+	return
+		value1.x == value2.x &&
+		value1.y == value2.y &&
+		test_equality2(value1.deep, value2.deep);
+}
+
+@init
+{
+	Level1 value;
+	value.x = "hiidfsj";
+	value.y = -352;
+	value.deep.z = "sdk;fdsksvn481th0g[vn'md";
+	value.deep.deep.w = 418439;
+
+	Level1 value1;
+	value1.x = "dsjak";
+	value1.y = 3469;
+	value1.deep.z = "kah;g";
+	value1.deep.deep.w = -45983;
+
+	Level1 value2 = value;
+	Level1 value3 = value1;
+	value2.deep = value3.deep;
+	bool test1 =
+		test_equality3(value2.deep.deep, value3.deep.deep) &&
+		test_equality2(value2.deep, value3.deep) &&
+		!test_equality1(value2, value3);
+
+	Level1 value4 = value;
+	Level1 value5 = value1;
+	value4.deep.deep = value5.deep.deep;
+	bool test2 =
+		test_equality3(value4.deep.deep, value5.deep.deep) &&
+		!test_equality2(value4.deep, value5.deep) &&
+		!test_equality1(value4, value5);
+
+	bool AAA_test_struct_assignment = test1 && test2;
+}

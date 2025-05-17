@@ -1,0 +1,55 @@
+int test_loops(int input)
+{
+	int result = input;
+	int outer_counter = 0;
+
+	while (outer_counter < input)
+	{
+		int middle_counter = 0;
+
+		while (middle_counter < (input * 2))
+		{
+			int inner_counter = 0;
+
+			while (inner_counter < (input * 3))
+			{
+				result += (outer_counter * middle_counter) - (inner_counter / 2);
+
+				if (result > 10000)
+				{
+					result = 10000;
+					break;
+				}
+
+				if (inner_counter + 5532 < 0)
+				{
+					inner_counter += 1;
+					continue;
+				}
+
+				inner_counter += 1;
+			}
+
+			if (middle_counter > (input * 2) / 2)
+				break;
+
+			middle_counter += 1;
+		}
+
+		if (result < 0)
+			return result;
+
+		outer_counter += 1;
+	}
+
+	return result;
+}
+
+@init
+{
+	int sum = 0;
+	for (int i = 0; i <= 50; i += 1)
+		sum += test_loops(i);
+
+	bool AAA_test_loops = sum == -3781499;
+}

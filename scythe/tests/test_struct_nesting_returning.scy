@@ -1,0 +1,72 @@
+struct Level3
+{
+	int w;
+}
+
+struct Level2
+{
+	string z;
+	Level3 deep;
+}
+
+public struct Level1
+{
+	string x;
+	int y;
+	Level2 deep;
+}
+
+Level1 Level1_passthrough(Level1 value)
+{
+	return value;
+}
+
+Level1 doShit(int param1, Level1 value, string z, int w)
+{
+	Level1 new;
+	new.x = value.deep.z;
+	new.y = value.y + value.deep.deep.w;
+	new.deep.z = z;
+	new.deep.deep.w = w;
+	return new;
+}
+
+struct TestValues
+{
+	int num1;
+	int num2;
+	int num3;
+	string str1;
+	string str2;
+}
+
+@init
+{
+	TestValues testValues;
+	testValues.num1 = 19;
+	testValues.num2 = 48;
+	testValues.num3 = 54;
+	testValues.str1 = "yeahe";
+	testValues.str2 = "other";
+
+	Level1 value;
+	value.y = testValues.num1;
+	value.deep.z = testValues.str1;
+	value.deep.deep.w = testValues.num2;
+
+	Level1 ret = Level1 {
+		return Level1_passthrough(
+			doShit(1, Level1_passthrough(value), testValues.str2, testValues.num3));
+	};
+
+	bool test_the_values(Level1 value, TestValues testValues)
+	{
+		return
+			value.y == testValues.num1 + testValues.num2 &&
+			value.x == testValues.str1 &&
+			value.deep.z == testValues.str2 &&
+			value.deep.deep.w == testValues.num3;
+	}
+
+	bool AAA_test_struct_nesting_returning = test_the_values(ret, testValues);
+}

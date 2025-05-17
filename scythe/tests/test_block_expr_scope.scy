@@ -1,0 +1,10 @@
+@init
+{
+	int outside = 5;
+	int ret = int {
+		outside = 58;
+		return 6;
+	};
+
+	bool AAA_test_block_expr_scope = ret == 6 && outside == 58;
+}
