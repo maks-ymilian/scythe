@@ -17,7 +17,7 @@ NodePtr AllocIdentifier(VarDeclStmt* varDecl, int lineNumber)
 	return AllocASTNode(
 		&(MemberAccessExpr){
 			.lineNumber = lineNumber,
-			.start = NULL,
+			.start = NULL_NODE,
 			.identifiers = (Array){.array = NULL},
 			.funcReference = NULL,
 			.typeReference = NULL,

@@ -818,7 +818,7 @@ static Result VisitReturnStatement(NodePtr* node)
 		AllocASTNode(
 			&(MemberAccessExpr){
 				.lineNumber = returnStmt->lineNumber,
-				.start = NULL,
+				.start = NULL_NODE,
 				.identifiers = (Array){.array = NULL},
 				.funcReference = NULL,
 				.typeReference = NULL,
