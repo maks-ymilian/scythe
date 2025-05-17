@@ -2,10 +2,15 @@
 
 #include <assert.h>
 
+static void VisitStatement(NodePtr* node);
+
 static void VisitForStatement(NodePtr* node)
 {
 	assert(node->type == Node_For);
 	ForStmt* forStmt = node->ptr;
+
+	VisitStatement(&forStmt->stmt);
+
 	if (forStmt->condition.ptr == NULL)
 	{
 		forStmt->condition = AllocASTNode(
