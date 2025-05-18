@@ -1,8 +1,9 @@
-// make the private and public work
+// make the private and public work public import statement
 // completely rewrite all the file io in compiler.c or actually the whole file idk
 // dereferencing syntax sugar
 // make all array types assignable to each other because then you could make generic allocation functions
 // when doing arithmetic on a struct pointer type multiply the operand with the size of the struct
+// add sizeof and maybe lengthof
 
 /*
 

@@ -215,109 +215,6 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 
 typedef struct
 {
-	NodePtr argumentNode;
-	FuncCallExpr* funcCall;
-	size_t argumentIndex;
-	size_t memberCount;
-} ExpandArgumentData;
-
-static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
-{
-	const ExpandArgumentData* d = data;
-
-	if (index == 0)
-	{
-		if (d->argumentNode.type == Node_FunctionCall)
-			return;
-
-		ArrayRemove(&d->funcCall->arguments, d->argumentIndex);
-	}
-
-	NodePtr expr = NULL_NODE;
-	switch (d->argumentNode.type)
-	{
-	case Node_MemberAccess:
-	{
-		MemberAccessExpr* memberAccess = d->argumentNode.ptr;
-
-		assert(memberAccess->varReference != NULL);
-		expr = AllocIdentifier(
-			FindInstantiated(member->name, memberAccess->varReference),
-			-1);
-		break;
-	}
-	case Node_FunctionCall:
-	{
-		FuncCallExpr* funcCall = d->argumentNode.ptr;
-		assert(funcCall->baseExpr.type == Node_MemberAccess);
-		MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
-
-		assert(identifier->funcReference != NULL);
-		expr = AllocIdentifier(
-			FindInstantiated(member->name, identifier->funcReference->globalReturn),
-			-1);
-		break;
-	}
-	case Node_Subscript:
-	{
-		expr = CopyASTNode(d->argumentNode);
-		SubscriptExpr* subscript = expr.ptr;
-
-		subscript->indexExpr = AllocStructOffsetCalculation(subscript->indexExpr, index, d->memberCount, subscript->lineNumber);
-		break;
-	}
-	default: INVALID_VALUE(d->argumentNode.type);
-	}
-
-	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
-}
-
-static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
-
-static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* containingStatement)
-{
-	assert(funcCall->baseExpr.type == Node_MemberAccess);
-	MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
-	FuncDeclStmt* funcDecl = identifier->funcReference;
-	assert(funcDecl != NULL);
-
-	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
-	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
-	{
-		assert(funcCall->arguments.length > argIndex);
-		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
-
-		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
-
-		const NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
-		assert(paramNode->type == Node_VariableDeclaration);
-		const VarDeclStmt* param = paramNode->ptr;
-
-		StructDeclStmt* argAggregate = GetTypeInfoFromExpression(argument).effectiveType;
-		StructDeclStmt* paramAggregate = GetTypeInfoFromType(param->type).effectiveType;
-
-		if (argAggregate == NULL && paramAggregate == NULL)
-			continue;
-		PROPAGATE_ERROR(CheckTypeConversion(argAggregate, paramAggregate, funcCall->lineNumber));
-
-		argIndex += ForEachStructMember(argAggregate, ExpandArgument,
-			&(ExpandArgumentData){
-				.argumentNode = argument,
-				.funcCall = funcCall,
-				.argumentIndex = argIndex,
-				.memberCount = ForEachStructMember(argAggregate, NULL, NULL, NULL),
-			},
-			NULL);
-
-		// account for for loop increment
-		--argIndex;
-	}
-
-	return SUCCESS_RESULT;
-}
-
-typedef struct
-{
 	VarDeclStmt* member;
 	size_t* returnValue;
 } GetIndexOfMemberData;
@@ -346,11 +243,11 @@ static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
 
 typedef struct
 {
-	NodePtr leftExpr;
-	NodePtr rightExpr;
-	Array* statements;
+	NodePtr argumentNode;
+	FuncCallExpr* funcCall;
+	size_t argumentIndex;
 	size_t memberCount;
-} GenerateStructMemberAssignmentData;
+} ExpandArgumentData;
 
 static void CollapseSubscriptMemberAccess(NodePtr* node)
 {
@@ -455,6 +352,68 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	default: INVALID_VALUE(node.type);
 	}
 }
+
+static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
+{
+	const ExpandArgumentData* d = data;
+
+	NodePtr expr = AllocStructMemberAssignmentExpr(d->argumentNode, member, index, d->memberCount, false);
+	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
+}
+
+static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
+
+static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* containingStatement)
+{
+	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
+	FuncDeclStmt* funcDecl = identifier->funcReference;
+	assert(funcDecl != NULL);
+
+	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
+	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
+	{
+		assert(funcCall->arguments.length > argIndex);
+		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
+
+		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
+
+		const NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
+		assert(paramNode->type == Node_VariableDeclaration);
+		const VarDeclStmt* param = paramNode->ptr;
+
+		StructDeclStmt* argAggregate = GetTypeInfoFromExpression(argument).effectiveType;
+		StructDeclStmt* paramAggregate = GetTypeInfoFromType(param->type).effectiveType;
+
+		if (argAggregate == NULL && paramAggregate == NULL)
+			continue;
+		PROPAGATE_ERROR(CheckTypeConversion(argAggregate, paramAggregate, funcCall->lineNumber));
+
+		ArrayRemove(&funcCall->arguments, argIndex);
+
+		argIndex += ForEachStructMember(argAggregate, ExpandArgument,
+			&(ExpandArgumentData){
+				.argumentNode = argument,
+				.funcCall = funcCall,
+				.argumentIndex = argIndex,
+				.memberCount = ForEachStructMember(argAggregate, NULL, NULL, NULL),
+			},
+			NULL);
+
+		// account for for loop increment
+		--argIndex;
+	}
+
+	return SUCCESS_RESULT;
+}
+
+typedef struct
+{
+	NodePtr leftExpr;
+	NodePtr rightExpr;
+	Array* statements;
+	size_t memberCount;
+} GenerateStructMemberAssignmentData;
 
 static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
 {
