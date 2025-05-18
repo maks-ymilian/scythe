@@ -178,6 +178,8 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
 		ptr->indexExpr = CopyASTNode(ptr->indexExpr);
+		if (ptr->typeBeforeCollapse.expr.ptr)
+			ptr->typeBeforeCollapse.expr = CopyASTNode(ptr->typeBeforeCollapse.expr);
 
 		return copy;
 	}

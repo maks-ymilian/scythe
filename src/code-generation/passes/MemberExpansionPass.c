@@ -182,28 +182,68 @@ static Result CheckTypeConversion(StructDeclStmt* from, StructDeclStmt* to, cons
 	return SUCCESS_RESULT;
 }
 
+static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
+{
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_Add,
+			.left = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = lineNumber,
+					.operatorType = Binary_Multiply,
+					.left = offset,
+					.right = AllocASTNode(
+						&(LiteralExpr){
+							.lineNumber = lineNumber,
+							.type = Literal_Int,
+							.intValue = memberCount,
+						},
+						sizeof(LiteralExpr), Node_Literal),
+				},
+				sizeof(BinaryExpr), Node_Binary),
+			.right = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = memberIndex,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(BinaryExpr), Node_Binary);
+}
+
 typedef struct
 {
 	NodePtr argumentNode;
 	FuncCallExpr* funcCall;
 	size_t argumentIndex;
+	size_t memberCount;
 } ExpandArgumentData;
 
 static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
-	if (index == 0 && d->argumentNode.type == Node_FunctionCall)
-		return;
+	if (index == 0)
+	{
+		if (d->argumentNode.type == Node_FunctionCall)
+			return;
 
-	VarDeclStmt* aggregateVarDecl = NULL;
+		ArrayRemove(&d->funcCall->arguments, d->argumentIndex);
+	}
+
+	NodePtr expr = NULL_NODE;
 	switch (d->argumentNode.type)
 	{
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = d->argumentNode.ptr;
-		aggregateVarDecl = memberAccess->varReference;
-		assert(aggregateVarDecl != NULL);
+
+		assert(memberAccess->varReference != NULL);
+		expr = AllocIdentifier(
+			FindInstantiated(member->name, memberAccess->varReference),
+			-1);
 		break;
 	}
 	case Node_FunctionCall:
@@ -211,18 +251,24 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 		FuncCallExpr* funcCall = d->argumentNode.ptr;
 		assert(funcCall->baseExpr.type == Node_MemberAccess);
 		MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
-		FuncDeclStmt* funcDecl = identifier->funcReference;
-		assert(funcDecl != NULL);
-		aggregateVarDecl = funcDecl->globalReturn;
+
+		assert(identifier->funcReference != NULL);
+		expr = AllocIdentifier(
+			FindInstantiated(member->name, identifier->funcReference->globalReturn),
+			-1);
+		break;
+	}
+	case Node_Subscript:
+	{
+		expr = CopyASTNode(d->argumentNode);
+		SubscriptExpr* subscript = expr.ptr;
+
+		subscript->indexExpr = AllocStructOffsetCalculation(subscript->indexExpr, index, d->memberCount, subscript->lineNumber);
 		break;
 	}
 	default: INVALID_VALUE(d->argumentNode.type);
 	}
 
-	VarDeclStmt* currentInstance = FindInstantiated(member->name, aggregateVarDecl);
-	assert(currentInstance != NULL);
-
-	NodePtr expr = AllocIdentifier(currentInstance, -1);
 	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
@@ -254,14 +300,12 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 			continue;
 		PROPAGATE_ERROR(CheckTypeConversion(argAggregate, paramAggregate, funcCall->lineNumber));
 
-		if (argument.type == Node_MemberAccess)
-			ArrayRemove(&funcCall->arguments, argIndex);
-
 		argIndex += ForEachStructMember(argAggregate, ExpandArgument,
 			&(ExpandArgumentData){
 				.argumentNode = argument,
 				.funcCall = funcCall,
 				.argumentIndex = argIndex,
+				.memberCount = ForEachStructMember(argAggregate, NULL, NULL, NULL),
 			},
 			NULL);
 
@@ -307,37 +351,6 @@ typedef struct
 	Array* statements;
 	size_t memberCount;
 } GenerateStructMemberAssignmentData;
-
-static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
-{
-	return AllocASTNode(
-		&(BinaryExpr){
-			.lineNumber = lineNumber,
-			.operatorType = Binary_Add,
-			.left = AllocASTNode(
-				&(BinaryExpr){
-					.lineNumber = lineNumber,
-					.operatorType = Binary_Multiply,
-					.left = offset,
-					.right = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Int,
-							.intValue = memberCount,
-						},
-						sizeof(LiteralExpr), Node_Literal),
-				},
-				sizeof(BinaryExpr), Node_Binary),
-			.right = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = memberIndex,
-				},
-				sizeof(LiteralExpr), Node_Literal),
-		},
-		sizeof(BinaryExpr), Node_Binary);
-}
 
 static void CollapseSubscriptMemberAccess(NodePtr* node)
 {
