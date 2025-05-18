@@ -502,8 +502,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 			subscript->lineNumber,
 			currentFilePath);
 
-	// todo add a pass to split it up into multiple variables or something
-	// so this doesnt get hit
+	// test_accessing_from_function.scy
 	assert(subscript->baseExpr.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
@@ -553,6 +552,14 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 				CollapseSubscriptMemberAccess(node);
 			return SUCCESS_RESULT;
 		}
+		else if (memberAccess->start.type == Node_FunctionCall)
+		{
+			// test_accessing_from_function.scy
+			assert(!"todo");
+		}
+		else
+			assert(0);
+
 		assert(memberAccess->start.ptr == NULL);
 	}
 

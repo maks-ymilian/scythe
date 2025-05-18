@@ -5,38 +5,8 @@
 // when doing arithmetic on a struct pointer type multiply the operand with the size of the struct
 // add sizeof and maybe lengthof
 
-/*
-
-x.y;
-var = y, parent = x
-
-x().y;
-var = y, parent = NULL
-var = x, parent = NULL
-
-x.y;
-var = y
-var = x
-
-x().y;
-var = y
-var = x
-
-x.y[0].z = 1
-x().y[0 + 0] = 1
-
-all function calls with anything after must
-be changed to use temporary variable
-all subscripts with anything after must be
-collapsed e.g.
-	x().y[0].z[0].w = 1;
-to
-	any a = x();
-	a.y[0 + 0][0 + 0] = 1;
-so they will always have start = NULL
-
-x[0].y;
-*/
+// asserts
+// structs in blocks
 
 import "tests/tests.scy"
 

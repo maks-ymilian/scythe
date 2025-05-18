@@ -6,5 +6,6 @@ import "tests/test_scope.scy"
 import "tests/test_control_flow.scy"
 import "tests/test_struct_assignment.scy"
 import "tests/test_nested_array.scy"
+// import "tests/test_accessing_from_function.scy"
 
 any AAA__________ = 7777777777777777777;

@@ -1,0 +1,42 @@
+struct Level3
+{
+	int w;
+	float[] arr;
+}
+
+struct Level2
+{
+	string z;
+	Level3 l3;
+}
+
+public struct Level1
+{
+	string x;
+	int y;
+	Level2 l2;
+}
+
+@init
+{
+	10[0] = 69;
+
+	Level1 get()
+	{
+		Level1 value;
+		value.l2.l3.arr.ptr = 10;
+		return value;
+	}
+
+	int[] get1()
+	{
+		int[] value;
+		value.ptr = 100;
+		value[0] = 699;
+		return value;
+	}
+
+	bool AAA_test_accessing_from_function =
+		get().l2.l3.arr[0] == 69 &&
+		get1()[0] == 699;
+}
