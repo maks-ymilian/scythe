@@ -4,12 +4,11 @@
 		// modifiers should not be allowed in blocks
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
 	// dereferencing syntax sugar
-	// make all array types assignable to each other because then you could make generic allocation functions
-	// add sizeof and lengthof in built in functions
 	// maybe make it so sections are only allowed in the main function
 	// asserts
 	// structs in blocks
 	// binary expressions as start of member access and as baseExpr of subscript
+	// types in sizeof
 
 // things to test:
 	// assigning wrong types

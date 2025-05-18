@@ -210,25 +210,60 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	}
 }
 
-static Result CheckTypeConversion(StructDeclStmt* from, StructDeclStmt* to, const int lineNumber)
+static Result CheckTypeConversion(TypeInfo from, TypeInfo to, const int lineNumber)
 {
-	if (from == NULL && to == NULL)
-		assert(0);
-
-	if (from == NULL && to != NULL)
+	if (!from.effectiveType && to.effectiveType)
 		return ERROR_RESULT(
 			"Cannot convert a non-aggregate type to an aggregate type",
 			lineNumber, currentFilePath);
 
-	if (from != NULL && to == NULL)
+	if (from.effectiveType && !to.effectiveType)
 		return ERROR_RESULT(
 			"Cannot convert an aggregate type to a non-aggregate type",
 			lineNumber, currentFilePath);
 
-	if (from != to)
+	if (from.isPointer && to.isPointer &&
+		from.pointerType != to.pointerType &&
+		from.pointerType && to.pointerType)
 		return ERROR_RESULT(
-			"Cannot convert between incompatible aggregate types",
+			"Different pointer types are only compatible with each other if at least one of the types is \"any*\"",
 			lineNumber, currentFilePath);
+
+	if (from.effectiveType != to.effectiveType)
+	{
+		if (from.effectiveType->isArrayType && to.effectiveType->isArrayType)
+		{
+			VarDeclStmt* fromPtr = GetPtrMember(from.effectiveType);
+			VarDeclStmt* toPtr = GetPtrMember(to.effectiveType);
+			assert(fromPtr && toPtr);
+
+			bool allowed = false;
+
+			if (!allowed && fromPtr->type.expr.type == Node_Literal)
+			{
+				LiteralExpr* literal = fromPtr->type.expr.ptr;
+				allowed =
+					literal->type == Literal_PrimitiveType &&
+					literal->primitiveType == Primitive_Any;
+			}
+			if (!allowed && toPtr->type.expr.type == Node_Literal)
+			{
+				LiteralExpr* literal = toPtr->type.expr.ptr;
+				allowed =
+					literal->type == Literal_PrimitiveType &&
+					literal->primitiveType == Primitive_Any;
+			}
+
+			if (!allowed)
+				return ERROR_RESULT(
+					"Different array types are only compatible with each other if at least one of the types is \"any[]\"",
+					lineNumber, currentFilePath);
+		}
+		else
+			return ERROR_RESULT(
+				"Cannot convert between incompatible aggregate types",
+				lineNumber, currentFilePath);
+	}
 
 	return SUCCESS_RESULT;
 }
@@ -448,21 +483,21 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 		assert(paramNode->type == Node_VariableDeclaration);
 		const VarDeclStmt* param = paramNode->ptr;
 
-		StructDeclStmt* argAggregate = GetTypeInfoFromExpression(argument).effectiveType;
-		StructDeclStmt* paramAggregate = GetTypeInfoFromType(param->type).effectiveType;
+		TypeInfo argType = GetTypeInfoFromExpression(argument);
+		TypeInfo paramType = GetTypeInfoFromType(param->type);
 
-		if (argAggregate == NULL && paramAggregate == NULL)
+		if (argType.effectiveType == NULL && paramType.effectiveType == NULL)
 			continue;
-		PROPAGATE_ERROR(CheckTypeConversion(argAggregate, paramAggregate, funcCall->lineNumber));
+		PROPAGATE_ERROR(CheckTypeConversion(argType, paramType, funcCall->lineNumber));
 
 		ArrayRemove(&funcCall->arguments, argIndex);
 
-		argIndex += ForEachStructMember(argAggregate, ExpandArgument,
+		argIndex += ForEachStructMember(argType.effectiveType, ExpandArgument,
 			&(ExpandArgumentData){
 				.argumentNode = argument,
 				.funcCall = funcCall,
 				.argumentIndex = argIndex,
-				.memberCount = ForEachStructMember(argAggregate, NULL, NULL, NULL),
+				.memberCount = ForEachStructMember(argType.effectiveType, NULL, NULL, NULL),
 			},
 			NULL);
 
@@ -510,6 +545,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	TypeInfo leftType = GetTypeInfoFromExpression(binary->left);
 	TypeInfo rightType = GetTypeInfoFromExpression(binary->right);
+	PROPAGATE_ERROR(CheckTypeConversion(leftType, rightType, binary->lineNumber));
 
 	// special case for adding to pointer variables
 	if (binary->operatorType == Binary_Add ||
@@ -538,7 +574,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	if (leftType.effectiveType == NULL && rightType.effectiveType == NULL)
 		return SUCCESS_RESULT;
-	PROPAGATE_ERROR(CheckTypeConversion(leftType.effectiveType, rightType.effectiveType, binary->lineNumber));
 
 	StructDeclStmt* type = leftType.effectiveType;
 
@@ -840,8 +875,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		assert(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
-		StructDeclStmt* type = GetTypeInfoFromType(varDecl->type).effectiveType;
-		if (type == NULL)
+		TypeInfo type = GetTypeInfoFromType(varDecl->type);
+		if (type.effectiveType == NULL)
 			continue;
 
 		if (funcDecl->external)
@@ -851,11 +886,11 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 		if (varDecl->initializer.ptr != NULL)
 			PROPAGATE_ERROR(CheckTypeConversion(
-				GetTypeInfoFromExpression(varDecl->initializer).effectiveType,
+				GetTypeInfoFromExpression(varDecl->initializer),
 				type,
 				varDecl->lineNumber));
 
-		InstantiateMembers(type, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
+		InstantiateMembers(type.effectiveType, &varDecl->instantiatedVariables, &funcDecl->parameters, i + 1);
 		ArrayAdd(&nodesToDelete, node);
 		ArrayRemove(&funcDecl->parameters, i);
 		i--;
@@ -913,13 +948,13 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	assert(returnStmt->function != NULL);
-	StructDeclStmt* exprType = GetTypeInfoFromExpression(returnStmt->expr).effectiveType;
-	StructDeclStmt* returnType =
+	TypeInfo exprType = GetTypeInfoFromExpression(returnStmt->expr);
+	TypeInfo returnType =
 		returnStmt->function->oldType.expr.ptr != NULL
-			? GetTypeInfoFromType(returnStmt->function->oldType).effectiveType
-			: NULL;
+			? GetTypeInfoFromType(returnStmt->function->oldType)
+			: (TypeInfo){.effectiveType = NULL};
 
-	if (returnType == NULL && exprType == NULL)
+	if (returnType.effectiveType == NULL && exprType.effectiveType == NULL)
 	{
 		if (returnStmt->expr.ptr != NULL)
 			PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, node));
