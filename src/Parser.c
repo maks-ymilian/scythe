@@ -391,15 +391,33 @@ static Result ParseSizeOf(NodePtr* out)
 	if (!MatchOne(Token_SizeOf))
 		return NOT_FOUND_RESULT;
 
+	if (!MatchOne(Token_LeftBracket))
+		return ERROR_RESULT_LINE("Expected \"(\" after \"sizeof\"");
+
 	NodePtr expr = NULL_NODE;
-	PROPAGATE_ERROR(ParseExpression(&expr));
-	if (expr.ptr == NULL)
-		return ERROR_RESULT_LINE("Expected expression after \"sizeof\"");
+	Type type = (Type){.expr = NULL_NODE};
+	PROPAGATE_ERROR(ParseType(&type));
+	if (type.expr.ptr == NULL)
+	{
+		PROPAGATE_ERROR(ParseExpression(&expr));
+		if (expr.ptr == NULL)
+			return ERROR_RESULT_LINE("Expected expression or type after \"sizeof\"");
+	}
+	else
+	{
+		if (type.expr.type == Node_MemberAccess &&
+			type.modifier == TypeModifier_None)
+			expr = CopyASTNode(type.expr);
+	}
+
+	if (!MatchOne(Token_RightBracket))
+		return ERROR_RESULT_LINE("Expected \")\" after \"sizeof\"");
 
 	*out = AllocASTNode(
 		&(SizeOfExpr){
 			.lineNumber = lineNumber,
 			.expr = expr,
+			.type = type,
 		},
 		sizeof(SizeOfExpr), Node_SizeOf);
 

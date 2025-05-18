@@ -34,7 +34,7 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 
 static Result VisitStatement(const NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue);
-static Result ResolveType(Type* type, bool voidAllowed);
+static Result ResolveType(Type* type, bool voidAllowed, bool* isType);
 static Result VisitBlock(const BlockStmt* block);
 
 static NodePtr AllocMemberVarDecl(const char* name, Type type)
@@ -432,8 +432,11 @@ static Result ResolveMemberAccess(NodePtr* node)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveType(Type* type, bool voidAllowed)
+static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
 {
+	if (outIsType)
+		*outIsType = true;
+
 	switch (type->expr.type)
 	{
 	case Node_MemberAccess:
@@ -443,7 +446,15 @@ static Result ResolveType(Type* type, bool voidAllowed)
 		assert(type->expr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = type->expr.ptr;
 		if (memberAccess->typeReference == NULL)
-			return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
+		{
+			if (outIsType)
+			{
+				*outIsType = false;
+				return SUCCESS_RESULT;
+			}
+			else
+				return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
+		}
 
 		break;
 	}
@@ -500,14 +511,26 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	{
 		BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveType(&block->type, true));
+		PROPAGATE_ERROR(ResolveType(&block->type, true, NULL));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
 	case Node_SizeOf:
 	{
 		SizeOfExpr* sizeOf = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true));
+		bool isType = false;
+		PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, &isType));
+		if (isType)
+		{
+			FreeASTNode(sizeOf->expr);
+			sizeOf->expr = NULL_NODE;
+		}
+		else
+		{
+			FreeASTNode(sizeOf->type.expr);
+			sizeOf->type = (Type){.expr = NULL_NODE};
+			PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true));
+		}
 		return SUCCESS_RESULT;
 	}
 	case Node_FunctionCall:
@@ -586,7 +609,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true));
-		PROPAGATE_ERROR(ResolveType(&varDecl->type, false));
+		PROPAGATE_ERROR(ResolveType(&varDecl->type, false, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
@@ -594,7 +617,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
 
-		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true));
+		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, NULL));
 
 		PushScope();
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)

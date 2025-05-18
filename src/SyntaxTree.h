@@ -146,12 +146,6 @@ typedef struct
 	Array arguments;
 } FuncCallExpr;
 
-typedef struct
-{
-	int lineNumber;
-	NodePtr expr;
-} SizeOfExpr;
-
 typedef enum
 {
 	TypeModifier_None,
@@ -165,6 +159,13 @@ struct Type
 	NodePtr expr;
 	TypeModifier modifier;
 };
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr expr;
+	Type type;
+} SizeOfExpr;
 
 typedef struct
 {

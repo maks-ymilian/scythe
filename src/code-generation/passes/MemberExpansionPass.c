@@ -726,14 +726,16 @@ static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
 	assert(node->type == Node_SizeOf);
 	SizeOfExpr* sizeOf = node->ptr;
 
-	PROPAGATE_ERROR(VisitExpression(&sizeOf->expr, containingStatement));
+	TypeInfo typeInfo = (TypeInfo){.effectiveType = NULL};
+	if (sizeOf->expr.ptr)
+	{
+		PROPAGATE_ERROR(VisitExpression(&sizeOf->expr, containingStatement));
+		typeInfo = GetTypeInfoFromExpression(sizeOf->expr);
+	}
+	else
+		typeInfo = GetTypeInfoFromType(sizeOf->type);
 
-	uint64_t value = 1;
-
-	TypeInfo typeInfo = GetTypeInfoFromExpression(sizeOf->expr);
-	if (typeInfo.effectiveType)
-		value = CountStructMembers(typeInfo.effectiveType);
-
+	uint64_t value = typeInfo.effectiveType ? CountStructMembers(typeInfo.effectiveType) : 1;
 	int lineNumber = sizeOf->lineNumber;
 	FreeASTNode(*node);
 	*node = AllocInteger(value, lineNumber);

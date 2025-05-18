@@ -51,8 +51,7 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 
 @init
 {
-	Matrix _;
-	Matrix[] matrices = AllocateArray(sizeof(_), 3);
+	Matrix[] matrices = AllocateArray(sizeof(Matrix), 3);
 
 	void InitializeMatrix(Matrix* matrix, int rows, int cols)
 	{
@@ -65,8 +64,7 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 				row[deref].array[i] = number;
 		}
 
-		Row _;
-		matrix[deref].rows = AllocateArray(sizeof(_), rows);
+		matrix[deref].rows = AllocateArray(sizeof(Row), rows);
 
 		for (int i = 0; i < rows; ++i)
 			InitializeRow(matrix[deref].rows.ptr + i, cols);

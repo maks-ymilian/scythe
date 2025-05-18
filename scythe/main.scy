@@ -3,12 +3,12 @@
 		// public import statement
 		// modifiers should not be allowed in blocks
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
+		// it should use absolute paths
 	// dereferencing syntax sugar
 	// maybe make it so sections are only allowed in the main function
 	// asserts
 	// structs in blocks
 	// binary expressions as start of member access and as baseExpr of subscript
-	// types in sizeof
 
 // things to test:
 	// assigning wrong types

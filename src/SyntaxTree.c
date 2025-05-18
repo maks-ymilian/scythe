@@ -243,6 +243,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		ptr = copy.ptr;
 
 		ptr->expr = CopyASTNode(ptr->expr);
+		ptr->type.expr = CopyASTNode(ptr->type.expr);
 
 		return copy;
 	}
@@ -351,6 +352,7 @@ void FreeASTNode(const NodePtr node)
 	{
 		const SizeOfExpr* ptr = node.ptr;
 		FreeASTNode(ptr->expr);
+		FreeASTNode(ptr->type.expr);
 		break;
 	}
 
