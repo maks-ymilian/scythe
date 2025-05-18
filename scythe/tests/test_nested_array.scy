@@ -88,14 +88,14 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 		matrix[deref].rows = AllocateRowArray(rows);
 
 		for (int i = 0; i < rows; ++i)
-			InitializeRow(matrix[deref].rows.ptr + i * sizeOfRow, cols);
+			InitializeRow(matrix[deref].rows.ptr + i, cols);
 	}
 
-	InitializeMatrix(matrices.ptr + 0 * sizeOfMatrix, 7, 6);
-	InitializeMatrix(matrices.ptr + 1 * sizeOfMatrix, 6, 7);
-	InitializeMatrix(matrices.ptr + 2 * sizeOfMatrix, 7, 7);
+	InitializeMatrix(matrices.ptr + 0, 7, 6);
+	InitializeMatrix(matrices.ptr + 1, 6, 7);
+	InitializeMatrix(matrices.ptr + 2, 7, 7);
 
-	Multiply(matrices[0], matrices[1], matrices.ptr + 2 * sizeOfMatrix);
+	Multiply(matrices[0], matrices[1], matrices.ptr + 2);
 
 	bool AAA_test_nested_array =
 		matrices[0].rows[0].array[0] == 1 &&

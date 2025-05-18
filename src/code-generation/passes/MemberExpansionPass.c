@@ -152,8 +152,59 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 		}
 	}
 	case Node_Binary:
-	case Node_Unary:
+	{
+		BinaryExpr* binary = node.ptr;
+
+		if (binary->operatorType == Binary_Assignment ||
+			binary->operatorType == Binary_AddAssign ||
+			binary->operatorType == Binary_SubtractAssign ||
+			binary->operatorType == Binary_MultiplyAssign ||
+			binary->operatorType == Binary_DivideAssign ||
+			binary->operatorType == Binary_ModuloAssign ||
+			binary->operatorType == Binary_ExponentAssign ||
+			binary->operatorType == Binary_BitAndAssign ||
+			binary->operatorType == Binary_BitOrAssign ||
+			binary->operatorType == Binary_XORAssign)
+			return GetTypeInfoFromExpression(binary->left);
+
+		if (binary->operatorType == Binary_Add ||
+			binary->operatorType == Binary_Subtract)
+		{
+			TypeInfo left = GetTypeInfoFromExpression(binary->left);
+			TypeInfo right = GetTypeInfoFromExpression(binary->right);
+
+			StructDeclStmt* type = NULL;
+			if (left.isPointer && left.pointerType)
+				type = left.pointerType;
+
+			if (right.isPointer && right.pointerType)
+				type = right.pointerType;
+
+			// different pointer types are assignable to each other so
+			// if both are struct pointers and theyre different types
+			// then there is no type
+			if (left.isPointer && left.pointerType &&
+				right.isPointer && right.pointerType &&
+				left.pointerType != right.pointerType)
+				return nullTypeInfo;
+
+			if (!type)
+				return nullTypeInfo;
+
+			return (TypeInfo){
+				.effectiveType = NULL,
+				.pointerType = type,
+				.isPointer = true,
+			};
+		}
+
 		return nullTypeInfo;
+	}
+	case Node_Unary:
+	{
+		UnaryExpr* unary = node.ptr;
+		return GetTypeInfoFromExpression(unary->expression);
+	}
 
 	default: INVALID_VALUE(node.type);
 	}
@@ -182,26 +233,36 @@ static Result CheckTypeConversion(StructDeclStmt* from, StructDeclStmt* to, cons
 	return SUCCESS_RESULT;
 }
 
+static NodePtr AllocMultiply(NodePtr left, NodePtr right, int lineNumber)
+{
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_Multiply,
+			.left = left,
+			.right = right,
+		},
+		sizeof(BinaryExpr), Node_Binary);
+}
+
+static NodePtr AllocInteger(uint64_t value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Int,
+			.intValue = value,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
+
 static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
 {
 	return AllocASTNode(
 		&(BinaryExpr){
 			.lineNumber = lineNumber,
 			.operatorType = Binary_Add,
-			.left = AllocASTNode(
-				&(BinaryExpr){
-					.lineNumber = lineNumber,
-					.operatorType = Binary_Multiply,
-					.left = offset,
-					.right = AllocASTNode(
-						&(LiteralExpr){
-							.lineNumber = lineNumber,
-							.type = Literal_Int,
-							.intValue = memberCount,
-						},
-						sizeof(LiteralExpr), Node_Literal),
-				},
-				sizeof(BinaryExpr), Node_Binary),
+			.left = AllocMultiply(offset, AllocInteger(memberCount, lineNumber), lineNumber),
 			.right = AllocASTNode(
 				&(LiteralExpr){
 					.lineNumber = lineNumber,
@@ -241,6 +302,11 @@ static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
 	return index;
 }
 
+static size_t CountStructMembers(StructDeclStmt* type)
+{
+	return ForEachStructMember(type, NULL, NULL, NULL);
+}
+
 typedef struct
 {
 	NodePtr argumentNode;
@@ -264,7 +330,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 	subscript->indexExpr = AllocStructOffsetCalculation(
 		subscript->indexExpr,
 		GetIndexOfMember(type, memberAccess->varReference),
-		ForEachStructMember(type, NULL, NULL, NULL),
+		CountStructMembers(type),
 		subscript->lineNumber);
 
 	subscript->typeBeforeCollapse = memberAccess->varReference->type;
@@ -442,17 +508,39 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
 	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
 
-	StructDeclStmt* type;
+	TypeInfo leftType = GetTypeInfoFromExpression(binary->left);
+	TypeInfo rightType = GetTypeInfoFromExpression(binary->right);
+
+	// special case for adding to pointer variables
+	if (binary->operatorType == Binary_Add ||
+		binary->operatorType == Binary_Subtract)
 	{
-		StructDeclStmt* leftType = GetTypeInfoFromExpression(binary->left).effectiveType;
-		StructDeclStmt* rightType = GetTypeInfoFromExpression(binary->right).effectiveType;
+		// only if one of them is a pointer
+		if (leftType.isPointer && leftType.pointerType && !rightType.isPointer)
+			binary->right = AllocMultiply(
+				binary->right,
+				AllocInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
+				binary->lineNumber);
 
-		if (leftType == NULL && rightType == NULL)
-			return SUCCESS_RESULT;
-		PROPAGATE_ERROR(CheckTypeConversion(leftType, rightType, binary->lineNumber));
-
-		type = leftType;
+		if (rightType.isPointer && rightType.pointerType && !leftType.isPointer)
+			binary->left = AllocMultiply(
+				binary->left,
+				AllocInteger(CountStructMembers(rightType.pointerType), binary->lineNumber),
+				binary->lineNumber);
 	}
+	else if ((binary->operatorType == Binary_AddAssign ||
+				 binary->operatorType == Binary_SubtractAssign) &&
+			 leftType.isPointer && leftType.pointerType && !rightType.isPointer)
+		binary->right = AllocMultiply(
+			binary->right,
+			AllocInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
+			binary->lineNumber);
+
+	if (leftType.effectiveType == NULL && rightType.effectiveType == NULL)
+		return SUCCESS_RESULT;
+	PROPAGATE_ERROR(CheckTypeConversion(leftType.effectiveType, rightType.effectiveType, binary->lineNumber));
+
+	StructDeclStmt* type = leftType.effectiveType;
 
 	if (binary->operatorType != Binary_Assignment)
 		return ERROR_RESULT(
@@ -475,7 +563,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			.statements = &block->statements,
 			.leftExpr = binary->left,
 			.rightExpr = binary->right,
-			.memberCount = ForEachStructMember(type, NULL, NULL, NULL),
+			.memberCount = CountStructMembers(type),
 		},
 		NULL);
 
@@ -567,6 +655,37 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
+{
+	assert(node->type == Node_Unary);
+	UnaryExpr* unary = node->ptr;
+
+	PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
+
+	if (unary->operatorType == Unary_Increment ||
+		unary->operatorType == Unary_Decrement)
+	{
+		TypeInfo typeInfo = GetTypeInfoFromExpression(unary->expression);
+		if (typeInfo.isPointer && typeInfo.pointerType)
+		{
+			NodePtr old = *node;
+			*node = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = unary->lineNumber,
+					.operatorType = unary->operatorType == Unary_Increment ? Binary_AddAssign : Binary_SubtractAssign,
+					.left = unary->expression,
+					.right = AllocInteger(CountStructMembers(typeInfo.pointerType), unary->lineNumber),
+				},
+				sizeof(BinaryExpr), Node_Binary);
+
+			unary->expression = NULL_NODE;
+			FreeASTNode(old);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	switch (node->type)
@@ -578,8 +697,7 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		PROPAGATE_ERROR(VisitBinaryExpression(node, containingStatement));
 		break;
 	case Node_Unary:
-		UnaryExpr* unary = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
+		PROPAGATE_ERROR(VisitUnaryExpression(node, containingStatement));
 		break;
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCallArguments(node->ptr, containingStatement));

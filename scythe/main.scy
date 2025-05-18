@@ -5,11 +5,11 @@
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
 	// dereferencing syntax sugar
 	// make all array types assignable to each other because then you could make generic allocation functions
-	// when doing arithmetic on a struct pointer type multiply the operand with the size of the struct
 	// add sizeof and lengthof in built in functions
 	// maybe make it so sections are only allowed in the main function
 	// asserts
 	// structs in blocks
+	// binary expressions as start of member access and as baseExpr of subscript
 
 // things to test:
 	// assigning wrong types
