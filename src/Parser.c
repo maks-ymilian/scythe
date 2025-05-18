@@ -626,6 +626,9 @@ static Result ParseLeftBinary(
 	if (result.type != Result_Success)
 		return result;
 
+	if (MatchOne(Token_PlusPlus) || MatchOne(Token_MinusMinus))
+		return ERROR_RESULT_LINE("Postfix increment is not supported. Use prefix increment (++i) instead");
+
 	const Token* op = Match(operators, operatorsLength);
 	while (op != NULL)
 	{
