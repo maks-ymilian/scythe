@@ -115,7 +115,7 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 		sizeof(StructDeclStmt), Node_StructDeclaration)
 					 .ptr;
 
-	NodePtr ptrMember = AllocMemberVarDecl("offset",
+	NodePtr ptrMember = AllocMemberVarDecl("ptr",
 		(Type){
 			.modifier = TypeModifier_Pointer,
 			.expr = CopyASTNode(type.expr),
@@ -500,7 +500,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	{
 		BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveType(&block->type, false));
+		PROPAGATE_ERROR(ResolveType(&block->type, true));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}

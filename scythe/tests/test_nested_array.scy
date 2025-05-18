@@ -67,7 +67,7 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 	int currentOffset = 0;
 	
 	Matrix[] matrices;
-	matrices.offset = currentOffset;
+	matrices.ptr = currentOffset;
 	matrices.length = 3;
 	currentOffset += matrices.length * sizeOfMatrix;
 
@@ -76,26 +76,26 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 		int number = 0;
 		void InitializeRow(Row* row, int cols)
 		{
-			row[0].array.offset = currentOffset;
+			row[0].array.ptr = currentOffset;
 			row[0].array.length = cols;
 			currentOffset += cols;
 
-			//for (int i = 0; i < cols; void { ++i; ++number; })
-				//row[0].array[i] = number;
+			for (int i = 0; i < cols; void { ++i; ++number; })
+				row[0].array[i] = number;
 		}
 
-		matrix[0].rows.offset = currentOffset;
+		matrix[0].rows.ptr = currentOffset;
 		matrix[0].rows.length = rows;
 		currentOffset += rows * sizeOfRow;
 
 		for (int i = 0; i < rows; ++i)
-			InitializeRow(matrix[0].rows.offset + i, cols);
+			InitializeRow(matrix[0].rows.ptr + i, cols);
 	}
 
-	InitializeMatrix(matrices.offset + 0, 7, 6);
-	InitializeMatrix(matrices.offset + 1, 6, 7);
+	InitializeMatrix(matrices.ptr + 0, 7, 6);
+	InitializeMatrix(matrices.ptr + 1, 6, 7);
 
-	Multiply(matrices[0], matrices[1], matrices.offset + 2);
+	Multiply(matrices[0], matrices[1], matrices.ptr + 2);
 
 	bool AAA_test_nested_array = false;
 }

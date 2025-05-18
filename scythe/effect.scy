@@ -172,11 +172,11 @@ struct ArrayTest1
 // @init
 // {
 // 	i1.Type[] arr1;
-// 	arr1.offset = 0;
+// 	arr1.ptr = 0;
 // 	arr1.length = 10;
 // 	float[] arr2;
-// 	// arr2.offset = lengthof(arr1);
-// 	arr2.offset = sizeof(arr1[0]) * arr1.length;
+// 	// arr2.ptr = lengthof(arr1);
+// 	arr2.ptr = sizeof(arr1[0]) * arr1.length;
 // 	arr2.length = 5;
 // }
 
@@ -188,7 +188,7 @@ struct ArrayTest1
 	string b = a[0];
 
 	int { return 16; }[0] = 5;
-	// i1.Type { i1.Type t; return t; }[0].offset = 5; // todo
+	// i1.Type { i1.Type t; return t; }[0].ptr = 5; // todo
 
 	16[0] = "changed";
 	b = a[1];
@@ -217,7 +217,7 @@ struct ArrayTest1
 	bool value = true;
 
 	float[] array1;
-	array1.offset = 32;
+	array1.ptr = 32;
 	array1.length = 10;
 
 	array1[1] += 2;
@@ -225,13 +225,13 @@ struct ArrayTest1
 	// array1[5] = value; // not allowed
 
 	bool[] array2;
-	array2.offset = 32;
+	array2.ptr = 32;
 	array2.length = 10;
 
 	array2[5] = value; // allowed
 
 	array2[0];
-	array2.offset[24] = 23 + 0;
+	array2.ptr[24] = 23 + 0;
 
 	"yeaaah oh oh theres something in the yeaah";
 	i1.Type[] typeArr;
