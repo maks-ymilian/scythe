@@ -504,6 +504,12 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
+	case Node_SizeOf:
+	{
+		SizeOfExpr* sizeOf = node->ptr;
+		PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true));
+		return SUCCESS_RESULT;
+	}
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node->ptr;

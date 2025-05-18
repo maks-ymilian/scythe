@@ -90,6 +90,10 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		VisitExpression(&subscript->baseExpr, statement, lineNumber);
 		VisitExpression(&subscript->indexExpr, statement, lineNumber);
 		break;
+	case Node_SizeOf:
+		SizeOfExpr* sizeOf = expr->ptr;
+		VisitExpression(&sizeOf->expr, statement, lineNumber);
+		break;
 	case Node_Literal:
 	case Node_Null:
 		break;

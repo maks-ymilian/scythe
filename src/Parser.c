@@ -384,6 +384,28 @@ static Result ParseLiteral(NodePtr* out)
 	}
 }
 
+static Result ParseSizeOf(NodePtr* out)
+{
+	const int lineNumber = CurrentToken()->lineNumber;
+
+	if (!MatchOne(Token_SizeOf))
+		return NOT_FOUND_RESULT;
+
+	NodePtr expr = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&expr));
+	if (expr.ptr == NULL)
+		return ERROR_RESULT_LINE("Expected expression after \"sizeof\"");
+
+	*out = AllocASTNode(
+		&(SizeOfExpr){
+			.lineNumber = lineNumber,
+			.expr = expr,
+		},
+		sizeof(SizeOfExpr), Node_SizeOf);
+
+	return SUCCESS_RESULT;
+}
+
 static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 {
 	const int lineNumber = CurrentToken()->lineNumber;
@@ -477,6 +499,7 @@ static Result ContinueParsePrimary(NodePtr* inout)
 
 static Result ParseBasePrimary(NodePtr* out, Array* outIdentifiers)
 {
+	PROPAGATE_FOUND(ParseSizeOf(out));
 	PROPAGATE_FOUND(ParseLiteral(out));
 	PROPAGATE_FOUND(ParseExpressionInBrackets(out));
 	PROPAGATE_FOUND(ParseBlockExpression(out));

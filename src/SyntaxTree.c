@@ -235,6 +235,17 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
+	case Node_SizeOf:
+	{
+		SizeOfExpr* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(SizeOfExpr), Node_SizeOf);
+		assert(copy.type == Node_SizeOf);
+		ptr = copy.ptr;
+
+		ptr->expr = CopyASTNode(ptr->expr);
+
+		return copy;
+	}
 
 	case Node_ExpressionStatement:
 	case Node_Import:
@@ -334,6 +345,12 @@ void FreeASTNode(const NodePtr node)
 		const BlockExpr* ptr = node.ptr;
 		FreeASTNode(ptr->block);
 		FreeASTNode(ptr->type.expr);
+		break;
+	}
+	case Node_SizeOf:
+	{
+		const SizeOfExpr* ptr = node.ptr;
+		FreeASTNode(ptr->expr);
 		break;
 	}
 

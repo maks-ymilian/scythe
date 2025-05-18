@@ -17,6 +17,7 @@ typedef enum
 	Node_Subscript,
 	Node_FunctionCall,
 	Node_BlockExpression,
+	Node_SizeOf,
 
 	Node_ExpressionStatement,
 
@@ -144,6 +145,12 @@ typedef struct
 	NodePtr baseExpr;
 	Array arguments;
 } FuncCallExpr;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr expr;
+} SizeOfExpr;
 
 typedef enum
 {

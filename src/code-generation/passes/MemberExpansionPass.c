@@ -55,7 +55,7 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 
 	return (TypeInfo){
 		.effectiveType = type.modifier == TypeModifier_Pointer ? NULL : structDecl,
-		.pointerType = structDecl,
+		.pointerType = type.modifier == TypeModifier_Pointer ? structDecl : NULL,
 		.isPointer = type.modifier == TypeModifier_Pointer,
 	};
 }
@@ -120,7 +120,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 			return nullTypeInfo;
 
 		TypeInfo typeInfo = GetTypeInfoFromType(funcDecl->oldType);
-		if (typeInfo.pointerType != NULL)
+		if (typeInfo.effectiveType != NULL)
 			return typeInfo;
 
 		return GetTypeInfoFromType(funcDecl->type);
@@ -144,7 +144,7 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 			if (typeInfo.isPointer)
 				return (TypeInfo){
 					.effectiveType = typeInfo.pointerType,
-					.pointerType = typeInfo.pointerType,
+					.pointerType = NULL,
 					.isPointer = false,
 				};
 
@@ -686,6 +686,25 @@ static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
+{
+	assert(node->type == Node_SizeOf);
+	SizeOfExpr* sizeOf = node->ptr;
+
+	PROPAGATE_ERROR(VisitExpression(&sizeOf->expr, containingStatement));
+
+	uint64_t value = 1;
+
+	TypeInfo typeInfo = GetTypeInfoFromExpression(sizeOf->expr);
+	if (typeInfo.effectiveType)
+		value = CountStructMembers(typeInfo.effectiveType);
+
+	int lineNumber = sizeOf->lineNumber;
+	FreeASTNode(*node);
+	*node = AllocInteger(value, lineNumber);
+	return SUCCESS_RESULT;
+}
+
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	switch (node->type)
@@ -704,6 +723,9 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		break;
 	case Node_Subscript:
 		PROPAGATE_ERROR(VisitSubscriptExpression(node->ptr, containingStatement));
+		break;
+	case Node_SizeOf:
+		PROPAGATE_ERROR(VisitSizeOfExpression(node, containingStatement));
 		break;
 	case Node_Literal:
 		break;

@@ -27,6 +27,8 @@ typedef enum
 	Token_Break,
 	Token_Continue,
 
+	Token_SizeOf,
+
 	// literals
 	Token_NumberLiteral,
 	Token_StringLiteral,
@@ -122,6 +124,8 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_Return: return "return";
 	case Token_Break: return "break";
 	case Token_Continue: return "continue";
+
+	case Token_SizeOf: return "sizeof";
 
 	// literals
 	case Token_NumberLiteral: return "NumberLiteral";

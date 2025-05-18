@@ -9,7 +9,6 @@ struct Row
 	any padding5;
 	int[] array;
 }
-int sizeOfRow = 7;
 
 struct Matrix
 {
@@ -18,7 +17,6 @@ struct Matrix
 	any padding3;
 	Row[] rows;
 }
-int sizeOfMatrix = 5;
 
 any* currentOffset = 0;
 
@@ -27,7 +25,7 @@ Matrix[] AllocateMatrixArray(int length)
 	Matrix[] array;
 	array.ptr = currentOffset;
 	array.length = length;
-	currentOffset += length * sizeOfMatrix;
+	currentOffset += length * sizeof(array[0]);
 	return array;
 }
 
@@ -36,7 +34,7 @@ Row[] AllocateRowArray(int length)
 	Row[] array;
 	array.ptr = currentOffset;
 	array.length = length;
-	currentOffset += length * sizeOfRow;
+	currentOffset += length * sizeof(array[0]);
 	return array;
 }
 

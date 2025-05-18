@@ -89,6 +89,10 @@ static Result VisitExpression(const NodePtr* node)
 		PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr));
 		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr));
 		break;
+	case Node_SizeOf:
+		SizeOfExpr* sizeOf = node->ptr;
+		PROPAGATE_ERROR(VisitExpression(&sizeOf->expr));
+		break;
 	case Node_Literal:
 	case Node_Null:
 		break;
