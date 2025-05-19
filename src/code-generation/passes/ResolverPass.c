@@ -626,6 +626,15 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
+
+		if (currentScope->parent)
+		{
+			if (varDecl->public)
+				return ERROR_RESULT("Public variables must be in global scope", varDecl->lineNumber, currentFilePath);
+			if (varDecl->external)
+				return ERROR_RESULT("External variables must be in global scope", varDecl->lineNumber, currentFilePath);
+		}
+
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true));
 		PROPAGATE_ERROR(ResolveType(&varDecl->type, false, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
@@ -634,6 +643,14 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
+
+		if (currentScope->parent)
+		{
+			if (funcDecl->public)
+				return ERROR_RESULT("Public functions must be in global scope", funcDecl->lineNumber, currentFilePath);
+			if (funcDecl->external)
+				return ERROR_RESULT("External functions must be in global scope", funcDecl->lineNumber, currentFilePath);
+		}
 
 		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, NULL));
 
