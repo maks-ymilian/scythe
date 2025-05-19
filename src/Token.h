@@ -36,6 +36,9 @@ typedef enum
 	Token_True,
 	Token_False,
 
+	// 3 characters
+	Token_Ellipsis,
+
 	// 2 characters
 	Token_PlusEquals,
 	Token_MinusEquals,
@@ -87,7 +90,6 @@ typedef enum
 	Token_Percent,
 	Token_Caret,
 
-	// end of file
 	Token_EndOfFile,
 
 	TokenType_Max,
@@ -135,6 +137,9 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_Identifier: return "Identifier";
 	case Token_True: return "true";
 	case Token_False: return "false";
+
+	// 3 characters
+	case Token_Ellipsis: return "...";
 
 	// 2 characters
 	case Token_PlusEquals: return "+=";

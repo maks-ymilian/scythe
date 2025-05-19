@@ -28,10 +28,17 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall)
 			param = node->ptr;
 		}
 
-		if ((arg != NULL && param == NULL) ||
-			(arg == NULL && param != NULL))
-			return ERROR_RESULT("Function called with incorrect number of arguments",
+		if (arg && !param)
+		{
+			if (!funcDecl->variadic)
+				return ERROR_RESULT("Function called with too many arguments",
+					funcCall->lineNumber, currentFilePath);
+		}
+		else if (!arg && param)
+		{
+			return ERROR_RESULT("Function called with too little arguments",
 				funcCall->lineNumber, currentFilePath);
+		}
 	}
 
 	return SUCCESS_RESULT;

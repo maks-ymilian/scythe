@@ -124,28 +124,35 @@ static Result EvaluateNumberLiteral(
 }
 
 typedef Result (*ParseFunction)(NodePtr*);
-static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken)
+static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken, bool* hasEllipsis)
 {
 	*outArray = AllocateArray(sizeof(NodePtr));
 
-	NodePtr firstNode = NULL_NODE;
-	PROPAGATE_ERROR(function(&firstNode));
-	if (firstNode.ptr != NULL)
+	bool first = true;
+	while (true)
 	{
-		ArrayAdd(outArray, &firstNode);
-		while (true)
+		if (!first && MatchOne(Token_Comma) == NULL)
+			break;
+
+		NodePtr node = NULL_NODE;
+		PROPAGATE_ERROR(function(&node));
+		if (node.ptr == NULL)
 		{
-			if (MatchOne(Token_Comma) == NULL)
+			if (hasEllipsis != NULL && MatchOne(Token_Ellipsis))
+			{
+				*hasEllipsis = true;
+				break;
+			}
+
+			if (first)
 				break;
 
-			NodePtr node = NULL_NODE;
-			PROPAGATE_ERROR(function(&node));
-			if (node.ptr == NULL)
-				return ERROR_RESULT_LINE(
-					AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
-
-			ArrayAdd(outArray, &node);
+			return ERROR_RESULT_LINE(
+				AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
 		}
+
+		ArrayAdd(outArray, &node);
+		first = false;
 	}
 
 	if (MatchOne(endToken) == NULL)
@@ -432,7 +439,7 @@ static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket, NULL));
 
 	*out = AllocASTNode(
 		&(FuncCallExpr){
@@ -1178,7 +1185,8 @@ static Result ParseFunctionDeclaration(
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseFullVarDeclNoSemicolon, Token_RightBracket));
+	bool variadic = false;
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseFullVarDeclNoSemicolon, Token_RightBracket, &variadic));
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
@@ -1194,7 +1202,13 @@ static Result ParseFunctionDeclaration(
 		else
 			externalIdentifier = *identifier;
 
-		if (MatchOne(Token_Semicolon) == NULL) return ERROR_RESULT_LINE("Expected \";\"");
+		if (MatchOne(Token_Semicolon) == NULL)
+			return ERROR_RESULT_LINE("Expected \";\"");
+	}
+	else
+	{
+		if (variadic)
+			return ERROR_RESULT_LINE("Only external functions can be variadic functions");
 	}
 
 	*out = AllocASTNode(
@@ -1210,6 +1224,7 @@ static Result ParseFunctionDeclaration(
 			.globalReturn = NULL,
 			.public = public != NULL,
 			.external = external != NULL,
+			.variadic = variadic,
 			.uniqueName = -1,
 		},
 		sizeof(FuncDeclStmt), Node_FunctionDeclaration);

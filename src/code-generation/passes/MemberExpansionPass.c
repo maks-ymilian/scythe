@@ -451,7 +451,10 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
-static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
+static size_t Max(size_t a, size_t b)
+{
+	return a > b ? a : b;
+}
 
 static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* containingStatement)
 {
@@ -460,20 +463,35 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 	FuncDeclStmt* funcDecl = identifier->funcReference;
 	assert(funcDecl != NULL);
 
-	assert(funcDecl->oldParameters.length == funcCall->arguments.length);
-	for (size_t paramIndex = 0, argIndex = 0; paramIndex < funcDecl->oldParameters.length; ++argIndex, ++paramIndex)
+	assert(funcDecl->variadic
+			   ? funcCall->arguments.length >= funcDecl->oldParameters.length
+			   : funcCall->arguments.length == funcDecl->oldParameters.length);
+
+	size_t length = Max(funcCall->arguments.length, funcDecl->oldParameters.length);
+	for (size_t paramIndex = 0, argIndex = 0; paramIndex < length; ++argIndex, ++paramIndex)
 	{
-		assert(funcCall->arguments.length > argIndex);
+		assert(argIndex < funcCall->arguments.length);
 		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
-
-		const NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
-
-		const NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
-		assert(paramNode->type == Node_VariableDeclaration);
-		const VarDeclStmt* param = paramNode->ptr;
+		NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
 
 		TypeInfo argType = GetTypeInfoFromExpression(argument);
-		TypeInfo paramType = GetTypeInfoFromType(param->type);
+		TypeInfo paramType;
+		if (paramIndex < funcDecl->oldParameters.length)
+		{
+			NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
+			assert(paramNode->type == Node_VariableDeclaration);
+			VarDeclStmt* param = paramNode->ptr;
+			paramType = GetTypeInfoFromType(param->type);
+		}
+		else
+		{
+			assert(funcDecl->variadic);
+			paramType = (TypeInfo){
+				.effectiveType = NULL,
+				.pointerType = NULL,
+				.isPointer = NULL,
+			};
+		}
 
 		if (argType.effectiveType == NULL && paramType.effectiveType == NULL)
 			continue;

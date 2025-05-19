@@ -12,7 +12,6 @@
 	// treat string type the same as int and add #namedStrings
 
 	// char literals
-	// variadic for external functions
 	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))
 	// function overloading with number of parameters not the type
 	// unicode support?
@@ -24,10 +23,17 @@
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions
 	// return and break also inside loops
-	// overloading
+	// overloading and variadic
 	// type modifiers public and external
 	// binary exprs in member access and subscript and dereferencing syntax
 	
 	// passing by reference in built in functions
 
 import "tests/tests.scy"
+
+external void func(int a, ...);
+
+@init
+{
+	func(1, 2, 3, 4, 5, 6);
+}

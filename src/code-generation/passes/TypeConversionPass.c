@@ -121,18 +121,35 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 	if (outType != NULL)
 		*outType = GetType(funcDecl->type);
 
-	assert(funcDecl->parameters.length == funcCall->arguments.length);
+	assert(funcDecl->variadic
+			   ? funcCall->arguments.length >= funcDecl->parameters.length
+			   : funcCall->arguments.length == funcDecl->parameters.length);
+
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
-		const NodePtr* node = funcDecl->parameters.array[i];
-		assert(node->type == Node_VariableDeclaration);
-		const VarDeclStmt* varDecl = node->ptr;
+		NodePtr* arg = funcCall->arguments.array[i];
 
-		NodePtr* expr = funcCall->arguments.array[i];
+		TypeInfo paramType;
+		if (i < funcDecl->parameters.length)
+		{
+			NodePtr* node = funcDecl->parameters.array[i];
+			assert(node->type == Node_VariableDeclaration);
+			VarDeclStmt* varDecl = node->ptr;
+			paramType = GetType(varDecl->type);
+		}
+		else
+		{
+			assert(funcDecl->variadic);
+			paramType = (TypeInfo){
+				.effectiveType = Primitive_Any,
+				.pointerType = Primitive_Any,
+				.isPointer = false,
+			};
+		}
 
 		TypeInfo exprType;
-		PROPAGATE_ERROR(VisitExpression(expr, &exprType));
-		PROPAGATE_ERROR(ConvertExpression(expr, exprType, GetType(varDecl->type), funcCall->lineNumber));
+		PROPAGATE_ERROR(VisitExpression(arg, &exprType));
+		PROPAGATE_ERROR(ConvertExpression(arg, exprType, paramType, funcCall->lineNumber));
 	}
 
 	return SUCCESS_RESULT;

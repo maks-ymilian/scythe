@@ -229,6 +229,7 @@ typedef struct
 	Array oldParameters;
 	NodePtr block;
 	VarDeclStmt* globalReturn;
+	bool variadic;
 	bool public;
 	bool external;
 	int uniqueName;
