@@ -1100,9 +1100,10 @@ static Result ParseVariableDeclaration(
 	NodePtr* out,
 	const Token* public,
 	const Token* external,
-	const Type type,
+	Type type,
 	const Token* identifier,
-	const bool expectSemicolon)
+	bool expectSemicolon,
+	bool allowInitializer)
 {
 	NodePtr initializer = NULL_NODE;
 	const Token* equals = MatchOne(Token_Equals);
@@ -1110,6 +1111,9 @@ static Result ParseVariableDeclaration(
 	{
 		if (external)
 			return ERROR_RESULT_LINE("External variable declarations cannot have an initializer");
+
+		if (!allowInitializer)
+			return ERROR_RESULT_LINE("Variable initializers are not allowed here");
 
 		PROPAGATE_ERROR(ParseExpression(&initializer));
 		if (initializer.ptr == NULL)
@@ -1152,7 +1156,7 @@ static Result ParseVariableDeclaration(
 
 static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
 
-static Result ParseVarDeclNoSemicolon(NodePtr* out)
+static Result ParseFullVarDeclNoSemicolon(NodePtr* out)
 {
 	Type type;
 	const Token* identifier;
@@ -1160,7 +1164,7 @@ static Result ParseVarDeclNoSemicolon(NodePtr* out)
 	if (type.expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
-	return ParseVariableDeclaration(out, NULL, NULL, type, identifier, false);
+	return ParseVariableDeclaration(out, NULL, NULL, type, identifier, false, false);
 }
 
 static Result ParseFunctionDeclaration(
@@ -1174,7 +1178,7 @@ static Result ParseFunctionDeclaration(
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseVarDeclNoSemicolon, Token_RightBracket));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseFullVarDeclNoSemicolon, Token_RightBracket));
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
@@ -1233,13 +1237,9 @@ static Result ParseStructDeclaration(NodePtr* out, const Token* public, const To
 	while (true)
 	{
 		NodePtr member = NULL_NODE;
-		PROPAGATE_ERROR(ParseVarDeclNoSemicolon(&member));
-		if (member.ptr == NULL) break;
-
-		assert(member.type == Node_VariableDeclaration);
-		VarDeclStmt* varDecl = member.ptr;
-		if (varDecl->initializer.ptr != NULL)
-			return ERROR_RESULT_LINE("Variable initializers are not allowed here");
+		PROPAGATE_ERROR(ParseFullVarDeclNoSemicolon(&member));
+		if (member.ptr == NULL)
+			break;
 
 		if (MatchOne(Token_Semicolon) == NULL)
 			return ERROR_RESULT_LINE("Expected \";\"");
@@ -1309,8 +1309,7 @@ static Result ParseDeclaration(NodePtr* out, const Token* public, const Token* e
 		return NOT_FOUND_RESULT;
 
 	PROPAGATE_FOUND(ParseFunctionDeclaration(out, public, external, type, identifier));
-
-	return ParseVariableDeclaration(out, public, external, type, identifier, true);
+	return ParseVariableDeclaration(out, public, external, type, identifier, true, true);
 }
 
 static void ParseModifiers(Token** public, Token** external)

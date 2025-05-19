@@ -1,6 +1,6 @@
 @init
 {
-	int funcTest(int k, int f = 5.2)
+	int funcTest(int k, int f)
 	{
 		if (k == 1)
 			return 5;
@@ -18,7 +18,7 @@
 	}
 
 	bool AAA_test_control_flow =
-		funcTest(3) == 6 &&
-		funcTest(1) == 5 &&
+		funcTest(3, 5.2) == 6 &&
+		funcTest(1, 5.2) == 5 &&
 		funcTest(3, 6) == 2;
 }

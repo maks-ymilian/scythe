@@ -14,23 +14,6 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall)
 	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 	assert(funcDecl != NULL);
 
-	bool foundInitializer = false;
-	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-	{
-		NodePtr* node = funcDecl->parameters.array[i];
-		assert(node->type == Node_VariableDeclaration);
-		VarDeclStmt* param = node->ptr;
-
-		if (param->initializer.ptr != NULL)
-			foundInitializer = true;
-
-		if (param->initializer.ptr == NULL && foundInitializer)
-		{
-			return ERROR_RESULT("Default parameters must be at the end of the parameter list",
-				funcCall->lineNumber, currentFilePath);
-		}
-	}
-
 	for (size_t i = 0; i < Max(funcCall->arguments.length, funcDecl->parameters.length); ++i)
 	{
 		NodePtr* arg = NULL;
@@ -45,20 +28,10 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall)
 			param = node->ptr;
 		}
 
-		if (arg != NULL && param == NULL)
-		{
+		if ((arg != NULL && param == NULL) ||
+			(arg == NULL && param != NULL))
 			return ERROR_RESULT("Function called with incorrect number of arguments",
 				funcCall->lineNumber, currentFilePath);
-		}
-		else if (arg == NULL && param != NULL)
-		{
-			if (param->initializer.ptr == NULL)
-				return ERROR_RESULT("Function called with incorrect number of arguments",
-					funcCall->lineNumber, currentFilePath);
-
-			NodePtr copy = CopyASTNode(param->initializer);
-			ArrayAdd(&funcCall->arguments, &copy);
-		}
 	}
 
 	return SUCCESS_RESULT;
