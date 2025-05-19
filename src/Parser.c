@@ -444,11 +444,39 @@ static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseSubscript(NodePtr expr, NodePtr* out)
+static Result ParseSubscript(NodePtr expr, NodePtr* out, bool* isDereference)
 {
-	Token* leftBracket = MatchOne(Token_LeftSquareBracket);
-	if (leftBracket == NULL)
+	if (isDereference)
+		*isDereference = false;
+
+	Token* firstToken = MatchOne(Token_LeftSquareBracket);
+	if (firstToken == NULL)
+		firstToken = MatchOne(Token_MinusRightAngle);
+	if (firstToken == NULL)
 		return NOT_FOUND_RESULT;
+
+	if (firstToken->type == Token_MinusRightAngle)
+	{
+		if (isDereference)
+			*isDereference = true;
+
+		// syntax sugar for dereferencing
+		*out = AllocASTNode(
+			&(SubscriptExpr){
+				.lineNumber = firstToken->lineNumber,
+				.baseExpr = expr,
+				.indexExpr = AllocASTNode(
+					&(LiteralExpr){
+						.lineNumber = firstToken->lineNumber,
+						.type = Literal_Int,
+						.intValue = 0,
+					},
+					sizeof(LiteralExpr), Node_Literal),
+			},
+			sizeof(SubscriptExpr), Node_Subscript);
+
+		return SUCCESS_RESULT;
+	}
 
 	NodePtr indexExpr = NULL_NODE;
 	PROPAGATE_ERROR(ParseExpression(&indexExpr));
@@ -458,7 +486,7 @@ static Result ParseSubscript(NodePtr expr, NodePtr* out)
 
 	*out = AllocASTNode(
 		&(SubscriptExpr){
-			.lineNumber = leftBracket->lineNumber,
+			.lineNumber = firstToken->lineNumber,
 			.baseExpr = expr,
 			.indexExpr = indexExpr,
 		},
@@ -467,24 +495,27 @@ static Result ParseSubscript(NodePtr expr, NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseCallOrSubscript(NodePtr* inout)
+static Result ParseCallOrSubscript(NodePtr* inout, bool* isDereference)
 {
 	PROPAGATE_FOUND(ParseFunctionCall(*inout, inout));
-	PROPAGATE_FOUND(ParseSubscript(*inout, inout));
+	PROPAGATE_FOUND(ParseSubscript(*inout, inout, isDereference));
 	return NOT_FOUND_RESULT;
 }
 
-static Result ContinueParsePrimary(NodePtr* inout)
+static Result ContinueParsePrimary(NodePtr* inout, bool alreadyParsedDot)
 {
 	const int lineNumber = CurrentToken()->lineNumber;
 
-	Token* dot = MatchOne(Token_Dot);
-	if (dot != NULL)
+	Token* dot = NULL;
+	if (!alreadyParsedDot)
+		dot = MatchOne(Token_Dot);
+
+	if (dot != NULL || alreadyParsedDot)
 	{
 		Array identifiers;
 		PROPAGATE_ERROR(ParseIdentifierChain(&identifiers));
 		if (identifiers.array == NULL)
-			return ERROR_RESULT_LINE("Expected identifier after \".\"");
+			return ERROR_RESULT_LINE("Expected identifier after member access");
 
 		*inout = AllocASTNode(
 			&(MemberAccessExpr){
@@ -499,9 +530,10 @@ static Result ContinueParsePrimary(NodePtr* inout)
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
 
-	const Result result = ParseCallOrSubscript(inout);
+	bool isDereference = false;
+	const Result result = ParseCallOrSubscript(inout, &isDereference);
 	PROPAGATE_ERROR(result);
-	if (result.type == Result_NotFound && dot == NULL)
+	if (result.type == Result_NotFound && dot == NULL && !alreadyParsedDot)
 		return NOT_FOUND_RESULT;
 
 	if (inout->type == Node_Subscript)
@@ -511,7 +543,7 @@ static Result ContinueParsePrimary(NodePtr* inout)
 			return ERROR_RESULT_LINE("Expected expression");
 	}
 
-	PROPAGATE_ERROR(ContinueParsePrimary(inout));
+	PROPAGATE_ERROR(ContinueParsePrimary(inout, isDereference));
 	return SUCCESS_RESULT;
 }
 
@@ -554,13 +586,14 @@ static Result ParsePrimary(NodePtr* out)
 	}
 	assert(out->ptr != NULL);
 
-	PROPAGATE_ERROR(ParseCallOrSubscript(out));
+	bool isDereference = false;
+	PROPAGATE_ERROR(ParseCallOrSubscript(out, &isDereference));
 
 	if (out->type == Node_FunctionCall ||
 		out->type == Node_Subscript)
 	{
 		NodePtr prev = *out;
-		const Result result = ContinueParsePrimary(out);
+		const Result result = ContinueParsePrimary(out, isDereference);
 		PROPAGATE_ERROR(result);
 		if (prev.type == Node_Subscript &&
 			((SubscriptExpr*)prev.ptr)->indexExpr.ptr == NULL)

@@ -59,6 +59,8 @@ typedef enum
 	Token_LeftAngleLeftAngle,
 	Token_RightAngleRightAngle,
 
+	Token_MinusRightAngle,
+
 	// 1 character
 	Token_LeftBracket,
 	Token_RightBracket,
@@ -156,6 +158,8 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 
 	case Token_LeftAngleLeftAngle: return "<<";
 	case Token_RightAngleRightAngle: return ">>";
+
+	case Token_MinusRightAngle: return "->";
 
 	// 1 character
 	case Token_LeftBracket: return "(";

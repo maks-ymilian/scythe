@@ -1,5 +1,3 @@
-int deref = 0;
-
 struct Row
 {
 	any padding1;
@@ -44,7 +42,7 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 			for (int k = 0; k < m; ++k)
 				sum += a.rows[i].array[k] * b.rows[k].array[j];
 
-			c[deref].rows[i].array[j] = sum;
+			c->rows[i].array[j] = sum;
 		}
 	}
 }
@@ -58,16 +56,16 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 		int number = 1;
 		void InitializeRow(Row* row, int cols)
 		{
-			row[deref].array = AllocateArray(1, cols);
+			row->array = AllocateArray(1, cols);
 
 			for (int i = 0; i < cols; void { ++i; ++number; })
-				row[deref].array[i] = number;
+				row->array[i] = number;
 		}
 
-		matrix[deref].rows = AllocateArray(sizeof(Row), rows);
+		matrix->rows = AllocateArray(sizeof(Row), rows);
 
 		for (int i = 0; i < rows; ++i)
-			InitializeRow(matrix[deref].rows.ptr + i, cols);
+			InitializeRow(matrix->rows.ptr + i, cols);
 	}
 
 	InitializeMatrix(matrices.ptr + 0, 7, 6);

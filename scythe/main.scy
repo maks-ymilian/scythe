@@ -6,9 +6,9 @@
 		// it should use absolute paths
 	// dereferencing syntax sugar
 	// maybe make it so sections are only allowed in the main function
-	// asserts
 	// structs in blocks
 	// binary expressions as start of member access and as baseExpr of subscript
+	// asserts
 
 // things to test:
 	// assigning wrong types
