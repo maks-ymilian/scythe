@@ -4,10 +4,9 @@
 		// modifiers should not be allowed in blocks
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
 		// it should use absolute paths
-	// dereferencing syntax sugar
 	// maybe make it so sections are only allowed in the main function
 	// structs in blocks
-	// binary expressions as start of member access and as baseExpr of subscript
+	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
 	// asserts
 
 // things to test:
@@ -17,5 +16,6 @@
 	// return and break also inside loops
 	// default parameters
 	// type modifiers public and external
+	// binary exprs in member access and subscript and dereferencing syntax
 
 import "tests/tests.scy"

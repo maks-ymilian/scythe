@@ -613,7 +613,7 @@ static Result ParsePrimary(NodePtr* out)
 
 static Result ParseUnary(NodePtr* out)
 {
-	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus}, 5);
+	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus, Token_Asterisk}, 6);
 	if (operator== NULL)
 		return ParsePrimary(out);
 

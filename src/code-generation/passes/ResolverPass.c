@@ -505,6 +505,24 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	case Node_Unary:
 	{
 		UnaryExpr* unary = node->ptr;
+
+		// syntax sugar for dereferencing
+		if (unary->operatorType == Unary_Dereference)
+		{
+			NodePtr old = *node;
+			*node = AllocASTNode(
+				&(SubscriptExpr){
+					.lineNumber = unary->lineNumber,
+					.baseExpr = unary->expression,
+					.indexExpr = AllocInteger(0, unary->lineNumber),
+				},
+				sizeof(SubscriptExpr), Node_Subscript);
+			unary->expression = NULL_NODE;
+			FreeASTNode(old);
+
+			return ResolveExpression(node, checkForValue);
+		}
+
 		return ResolveExpression(&unary->expression, true);
 	}
 	case Node_BlockExpression:

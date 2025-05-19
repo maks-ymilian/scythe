@@ -280,17 +280,6 @@ static NodePtr AllocMultiply(NodePtr left, NodePtr right, int lineNumber)
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static NodePtr AllocInteger(uint64_t value, int lineNumber)
-{
-	return AllocASTNode(
-		&(LiteralExpr){
-			.lineNumber = lineNumber,
-			.type = Literal_Int,
-			.intValue = value,
-		},
-		sizeof(LiteralExpr), Node_Literal);
-}
-
 static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, size_t memberCount, int lineNumber)
 {
 	return AllocASTNode(

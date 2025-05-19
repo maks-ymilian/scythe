@@ -96,6 +96,7 @@ typedef enum
 	Unary_Negate,
 	Unary_Increment,
 	Unary_Decrement,
+	Unary_Dereference,
 } UnaryOperator;
 
 typedef struct

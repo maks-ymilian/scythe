@@ -47,3 +47,14 @@ NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr value, int lineNumber)
 {
 	return AllocAssignmentStatement(AllocIdentifier(varDecl, lineNumber), value, lineNumber);
 }
+
+NodePtr AllocInteger(uint64_t value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Int,
+			.intValue = value,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}

@@ -82,6 +82,7 @@ TokenType unaryOperatorToTokenType[] = {
 	[Unary_Negate] = Token_Exclamation,
 	[Unary_Increment] = Token_PlusPlus,
 	[Unary_Decrement] = Token_MinusMinus,
+	[Unary_Dereference] = Token_Asterisk,
 };
 
 UnaryOperator tokenTypeToUnaryOperator[] = {
@@ -90,6 +91,7 @@ UnaryOperator tokenTypeToUnaryOperator[] = {
 	[Token_Exclamation] = Unary_Negate,
 	[Token_PlusPlus] = Unary_Increment,
 	[Token_MinusMinus] = Unary_Decrement,
+	[Token_Asterisk] = Unary_Dereference,
 };
 
 TokenType primitiveTypeToTokenType[] = {
