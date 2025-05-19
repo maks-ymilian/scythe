@@ -30,10 +30,3 @@
 	// passing by reference in built in functions
 
 import "tests/tests.scy"
-
-external void func(int a, ...);
-
-@init
-{
-	func(1, 2, 3, 4, 5, 6);
-}

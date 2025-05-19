@@ -180,11 +180,33 @@ static void ChangeArrayTypeToStruct(Type* type)
 	FreeASTNode(oldExpr);
 }
 
+static void FreeDeclarations(Map* declarations)
+{
+	for (MAP_ITERATE(i, declarations))
+	{
+		Array* array = i->value;
+		FreeArray(array);
+	}
+	FreeMap(declarations);
+}
+
+static NodePtr* GetFirstNode(const Map* declarations, const char* key)
+{
+	Array* array = MapGet(declarations, key);
+	if (array == NULL)
+		return NULL;
+	else
+	{
+		assert(array->length == 1);
+		return (NodePtr*)array->array[0];
+	}
+}
+
 static void PushScope()
 {
 	Scope* new = malloc(sizeof(Scope));
 	*new = (Scope){
-		.declarations = AllocateMap(sizeof(NodePtr)),
+		.declarations = AllocateMap(sizeof(Array)),
 		.parent = NULL,
 	};
 
@@ -206,7 +228,7 @@ static void PopScope(Map* outMap)
 	currentScope = currentScope->parent;
 
 	if (outMap == NULL)
-		FreeMap(&scope->declarations);
+		FreeDeclarations(&scope->declarations);
 	else
 		*outMap = scope->declarations;
 
@@ -216,10 +238,26 @@ static void PopScope(Map* outMap)
 static Result RegisterDeclaration(const char* name, const NodePtr* node, const int lineNumber)
 {
 	assert(currentScope != NULL);
-	if (!MapAdd(&currentScope->declarations, name, node))
-		return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
 
-	return SUCCESS_RESULT;
+	Array* array = MapGet(&currentScope->declarations, name);
+	if (array)
+	{
+		if (node->type != Node_FunctionDeclaration)
+			return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
+
+		ArrayAdd(array, node);
+		return SUCCESS_RESULT;
+	}
+	else
+	{
+		Array array = AllocateArray(sizeof(NodePtr));
+		ArrayAdd(&array, node);
+
+		if (!MapAdd(&currentScope->declarations, name, &array))
+			assert(0);
+
+		return SUCCESS_RESULT;
+	}
 }
 
 static Result ValidateStructAccess(Type type, const char* text, NodePtr* current, int lineNumber)
@@ -288,10 +326,10 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 		const Scope* scope = currentScope;
 		while (scope != NULL)
 		{
-			void* get = MapGet(&scope->declarations, text);
-			if (get != NULL)
+			NodePtr* node = GetFirstNode(&scope->declarations, text);
+			if (node != NULL)
 			{
-				*current = *(NodePtr*)get;
+				*current = *node;
 				return SUCCESS_RESULT;
 			}
 
@@ -353,10 +391,10 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 	case Node_Import:
 	{
 		const ImportStmt* import = current->ptr;
-		Map* module = MapGet(&modules, import->moduleName);
-		assert(module != NULL);
+		Map* declarations = MapGet(&modules, import->moduleName);
+		assert(declarations != NULL);
 
-		const NodePtr* node = MapGet(module, text);
+		const NodePtr* node = GetFirstNode(declarations, text);
 		if (node == NULL)
 			return ERROR_RESULT(
 				AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", text, import->moduleName),
@@ -600,16 +638,19 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 	assert(importNode->type == Node_Import);
 	const ImportStmt* import = importNode->ptr;
 
-	const Map* module = MapGet(&modules, import->moduleName);
-	assert(module != NULL);
+	const Map* declarations = MapGet(&modules, import->moduleName);
+	assert(declarations != NULL);
 
 	PROPAGATE_ERROR(RegisterDeclaration(import->moduleName, importNode, import->lineNumber));
 
 	if (import->public || topLevel)
 	{
-		for (MAP_ITERATE(i, module))
+		for (MAP_ITERATE(i, declarations))
 		{
-			const NodePtr* node = i->value;
+			Array* array = i->value;
+			assert(array->length == 1);
+
+			NodePtr* node = array->array[0];
 			if (node->type == Node_Import &&
 				((ImportStmt*)node->ptr)->public)
 				RecursiveRegisterImportNode(node, false);
@@ -775,7 +816,7 @@ Result ResolverPass(const AST* ast)
 	}
 
 	for (MAP_ITERATE(i, &modules))
-		FreeMap(i->value);
+		FreeDeclarations(i->value);
 	FreeMap(&modules);
 
 	FreeMap(&structTypeToArrayStruct);
