@@ -72,3 +72,13 @@ char* AllocateString2Int(const char* format, const int insert1, const int insert
 	snprintf(str, bufferLength, format, insert1, insert2);
 	return str;
 }
+
+char* AllocateString1Str1Int(const char* format, const char* insert1, const int insert2)
+{
+	const size_t insertLength = strlen(insert1) + (size_t)(IntCharCount(insert2));
+	const size_t formatLength = strlen(format) - 4;
+	const size_t bufferLength = insertLength + formatLength + 1;
+	char* str = malloc(bufferLength);
+	snprintf(str, bufferLength, format, insert1, insert2);
+	return str;
+}

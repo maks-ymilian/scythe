@@ -2,47 +2,6 @@
 
 static const char* currentFilePath = NULL;
 
-static size_t Max(size_t a, size_t b)
-{
-	return a > b ? a : b;
-}
-
-static Result VisitFunctionCall(FuncCallExpr* funcCall)
-{
-	assert(funcCall->baseExpr.type == Node_MemberAccess);
-	const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
-	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
-	assert(funcDecl != NULL);
-
-	for (size_t i = 0; i < Max(funcCall->arguments.length, funcDecl->parameters.length); ++i)
-	{
-		NodePtr* arg = NULL;
-		if (i < funcCall->arguments.length)
-			arg = funcCall->arguments.array[i];
-
-		VarDeclStmt* param = NULL;
-		if (i < funcDecl->parameters.length)
-		{
-			NodePtr* node = funcDecl->parameters.array[i];
-			assert(node->type == Node_VariableDeclaration);
-			param = node->ptr;
-		}
-
-		if (arg && !param)
-		{
-			if (!funcDecl->variadic)
-				return ERROR_RESULT("Function called with too many arguments",
-					funcCall->lineNumber, currentFilePath);
-		}
-		else if (!arg && param)
-		{
-			return ERROR_RESULT("Function called with too little arguments",
-				funcCall->lineNumber, currentFilePath);
-		}
-	}
-
-	return SUCCESS_RESULT;
-}
 
 static Result VisitExpression(const NodePtr* node)
 {

@@ -1,0 +1,46 @@
+
+int callingLocation;
+
+void func(int a)
+{
+	callingLocation = 1;
+}
+
+void func(int a, int b, int c)
+{
+	callingLocation = 2;
+}
+
+external void func(int a, int b, int c, int d, ...);
+
+@init
+{
+	bool passed = true;
+
+	func(0);
+	if (callingLocation != 1) passed = false;
+
+	func(0, 0, 0);
+	if (callingLocation != 2) passed = false;
+
+	{
+		void func(int a, int b)
+		{
+			callingLocation = 3;
+		}
+
+		func(0, 0);
+		if (callingLocation != 3) passed = false;
+	}
+	{
+		void func(int a, int b)
+		{
+			callingLocation = 4;
+		}
+
+		func(0, 0);
+		if (callingLocation != 4) passed = false;
+	}
+
+	bool AAA_test_function_overloading_variadic = passed;
+}

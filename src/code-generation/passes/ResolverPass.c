@@ -33,9 +33,10 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 };
 
 static Result VisitStatement(const NodePtr* node);
-static Result ResolveExpression(NodePtr* node, bool checkForValue);
+static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
 static Result ResolveType(Type* type, bool voidAllowed, bool* isType);
 static Result VisitBlock(const BlockStmt* block);
+static Result FindFunctionOverload(const char* text, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber);
 
 static NodePtr AllocMemberVarDecl(const char* name, Type type)
 {
@@ -197,7 +198,7 @@ static NodePtr* GetFirstNode(const Map* declarations, const char* key)
 		return NULL;
 	else
 	{
-		assert(array->length == 1);
+		assert(array->length >= 1);
 		return (NodePtr*)array->array[0];
 	}
 }
@@ -235,6 +236,34 @@ static void PopScope(Map* outMap)
 	free(scope);
 }
 
+static bool VariadicFunctionIsAmbiguous(const char* name, FuncDeclStmt* funcDecl)
+{
+	assert(currentScope != NULL);
+	const Scope* scope = currentScope;
+	for (; scope != NULL; scope = scope->parent)
+	{
+		Array* array = MapGet(&scope->declarations, name);
+		if (array == NULL)
+			continue;
+
+		assert(array->length >= 1);
+		for (size_t i = 0; i < array->length; ++i)
+		{
+			NodePtr* node = array->array[i];
+			assert(node->type == Node_FunctionDeclaration);
+			FuncDeclStmt* currentFunc = node->ptr;
+
+			if (currentFunc == funcDecl)
+				continue;
+
+			if (currentFunc->variadic || currentFunc->parameters.length >= funcDecl->parameters.length)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 static Result RegisterDeclaration(const char* name, const NodePtr* node, const int lineNumber)
 {
 	assert(currentScope != NULL);
@@ -246,7 +275,6 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 			return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
 
 		ArrayAdd(array, node);
-		return SUCCESS_RESULT;
 	}
 	else
 	{
@@ -255,9 +283,29 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 
 		if (!MapAdd(&currentScope->declarations, name, &array))
 			assert(0);
-
-		return SUCCESS_RESULT;
 	}
+
+	// check for function overload ambiguity
+	if (node->type == Node_FunctionDeclaration)
+	{
+		FuncDeclStmt* funcDecl = node->ptr;
+		bool isAmbiguous = false;
+
+		if (funcDecl->variadic)
+			isAmbiguous = VariadicFunctionIsAmbiguous(name, funcDecl);
+		else
+			PROPAGATE_ERROR(FindFunctionOverload(name, NULL, funcDecl->parameters.length, &isAmbiguous, lineNumber));
+
+		if (isAmbiguous)
+			return ERROR_RESULT(
+				AllocateString1Str(
+					"Function declaration \"%s\" is ambiguous with another overload",
+					funcDecl->name),
+				lineNumber,
+				currentFilePath);
+	}
+
+	return SUCCESS_RESULT;
 }
 
 static Result ValidateStructAccess(Type type, const char* text, NodePtr* current, int lineNumber)
@@ -316,15 +364,90 @@ static bool NodeIsPublicDeclaration(const NodePtr* node)
 	}
 }
 
-static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineNumber)
+static size_t Max(size_t a, size_t b)
+{
+	return a > b ? a : b;
+}
+
+static bool CheckFunctionOverload(size_t argCount, size_t paramCount, bool isVariadic)
+{
+	for (size_t i = 0; i < Max(argCount, paramCount); ++i)
+	{
+		if ((!isVariadic && i < argCount && i >= paramCount) ||
+			(i >= argCount && i < paramCount))
+			return false;
+	}
+
+	return true;
+}
+
+static Result FindFunctionOverload(const char* name, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber)
+{
+	NodePtr _;
+	if (!outNode)
+		outNode = &_;
+
+	if (isAmbiguous)
+		*isAmbiguous = false;
+
+	*outNode = NULL_NODE;
+
+	bool functionNameExists = false;
+
+	assert(currentScope != NULL);
+	const Scope* scope = currentScope;
+	for (; scope != NULL; scope = scope->parent)
+	{
+		Array* array = MapGet(&scope->declarations, name);
+		if (array == NULL)
+			continue;
+
+		functionNameExists = true;
+
+		assert(array->length >= 1);
+		for (size_t i = 0; i < array->length; ++i)
+		{
+			NodePtr* node = array->array[i];
+			assert(node->type == Node_FunctionDeclaration);
+			FuncDeclStmt* funcDecl = node->ptr;
+
+			if (CheckFunctionOverload(argCount, funcDecl->parameters.length, funcDecl->variadic))
+			{
+				if (outNode->ptr && isAmbiguous)
+					*isAmbiguous = true;
+
+				*outNode = *node;
+			}
+		}
+	}
+
+	if (outNode->ptr)
+		return SUCCESS_RESULT;
+	else if (functionNameExists)
+		return ERROR_RESULT(
+			AllocateString1Str1Int(
+				"Could not find overload for function \"%s\" with %d parameter(s)",
+				name,
+				argCount),
+			lineNumber,
+			currentFilePath);
+	else
+		return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber, currentFilePath);
+}
+
+static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallExpr* resolveFuncCall, int lineNumber)
 {
 	switch (current->type)
 	{
 	case Node_Null:
 	{
+		// if resolving the baseExpr of a FuncCallExpr
+		if (resolveFuncCall)
+			return FindFunctionOverload(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
+
 		assert(currentScope != NULL);
 		const Scope* scope = currentScope;
-		while (scope != NULL)
+		for (; scope != NULL; scope = scope->parent)
 		{
 			NodePtr* node = GetFirstNode(&scope->declarations, text);
 			if (node != NULL)
@@ -332,8 +455,6 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, int lineN
 				*current = *node;
 				return SUCCESS_RESULT;
 			}
-
-			scope = scope->parent;
 		}
 
 		*current = NULL_NODE;
@@ -427,19 +548,19 @@ static NodePtr GetBaseExpression(NodePtr node)
 	}
 }
 
-static Result ResolveMemberAccess(NodePtr* node)
+static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall)
 {
 	assert(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 
-	PROPAGATE_ERROR(ResolveExpression(&memberAccess->start, true));
+	PROPAGATE_ERROR(ResolveExpression(&memberAccess->start, true, NULL));
 
 	NodePtr current = memberAccess->start;
 	assert(memberAccess->identifiers.array != NULL);
 	for (size_t i = 0; i < memberAccess->identifiers.length; ++i)
 	{
 		char* text = *(char**)memberAccess->identifiers.array[i];
-		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, memberAccess->lineNumber));
+		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, resolveFuncCall, memberAccess->lineNumber));
 
 		// set varReference to the first one for now
 		if (current.type == Node_VariableDeclaration &&
@@ -479,7 +600,7 @@ static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
 	{
 	case Node_MemberAccess:
 	{
-		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr));
+		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr, NULL));
 
 		assert(type->expr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = type->expr.ptr;
@@ -515,7 +636,7 @@ static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveExpression(NodePtr* node, bool checkForValue)
+static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall)
 {
 	switch (node->type)
 	{
@@ -524,7 +645,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 		return SUCCESS_RESULT;
 	case Node_MemberAccess:
 	{
-		PROPAGATE_ERROR(ResolveMemberAccess(node));
+		PROPAGATE_ERROR(ResolveMemberAccess(node, resolveFuncCall));
 		if (node->type == Node_MemberAccess && checkForValue)
 		{
 			const MemberAccessExpr* memberAccess = node->ptr;
@@ -536,8 +657,8 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	case Node_Binary:
 	{
 		BinaryExpr* binary = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&binary->left, true));
-		PROPAGATE_ERROR(ResolveExpression(&binary->right, true));
+		PROPAGATE_ERROR(ResolveExpression(&binary->left, true, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&binary->right, true, NULL));
 		return SUCCESS_RESULT;
 	}
 	case Node_Unary:
@@ -558,10 +679,10 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 			unary->expression = NULL_NODE;
 			FreeASTNode(old);
 
-			return ResolveExpression(node, checkForValue);
+			return ResolveExpression(node, checkForValue, NULL);
 		}
 
-		return ResolveExpression(&unary->expression, true);
+		return ResolveExpression(&unary->expression, true, NULL);
 	}
 	case Node_BlockExpression:
 	{
@@ -585,7 +706,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 		{
 			FreeASTNode(sizeOf->type.expr);
 			sizeOf->type = (Type){.expr = NULL_NODE};
-			PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true));
+			PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true, NULL));
 		}
 		return SUCCESS_RESULT;
 	}
@@ -593,7 +714,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	{
 		FuncCallExpr* funcCall = node->ptr;
 
-		PROPAGATE_ERROR(ResolveExpression(&funcCall->baseExpr, false));
+		PROPAGATE_ERROR(ResolveExpression(&funcCall->baseExpr, false, funcCall));
 		if (funcCall->baseExpr.type == Node_MemberAccess)
 		{
 			MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
@@ -605,7 +726,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 			goto notFunctionError;
 
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
-			PROPAGATE_ERROR(ResolveExpression(funcCall->arguments.array[i], true));
+			PROPAGATE_ERROR(ResolveExpression(funcCall->arguments.array[i], true, NULL));
 
 		return SUCCESS_RESULT;
 
@@ -615,8 +736,8 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue)
 	case Node_Subscript:
 	{
 		SubscriptExpr* subscript = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&subscript->baseExpr, true));
-		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->baseExpr, true, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true, NULL));
 		return SUCCESS_RESULT;
 	}
 	default: INVALID_VALUE(node->type);
@@ -648,7 +769,7 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 		for (MAP_ITERATE(i, declarations))
 		{
 			Array* array = i->value;
-			assert(array->length == 1);
+			assert(array->length >= 1);
 
 			NodePtr* node = array->array[0];
 			if (node->type == Node_Import &&
@@ -676,7 +797,7 @@ static Result VisitStatement(const NodePtr* node)
 				return ERROR_RESULT("External variables must be in global scope", varDecl->lineNumber, currentFilePath);
 		}
 
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true));
+		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true, NULL));
 		PROPAGATE_ERROR(ResolveType(&varDecl->type, false, NULL));
 		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
 		return SUCCESS_RESULT;
@@ -732,8 +853,8 @@ static Result VisitStatement(const NodePtr* node)
 	}
 
 	case Node_BlockStatement: return VisitBlock(node->ptr);
-	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr, true);
-	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr, true);
+	case Node_ExpressionStatement: return ResolveExpression(&((ExpressionStmt*)node->ptr)->expr, true, NULL);
+	case Node_Return: return ResolveExpression(&((ReturnStmt*)node->ptr)->expr, true, NULL);
 
 	case Node_Section:
 	{
@@ -744,7 +865,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, true));
+		PROPAGATE_ERROR(ResolveExpression(&ifStmt->expr, true, NULL));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PopScope(NULL);
@@ -756,7 +877,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node->ptr;
-		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, true));
+		PROPAGATE_ERROR(ResolveExpression(&whileStmt->expr, true, NULL));
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		PopScope(NULL);
@@ -767,8 +888,8 @@ static Result VisitStatement(const NodePtr* node)
 		ForStmt* forStmt = node->ptr;
 		PushScope();
 		PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, true));
-		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment, true));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->condition, true, NULL));
+		PROPAGATE_ERROR(ResolveExpression(&forStmt->increment, true, NULL));
 		PROPAGATE_ERROR(VisitStatement(&forStmt->stmt));
 		PopScope(NULL);
 		return SUCCESS_RESULT;

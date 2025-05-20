@@ -13,7 +13,6 @@
 
 	// char literals
 	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))
-	// function overloading with number of parameters not the type
 	// unicode support?
 	// escape characters in strings
 	// you can assign to slider(x) also keyword collision
@@ -23,7 +22,6 @@
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions
 	// return and break also inside loops
-	// overloading and variadic
 	// type modifiers public and external
 	// binary exprs in member access and subscript and dereferencing syntax
 	
