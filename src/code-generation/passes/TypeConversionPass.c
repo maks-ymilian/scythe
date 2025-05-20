@@ -341,7 +341,8 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 	case Binary_Assignment:
 	{
 		if (binary->left.type != Node_MemberAccess &&
-			binary->left.type != Node_Subscript)
+			binary->left.type != Node_Subscript &&
+			binary->left.type != Node_FunctionCall) // slider()
 			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 		PROPAGATE_ERROR(ConvertExpression(

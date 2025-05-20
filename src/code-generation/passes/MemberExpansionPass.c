@@ -369,8 +369,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	NodePtr node,
 	VarDeclStmt* member,
 	size_t index,
-	size_t memberCount,
-	bool isLeft)
+	size_t memberCount)
 {
 	switch (node.type)
 	{
@@ -390,12 +389,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 				return new;
 			}
 			else if (memberAccess->start.type == Node_FunctionCall)
-			{
-				if (isLeft)
-					assert(0);
-
 				assert(!"todo");
-			}
 			else
 				assert(0);
 		}
@@ -411,9 +405,6 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	}
 	case Node_FunctionCall:
 	{
-		if (isLeft)
-			assert(0);
-
 		if (index == 0)
 			return CopyASTNode(node);
 		else
@@ -447,7 +438,7 @@ static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size
 {
 	const ExpandArgumentData* d = data;
 
-	NodePtr expr = AllocStructMemberAssignmentExpr(d->argumentNode, member, index, d->memberCount, false);
+	NodePtr expr = AllocStructMemberAssignmentExpr(d->argumentNode, member, index, d->memberCount);
 	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
@@ -527,8 +518,8 @@ static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* 
 {
 	const GenerateStructMemberAssignmentData* d = data;
 	NodePtr statement = AllocAssignmentStatement(
-		AllocStructMemberAssignmentExpr(d->leftExpr, member, index, d->memberCount, true),
-		AllocStructMemberAssignmentExpr(d->rightExpr, member, index, d->memberCount, false),
+		AllocStructMemberAssignmentExpr(d->leftExpr, member, index, d->memberCount),
+		AllocStructMemberAssignmentExpr(d->rightExpr, member, index, d->memberCount),
 		-1);
 	ArrayAdd(d->statements, &statement);
 }
@@ -594,7 +585,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
 	if (binary->left.type != Node_MemberAccess &&
-		binary->left.type != Node_Subscript)
+		binary->left.type != Node_Subscript &&
+		binary->left.type != Node_FunctionCall) // slider()
 		return ERROR_RESULT("Left operand of aggregate type assignment must be a variable",
 			binary->lineNumber,
 			currentFilePath);
