@@ -16,6 +16,7 @@ typedef enum
 	Token_Import,
 	Token_Public,
 	Token_External,
+	Token_As,
 
 	Token_If,
 	Token_Else,
@@ -118,6 +119,7 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_Import: return "import";
 	case Token_Public: return "public";
 	case Token_External: return "external";
+	case Token_As: return "as";
 
 	case Token_If: return "if";
 	case Token_Else: return "else";

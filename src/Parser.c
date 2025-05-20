@@ -1127,14 +1127,17 @@ static Result ParseVariableDeclaration(
 			return ERROR_RESULT_LINE("Expected expression");
 	}
 
-	Token externalIdentifier = {};
-	if (external)
+	char* externalIdentifier = identifier->text;
+	if (MatchOne(Token_As))
 	{
+		if (!external)
+			return ERROR_RESULT_LINE("Only external declarations can have an external identifier");
+
 		const Token* token = MatchOne(Token_Identifier);
-		if (token != NULL)
-			externalIdentifier = *token;
-		else
-			externalIdentifier = *identifier;
+		if (token == NULL)
+			return ERROR_RESULT_LINE("Expected identifier after \"as\"");
+
+		externalIdentifier = token->text;
 	}
 
 	if (expectSemicolon)
@@ -1150,7 +1153,7 @@ static Result ParseVariableDeclaration(
 			.type = type,
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier.text),
+			.externalName = AllocateString(externalIdentifier),
 			.initializer = initializer,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
 			.public = public != NULL,
@@ -1193,23 +1196,26 @@ static Result ParseFunctionDeclaration(
 	if (block.ptr == NULL && !external) return ERROR_RESULT_LINE("Expected code block after function declaration");
 	if (block.ptr != NULL && external) return ERROR_RESULT_LINE("External functions cannot have code blocks");
 
-	Token externalIdentifier = {};
+	char* externalIdentifier = identifier->text;
+	if (MatchOne(Token_As))
+	{
+		if (!external)
+			return ERROR_RESULT_LINE("Only external declarations can have an external identifier");
+
+		const Token* token = MatchOne(Token_Identifier);
+		if (token == NULL)
+			return ERROR_RESULT_LINE("Expected identifier after \"as\"");
+
+		externalIdentifier = token->text;
+	}
+
 	if (external)
 	{
-		const Token* token = MatchOne(Token_Identifier);
-		if (token != NULL)
-			externalIdentifier = *token;
-		else
-			externalIdentifier = *identifier;
-
 		if (MatchOne(Token_Semicolon) == NULL)
 			return ERROR_RESULT_LINE("Expected \";\"");
 	}
-	else
-	{
-		if (variadic)
-			return ERROR_RESULT_LINE("Only external functions can be variadic functions");
-	}
+	else if (variadic)
+		return ERROR_RESULT_LINE("Only external functions can be variadic functions");
 
 	*out = AllocASTNode(
 		&(FuncDeclStmt){
@@ -1217,7 +1223,7 @@ static Result ParseFunctionDeclaration(
 			.oldType = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None},
 			.lineNumber = identifier->lineNumber,
 			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier.text),
+			.externalName = AllocateString(externalIdentifier),
 			.parameters = params,
 			.oldParameters = AllocateArray(sizeof(NodePtr)),
 			.block = block,
