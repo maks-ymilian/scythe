@@ -16,7 +16,9 @@ typedef enum
 	Token_Struct,
 	Token_Import,
 	Token_Public,
+	Token_Private,
 	Token_External,
+	Token_Internal,
 	Token_As,
 
 	Token_If,
@@ -78,6 +80,7 @@ typedef enum
 
 	Token_Dot,
 	Token_Comma,
+	Token_Colon,
 	Token_Semicolon,
 	Token_Plus,
 	Token_Minus,
@@ -120,7 +123,9 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_Struct: return "struct";
 	case Token_Import: return "import";
 	case Token_Public: return "public";
+	case Token_Private: return "private";
 	case Token_External: return "external";
+	case Token_Internal: return "internal";
 	case Token_As: return "as";
 
 	case Token_If: return "if";
@@ -181,6 +186,7 @@ static const char* GetTokenTypeString(const TokenType tokenType)
 	case Token_RightAngleBracket: return ">";
 	case Token_Dot: return ".";
 	case Token_Comma: return ",";
+	case Token_Colon: return ":";
 	case Token_Semicolon: return ";";
 	case Token_Plus: return "+";
 	case Token_Minus: return "-";

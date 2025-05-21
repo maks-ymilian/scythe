@@ -29,10 +29,7 @@ static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 		&(VarDeclStmt){
 			.lineNumber = lineNumber,
 			.name = AllocateString(name),
-			.externalName = NULL,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-			.public = false,
-			.external = false,
 			.uniqueName = -1,
 			.type.modifier = TypeModifier_None,
 			.type.expr = AllocASTNode(
@@ -121,10 +118,7 @@ static NodePtr AllocReturnValueDecl(const Type type, const int lineNumber)
 		&(VarDeclStmt){
 			.lineNumber = lineNumber,
 			.name = AllocateString(returnValueName),
-			.externalName = NULL,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-			.public = false,
-			.external = false,
 			.uniqueName = -1,
 			.type.expr = CopyASTNode(type.expr),
 			.type.modifier = type.modifier,

@@ -4,6 +4,7 @@
 		// modifiers should not be allowed in blocks
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
 		// it should use absolute paths
+		// segfault on empty import
 	// maybe make it so sections are only allowed in the main function
 	// structs in blocks
 	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
@@ -19,7 +20,6 @@
 	// global.* variables
 	// int conversion breaks pass by reference
 	// external structs how will this work with nested
-	// c++ style public and external
 
 // things to test:
 	// assigning wrong types
@@ -28,7 +28,7 @@
 	// return and break also inside loops
 	// type modifiers public and external
 	// binary exprs in member access and subscript and dereferencing syntax
-	
+	// public private internal external on functions variables structs imports
 	// passing by reference in built in functions
 
 import "builtin/jsfx.scy"

@@ -16,13 +16,13 @@ struct Scope
 	Map declarations;
 };
 
-static const char* currentFilePath = NULL;
+static const char* currentFilePath;
 
 static Map modules;
 
-static Scope* currentScope = NULL;
+static Scope* currentScope;
 
-static ModuleNode* currentModule = NULL;
+static ModuleNode* currentModule;
 static Map structTypeToArrayStruct;
 static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 	[Primitive_Any] = NULL,
@@ -31,7 +31,9 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 	[Primitive_Bool] = NULL,
 };
 
-static Result VisitStatement(const NodePtr* node);
+static ModifierState currentModifierState;
+
+static Result VisitStatement(NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
 static Result ResolveType(Type* type, bool voidAllowed, bool* isType);
 static Result VisitBlock(const BlockStmt* block);
@@ -44,11 +46,8 @@ static NodePtr AllocMemberVarDecl(const char* name, Type type)
 			.lineNumber = -1,
 			.type = type,
 			.name = AllocateString(name),
-			.externalName = NULL,
 			.initializer = NULL_NODE,
 			.instantiatedVariables = (Array){.array = NULL},
-			.public = false,
-			.external = false,
 			.uniqueName = -1,
 		},
 		sizeof(VarDeclStmt), Node_VariableDeclaration);
@@ -109,7 +108,6 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 			.lineNumber = -1,
 			.name = NULL,
 			.members = AllocateArray(sizeof(NodePtr)),
-			.public = false,
 			.isArrayType = true,
 		},
 		sizeof(StructDeclStmt), Node_StructDeclaration)
@@ -356,9 +354,9 @@ static bool NodeIsPublicDeclaration(const NodePtr* node)
 {
 	switch (node->type)
 	{
-	case Node_VariableDeclaration: return ((VarDeclStmt*)node->ptr)->public;
-	case Node_FunctionDeclaration: return ((FuncDeclStmt*)node->ptr)->public;
-	case Node_StructDeclaration: return ((StructDeclStmt*)node->ptr)->public;
+	case Node_VariableDeclaration: return ((VarDeclStmt*)node->ptr)->modifiers.publicValue;
+	case Node_FunctionDeclaration: return ((FuncDeclStmt*)node->ptr)->modifiers.publicValue;
+	case Node_StructDeclaration: return ((StructDeclStmt*)node->ptr)->modifiers.publicValue;
 	default: INVALID_VALUE(node->type);
 	}
 }
@@ -763,7 +761,7 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 
 	PROPAGATE_ERROR(RegisterDeclaration(import->moduleName, importNode, import->lineNumber));
 
-	if (import->public || topLevel)
+	if (import->modifiers.publicValue || topLevel)
 	{
 		for (MAP_ITERATE(i, declarations))
 		{
@@ -772,7 +770,7 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 
 			NodePtr* node = array->array[0];
 			if (node->type == Node_Import &&
-				((ImportStmt*)node->ptr)->public)
+				((ImportStmt*)node->ptr)->modifiers.publicValue)
 				RecursiveRegisterImportNode(node, false);
 		}
 	}
@@ -780,7 +778,25 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 	return SUCCESS_RESULT;
 }
 
-static Result VisitStatement(const NodePtr* node)
+static Result SetModifiers(ModifierState* modifiers, int lineNumber)
+{
+	if (!currentScope->parent) // global scope
+	{
+		if (currentModifierState.publicSpecified && !modifiers->publicSpecified)
+			modifiers->publicValue = currentModifierState.publicValue;
+		if (currentModifierState.externalSpecified && !modifiers->externalSpecified)
+			modifiers->externalValue = currentModifierState.externalValue;
+	}
+	else
+	{
+		if (modifiers->publicSpecified || modifiers->externalSpecified)
+			return ERROR_RESULT("Declarations with modifiers must be in global scope", lineNumber, currentFilePath);
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
@@ -788,12 +804,17 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		VarDeclStmt* varDecl = node->ptr;
 
-		if (currentScope->parent)
+		PROPAGATE_ERROR(SetModifiers(&varDecl->modifiers, varDecl->lineNumber));
+
+		if (varDecl->modifiers.externalValue)
 		{
-			if (varDecl->public)
-				return ERROR_RESULT("Public variables must be in global scope", varDecl->lineNumber, currentFilePath);
-			if (varDecl->external)
-				return ERROR_RESULT("External variables must be in global scope", varDecl->lineNumber, currentFilePath);
+			if (varDecl->initializer.ptr)
+				return ERROR_RESULT("External variables cannot have initializers", varDecl->lineNumber, currentFilePath);
+		}
+		else
+		{
+			if (varDecl->externalName)
+				return ERROR_RESULT("Only external variables can have external names", varDecl->lineNumber, currentFilePath);
 		}
 
 		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true, NULL));
@@ -805,12 +826,21 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
 
-		if (currentScope->parent)
+		PROPAGATE_ERROR(SetModifiers(&funcDecl->modifiers, funcDecl->lineNumber));
+
+		if (funcDecl->modifiers.externalValue)
 		{
-			if (funcDecl->public)
-				return ERROR_RESULT("Public functions must be in global scope", funcDecl->lineNumber, currentFilePath);
-			if (funcDecl->external)
-				return ERROR_RESULT("External functions must be in global scope", funcDecl->lineNumber, currentFilePath);
+			if (funcDecl->block.ptr)
+				return ERROR_RESULT("External functions cannot have code blocks", funcDecl->lineNumber, currentFilePath);
+		}
+		else
+		{
+			if (funcDecl->externalName)
+				return ERROR_RESULT("Only external functions can have external names", funcDecl->lineNumber, currentFilePath);
+			if (!funcDecl->block.ptr)
+				return ERROR_RESULT("Expected code block after function declaration", funcDecl->lineNumber, currentFilePath);
+			if (funcDecl->variadic)
+				return ERROR_RESULT("Only external functions can be variadic functions", funcDecl->lineNumber, currentFilePath);
 		}
 
 		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, NULL));
@@ -833,7 +863,12 @@ static Result VisitStatement(const NodePtr* node)
 	}
 	case Node_StructDeclaration:
 	{
-		const StructDeclStmt* structDecl = node->ptr;
+		StructDeclStmt* structDecl = node->ptr;
+
+		PROPAGATE_ERROR(SetModifiers(&structDecl->modifiers, structDecl->lineNumber));
+
+		if (structDecl->modifiers.externalValue)
+			return ERROR_RESULT("Struct declarations can only be internal", structDecl->lineNumber, currentFilePath);
 
 		// if it was generated by an array type skip it
 		if (structDecl->isArrayType)
@@ -893,10 +928,23 @@ static Result VisitStatement(const NodePtr* node)
 		PopScope(NULL);
 		return SUCCESS_RESULT;
 	}
-
 	case Node_Import:
 	{
+		ImportStmt* import = node->ptr;
+		PROPAGATE_ERROR(SetModifiers(&import->modifiers, import->lineNumber));
+
+		if (import->modifiers.externalValue)
+			return ERROR_RESULT("Import statements can only be internal", import->lineNumber, currentFilePath);
+
 		PROPAGATE_ERROR(RecursiveRegisterImportNode(node, true));
+		return SUCCESS_RESULT;
+	}
+	case Node_Modifier:
+	{
+		ModifierStmt* modifier = node->ptr;
+		currentModifierState = modifier->modifierState;
+		FreeASTNode(*node);
+		*node = NULL_NODE;
 		return SUCCESS_RESULT;
 	}
 	case Node_LoopControl:
@@ -908,6 +956,7 @@ static Result VisitStatement(const NodePtr* node)
 
 static Result VisitModule(ModuleNode* module)
 {
+	currentModifierState = (ModifierState){.publicSpecified = false};
 	currentFilePath = module->path;
 	currentModule = module;
 

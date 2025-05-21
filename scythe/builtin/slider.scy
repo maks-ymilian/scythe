@@ -1,10 +1,11 @@
-public external void change(any slider) as sliderchange;
+public external:
+void change(any slider) as sliderchange;
 
-public external void automate(any slider) as slider_automate;
-public external void automate(any slider, bool end_touch) as slider_automate;
+void automate(any slider) as slider_automate;
+void automate(any slider, bool end_touch) as slider_automate;
 
-public external int show(any slider) as slider_show;
-public external int show(any slider, int value) as slider_show;
+int show(any slider) as slider_show;
+int show(any slider, int value) as slider_show;
 
-public external any slider(int sliderindex) as slider;
-public external int next_change(int sliderindex, float nextval) as slider_next_chg;
+any slider(int sliderindex) as slider;
+int next_change(int sliderindex, float nextval) as slider_next_chg;

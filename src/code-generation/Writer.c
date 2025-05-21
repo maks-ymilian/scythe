@@ -247,9 +247,9 @@ static void VisitSubscriptExpression(SubscriptExpr* subscript)
 static bool IsExternal(const MemberAccessExpr* identifier)
 {
 	if (identifier->funcReference != NULL)
-		return identifier->funcReference->external;
+		return identifier->funcReference->modifiers.externalValue;
 	if (identifier->varReference != NULL)
-		return identifier->varReference->external;
+		return identifier->varReference->modifiers.externalValue;
 	unreachable();
 }
 
@@ -265,11 +265,15 @@ static int GetUniqueName(const MemberAccessExpr* identifier)
 static char* GetName(const MemberAccessExpr* identifier, bool external)
 {
 	if (identifier->funcReference != NULL)
-		return external ? identifier->funcReference->externalName : identifier->funcReference->name;
+		return external && identifier->funcReference->externalName
+				   ? identifier->funcReference->externalName
+				   : identifier->funcReference->name;
 	if (identifier->typeReference != NULL)
 		return identifier->typeReference->name;
 	if (identifier->varReference != NULL)
-		return external ? identifier->varReference->externalName : identifier->varReference->name;
+		return external && identifier->varReference->externalName
+				   ? identifier->varReference->externalName
+				   : identifier->varReference->name;
 	unreachable();
 }
 
@@ -300,7 +304,7 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
 	assert(varDecl != NULL);
-	if (varDecl->external)
+	if (varDecl->modifiers.externalValue)
 		return;
 
 	assert(varDecl->initializer.ptr != NULL);
@@ -339,7 +343,7 @@ static void VisitBlock(const BlockStmt* block, const bool semicolon)
 
 static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 {
-	if (funcDecl->external)
+	if (funcDecl->modifiers.externalValue)
 		return;
 
 	WriteString("function ");

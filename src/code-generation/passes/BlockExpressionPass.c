@@ -34,13 +34,10 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 				.type = blockExpr->type,
 				.oldType = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None},
 				.name = AllocateString(name),
-				.externalName = NULL,
 				.parameters = AllocateArray(sizeof(NodePtr)),
 				.oldParameters = AllocateArray(sizeof(NodePtr)),
 				.block = blockExpr->block,
 				.globalReturn = NULL,
-				.public = false,
-				.external = false,
 				.uniqueName = -1,
 			},
 			sizeof(FuncDeclStmt), Node_FunctionDeclaration);

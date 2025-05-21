@@ -279,6 +279,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	}
 	case Node_FunctionDeclaration:
 	case Node_StructDeclaration:
+	case Node_Modifier:
 	case Node_BlockStatement:
 	case Node_If:
 	case Node_While:
@@ -408,6 +409,8 @@ void FreeASTNode(const NodePtr node)
 		FreeArray(&ptr->members);
 		break;
 	}
+	case Node_Modifier:
+		break;
 
 	case Node_BlockStatement:
 	{
@@ -442,7 +445,8 @@ void FreeASTNode(const NodePtr node)
 		FreeASTNode(ptr->stmt);
 		break;
 	}
-	case Node_LoopControl: break;
+	case Node_LoopControl:
+		break;
 
 	case Node_Return:
 	{

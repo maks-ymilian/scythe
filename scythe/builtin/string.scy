@@ -1,27 +1,28 @@
-public external int length(string str) as strlen;
+public external:
+int length(string str) as strlen;
 
-public external string copy(string str, string srcstr) as strcpy;
-public external string copy(string str, string srcstr, int maxlen) as strncpy;
+string copy(string str, string srcstr) as strcpy;
+string copy(string str, string srcstr, int maxlen) as strncpy;
 
-public external string concatenate(string str, string srcstr) as strcat;
-public external string concatenate(string str, string srcstr, int maxlen) as strncat;
+string concatenate(string str, string srcstr) as strcat;
+string concatenate(string str, string srcstr, int maxlen) as strncat;
 
-public external int compare(string str, string str2) as strcmp;
-public external int compare(string str, string str2, int maxlen) as strncmp;
+int compare(string str, string str2) as strcmp;
+int compare(string str, string str2, int maxlen) as strncmp;
 
-public external int compare_i(string str, string str2) as stricmp;
-public external int compare_i(string str, string str2, int maxlen) as strnicmp;
+int compare_i(string str, string str2) as stricmp;
+int compare_i(string str, string str2, int maxlen) as strnicmp;
 
-public external string copy_from(string str, string srcstr, int offset) as strcpy_from;
-public external string copy_substring(string str, string srcstr, int offset, int maxlen) as strcpy_substr;
-public external string copy_from_slider(string str, any slider) as strcpy_fromslider;
+string copy_from(string str, string srcstr, int offset) as strcpy_from;
+string copy_substring(string str, string srcstr, int offset, int maxlen) as strcpy_substr;
+string copy_from_slider(string str, any slider) as strcpy_fromslider;
 
-public external any get_char(string str, int offset) as str_getchar;
-public external any get_char(string str, int offset, char type) as str_getchar;
-public external void set_char(string str, float offset, any value) as str_setchar;
-public external void set_char(string str, float offset, any value, char type) as str_setchar;
+any get_char(string str, int offset) as str_getchar;
+any get_char(string str, int offset, char type) as str_getchar;
+void set_char(string str, float offset, any value) as str_setchar;
+void set_char(string str, float offset, any value, char type) as str_setchar;
 
-public external void print(string str, string format, ...) as sprintf;
+void print(string str, string format, ...) as sprintf;
 
-public external bool match(string needle, string haystack, ...) as match;
-public external bool match_i(string needle, string haystack, ...) as matchi;
+bool match(string needle, string haystack, ...) as match;
+bool match_i(string needle, string haystack, ...) as matchi;

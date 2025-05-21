@@ -198,7 +198,6 @@ static void AddBuiltInImportStatement(AST* ast)
 		&(ImportStmt){
 			.path = AllocateString("jsfx"),
 			.moduleName = NULL,
-			.public = false,
 			.lineNumber = -1,
 		},
 		sizeof(ImportStmt), Node_Import);
@@ -229,7 +228,11 @@ static void GenerateProgramNodeDependencies(Array* programNodes, ProgramNode* pr
 	for (size_t i = 0; i < programNode->ast.nodes.length; ++i)
 	{
 		const NodePtr* node = programNode->ast.nodes.array[i];
-		if (node->type != Node_Import) break;
+		if (node->type == Node_Modifier)
+			continue;
+		if (node->type != Node_Import)
+			break;
+
 		ImportStmt* importStmt = node->ptr;
 
 		importStmt->moduleName = AllocBaseFileName(importStmt->path);
@@ -238,7 +241,7 @@ static void GenerateProgramNodeDependencies(Array* programNodes, ProgramNode* pr
 			{
 				.node = GenerateProgramNode(programNodes, importStmt->path, importStmt->moduleName, importStmt->lineNumber, path),
 				.importLineNumber = importStmt->lineNumber,
-				.publicImport = importStmt->public,
+				.publicImport = importStmt->modifiers.publicValue,
 			};
 		ArrayAdd(&programNode->dependencies, &dependency);
 

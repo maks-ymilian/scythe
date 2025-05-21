@@ -26,6 +26,7 @@ typedef enum
 	Node_VariableDeclaration,
 	Node_FunctionDeclaration,
 	Node_StructDeclaration,
+	Node_Modifier,
 
 	Node_BlockStatement,
 
@@ -181,10 +182,18 @@ typedef struct
 
 typedef struct
 {
+	bool publicSpecified;
+	bool publicValue;
+	bool externalSpecified;
+	bool externalValue;
+} ModifierState;
+
+typedef struct
+{
 	int lineNumber;
 	char* path;
 	char* moduleName;
-	bool public;
+	ModifierState modifiers;
 } ImportStmt;
 
 typedef enum
@@ -212,8 +221,7 @@ typedef struct
 	char* externalName;
 	NodePtr initializer;
 	Array instantiatedVariables;
-	bool public;
-	bool external;
+	ModifierState modifiers;
 	int uniqueName;
 } VarDeclStmt;
 
@@ -229,8 +237,7 @@ typedef struct
 	NodePtr block;
 	VarDeclStmt* globalReturn;
 	bool variadic;
-	bool public;
-	bool external;
+	ModifierState modifiers;
 	int uniqueName;
 } FuncDeclStmt;
 
@@ -239,7 +246,7 @@ typedef struct
 	int lineNumber;
 	char* name;
 	Array members;
-	bool public;
+	ModifierState modifiers;
 	bool isArrayType;
 } StructDeclStmt;
 
@@ -303,6 +310,12 @@ typedef struct
 	int lineNumber;
 	LoopControlType type;
 } LoopControlStmt;
+
+typedef struct
+{
+	int lineNumber;
+	ModifierState modifierState;
+} ModifierStmt;
 
 typedef struct
 {

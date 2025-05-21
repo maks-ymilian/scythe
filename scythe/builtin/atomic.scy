@@ -1,5 +1,6 @@
-public external any set_if_equal(any dest, any value, any newvalue) as atomic_setifequal;
-public external any exchange(any val1, any val2) as atomic_exch;
-public external any add(any dest_val1, any val2) as atomic_add;
-public external any set(any dest_val1, any val2) as atomic_set;
-public external any get(any val) as atomic_get;
+public external:
+any set_if_equal(any dest, any value, any newvalue) as atomic_setifequal;
+any exchange(any val1, any val2) as atomic_exch;
+any add(any dest_val1, any val2) as atomic_add;
+any set(any dest_val1, any val2) as atomic_set;
+any get(any val) as atomic_get;

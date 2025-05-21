@@ -880,7 +880,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		if (type.effectiveType == NULL)
 			continue;
 
-		if (funcDecl->external)
+		if (funcDecl->modifiers.externalValue)
 			return ERROR_RESULT("External functions cannot have any parameters of an aggregate type",
 				funcDecl->lineNumber,
 				currentFilePath);
@@ -900,7 +900,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 	StructDeclStmt* type = GetTypeInfoFromType(funcDecl->type).effectiveType;
 	if (type != NULL)
 	{
-		if (funcDecl->external)
+		if (funcDecl->modifiers.externalValue)
 			return ERROR_RESULT("External functions cannot return an aggregate type", funcDecl->lineNumber, currentFilePath);
 
 		BlockStmt* block = AllocBlockStmt(funcDecl->lineNumber).ptr;
@@ -911,11 +911,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 				.type.expr = CopyASTNode(funcDecl->type.expr),
 				.type.modifier = funcDecl->type.modifier,
 				.name = AllocateString("return"),
-				.externalName = NULL,
 				.initializer = NULL_NODE,
 				.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
-				.public = false,
-				.external = false,
 				.uniqueName = -1,
 			},
 			sizeof(VarDeclStmt), Node_VariableDeclaration);
@@ -934,7 +931,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		funcDecl->type.modifier = first->type.modifier;
 	}
 
-	if (!funcDecl->external)
+	if (!funcDecl->modifiers.externalValue)
 	{
 		assert(funcDecl->block.type == Node_BlockStatement);
 		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
@@ -1013,7 +1010,7 @@ static Result VisitVariableDeclaration(NodePtr* node)
 		return SUCCESS_RESULT;
 	}
 
-	if (varDecl->external)
+	if (varDecl->modifiers.externalValue)
 		return ERROR_RESULT(
 			"External variable declarations cannot be of an aggregate type",
 			varDecl->lineNumber,
