@@ -1,0 +1,8 @@
+public external void free(any* top) as freembuf;
+public external void copy(any* dest, any* source, int length) as memcpy;
+public external void set(any* dest, any value, int length) as memset;
+public external void set_values(any* buf, ...) as mem_set_values;
+public external void get_values(any* buf, ...) as mem_get_values;
+public external void multiply_sum(any* buf1, any* buf2, int length) as mem_multiply_sum;
+public external any insert_shuffle(any* buf, int len, any value) as mem_insert_shuffle;
+public external int top() as __memtop;

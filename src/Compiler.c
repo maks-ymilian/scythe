@@ -9,14 +9,12 @@
 #include <libgen.h>
 #include <unistd.h>
 
-#include "BuiltInImports.h"
 #include "FileUtils.h"
 #include "Parser.h"
 #include "Scanner.h"
 #include "StringUtils.h"
 #include "code-generation/CodeGenerator.h"
 #include "data-structures/Array.h"
-#include "data-structures/MemoryStream.h"
 
 static const char* watermark =
 	"\n"
@@ -256,7 +254,7 @@ static ProgramNode* GenerateProgramNode(
 	const int importLineNumber,
 	const char* containingPath)
 {
-	const char* builtInSource = GetBuiltInSource(path);
+	const char* builtInSource = NULL; // GetBuiltInSource(path);
 	const bool isBuiltIn = builtInSource != NULL;
 
 	if (!isBuiltIn)

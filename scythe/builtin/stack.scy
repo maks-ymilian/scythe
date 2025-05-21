@@ -1,0 +1,5 @@
+public external any push(any value) as stack_push;
+public external any pop() as stack_pop;
+public external void pop(any value) as stack_pop;
+public external any peek(int index) as stack_peek;
+public external any exchange(any value) as stack_exch;

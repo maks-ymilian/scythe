@@ -7,7 +7,6 @@ set(SOURCES
 		"src/SyntaxTree.c"
 		"src/Compiler.c"
 		"src/FileUtils.c"
-		"src/BuiltInImports.c"
 		"src/StringUtils.c"
 
 		"src/data-structures/Array.c"

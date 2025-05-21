@@ -1,0 +1,36 @@
+public external float sin(float angle) as sin;
+public external float cos(float angle) as cos;
+public external float tan(float angle) as tan;
+public external float asin(float x) as asin;
+public external float acos(float x) as acos;
+public external float atan(float x) as atan;
+public external float atan2(float x, float y) as atan2;
+public external float sqr(float x) as sqr;
+public external float sqrt(float x) as sqrt;
+public external float pow(float x, float y) as pow;
+public external float exp(float x) as exp;
+public external float log(float x) as log;
+public external float log10(float x) as log10;
+public external float abs(float x) as abs;
+public external float min(float x, float y) as min;
+public external float max(float x, float y) as max;
+public external int sign(float x) as sign;
+public external float rand(float x) as rand;
+public external int floor(float x) as floor;
+public external int ceil(float x) as ceil;
+public external float invsqrt(float x) as invsqrt;
+
+public external void mdct(float* buf, int size) as mdct;
+public external void imdct(float* buf, int size) as imdct;
+public external void fft(float* buf, int size) as fft;
+public external void ifft(float* buf, int size) as ifft;
+public external void fft_real(float* buf, int size) as fft_real;
+public external void ifft_real(float* buf, int size) as ifft_real;
+public external void fft_permute(float* buf, int size) as fft_permute;
+public external void fft_ipermute(float* buf, int size) as fft_ipermute;
+public external void convolve_complex(float* dest, float* src, int size) as convolve_c;
+
+public float lerp(float a, float b, float t)
+{
+	return a + (b - a) * t;
+}

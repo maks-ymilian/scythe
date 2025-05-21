@@ -1,0 +1,211 @@
+import "builtin/math.scy"
+import "builtin/string.scy"
+import "builtin/gfx.scy"
+import "builtin/time.scy"
+import "builtin/file.scy"
+import "builtin/mem.scy"
+import "builtin/stack.scy"
+import "builtin/atomic.scy"
+import "builtin/slider.scy"
+import "builtin/midi.scy"
+import "builtin/pin_mapper.scy"
+
+public external float spl0;
+public external float spl1;
+public external float spl2;
+public external float spl3;
+public external float spl4;
+public external float spl5;
+public external float spl6;
+public external float spl7;
+public external float spl8;
+public external float spl9;
+public external float spl10;
+public external float spl11;
+public external float spl12;
+public external float spl13;
+public external float spl14;
+public external float spl15;
+public external float spl16;
+public external float spl17;
+public external float spl18;
+public external float spl19;
+public external float spl20;
+public external float spl21;
+public external float spl22;
+public external float spl23;
+public external float spl24;
+public external float spl25;
+public external float spl26;
+public external float spl27;
+public external float spl28;
+public external float spl29;
+public external float spl30;
+public external float spl31;
+public external float spl32;
+public external float spl33;
+public external float spl34;
+public external float spl35;
+public external float spl36;
+public external float spl37;
+public external float spl38;
+public external float spl39;
+public external float spl40;
+public external float spl41;
+public external float spl42;
+public external float spl43;
+public external float spl44;
+public external float spl45;
+public external float spl46;
+public external float spl47;
+public external float spl48;
+public external float spl49;
+public external float spl50;
+public external float spl51;
+public external float spl52;
+public external float spl53;
+public external float spl54;
+public external float spl55;
+public external float spl56;
+public external float spl57;
+public external float spl58;
+public external float spl59;
+public external float spl60;
+public external float spl61;
+public external float spl62;
+public external float spl63;
+
+public external any reg00;
+public external any reg01;
+public external any reg02;
+public external any reg03;
+public external any reg04;
+public external any reg05;
+public external any reg06;
+public external any reg07;
+public external any reg08;
+public external any reg09;
+public external any reg10;
+public external any reg11;
+public external any reg12;
+public external any reg13;
+public external any reg14;
+public external any reg15;
+public external any reg16;
+public external any reg17;
+public external any reg18;
+public external any reg19;
+public external any reg20;
+public external any reg21;
+public external any reg22;
+public external any reg23;
+public external any reg24;
+public external any reg25;
+public external any reg26;
+public external any reg27;
+public external any reg28;
+public external any reg29;
+public external any reg30;
+public external any reg31;
+public external any reg32;
+public external any reg33;
+public external any reg34;
+public external any reg35;
+public external any reg36;
+public external any reg37;
+public external any reg38;
+public external any reg39;
+public external any reg40;
+public external any reg41;
+public external any reg42;
+public external any reg43;
+public external any reg44;
+public external any reg45;
+public external any reg46;
+public external any reg47;
+public external any reg48;
+public external any reg49;
+public external any reg50;
+public external any reg51;
+public external any reg52;
+public external any reg53;
+public external any reg54;
+public external any reg55;
+public external any reg56;
+public external any reg57;
+public external any reg58;
+public external any reg59;
+public external any reg60;
+public external any reg61;
+public external any reg62;
+public external any reg63;
+public external any reg64;
+public external any reg65;
+public external any reg66;
+public external any reg67;
+public external any reg68;
+public external any reg69;
+public external any reg70;
+public external any reg71;
+public external any reg72;
+public external any reg73;
+public external any reg74;
+public external any reg75;
+public external any reg76;
+public external any reg77;
+public external any reg78;
+public external any reg79;
+public external any reg80;
+public external any reg81;
+public external any reg82;
+public external any reg83;
+public external any reg84;
+public external any reg85;
+public external any reg86;
+public external any reg87;
+public external any reg88;
+public external any reg89;
+public external any reg90;
+public external any reg91;
+public external any reg92;
+public external any reg93;
+public external any reg94;
+public external any reg95;
+public external any reg96;
+public external any reg97;
+public external any reg98;
+public external any reg99;
+
+public external float spl(int channelindex) as spl;
+
+public external int trigger as trigger;
+
+public external int sample_rate as srate;
+public external int num_channels as num_ch;
+public external int samples_block as samplesblock;
+public external float tempo as tempo;
+public external int play_state as play_state;
+public external float play_position as play_position;
+public external float beat_position as beat_position;
+
+public external int timesig_num as ts_num;
+public external int timesig_denom as ts_denom;
+
+public external bool ext_no_init as ext_noinit;
+public external bool ext_no_denormal as ext_nodenorm;
+public external int ext_tail_size as ext_tail_size;
+public external float ext_gain_reduction_meter as ext_gr_meter;
+
+public external int pdc_delay as pdc_delay;
+public external int pdc_from_channel as pdc_bot_ch;
+public external int pdc_to_channel as pdc_top_ch;
+public external bool pdc_midi as pdc_midi;
+
+public external void export_buffer_to_project(float* buffer, int length_samples, int nch, int srate, int track_index) as export_buffer_to_project;
+public external void export_buffer_to_project(float* buffer, int length_samples, int nch, int srate, int track_index, int flags) as export_buffer_to_project;
+public external void export_buffer_to_project(float* buffer, int length_samples, int nch, int srate, int track_index, int flags, float tempo) as export_buffer_to_project;
+public external void export_buffer_to_project(float* buffer, int length_samples, int nch, int srate, int track_index, int flags, float tempo, int planar_pitch) as export_buffer_to_project;
+
+public external int get_host_placement() as get_host_placement;
+public external int get_host_placement(int chain_pos) as get_host_placement;
+public external int get_host_placement(int chain_pos, int flags) as get_host_placement;

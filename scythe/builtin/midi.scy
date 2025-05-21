@@ -1,0 +1,11 @@
+public external int send(int offset, int msg1, int msg2) as midisend;
+public external int send(int offset, int msg1, int msg2, int msg3) as midisend;
+public external int send_buffer(int offset, int* buf, int len) as midisend_buf;
+public external int send_string(int offset, string str) as midisend_str;
+public external bool recieve(int offset, int msg1, int msg23) as midirecv;
+public external bool recieve(int offset, int msg1, int msg2, int msg3) as midirecv;
+public external int recieve_buffer(int offset, int* buf, int maxlen) as midirecv_buf;
+public external int recieve_string(int offset, string str) as midirecv_str;
+
+public external bool ext_use_bus as ext_midi_bus;
+public external int ext_bus as midi_bus;

@@ -11,11 +11,15 @@
 	// type casting prolly not hard to add
 	// treat string type the same as int and add #namedStrings
 
-	// char literals
+	// char literals (make multibyte chars also work the same)
 	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))
 	// unicode support?
 	// escape characters in strings
 	// you can assign to slider(x) also keyword collision
+	// global.* variables
+	// int conversion breaks pass by reference
+	// external structs how will this work with nested
+	// c++ style public and external
 
 // things to test:
 	// assigning wrong types
@@ -27,4 +31,5 @@
 	
 	// passing by reference in built in functions
 
+import "builtin/jsfx.scy"
 import "tests/tests.scy"
