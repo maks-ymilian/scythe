@@ -262,20 +262,20 @@ static int GetUniqueName(const MemberAccessExpr* identifier)
 	unreachable();
 }
 
-static char* GetName(const MemberAccessExpr* identifier)
+static char* GetName(const MemberAccessExpr* identifier, bool external)
 {
 	if (identifier->funcReference != NULL)
-		return identifier->funcReference->name;
+		return external ? identifier->funcReference->externalName : identifier->funcReference->name;
 	if (identifier->typeReference != NULL)
 		return identifier->typeReference->name;
 	if (identifier->varReference != NULL)
-		return identifier->varReference->name;
+		return external ? identifier->varReference->externalName : identifier->varReference->name;
 	unreachable();
 }
 
 static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
 {
-	WriteString(GetName(identifier));
+	WriteString(GetName(identifier, IsExternal(identifier)));
 	if (!IsExternal(identifier))
 	{
 		WriteChar('_');
