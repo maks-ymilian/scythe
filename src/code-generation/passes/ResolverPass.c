@@ -29,7 +29,6 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 	[Primitive_Float] = NULL,
 	[Primitive_Int] = NULL,
 	[Primitive_Bool] = NULL,
-	[Primitive_String] = NULL,
 };
 
 static Result VisitStatement(const NodePtr* node);

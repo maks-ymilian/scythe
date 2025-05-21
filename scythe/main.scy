@@ -9,7 +9,7 @@
 	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
 	// asserts
 	// type casting prolly not hard to add
-	// treat string type the same as int and add #namedStrings
+	// add #namedStrings
 
 	// char literals (make multibyte chars also work the same)
 	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))

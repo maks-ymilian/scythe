@@ -87,7 +87,7 @@ static void VisitLiteral(LiteralExpr* literal, TypeInfo* outType)
 	{
 	case Literal_Float: *outType = NonPointerType(Primitive_Float); break;
 	case Literal_Int: *outType = NonPointerType(Primitive_Int); break;
-	case Literal_String: *outType = NonPointerType(Primitive_String); break;
+	case Literal_String: *outType = NonPointerType(Primitive_Int); break;
 	case Literal_Boolean:
 		literal->type = Literal_Int;
 		literal->intValue = literal->boolean ? 1 : 0;
@@ -229,9 +229,6 @@ static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targe
 			goto convertError;
 		*expr = AllocIntToBoolConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
-
-	case Primitive_String:
-		goto convertError;
 	default: INVALID_VALUE(targetType.effectiveType);
 	}
 
@@ -526,6 +523,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 	case Primitive_Any:
 	case Primitive_Float:
 	case Primitive_Int:
+	{
 		varDecl->initializer = AllocASTNode(
 			&(LiteralExpr){
 				.lineNumber = varDecl->lineNumber,
@@ -534,8 +532,9 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 			},
 			sizeof(LiteralExpr), Node_Literal);
 		break;
-
+	}
 	case Primitive_Bool:
+	{
 		varDecl->initializer = AllocASTNode(
 			&(LiteralExpr){
 				.lineNumber = varDecl->lineNumber,
@@ -544,17 +543,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 			},
 			sizeof(LiteralExpr), Node_Literal);
 		break;
-
-	case Primitive_String:
-		varDecl->initializer = AllocASTNode(
-			&(LiteralExpr){
-				.lineNumber = varDecl->lineNumber,
-				.type = Literal_String,
-				.string = AllocateString(""),
-			},
-			sizeof(LiteralExpr), Node_Literal);
-		break;
-
+	}
 	default: INVALID_VALUE(GetType(varDecl->type).effectiveType);
 	}
 

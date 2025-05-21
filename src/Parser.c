@@ -195,13 +195,14 @@ static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 	const Token* primitiveType = Match(
 		(TokenType[]){
 			Token_Any,
-			Token_Int,
 			Token_Float,
+			Token_Int,
 			Token_String,
+			Token_Char,
 			Token_Bool,
 			Token_Void,
 		},
-		6);
+		7);
 
 	if (primitiveType == NULL)
 		return false;

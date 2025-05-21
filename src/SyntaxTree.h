@@ -112,7 +112,6 @@ typedef enum
 	Primitive_Float,
 	Primitive_Int,
 	Primitive_Bool,
-	Primitive_String,
 	Primitive_Void,
 } PrimitiveType;
 
