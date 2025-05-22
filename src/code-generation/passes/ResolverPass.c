@@ -37,7 +37,7 @@ static Result VisitStatement(NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
 static Result ResolveType(Type* type, bool voidAllowed, bool* isType);
 static Result VisitBlock(const BlockStmt* block);
-static Result FindFunctionOverload(const char* text, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber);
+static Result FindFunctionOverloadScoped(const char* text, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber);
 
 static NodePtr AllocMemberVarDecl(const char* name, Type type)
 {
@@ -264,6 +264,7 @@ static bool VariadicFunctionIsAmbiguous(const char* name, FuncDeclStmt* funcDecl
 static Result RegisterDeclaration(const char* name, const NodePtr* node, const int lineNumber)
 {
 	assert(currentScope != NULL);
+	assert(node != NULL);
 
 	Array* array = MapGet(&currentScope->declarations, name);
 	if (array)
@@ -291,7 +292,7 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 		if (funcDecl->variadic)
 			isAmbiguous = VariadicFunctionIsAmbiguous(name, funcDecl);
 		else
-			PROPAGATE_ERROR(FindFunctionOverload(name, NULL, funcDecl->parameters.length, &isAmbiguous, lineNumber));
+			PROPAGATE_ERROR(FindFunctionOverloadScoped(name, NULL, funcDecl->parameters.length, &isAmbiguous, lineNumber));
 
 		if (isAmbiguous)
 			return ERROR_RESULT(
@@ -378,47 +379,49 @@ static bool CheckFunctionOverload(size_t argCount, size_t paramCount, bool isVar
 	return true;
 }
 
-static Result FindFunctionOverload(const char* name, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber)
+static bool FindFunctionOverload(const char* name, const Map* declarations, size_t argCount, bool* isAmbiguous, NodePtr* out)
+{
+	Array* array = MapGet(declarations, name);
+	if (array == NULL)
+		return false;
+
+	assert(array->length >= 1);
+	for (size_t i = 0; i < array->length; ++i)
+	{
+		NodePtr* node = array->array[i];
+		assert(node->type == Node_FunctionDeclaration);
+		FuncDeclStmt* funcDecl = node->ptr;
+
+		if (CheckFunctionOverload(argCount, funcDecl->parameters.length, funcDecl->variadic))
+		{
+			if (out->ptr && isAmbiguous)
+				*isAmbiguous = true;
+
+			*out = *node;
+		}
+	}
+
+	return true;
+}
+
+static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t argCount, bool* isAmbiguous, int lineNumber)
 {
 	NodePtr _;
-	if (!outNode)
-		outNode = &_;
+	if (!out)
+		out = &_;
 
 	if (isAmbiguous)
 		*isAmbiguous = false;
 
-	*outNode = NULL_NODE;
+	*out = NULL_NODE;
 
 	bool functionNameExists = false;
-
 	assert(currentScope != NULL);
 	const Scope* scope = currentScope;
 	for (; scope != NULL; scope = scope->parent)
-	{
-		Array* array = MapGet(&scope->declarations, name);
-		if (array == NULL)
-			continue;
+		functionNameExists = FindFunctionOverload(name, &scope->declarations, argCount, isAmbiguous, out);
 
-		functionNameExists = true;
-
-		assert(array->length >= 1);
-		for (size_t i = 0; i < array->length; ++i)
-		{
-			NodePtr* node = array->array[i];
-			assert(node->type == Node_FunctionDeclaration);
-			FuncDeclStmt* funcDecl = node->ptr;
-
-			if (CheckFunctionOverload(argCount, funcDecl->parameters.length, funcDecl->variadic))
-			{
-				if (outNode->ptr && isAmbiguous)
-					*isAmbiguous = true;
-
-				*outNode = *node;
-			}
-		}
-	}
-
-	if (outNode->ptr)
+	if (out->ptr)
 		return SUCCESS_RESULT;
 	else if (functionNameExists)
 		return ERROR_RESULT(
@@ -438,17 +441,18 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	{
 	case Node_Null:
 	{
-		// if resolving the baseExpr of a FuncCallExpr
-		if (resolveFuncCall)
-			return FindFunctionOverload(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
-
 		assert(currentScope != NULL);
+
 		const Scope* scope = currentScope;
 		for (; scope != NULL; scope = scope->parent)
 		{
 			NodePtr* node = GetFirstNode(&scope->declarations, text);
 			if (node != NULL)
 			{
+				// if resolving the baseExpr of a FuncCallExpr
+				if (resolveFuncCall && node->type == Node_FunctionDeclaration)
+					return FindFunctionOverloadScoped(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
+
 				*current = *node;
 				return SUCCESS_RESULT;
 			}
@@ -512,20 +516,48 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		Map* declarations = MapGet(&modules, import->moduleName);
 		assert(declarations != NULL);
 
-		const NodePtr* node = GetFirstNode(declarations, text);
-		if (node == NULL)
+		NodePtr* first = GetFirstNode(declarations, text);
+		if (first == NULL)
 			return ERROR_RESULT(
 				AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", text, import->moduleName),
 				lineNumber,
 				currentFilePath);
 
-		if (!NodeIsPublicDeclaration(node))
+		NodePtr node = *first;
+
+		// if resolving the baseExpr of a FuncCallExpr
+		if (resolveFuncCall)
+		{
+			assert(node.type == Node_FunctionDeclaration);
+
+			node = NULL_NODE;
+			bool exists = FindFunctionOverload(text, declarations, resolveFuncCall->arguments.length, NULL, &node);
+
+			if (!node.ptr)
+			{
+				if (exists)
+					return ERROR_RESULT(
+						AllocateString1Str1Int(
+							"Could not find overload for function \"%s\" with %d parameter(s)",
+							text,
+							resolveFuncCall->arguments.length),
+						lineNumber,
+						currentFilePath);
+				else
+					return ERROR_RESULT(
+						AllocateString2Str("Unknown identifier \"%s\" in module \"%s\"", text, import->moduleName),
+						lineNumber,
+						currentFilePath);
+			}
+		}
+
+		if (!NodeIsPublicDeclaration(&node))
 			return ERROR_RESULT(
 				AllocateString2Str("Declaration \"%s\" in module \"%s\" is private", text, import->moduleName),
 				lineNumber,
 				currentFilePath);
 
-		*current = *node;
+		*current = node;
 		return SUCCESS_RESULT;
 	}
 	case Node_StructDeclaration:

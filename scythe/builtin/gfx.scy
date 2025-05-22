@@ -119,3 +119,10 @@ int mouse_wheel_vertical as mouse_wheel;
 int mouse_wheel_horizontal as mouse_hwheel;
 
 int input_state as mouse_cap;
+
+public internal:
+void set_position(int newX, int newY)
+{
+	x = newX;
+	y = newY;
+}

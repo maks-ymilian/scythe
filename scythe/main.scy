@@ -11,6 +11,8 @@
 	// asserts
 	// type casting prolly not hard to add
 	// add #namedStrings
+	// struct initializers
+	// fix modifier statements passing through
 
 	// char literals (make multibyte chars also work the same)
 	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))
@@ -26,10 +28,12 @@
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions
 	// return and break also inside loops
-	// type modifiers public and external
 	// binary exprs in member access and subscript and dereferencing syntax
 	// public private internal external on functions variables structs imports
+	// import statement
 	// passing by reference in built in functions
+	// all built in functions
 
 import "builtin/jsfx.scy"
 import "tests/tests.scy"
+import "effect.scy"

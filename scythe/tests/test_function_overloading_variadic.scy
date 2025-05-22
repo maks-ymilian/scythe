@@ -1,4 +1,3 @@
-
 int callingLocation;
 
 void func(int a)
