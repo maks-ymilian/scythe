@@ -974,7 +974,17 @@ static Result VisitStatement(NodePtr* node)
 	case Node_Modifier:
 	{
 		ModifierStmt* modifier = node->ptr;
-		currentModifierState = modifier->modifierState;
+		if (modifier->modifierState.publicSpecified)
+		{
+			currentModifierState.publicSpecified = true;
+			currentModifierState.publicValue = modifier->modifierState.publicValue;
+		}
+		if (modifier->modifierState.externalSpecified)
+		{
+			currentModifierState.externalSpecified = true;
+			currentModifierState.externalValue = modifier->modifierState.externalValue;
+		}
+
 		FreeASTNode(*node);
 		*node = NULL_NODE;
 		return SUCCESS_RESULT;

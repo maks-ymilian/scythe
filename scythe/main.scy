@@ -11,16 +11,12 @@
 	// type casting prolly not hard to add
 	// add #namedStrings
 	// struct initializers
-	// fix modifier statements passing through
 
 	// char literals (make multibyte chars also work the same)
-	// use any for slider parameters (file_open(index or slider), sliderchange(mask or sliderX))
 	// unicode support?
 	// escape characters in strings
-	// you can assign to slider(x) also keyword collision
 	// global.* variables
 	// int conversion breaks pass by reference
-	// external structs how will this work with nested
 
 // things to test:
 	// assigning wrong types
