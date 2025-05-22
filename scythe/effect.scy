@@ -22,7 +22,7 @@ struct Sample
 	float r;
 }
 
-float playSpeed = 0.5; // slider
+float playSpeed = 0.9; // slider
 float seconds = 10; // slider
 
 // Sample[] buffer = Sample[] { Sample[] new; new.ptr = 0; new.length = jsfx.sample_rate * seconds; return new; }; // todo
@@ -37,7 +37,12 @@ float play = 0;
 	while (write >= buffer.length) write -= buffer.length;
 
 	// write
-	buffer[write] = Sample { Sample s; s.l = jsfx.spl0; s.r = jsfx.spl1; return s; };
+	buffer[write] = Sample {
+		Sample s;
+		s.l = jsfx.spl0;
+		s.r = jsfx.spl1;
+		return s;
+	};
 	++write;
 
 	// play

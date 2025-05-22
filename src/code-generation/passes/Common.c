@@ -58,3 +58,21 @@ NodePtr AllocInteger(uint64_t value, int lineNumber)
 		},
 		sizeof(LiteralExpr), Node_Literal);
 }
+
+NodePtr AllocIntConversion(NodePtr expr, int lineNumber)
+{
+	return AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = lineNumber,
+			.operatorType = Binary_BitOr,
+			.right = expr,
+			.left = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_Int,
+					.intValue = 0,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+		},
+		sizeof(BinaryExpr), Node_Binary);
+}

@@ -8,5 +8,6 @@ import "tests/test_struct_assignment.scy"
 import "tests/test_nested_array.scy"
 // import "tests/test_accessing_from_function.scy"
 import "tests/test_function_overloading_variadic.scy"
+import "tests/test_array_index_conversion.scy"
 
 any AAA__________ = 7777777777777777777;

@@ -1,0 +1,40 @@
+struct Test
+{
+	int a;
+	int b;
+	int c;
+}
+
+Test New(int a, int b, int c)
+{
+	Test t;
+	t.a = a;
+	t.b = b;
+	t.c = c;
+	return t;
+}
+
+bool Compare(Test a, Test b)
+{
+	return
+		a.a == b.a &&
+		a.b == b.b &&
+		a.c == b.c;
+}
+
+@init
+{
+	float index = 69;
+	Test example = New(324, 43, 938);
+
+	Test[] array;
+	array[index] = example;
+	index += 0.4;
+	bool AAA_test_array_index_conversion =
+		// MemberExpansionPass.c:431
+		Compare(example, array[index]) &&
+		// MemberExpansionPass.c:355
+		array[index].a == example.a &&
+		array[index].b == example.b &&
+		array[index].c == example.c;
+}

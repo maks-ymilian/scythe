@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Common.h"
 #include "StringUtils.h"
 
 typedef struct
@@ -155,25 +156,7 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 	return SUCCESS_RESULT;
 }
 
-static NodePtr AllocFloatToIntConversion(const NodePtr expr, const int lineNumber)
-{
-	return AllocASTNode(
-		&(BinaryExpr){
-			.lineNumber = lineNumber,
-			.operatorType = Binary_BitOr,
-			.right = expr,
-			.left = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = 0,
-				},
-				sizeof(LiteralExpr), Node_Literal),
-		},
-		sizeof(BinaryExpr), Node_Binary);
-}
-
-static NodePtr AllocIntToBoolConversion(const NodePtr expr, const int lineNumber)
+static NodePtr AllocBoolConversion(const NodePtr expr, const int lineNumber)
 {
 	return AllocASTNode(
 		&(UnaryExpr){
@@ -221,13 +204,13 @@ static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targe
 			exprType.effectiveType != Primitive_Int)
 			goto convertError;
 
-		*expr = AllocFloatToIntConversion(*expr, lineNumber);
+		*expr = AllocIntConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
 
 	case Primitive_Bool:
 		if (exprType.effectiveType != Primitive_Float && exprType.effectiveType != Primitive_Int)
 			goto convertError;
-		*expr = AllocIntToBoolConversion(*expr, lineNumber);
+		*expr = AllocBoolConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
 	default: INVALID_VALUE(targetType.effectiveType);
 	}
@@ -306,7 +289,7 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 		if (leftType.effectiveType == Primitive_Int && rightType.effectiveType == Primitive_Int &&
 			(binary->operatorType == Binary_Divide ||
 				binary->operatorType == Binary_Exponentiation))
-			*node = AllocFloatToIntConversion(*node, binary->lineNumber);
+			*node = AllocIntConversion(*node, binary->lineNumber);
 
 		PrimitiveType type;
 		if (leftType.effectiveType == Primitive_Int && rightType.effectiveType == Primitive_Int &&

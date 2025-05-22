@@ -352,7 +352,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 	assert(type);
 
 	subscript->indexExpr = AllocStructOffsetCalculation(
-		subscript->indexExpr,
+		AllocIntConversion(subscript->indexExpr, subscript->lineNumber),
 		GetIndexOfMember(type, memberAccess->varReference),
 		CountStructMembers(type),
 		subscript->lineNumber);
@@ -427,7 +427,11 @@ static NodePtr AllocStructMemberAssignmentExpr(
 		SubscriptExpr* subscript = node.ptr;
 		NodePtr copy = CopyASTNode(node);
 		SubscriptExpr* new = copy.ptr;
-		new->indexExpr = AllocStructOffsetCalculation(new->indexExpr, index, memberCount, subscript->lineNumber);
+		new->indexExpr = AllocStructOffsetCalculation(
+			AllocIntConversion(new->indexExpr, subscript->lineNumber),
+			index,
+			memberCount,
+			subscript->lineNumber);
 		return copy;
 	}
 	default: INVALID_VALUE(node.type);

@@ -5,7 +5,6 @@
 	// completely rewrite all the file io in compiler.c or actually the whole file idk
 		// it should use absolute paths
 		// segfault on empty import
-	// maybe make it so sections are only allowed in the main function
 	// structs in blocks
 	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
 	// asserts
