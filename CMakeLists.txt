@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 23)
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD_REQUIRED ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_EXTENSIONS OFF)
+target_compile_definitions(${PROJECT_NAME} PRIVATE _XOPEN_SOURCE=700)
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 
 option(USE_DEBUG "" OFF)

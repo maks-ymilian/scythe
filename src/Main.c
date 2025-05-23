@@ -1,13 +1,14 @@
-#include <libgen.h>
+#include <stddef.h>
 #include <stdio.h>
 
 #include "Compiler.h"
+#include "FileUtils.h"
 
-int main(const int argc, char** argv)
+int main(int argc, char** argv)
 {
 	if (argc < 2 || argc > 3)
 	{
-		printf("Usage: %s <input_file> [output_file]\n", basename(argv[0]));
+		printf("Usage: %s <input_file> [output_file]\n", AllocFileName(argv[0]));
 		return 1;
 	}
 

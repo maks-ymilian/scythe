@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libgen.h>
-#include <unistd.h>
-
 #include "FileUtils.h"
 #include "Parser.h"
 #include "Scanner.h"
@@ -89,6 +86,8 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 
 	if (errorStage != NULL)
 		printf("%s error: ", errorStage);
+	else
+		printf("Error: ");
 
 	PrintError(result);
 	printf("\n");
@@ -177,21 +176,6 @@ static bool IsSameFileOrBuiltInPath(
 	return isSameFile;
 }
 
-static char* AllocBaseFileName(const char* path)
-{
-	const size_t length = strlen(path) + 1;
-	char string[length + 1];
-	memcpy(string, path, length);
-
-	char* fileName = basename(string);
-
-	const size_t baseNameLength = strlen(fileName) + 1;
-	for (size_t i = 0; i < baseNameLength; ++i)
-		if (fileName[i] == '.') fileName[i] = '\0';
-
-	return AllocateString(fileName);
-}
-
 static void AddBuiltInImportStatement(AST* ast)
 {
 	const NodePtr builtInImport = AllocASTNode(
@@ -235,7 +219,7 @@ static void GenerateProgramNodeDependencies(Array* programNodes, ProgramNode* pr
 
 		ImportStmt* importStmt = node->ptr;
 
-		importStmt->moduleName = AllocBaseFileName(importStmt->path);
+		importStmt->moduleName = AllocFileNameNoExtension(importStmt->path);
 
 		ProgramDependency dependency =
 			{
@@ -273,7 +257,7 @@ static ProgramNode* GenerateProgramNode(
 	ProgramNode* programNode = malloc(sizeof(ProgramNode));
 	*programNode = (ProgramNode){
 		.path = AllocateString(path),
-		.moduleName = moduleName != NULL ? AllocateString(moduleName) : AllocBaseFileName(path),
+		.moduleName = moduleName != NULL ? AllocateString(moduleName) : AllocFileNameNoExtension(path),
 		.builtIn = isBuiltIn,
 		.searched = false,
 	};
@@ -350,16 +334,16 @@ static void CompileProgramTree(const Array* programNodes, char** outCode, size_t
 
 static void ChangeDirectoryToFileName(const char* fileName)
 {
-	const size_t length = strlen(fileName);
-	char copy[length + 1];
-	memcpy(copy, fileName, length + 1);
-
-	chdir(dirname(copy));
+	char* dirName = AllocDirectoryName(fileName);
+	ChangeDirectory(dirName);
+	free(dirName);
 }
 
 void Compile(const char* inputPath, const char* outputPath)
 {
 	FILE* outputFile = fopen(outputPath, "wb");
+	if (!outputFile)
+		HandleError(NULL, NULL, ERROR_RESULT("Could not open input file", -1, NULL));
 
 	ChangeDirectoryToFileName(inputPath);
 
