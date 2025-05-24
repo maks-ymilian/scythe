@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define MAP_ITERATE(name, map) \
 	Node* name = NULL;         \

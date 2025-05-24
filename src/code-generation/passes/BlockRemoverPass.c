@@ -16,6 +16,7 @@ static void VisitBlock(NodePtr node)
 		switch (node->type)
 		{
 		case Node_BlockStatement:
+		{
 			BlockStmt* innerBlock = node->ptr;
 			for (size_t j = 0; j < innerBlock->statements.length; ++j)
 				ArrayInsert(&block->statements, innerBlock->statements.array[j], i + j + 1);
@@ -23,7 +24,9 @@ static void VisitBlock(NodePtr node)
 			FreeASTNode(*node);
 			*node = NULL_NODE;
 			break;
+		}
 		case Node_If:
+		{
 			IfStmt* ifStmt = node->ptr;
 
 			assert(ifStmt->trueStmt.type == Node_BlockStatement);
@@ -59,18 +62,25 @@ static void VisitBlock(NodePtr node)
 			VisitBlock(ifStmt->trueStmt);
 			VisitBlock(ifStmt->falseStmt);
 			break;
+		}
 		case Node_While:
+		{
 			WhileStmt* whileStmt = node->ptr;
 			VisitBlock(whileStmt->stmt);
 			break;
+		}
 		case Node_FunctionDeclaration:
+		{
 			FuncDeclStmt* funcDecl = node->ptr;
 			VisitBlock(funcDecl->block);
 			break;
+		}
 		case Node_Section:
+		{
 			SectionStmt* section = node->ptr;
 			VisitBlock(section->block);
 			break;
+		}
 		case Node_Return:
 		case Node_LoopControl:
 		case Node_ExpressionStatement:
@@ -88,13 +98,17 @@ static void VisitGlobalStatement(const NodePtr* node)
 	switch (node->type)
 	{
 	case Node_Section:
+	{
 		SectionStmt* section = node->ptr;
 		VisitBlock(section->block);
 		break;
+	}
 	case Node_FunctionDeclaration:
+	{
 		FuncDeclStmt* funcDecl = node->ptr;
 		VisitBlock(funcDecl->block);
 		break;
+	}
 	case Node_VariableDeclaration:
 	case Node_Import:
 	case Node_Null:

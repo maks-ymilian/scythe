@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 
 int WindowsCallMain(int (*main)(int argc, char** argv), int argc, wchar_t* argv[]);
 

@@ -11,12 +11,10 @@ Array AllocateArray(const size_t sizeOfType)
 {
 	assert(sizeOfType > 0);
 
-	constexpr size_t count = START_SIZE;
-
 	Array array;
-	array.array = malloc(count * sizeof(void*));
+	array.array = malloc(START_SIZE * sizeof(void*));
 	array.length = 0;
-	array.cap = count;
+	array.cap = START_SIZE;
 	array.sizeOfType = sizeOfType;
 	return array;
 }

@@ -154,19 +154,25 @@ static bool StatementReturns(const NodePtr* node, bool allPaths)
 	case Node_LoopControl:
 		return true;
 	case Node_BlockStatement:
+	{
 		BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			if (StatementReturns(block->statements.array[i], allPaths))
 				return true;
 		return false;
+	}
 	case Node_If:
+	{
 		const IfStmt* ifStmt = node->ptr;
 		const bool trueReturns = StatementReturns(&ifStmt->trueStmt, allPaths);
 		const bool falseReturns = StatementReturns(&ifStmt->falseStmt, allPaths);
 		return allPaths ? trueReturns && falseReturns : trueReturns || falseReturns;
+	}
 	case Node_While:
+	{
 		const WhileStmt* whileStmt = node->ptr;
 		return StatementReturns(&whileStmt->stmt, allPaths);
+	}
 	case Node_FunctionDeclaration:
 	case Node_ExpressionStatement:
 	case Node_VariableDeclaration:
@@ -299,27 +305,39 @@ static Result VisitBlock(
 		switch (node->type)
 		{
 		case Node_Return:
+		{
 			PROPAGATE_ERROR(VisitReturnStatement(node, returnVars, whileVars, isVoid));
 			break;
+		}
 		case Node_LoopControl:
+		{
 			PROPAGATE_ERROR(VisitLoopControlStatement(node, whileVars));
 			break;
+		}
 		case Node_BlockStatement:
+		{
 			PROPAGATE_ERROR(VisitBlock(*node, returnVars, whileVars, isVoid));
 			break;
+		}
 		case Node_If:
+		{
 			const IfStmt* ifStmt = node->ptr;
 			PROPAGATE_ERROR(VisitBlock(ifStmt->trueStmt, returnVars, whileVars, isVoid));
 			if (ifStmt->falseStmt.ptr != NULL)
 				PROPAGATE_ERROR(VisitBlock(ifStmt->falseStmt, returnVars, whileVars, isVoid));
 			break;
+		}
 		case Node_While:
+		{
 			PROPAGATE_ERROR(VisitWhileStatement(node, returnVars, isVoid));
 			break;
+		}
 		case Node_FunctionDeclaration:
+		{
 			const FuncDeclStmt* funcDecl = node->ptr;
 			PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, &funcDecl->type));
 			break;
+		}
 		case Node_ExpressionStatement:
 		case Node_VariableDeclaration:
 		case Node_Null:
@@ -423,18 +441,24 @@ static Result VisitGlobalStatement(const NodePtr* node)
 	switch (node->type)
 	{
 	case Node_Section:
+	{
 		SectionStmt* section = node->ptr;
 		PROPAGATE_ERROR(VisitFunctionBlock(section->block, NULL));
 		break;
+	}
 	case Node_FunctionDeclaration:
+	{
 		FuncDeclStmt* funcDecl = node->ptr;
 		PROPAGATE_ERROR(VisitFunctionBlock(funcDecl->block, &funcDecl->type));
 		break;
+	}
 	case Node_BlockStatement:
+	{
 		BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; i++)
 			PROPAGATE_ERROR(VisitGlobalStatement(block->statements.array[i]));
 		break;
+	}
 	case Node_VariableDeclaration:
 	case Node_Import:
 	case Node_Null:

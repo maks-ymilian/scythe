@@ -12,7 +12,7 @@ typedef struct MemoryStream
 	size_t position, length, capacity;
 } MemoryStream;
 
-MemoryStream* AllocateMemoryStream()
+MemoryStream* AllocateMemoryStream(void)
 {
 	MemoryStream* stream = malloc(sizeof(MemoryStream));
 	stream->buffer = malloc(START_SIZE * sizeof(uint8_t));

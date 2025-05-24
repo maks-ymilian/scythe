@@ -14,7 +14,7 @@
 static Array tokens;
 static size_t pointer;
 
-static Token* CurrentToken()
+static Token* CurrentToken(void)
 {
 	if (pointer >= tokens.length)
 		return tokens.array[tokens.length - 1];
@@ -1059,7 +1059,7 @@ static Result ParseSectionStatement(NodePtr* out)
 	if (identifier == NULL)
 		return ERROR_RESULT_LINE("Expected identifier after \"@\"");
 
-	constexpr char sectionNames[6][10] =
+	char sectionNames[6][10] =
 		{
 			"init",
 			"slider",
@@ -1068,7 +1068,7 @@ static Result ParseSectionStatement(NodePtr* out)
 			"serialize",
 			"gfx",
 		};
-	const SectionType sectionTypes[] =
+	SectionType sectionTypes[] =
 		{
 			Section_Init,
 			Section_Slider,

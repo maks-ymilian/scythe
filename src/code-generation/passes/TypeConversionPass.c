@@ -191,11 +191,13 @@ static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targe
 	switch (targetType.effectiveType)
 	{
 	case Primitive_Float:
+	{
 		if (exprType.effectiveType != Primitive_Int)
 			goto convertError;
 		return SUCCESS_RESULT;
-
+	}
 	case Primitive_Int:
+	{
 		if (exprType.isPointer && targetType.isPointer &&
 			exprType.pointerType != targetType.pointerType)
 			goto convertError;
@@ -206,22 +208,26 @@ static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targe
 
 		*expr = AllocIntConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
-
+	}
 	case Primitive_Bool:
+	{
 		if (exprType.effectiveType != Primitive_Float && exprType.effectiveType != Primitive_Int)
 			goto convertError;
 		*expr = AllocBoolConversion(*expr, lineNumber);
 		return SUCCESS_RESULT;
+	}
 	default: INVALID_VALUE(targetType.effectiveType);
 	}
 
 convertError:
-	char* exprName = AllocTypeName(exprType);
-	char* targetName = AllocTypeName(targetType);
-	char* message = AllocateString2Str("Cannot convert type \"%s\" to \"%s\"", exprName, targetName);
-	free(exprName);
-	free(targetName);
-	return ERROR_RESULT(message, lineNumber, currentFilePath);
+	{
+		char* exprName = AllocTypeName(exprType);
+		char* targetName = AllocTypeName(targetType);
+		char* message = AllocateString2Str("Cannot convert type \"%s\" to \"%s\"", exprName, targetName);
+		free(exprName);
+		free(targetName);
+		return ERROR_RESULT(message, lineNumber, currentFilePath);
+	}
 }
 
 static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "Token.h"
 #include "data-structures/Array.h"
 

@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 static const char* source;
 static size_t pointer;
@@ -40,7 +41,7 @@ static bool IsIdentifierChar(const char ch)
 	return isalnum(ch) || ch == '_';
 }
 
-static Result ScanIdentifier()
+static Result ScanIdentifier(void)
 {
 	const size_t start = pointer;
 
@@ -63,7 +64,7 @@ static Result ScanIdentifier()
 	return SUCCESS_RESULT;
 }
 
-static Result ScanStringLiteral()
+static Result ScanStringLiteral(void)
 {
 	const size_t start = pointer;
 
@@ -88,7 +89,7 @@ static Result ScanStringLiteral()
 	return SUCCESS_RESULT;
 }
 
-static Result ScanNumberLiteral()
+static Result ScanNumberLiteral(void)
 {
 	const size_t start = pointer;
 
@@ -111,19 +112,15 @@ static Result ScanNumberLiteral()
 	return SUCCESS_RESULT;
 }
 
-static Result ScanKeyword()
+static Result ScanKeyword(void)
 {
 	for (TokenType tokenType = 0; tokenType < TokenType_Max; ++tokenType)
 	{
-		switch (tokenType)
-		{
-		case Token_NumberLiteral:
-		case Token_StringLiteral:
-		case Token_Identifier:
-		case Token_EndOfFile:
+		if (tokenType == Token_NumberLiteral ||
+			tokenType == Token_StringLiteral ||
+			tokenType == Token_Identifier ||
+			tokenType == Token_EndOfFile)
 			continue;
-		default:
-		}
 
 		const char* string = GetTokenTypeString(tokenType);
 		const size_t length = strlen(string);
@@ -146,7 +143,7 @@ static Result ScanKeyword()
 	return NOT_FOUND_RESULT;
 }
 
-static Result ScanToken()
+static Result ScanToken(void)
 {
 	PROPAGATE_FOUND(ScanKeyword());
 	PROPAGATE_FOUND(ScanNumberLiteral());
@@ -168,19 +165,20 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 
 	while (source[pointer] != '\0')
 	{
-		switch (source[pointer])
+		if (source[pointer] == '\n')
 		{
-		case '\n':
 			insideLineComment = false;
 			currentLine++;
-			[[fallthrough]];
-		case ' ':
-		case '\t':
-		case '\r':
 			pointer++;
 			continue;
-
-		default:
+		}
+		else if (source[pointer] == '\n' ||
+			source[pointer] == ' ' ||
+			source[pointer] == '\t' ||
+			source[pointer] == '\r')
+		{
+			pointer++;
+			continue;
 		}
 
 		if (memcmp(source + pointer, "//", 2) == 0)

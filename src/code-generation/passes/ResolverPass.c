@@ -200,7 +200,7 @@ static NodePtr* GetFirstNode(const Map* declarations, const char* key)
 	}
 }
 
-static void PushScope()
+static void PushScope(void)
 {
 	Scope* new = malloc(sizeof(Scope));
 	*new = (Scope){

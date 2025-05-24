@@ -10,6 +10,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 	switch (expr->type)
 	{
 	case Node_BlockExpression:
+	{
 		if (statement->type != Node_BlockStatement)
 		{
 			Array statements = AllocateArray(sizeof(NodePtr));
@@ -64,33 +65,46 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 					sizeof(MemberAccessExpr), Node_MemberAccess)},
 			sizeof(FuncCallExpr), Node_FunctionCall);
 		break;
+	}
 	case Node_Binary:
+	{
 		BinaryExpr* binary = expr->ptr;
 		VisitExpression(&binary->left, statement, lineNumber);
 		VisitExpression(&binary->right, statement, lineNumber);
 		break;
+	}
 	case Node_Unary:
+	{
 		UnaryExpr* unary = expr->ptr;
 		VisitExpression(&unary->expression, statement, lineNumber);
 		break;
+	}
 	case Node_FunctionCall:
+		{
 		FuncCallExpr* funcCall = expr->ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; i++)
 			VisitExpression(funcCall->arguments.array[i], statement, lineNumber);
 		break;
+	}
 	case Node_MemberAccess:
+		{
 		MemberAccessExpr* memberAccess = expr->ptr;
 		VisitExpression(&memberAccess->start, statement, lineNumber);
 		break;
+	}
 	case Node_Subscript:
+	{
 		SubscriptExpr* subscript = expr->ptr;
 		VisitExpression(&subscript->baseExpr, statement, lineNumber);
 		VisitExpression(&subscript->indexExpr, statement, lineNumber);
 		break;
+	}
 	case Node_SizeOf:
+		{
 		SizeOfExpr* sizeOf = expr->ptr;
 		VisitExpression(&sizeOf->expr, statement, lineNumber);
 		break;
+	}
 	case Node_Literal:
 	case Node_Null:
 		break;
@@ -103,29 +117,40 @@ static void VisitStatement(NodePtr* node)
 	switch (node->type)
 	{
 	case Node_BlockStatement:
+	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; i++)
 			VisitStatement(block->statements.array[i]);
 		break;
+	}
 	case Node_If:
+	{
 		IfStmt* ifStmt = node->ptr;
 		VisitExpression(&ifStmt->expr, node, ifStmt->lineNumber);
 		VisitStatement(&ifStmt->trueStmt);
 		VisitStatement(&ifStmt->falseStmt);
 		break;
+	}
 	case Node_FunctionDeclaration:
+	{
 		FuncDeclStmt* funcDecl = node->ptr;
 		VisitStatement(&funcDecl->block);
 		break;
+	}
 	case Node_VariableDeclaration:
+	{
 		VarDeclStmt* varDecl = node->ptr;
 		VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
 		break;
+	}
 	case Node_ExpressionStatement:
+	{
 		ExpressionStmt* exprStmt = node->ptr;
 		VisitExpression(&exprStmt->expr, node, exprStmt->lineNumber);
 		break;
+	}
 	case Node_StructDeclaration:
+	{
 		StructDeclStmt* structDecl = node->ptr;
 		for (size_t i = 0; i < structDecl->members.length; i++)
 		{
@@ -135,26 +160,35 @@ static void VisitStatement(NodePtr* node)
 			VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
 		}
 		break;
+	}
 	case Node_Section:
+	{
 		SectionStmt* section = node->ptr;
 		VisitStatement(&section->block);
 		break;
+	}
 	case Node_Return:
+	{
 		ReturnStmt* returnStmt = node->ptr;
 		VisitExpression(&returnStmt->expr, node, returnStmt->lineNumber);
 		break;
+	}
 	case Node_While:
+	{
 		WhileStmt* whileStmt = node->ptr;
 		VisitExpression(&whileStmt->expr, node, whileStmt->lineNumber);
 		VisitStatement(&whileStmt->stmt);
 		break;
+	}
 	case Node_For:
+	{
 		ForStmt* forStmt = node->ptr;
 		VisitStatement(&forStmt->initialization);
 		VisitExpression(&forStmt->condition, node, forStmt->lineNumber);
 		VisitExpression(&forStmt->increment, node, forStmt->lineNumber);
 		VisitStatement(&forStmt->stmt);
 		break;
+	}
 	case Node_LoopControl:
 	case Node_Import:
 	case Node_Null:

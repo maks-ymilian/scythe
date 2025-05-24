@@ -42,14 +42,14 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	switch (type.expr.type)
 	{
 	case Node_MemberAccess:
+		{
 		const MemberAccessExpr* memberAccess = type.expr.ptr;
 		structDecl = memberAccess->typeReference;
 		assert(structDecl != NULL);
 		break;
-
+		}
 	case Node_Literal:
 		break;
-
 	default: INVALID_VALUE(type.expr.type);
 	}
 
@@ -1042,41 +1042,59 @@ static Result VisitStatement(NodePtr* node)
 	switch (node->type)
 	{
 	case Node_VariableDeclaration:
+	{
 		PROPAGATE_ERROR(VisitVariableDeclaration(node));
 		break;
+	}
 	case Node_StructDeclaration:
+	{
 		ArrayAdd(&nodesToDelete, node);
 		*node = NULL_NODE;
 		break;
+	}
 	case Node_ExpressionStatement:
+	{
 		PROPAGATE_ERROR(VisitExpressionStatement(node));
 		break;
+	}
 	case Node_FunctionDeclaration:
+	{
 		PROPAGATE_ERROR(VisitFunctionDeclaration(node));
 		break;
+	}
 	case Node_BlockStatement:
+		{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
+		}
 	case Node_If:
+	{
 		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
 		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
 		break;
+	}
 	case Node_Return:
+	{
 		PROPAGATE_ERROR(VisitReturnStatement(node));
 		break;
+	}
 	case Node_Section:
+	{
 		SectionStmt* section = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&section->block));
 		break;
+	}
 	case Node_While:
+	{
 		WhileStmt* whileStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, node));
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		break;
+	}
 	case Node_LoopControl:
 	case Node_Import:
 	case Node_Null:

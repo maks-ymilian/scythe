@@ -102,13 +102,13 @@ static void WriteChar(const char chr)
 	}
 }
 
-static void PushIndent()
+static void PushIndent(void)
 {
 	StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
 	indentationLevel++;
 }
 
-static void PopIndent()
+static void PopIndent(void)
 {
 	const Buffer lastChars = StreamRewindRead(stream, INDENT_WIDTH);
 	if (memcmp(INDENT_STRING, lastChars.buffer, INDENT_WIDTH) == 0)
@@ -247,7 +247,7 @@ static bool IsExternal(const MemberAccessExpr* identifier)
 		return identifier->funcReference->modifiers.externalValue;
 	if (identifier->varReference != NULL)
 		return identifier->varReference->modifiers.externalValue;
-	unreachable();
+	UNREACHABLE();
 }
 
 static int GetUniqueName(const MemberAccessExpr* identifier)
@@ -256,7 +256,7 @@ static int GetUniqueName(const MemberAccessExpr* identifier)
 		return identifier->funcReference->uniqueName;
 	if (identifier->varReference != NULL)
 		return identifier->varReference->uniqueName;
-	unreachable();
+	UNREACHABLE();
 }
 
 static char* GetName(const MemberAccessExpr* identifier, bool external)
@@ -271,7 +271,7 @@ static char* GetName(const MemberAccessExpr* identifier, bool external)
 		return external && identifier->varReference->externalName
 				   ? identifier->varReference->externalName
 				   : identifier->varReference->name;
-	unreachable();
+	UNREACHABLE();
 }
 
 static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
@@ -401,25 +401,37 @@ static void VisitStatement(const NodePtr* node)
 	switch (node->type)
 	{
 	case Node_FunctionDeclaration:
+	{
 		VisitFunctionDeclaration(node->ptr);
 		break;
+	}
 	case Node_VariableDeclaration:
+	{
 		VisitVariableDeclaration(node->ptr);
 		break;
+	}
 	case Node_ExpressionStatement:
+	{
 		const ExpressionStmt* expressionStmt = node->ptr;
 		VisitExpression(expressionStmt->expr, NULL);
 		WriteString(";\n");
 		break;
+	}
 	case Node_BlockStatement:
+	{
 		VisitBlock(node->ptr, true);
 		break;
+	}
 	case Node_If:
+	{
 		VisitIfStatement(node->ptr);
 		break;
+	}
 	case Node_While:
+	{
 		VisitWhileStatement(node->ptr);
 		break;
+	}
 	case Node_Null:
 		break;
 	default: INVALID_VALUE(node->type);
