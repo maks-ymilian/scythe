@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "data-structures/MemoryStream.h"
+#include "StringUtils.h"
 
 #define INDENT_WIDTH 4
 #define INDENT_STRING "    "
@@ -52,31 +53,27 @@ static const int binaryPrecedence[] = {
 
 static void WriteUInt64(const uint64_t integer)
 {
-	const int size = snprintf(NULL, 0, "%" PRIu64, integer);
-	assert(size > 0);
-	char string[size + 1];
-	snprintf(string, sizeof(string), "%" PRIu64, integer);
-	StreamWrite(stream, string, sizeof(string) - 1);
+	char string[INT64_MAX_CHARS + 1];
+	int numChars = snprintf(string, sizeof(string), "%" PRIu64, integer);
+	if (numChars < 1)
+	{
+		assert(0);
+		return;
+	}
+	StreamWrite(stream, string, (size_t)numChars);
 }
 
 static void WriteUniqueName(const int uniqueName)
 {
 	assert(uniqueName > 0);
-
-	const int size = snprintf(NULL, 0, "%d", uniqueName);
-	assert(size > 0);
-	char string[size + 1];
-	snprintf(string, sizeof(string), "%d", uniqueName);
-	StreamWrite(stream, string, sizeof(string) - 1);
-}
-
-static void WriteFloat(const double value)
-{
-	const int size = snprintf(NULL, 0, "%.14lf\n", value);
-	assert(size > 0);
-	char string[size + 1];
-	snprintf(NULL, 0, "%.14lf\n", value);
-	StreamWrite(stream, string, sizeof(string) - 1);
+	char string[INT64_MAX_CHARS + 1];
+	int numChars = snprintf(string, sizeof(string), "%d", uniqueName);
+	if (numChars < 1)
+	{
+		assert(0);
+		return;
+	}
+	StreamWrite(stream, string, (size_t)numChars);
 }
 
 static void WriteString(const char* str)

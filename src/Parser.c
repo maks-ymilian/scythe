@@ -85,7 +85,7 @@ static Result EvaluateNumberLiteral(
 	uint64_t* outInt)
 {
 	const size_t length = strlen(string);
-	char text[length + 1];
+	char* text = malloc(length + 1);
 	memcpy(text, string, length + 1);
 
 	*outIsInteger = true;
@@ -102,6 +102,7 @@ static Result EvaluateNumberLiteral(
 		if (text[consumedChars] != '\0')
 			return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
 
+		free(text);
 		return SUCCESS_RESULT;
 	}
 
@@ -120,6 +121,8 @@ static Result EvaluateNumberLiteral(
 	}
 
 	PROPAGATE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
+
+	free(text);
 	return SUCCESS_RESULT;
 }
 

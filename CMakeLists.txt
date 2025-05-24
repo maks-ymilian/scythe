@@ -46,6 +46,7 @@ if (USE_DEBUG)
 			-Wmissing-prototypes
 			-Wcast-qual
 			-Wsign-conversion
+			-Wvla
 
 			-Wno-unused-variable
 			-Wno-unused-function

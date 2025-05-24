@@ -15,7 +15,6 @@ MemoryStream* AllocateMemoryStream();
 void FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
 void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
-void StreamInsert(MemoryStream* stream, const void* buffer, size_t length, size_t position);
 void StreamWriteByte(MemoryStream* stream, uint8_t data);
 
 Buffer StreamRead(MemoryStream* stream, size_t length);

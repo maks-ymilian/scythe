@@ -1,6 +1,11 @@
 #pragma once
 
-int IntCharCount(int number);
+#include <inttypes.h>
+
+#define INT64_MAX_CHARS 20
+
+size_t SignedIntCharCount(int64_t number);
+size_t UnsignedIntCharCount(uint64_t number);
 
 char* AllocateString(const char* string);
 char* AllocateString1Str(const char* format, const char* insert);
