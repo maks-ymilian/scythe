@@ -341,14 +341,17 @@ static void ChangeDirectoryToFileName(const char* fileName)
 
 void Compile(const char* inputPath, const char* outputPath)
 {
-	FILE* outputFile = fopen(outputPath, "wb");
-	if (!outputFile)
-		HandleError(NULL, NULL, ERROR_RESULT("Could not open input file", -1, NULL));
+	char* newInputPath = AllocAbsolutePath(inputPath);
+	char* newOutputPath = AllocAbsolutePath(outputPath);
 
-	ChangeDirectoryToFileName(inputPath);
+	FILE* outputFile = fopen(newOutputPath, "wb");
+	if (!outputFile)
+		HandleError(NULL, NULL, ERROR_RESULT("Could not open output file", -1, NULL));
+
+	ChangeDirectoryToFileName(newInputPath);
 
 	Array programNodes = AllocateArray(sizeof(ProgramNode*));
-	GenerateProgramNode(&programNodes, inputPath, NULL, -1, NULL);
+	GenerateProgramNode(&programNodes, newInputPath, NULL, -1, NULL);
 
 	char* outputCode = NULL;
 	size_t outputCodeLength = 0;
@@ -357,7 +360,9 @@ void Compile(const char* inputPath, const char* outputPath)
 	FreeProgramTree(&programNodes);
 
 	printf("%.*s\n", (int)outputCodeLength, outputCode);
-	HandleError("Write", NULL, WriteOutputFile(outputFile, outputPath, outputCode, outputCodeLength));
+	HandleError("Write", NULL, WriteOutputFile(outputFile, newOutputPath, outputCode, outputCodeLength));
 
+	free(newInputPath);
+	free(newOutputPath);
 	free(outputCode);
 }
