@@ -60,7 +60,7 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	};
 }
 
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data);
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
 static size_t ForEachStructMember(
 	StructDeclStmt* type,
 	const StructMemberFunc func,
@@ -83,7 +83,7 @@ static size_t ForEachStructMember(
 		if (memberType == NULL)
 		{
 			if (func != NULL)
-				func(varDecl, type, *currentIndex, data);
+				func(varDecl, *currentIndex, data);
 			(*currentIndex)++;
 		}
 		else
@@ -304,7 +304,7 @@ typedef struct
 	size_t* returnValue;
 } GetIndexOfMemberData;
 
-static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, size_t index, void* data)
 {
 	const GetIndexOfMemberData* d = data;
 	if (d->member == varDecl)
@@ -389,7 +389,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 				return new;
 			}
 			else if (memberAccess->start.type == Node_FunctionCall)
-				assert(!"todo");
+				TODO();
 			else
 				assert(0);
 		}
@@ -420,7 +420,6 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			assert(instance != NULL);
 			return AllocIdentifier(instance, -1);
 		}
-		break;
 	}
 	case Node_Subscript:
 	{
@@ -438,7 +437,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	}
 }
 
-static void ExpandArgument(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
+static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
 {
 	const ExpandArgumentData* d = data;
 
@@ -484,7 +483,7 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 			paramType = (TypeInfo){
 				.effectiveType = NULL,
 				.pointerType = NULL,
-				.isPointer = NULL,
+				.isPointer = false,
 			};
 		}
 
@@ -518,7 +517,7 @@ typedef struct
 	size_t memberCount;
 } GenerateStructMemberAssignmentData;
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, StructDeclStmt* parentType, size_t index, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
 {
 	const GenerateStructMemberAssignmentData* d = data;
 	NodePtr statement = AllocAssignmentStatement(
@@ -681,7 +680,7 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 		else if (memberAccess->start.type == Node_FunctionCall)
 		{
 			// test_accessing_from_function.scy
-			assert(!"todo");
+			TODO();
 		}
 		else
 			assert(0);
@@ -781,7 +780,7 @@ typedef struct
 	size_t index;
 } InstantiateMemberData;
 
-static void InstantiateMember(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
 {
 	const InstantiateMemberData* d = data;
 
@@ -813,7 +812,7 @@ typedef struct
 	VarDeclStmt** returnValue;
 } GetStructMemberAtIndexData;
 
-static void GetMemberAtIndexInternal(VarDeclStmt* varDecl, StructDeclStmt* parentType, size_t index, void* data)
+static void GetMemberAtIndexInternal(VarDeclStmt* varDecl, size_t index, void* data)
 {
 	const GetStructMemberAtIndexData* d = data;
 	if (index == d->index)

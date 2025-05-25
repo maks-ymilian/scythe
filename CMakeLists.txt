@@ -8,6 +8,7 @@ set(SOURCES
 		"src/Compiler.c"
 		"src/FileUtils.c"
 		"src/StringUtils.c"
+		"src/Token.c"
 
 		"src/data-structures/Array.c"
 		"src/data-structures/Map.c"
@@ -34,7 +35,7 @@ project(scythe C)
 add_executable(${PROJECT_NAME} ${SOURCES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 17)
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_EXTENSIONS OFF)
-target_compile_definitions(${PROJECT_NAME} PRIVATE _XOPEN_SOURCE=700)
+target_compile_definitions(${PROJECT_NAME} PRIVATE _XOPEN_SOURCE=700 _CRT_SECURE_NO_WARNINGS)
 target_include_directories(${PROJECT_NAME} PRIVATE "src")
 
 option(USE_DEBUG "" OFF)
@@ -45,11 +46,15 @@ if (USE_DEBUG)
 			-Wmissing-prototypes
 			-Wcast-qual
 			-Wsign-conversion
+			-Wconversion
+			-Wincompatible-pointer-types
+			-Wint-conversion
+			-Wuninitialized
+			-Wnarrowing
 			-Wvla
-
-			-Wno-unused-variable
-			-Wno-unused-function
-			-Wno-unused-parameter
+			-Wunused-variable
+			-Wunused-function
+			-Wunused-parameter
 	)
 
 	option(USE_SANITIZERS "" OFF)

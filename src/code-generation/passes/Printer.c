@@ -52,7 +52,7 @@ static void VisitExpression(const NodePtr* node)
 	case Node_BlockExpression:
 	{
 		printf("BlockExpression");
-		const BlockExpr* blockExpr = node->ptr;
+		// const BlockExpr* blockExpr = node->ptr;
 		// VisitStatement(&blockExpr->block);
 		break;
 	}

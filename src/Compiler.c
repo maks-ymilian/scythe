@@ -80,6 +80,7 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 {
 	if (result.type == Result_Success)
 		return;
+	assert(result.type == Result_Error);
 
 	if (filePath != NULL)
 		result.filePath = filePath;
@@ -89,7 +90,12 @@ static void HandleError(const char* errorStage, const char* filePath, Result res
 	else
 		printf("Error: ");
 
-	PrintError(result);
+	assert(result.errorMessage != NULL);
+	printf("%s", result.errorMessage);
+	if (result.lineNumber > 0)
+		printf(" (line %d)", result.lineNumber);
+	if (result.filePath != NULL)
+		printf(" (%s)", result.filePath);
 	printf("\n");
 
 	printf("Press ENTER to continue...\n");
@@ -176,17 +182,17 @@ static bool IsSameFileOrBuiltInPath(
 	return isSameFile;
 }
 
-static void AddBuiltInImportStatement(AST* ast)
-{
-	const NodePtr builtInImport = AllocASTNode(
-		&(ImportStmt){
-			.path = AllocateString("jsfx"),
-			.moduleName = NULL,
-			.lineNumber = -1,
-		},
-		sizeof(ImportStmt), Node_Import);
-	ArrayInsert(&ast->nodes, &builtInImport, 0);
-}
+// static void AddBuiltInImportStatement(AST* ast)
+// {
+// 	const NodePtr builtInImport = AllocASTNode(
+// 		&(ImportStmt){
+// 			.path = AllocateString("jsfx"),
+// 			.moduleName = NULL,
+// 			.lineNumber = -1,
+// 		},
+// 		sizeof(ImportStmt), Node_Import);
+// 	ArrayInsert(&ast->nodes, &builtInImport, 0);
+// }
 
 static bool FindModuleNameConflict(const Array* programNodes, const ProgramNode* programNode)
 {

@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <stdbool.h>
 
 #define UNREACHABLE() \
 	do \
@@ -19,3 +21,11 @@
 		UNREACHABLE(); \
 	}                                                                 \
 	while (0)
+
+#define TODO()\
+	do \
+	{ \
+		printf("todo\n"); \
+		exit(1);                                                      \
+	}\
+    while (0)

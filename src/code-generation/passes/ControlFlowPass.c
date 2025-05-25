@@ -82,7 +82,7 @@ static NodePtr AllocBreakFlagExpression(VarDeclStmt* breakFlagDecl, const NodePt
 		sizeof(BinaryExpr), Node_Binary);
 }
 
-static NodePtr AllocIfFlagIsFalse(const char* name, VarDeclStmt* flagDecl, Array* statements, const int lineNumber)
+static NodePtr AllocIfFlagIsFalse(VarDeclStmt* flagDecl, Array* statements, const int lineNumber)
 {
 	return AllocASTNode(
 		&(IfStmt){
@@ -291,8 +291,8 @@ static Result VisitBlock(
 
 		NodePtr ifNode =
 			whileVars == NULL
-				? AllocIfFlagIsFalse(returnFlagName, returnVars->returnFlagDecl, &statements, -1)
-				: AllocIfFlagIsFalse(continueFlagName, whileVars->continueFlagDecl, &statements, -1);
+				? AllocIfFlagIsFalse(returnVars->returnFlagDecl, &statements, -1)
+				: AllocIfFlagIsFalse(whileVars->continueFlagDecl, &statements, -1);
 		ArrayAdd(&block->statements, &ifNode);
 
 		assert(ifNode.type == Node_If);

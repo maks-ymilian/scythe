@@ -1078,7 +1078,7 @@ static Result ParseSectionStatement(NodePtr* out)
 			Section_GFX,
 		};
 
-	SectionType sectionType;
+	SectionType sectionType = Section_Init;
 	bool sectionFound = false;
 	for (size_t i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
 	{

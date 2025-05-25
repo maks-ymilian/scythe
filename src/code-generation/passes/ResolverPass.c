@@ -428,7 +428,7 @@ static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t 
 			AllocateString1Str1Int(
 				"Could not find overload for function \"%s\" with %d parameter(s)",
 				name,
-				argCount),
+				(int)argCount),
 			lineNumber,
 			currentFilePath);
 	else
@@ -540,7 +540,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 						AllocateString1Str1Int(
 							"Could not find overload for function \"%s\" with %d parameter(s)",
 							text,
-							resolveFuncCall->arguments.length),
+							(int)resolveFuncCall->arguments.length),
 						lineNumber,
 						currentFilePath);
 				else
@@ -564,16 +564,6 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_FunctionDeclaration:
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	default: INVALID_VALUE(current->type);
-	}
-}
-
-static NodePtr GetBaseExpression(NodePtr node)
-{
-	switch (node.type)
-	{
-	case Node_FunctionCall: return ((FuncCallExpr*)node.ptr)->baseExpr;
-	case Node_Subscript: return ((SubscriptExpr*)node.ptr)->baseExpr;
-	default: INVALID_VALUE(node.type);
 	}
 }
 

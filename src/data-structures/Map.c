@@ -179,7 +179,7 @@ bool MapAdd(Map* map, const char* key, const void* value)
 	if (MapGet(map, key) != NULL)
 		return false;
 
-	const float filled = (float)map->elementCount / map->bucketsSize;
+	double filled = (double)map->elementCount / (double)map->bucketsSize;
 	if (filled > LOAD_FACTOR)
 		Expand(map);
 

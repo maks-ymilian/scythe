@@ -4,9 +4,9 @@
 
 #if defined(_WIN32)
 
-#include <Fileapi.h>
-#include <stdlib.h>
 #include <windows.h>
+#include <fileapi.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define BUFSIZE 4096

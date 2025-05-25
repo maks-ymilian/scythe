@@ -64,14 +64,3 @@ typedef struct
 	const char* errorMessage;
 	const char* filePath;
 } Result;
-
-static void PrintError(const Result result)
-{
-	assert(result.type == Result_Error);
-	assert(result.errorMessage != NULL);
-	printf("%s", result.errorMessage);
-	if (result.lineNumber > 0)
-		printf(" (line %d)", result.lineNumber);
-	if (result.filePath != NULL)
-		printf(" (%s)", result.filePath);
-}
