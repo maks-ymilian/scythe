@@ -3,5 +3,4 @@
 #include "Result.h"
 #include "data-structures/Array.h"
 
-Result Scan(const char* sourceCode, Array* outTokens);
-void FreeTokenArray(const Array* tokens);
+Result Scan(const char* path, const char* sourceCode, size_t sourceCodeLength, Array* outTokens);

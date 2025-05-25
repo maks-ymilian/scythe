@@ -8,14 +8,14 @@
 
 typedef struct MemoryStream
 {
-	uint8_t* buffer;
+	char* buffer;
 	size_t position, length, capacity;
 } MemoryStream;
 
 MemoryStream* AllocateMemoryStream(void)
 {
 	MemoryStream* stream = malloc(sizeof(MemoryStream));
-	stream->buffer = malloc(START_SIZE * sizeof(uint8_t));
+	stream->buffer = malloc(START_SIZE * sizeof(char));
 	stream->capacity = START_SIZE;
 	stream->position = 0;
 	stream->length = 0;
@@ -90,7 +90,7 @@ void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 		stream->length = stream->position;
 }
 
-void StreamWriteByte(MemoryStream* stream, const uint8_t data)
+void StreamWriteByte(MemoryStream* stream, const char data)
 {
 	if (stream->position + 1 >= stream->capacity)
 		Reallocate(stream, stream->position + 2);

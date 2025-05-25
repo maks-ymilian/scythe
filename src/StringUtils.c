@@ -85,6 +85,15 @@ char* AllocateString(const char* string)
 	return new;
 }
 
+char* AllocateStringLength(const char* string, size_t length)
+{
+	if (string == NULL) return NULL;
+	char* new = malloc(length + 1);
+	memcpy(new, string, length);
+	new[length] = '\0';
+	return new;
+}
+
 char* AllocateString1Str(const char* format, const char* insert)
 {
 	const size_t insertLength = strlen(insert);

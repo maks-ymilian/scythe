@@ -93,7 +93,7 @@ static void WriteString(const char* str)
 
 static void WriteChar(const char chr)
 {
-	StreamWriteByte(stream, (uint8_t)chr);
+	StreamWriteByte(stream, chr);
 
 	if (chr == '\n')
 	{
@@ -469,7 +469,7 @@ static void VisitModule(const ModuleNode* module)
 	if (module->statements.length != 0)
 	{
 		WriteString("// Module: ");
-		WriteString(module->path);
+		WriteString(module->moduleName);
 		WriteChar('\n');
 	}
 
@@ -503,6 +503,6 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 
 	const Buffer buffer = StreamGetBuffer(stream);
 	FreeMemoryStream(stream, false);
-	if (outBuffer != NULL) *outBuffer = (char*)buffer.buffer;
+	if (outBuffer != NULL) *outBuffer = buffer.buffer;
 	if (outLength != NULL) *outLength = buffer.length;
 }

@@ -1,3 +1,5 @@
 #pragma once
 
-void Compile(const char* inputPath, const char* outputPath);
+#include "Result.h"
+
+Result Compile(const char* inputPath, const char* outputPath);

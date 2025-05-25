@@ -65,6 +65,7 @@ char* AllocAbsolutePath(const char* path)
 
 	DWORD numBytes = result + 1;
 	char* out = malloc(numBytes);
+	if (!out) goto error;
 	memcpy(out, fullName, numBytes);
 	out[numBytes - 1] = '\0';
 	return out;
@@ -91,6 +92,7 @@ char* AllocFileName(const char* path)
 	if (length == sizeof(combined)) goto error;
 
 	char* out = malloc(length + 1);
+	if (!out) goto error;
 	memcpy(out, combined, length + 1);
 	return out;
 
@@ -111,6 +113,7 @@ char* AllocFileNameNoExtension(const char* path)
 	if (length == sizeof(fname)) goto error;
 
 	char* out = malloc(length + 1);
+	if (!out) goto error;
 	memcpy(out, fname, length + 1);
 	return out;
 
@@ -136,6 +139,7 @@ char* AllocDirectoryName(const char* path)
 	if (length == sizeof(combined)) goto error;
 
 	char* out = malloc(length + 1);
+	if (!out) goto error;
 	memcpy(out, combined, length + 1);
 	return out;
 
@@ -215,6 +219,7 @@ char* AllocFileNameNoExtension(const char* path)
 		goto error;
 
 	char* out = malloc(numChars + 1);
+	if (!out) goto error;
 	memcpy(out, baseName, numChars);
 	out[numChars] = '\0';
 	return out;

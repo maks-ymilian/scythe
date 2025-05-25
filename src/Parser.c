@@ -9,7 +9,9 @@
 
 #include "StringUtils.h"
 
-#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken()->lineNumber, NULL)
+#define ERROR_RESULT_LINE(message) ERROR_RESULT(message, CurrentToken()->lineNumber, currentFile)
+
+static const char* currentFile;
 
 static Array tokens;
 static size_t pointer;
@@ -57,12 +59,12 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
 
 	for (int i = 0; string[i] != '\0'; ++i)
 		if (!IsDigitBase(string[i], base))
-			return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
+			return ERROR_RESULT(AllocateString2Int("Invalid integer literal %d %d", string[i], base), lineNumber, currentFile);
 
 	*out = strtoull(string, NULL, base);
 
 	if (*out == UINT64_MAX)
-		return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
+		return ERROR_RESULT("Invalid integer literal", lineNumber, currentFile);
 
 	if (*out == 0)
 	{
@@ -71,7 +73,7 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
 			if (string[i] != '0') isZero = false;
 
 		if (!isZero)
-			return ERROR_RESULT("Invalid integer literal", lineNumber, NULL);
+			return ERROR_RESULT("Invalid integer literal", lineNumber, currentFile);
 	}
 
 	return SUCCESS_RESULT;
@@ -79,14 +81,15 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
 
 static Result EvaluateNumberLiteral(
 	const char* string,
+	size_t stringLength,
 	const int lineNumber,
 	bool* outIsInteger,
 	double* outFloat,
 	uint64_t* outInt)
 {
-	const size_t length = strlen(string);
-	char* text = malloc(length + 1);
-	memcpy(text, string, length + 1);
+	char* text = malloc(stringLength + 1);
+	memcpy(text, string, stringLength);
+	text[stringLength] = '\0';
 
 	*outIsInteger = true;
 	for (int i = 0; text[i] != '\0'; ++i)
@@ -96,11 +99,11 @@ static Result EvaluateNumberLiteral(
 	{
 		int consumedChars;
 		if (sscanf(text, "%lf%n", outFloat, &consumedChars) != 1)
-			return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
+			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 		if (fpclassify(*outFloat) != FP_NORMAL && fpclassify(*outFloat) != FP_ZERO)
-			return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
+			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 		if (text[consumedChars] != '\0')
-			return ERROR_RESULT("Invalid float literal", lineNumber, NULL);
+			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 
 		free(text);
 		return SUCCESS_RESULT;
@@ -184,7 +187,7 @@ static Result ParseIdentifierChain(Array* array)
 		if (array->array == NULL)
 			*array = AllocateArray(sizeof(char*));
 
-		char* copy = AllocateString(identifier->text);
+		char* copy = AllocateStringLength(identifier->text, identifier->textSize);
 		ArrayAdd(array, &copy);
 	}
 
@@ -348,7 +351,7 @@ static Result ParseLiteral(NodePtr* out)
 		bool isInteger;
 		double floatValue;
 		uint64_t intValue;
-		PROPAGATE_ERROR(EvaluateNumberLiteral(token->text, token->lineNumber, &isInteger, &floatValue, &intValue));
+		PROPAGATE_ERROR(EvaluateNumberLiteral(token->text, token->textSize, token->lineNumber, &isInteger, &floatValue, &intValue));
 
 		if (isInteger)
 			*out = AllocASTNode(
@@ -363,7 +366,7 @@ static Result ParseLiteral(NodePtr* out)
 				&(LiteralExpr){
 					.lineNumber = token->lineNumber,
 					.type = Literal_Float,
-					.floatValue = AllocateString(token->text),
+					.floatValue = AllocateStringLength(token->text, token->textSize),
 				},
 				sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
@@ -374,7 +377,7 @@ static Result ParseLiteral(NodePtr* out)
 			&(LiteralExpr){
 				.lineNumber = token->lineNumber,
 				.type = Literal_String,
-				.string = AllocateString(token->text),
+				.string = AllocateStringLength(token->text, token->textSize),
 			},
 			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
@@ -1082,7 +1085,7 @@ static Result ParseSectionStatement(NodePtr* out)
 	bool sectionFound = false;
 	for (size_t i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
 	{
-		if (strcmp(identifier->text, sectionNames[i]) == 0)
+		if (strncmp(identifier->text, sectionNames[i], identifier->textSize) == 0)
 		{
 			sectionType = sectionTypes[i];
 			sectionFound = true;
@@ -1090,7 +1093,7 @@ static Result ParseSectionStatement(NodePtr* out)
 		}
 	}
 	if (!sectionFound)
-		return ERROR_RESULT_LINE(AllocateString1Str("Unknown section type \"%s\"", identifier->text));
+		return ERROR_RESULT_LINE("Unknown section type");
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
@@ -1116,7 +1119,7 @@ static Result ParseExternalIdentifier(char** externalIdentifier)
 	if (token == NULL)
 		return ERROR_RESULT_LINE("Expected identifier after \"as\"");
 
-	*externalIdentifier = token->text;
+	*externalIdentifier = AllocateStringLength(token->text, token->textSize);
 	return SUCCESS_RESULT;
 }
 
@@ -1155,8 +1158,8 @@ static Result ParseVariableDeclaration(
 		&(VarDeclStmt){
 			.type = type,
 			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier),
+			.name = AllocateStringLength(identifier->text, identifier->textSize),
+			.externalName = externalIdentifier,
 			.initializer = initializer,
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
 			.modifiers = modifiers,
@@ -1203,8 +1206,8 @@ static Result ParseFunctionDeclaration(NodePtr* out, ModifierState modifiers, co
 			.type = type,
 			.oldType = (Type){.expr = NULL_NODE, .modifier = TypeModifier_None},
 			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
-			.externalName = AllocateString(externalIdentifier),
+			.name = AllocateStringLength(identifier->text, identifier->textSize),
+			.externalName = externalIdentifier,
 			.parameters = params,
 			.oldParameters = AllocateArray(sizeof(NodePtr)),
 			.block = block,
@@ -1252,7 +1255,7 @@ static Result ParseStructDeclaration(NodePtr* out, ModifierState modifiers)
 	*out = AllocASTNode(
 		&(StructDeclStmt){
 			.lineNumber = identifier->lineNumber,
-			.name = AllocateString(identifier->text),
+			.name = AllocateStringLength(identifier->text, identifier->textSize),
 			.members = members,
 			.modifiers = modifiers,
 			.isArrayType = false,
@@ -1274,7 +1277,7 @@ static Result ParseImportStatement(NodePtr* out, ModifierState modifiers)
 	*out = AllocASTNode(
 		&(ImportStmt){
 			.lineNumber = import->lineNumber,
-			.path = AllocateString(path->text),
+			.path = AllocateStringLength(path->text, path->textSize),
 			.moduleName = NULL,
 			.modifiers = modifiers,
 		},
@@ -1578,8 +1581,10 @@ static Result ParseProgram(AST* out)
 	return SUCCESS_RESULT;
 }
 
-Result Parse(const Array* tokenArray, AST* outSyntaxTree)
+Result Parse(const char* path, const Array* tokenArray, AST* outSyntaxTree)
 {
+	currentFile = path;
+
 	pointer = 0;
 	tokens = *tokenArray;
 

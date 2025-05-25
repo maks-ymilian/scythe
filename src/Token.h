@@ -103,8 +103,9 @@ typedef enum
 typedef struct
 {
 	TokenType type;
-	long lineNumber;
-	char* text;
+	const char* text;
+	size_t textSize;
+	int lineNumber;
 } Token;
 
 const char* GetTokenTypeString(TokenType tokenType);

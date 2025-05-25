@@ -5,24 +5,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char* currentFile;
+
 static const char* source;
+static size_t sourceLength;
 static size_t pointer;
 static int currentLine;
 
 static Array tokens;
 
-static void AddTokenSubstring(const TokenType type, const size_t start, const size_t end)
+static bool IsEOF(size_t offset)
 {
-	const size_t length = end - start;
-	char* text = malloc(length + 1);
-	memcpy(text, source + start, length);
-	text[length] = '\0';
+	return pointer + offset >= sourceLength;
+}
 
+static void AddTokenSubstring(const TokenType type, size_t start, size_t end)
+{
 	ArrayAdd(&tokens,
 		&(Token){
 			.type = type,
 			.lineNumber = currentLine,
-			.text = text,
+			.text = source + start,
+			.textSize = end - start,
 		});
 }
 
@@ -32,7 +36,6 @@ static void AddToken(const TokenType type)
 		&(Token){
 			.type = type,
 			.lineNumber = currentLine,
-			.text = NULL,
 		});
 }
 
@@ -50,7 +53,7 @@ static Result ScanIdentifier(void)
 
 	while (true)
 	{
-		if (source[pointer] == '\0')
+		if (IsEOF(0))
 			break;
 
 		if (!IsIdentifierChar(source[pointer]))
@@ -74,8 +77,8 @@ static Result ScanStringLiteral(void)
 	pointer++;
 	while (true)
 	{
-		if (source[pointer] == '\0')
-			return ERROR_RESULT("String literal is never closed", currentLine, NULL);
+		if (IsEOF(0))
+			return ERROR_RESULT("String literal is never closed", currentLine, currentFile);
 
 		if (source[pointer] == '"')
 			break;
@@ -98,7 +101,7 @@ static Result ScanNumberLiteral(void)
 
 	while (true)
 	{
-		if (source[pointer] == '\0')
+		if (IsEOF(0))
 			break;
 
 		if (!isalnum(source[pointer]) && source[pointer] != '.')
@@ -125,7 +128,7 @@ static Result ScanKeyword(void)
 		const char* string = GetTokenTypeString(tokenType);
 		const size_t length = strlen(string);
 
-		if (strlen(source + pointer) < length)
+		if (IsEOF(length))
 			continue;
 
 		if (IsIdentifierChar(source[pointer]) &&
@@ -150,20 +153,23 @@ static Result ScanToken(void)
 	PROPAGATE_FOUND(ScanIdentifier());
 	PROPAGATE_FOUND(ScanStringLiteral());
 
-	return ERROR_RESULT("Unexpected character", currentLine, NULL);
+	return ERROR_RESULT("Unexpected character", currentLine, currentFile);
 }
 
-Result Scan(const char* const sourceCode, Array* outTokens)
+Result Scan(const char* path, const char* sourceCode, size_t sourceCodeLength, Array* outTokens)
 {
+	currentFile = path;
+
 	tokens = AllocateArray(sizeof(Token));
 	source = sourceCode;
+	sourceLength = sourceCodeLength;
 	currentLine = 1;
 	pointer = 0;
 
 	bool insideLineComment = false;
 	bool insideMultilineComment = false;
 
-	while (source[pointer] != '\0')
+	while (!IsEOF(0))
 	{
 		if (source[pointer] == '\n')
 		{
@@ -214,15 +220,4 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 	*outTokens = tokens;
 
 	return SUCCESS_RESULT;
-}
-
-void FreeTokenArray(const Array* tokens)
-{
-	for (size_t i = 0; i < tokens->length; ++i)
-	{
-		const Token* token = tokens->array[i];
-		if (token->text != NULL)
-			free(token->text);
-	}
-	FreeArray(tokens);
 }

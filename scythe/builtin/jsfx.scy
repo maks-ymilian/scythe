@@ -1,15 +1,15 @@
 public:
-import "builtin/math.scy"
-import "builtin/string.scy"
-import "builtin/gfx.scy"
-import "builtin/time.scy"
-import "builtin/file.scy"
-import "builtin/mem.scy"
-import "builtin/stack.scy"
-import "builtin/atomic.scy"
-import "builtin/slider.scy"
-import "builtin/midi.scy"
-import "builtin/pin_mapper.scy"
+import "math.scy"
+import "string.scy"
+import "gfx.scy"
+import "time.scy"
+import "file.scy"
+import "mem.scy"
+import "stack.scy"
+import "atomic.scy"
+import "slider.scy"
+import "midi.scy"
+import "pin_mapper.scy"
 
 public external:
 float spl0;
