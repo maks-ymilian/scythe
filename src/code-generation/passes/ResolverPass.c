@@ -964,6 +964,10 @@ static Result VisitStatement(NodePtr* node)
 	case Node_Modifier:
 	{
 		ModifierStmt* modifier = node->ptr;
+
+		if (currentScope->parent)
+			return ERROR_RESULT("Modifier statements are only allowed in global scope", modifier->lineNumber, currentFilePath);
+
 		if (modifier->modifierState.publicSpecified)
 		{
 			currentModifierState.publicSpecified = true;
