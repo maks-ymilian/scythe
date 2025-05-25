@@ -56,12 +56,12 @@ static void VisitStatement(const NodePtr node)
 		break;
 	}
 	case Node_VariableDeclaration:
-		{
+	{
 		VarDeclStmt* varDecl = node.ptr;
 		VisitExpression(varDecl->initializer);
 		varDecl->uniqueName = ++uniqueNameCounter;
 		break;
-		}
+	}
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node.ptr;

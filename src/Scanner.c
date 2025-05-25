@@ -1,9 +1,9 @@
 #include "Scanner.h"
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 static const char* source;
 static size_t pointer;
@@ -173,9 +173,9 @@ Result Scan(const char* const sourceCode, Array* outTokens)
 			continue;
 		}
 		else if (source[pointer] == '\n' ||
-			source[pointer] == ' ' ||
-			source[pointer] == '\t' ||
-			source[pointer] == '\r')
+				 source[pointer] == ' ' ||
+				 source[pointer] == '\t' ||
+				 source[pointer] == '\r')
 		{
 			pointer++;
 			continue;

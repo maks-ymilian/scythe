@@ -1,8 +1,8 @@
 #pragma once
 
 #include <inttypes.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define MAP_ITERATE(name, map) \
 	Node* name = NULL;         \

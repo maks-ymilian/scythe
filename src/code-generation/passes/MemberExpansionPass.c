@@ -42,12 +42,12 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	switch (type.expr.type)
 	{
 	case Node_MemberAccess:
-		{
+	{
 		const MemberAccessExpr* memberAccess = type.expr.ptr;
 		structDecl = memberAccess->typeReference;
 		assert(structDecl != NULL);
 		break;
-		}
+	}
 	case Node_Literal:
 		break;
 	default: INVALID_VALUE(type.expr.type);
@@ -1062,12 +1062,12 @@ static Result VisitStatement(NodePtr* node)
 		break;
 	}
 	case Node_BlockStatement:
-		{
+	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
 			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
-		}
+	}
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;

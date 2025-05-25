@@ -220,14 +220,14 @@ static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targe
 	}
 
 convertError:
-	{
-		char* exprName = AllocTypeName(exprType);
-		char* targetName = AllocTypeName(targetType);
-		char* message = AllocateString2Str("Cannot convert type \"%s\" to \"%s\"", exprName, targetName);
-		free(exprName);
-		free(targetName);
-		return ERROR_RESULT(message, lineNumber, currentFilePath);
-	}
+{
+	char* exprName = AllocTypeName(exprType);
+	char* targetName = AllocTypeName(targetType);
+	char* message = AllocateString2Str("Cannot convert type \"%s\" to \"%s\"", exprName, targetName);
+	free(exprName);
+	free(targetName);
+	return ERROR_RESULT(message, lineNumber, currentFilePath);
+}
 }
 
 static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)

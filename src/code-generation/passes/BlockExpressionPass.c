@@ -80,14 +80,14 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		break;
 	}
 	case Node_FunctionCall:
-		{
+	{
 		FuncCallExpr* funcCall = expr->ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; i++)
 			VisitExpression(funcCall->arguments.array[i], statement, lineNumber);
 		break;
 	}
 	case Node_MemberAccess:
-		{
+	{
 		MemberAccessExpr* memberAccess = expr->ptr;
 		VisitExpression(&memberAccess->start, statement, lineNumber);
 		break;
@@ -100,7 +100,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 		break;
 	}
 	case Node_SizeOf:
-		{
+	{
 		SizeOfExpr* sizeOf = expr->ptr;
 		VisitExpression(&sizeOf->expr, statement, lineNumber);
 		break;

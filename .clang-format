@@ -40,6 +40,7 @@ IncludeCategories:
   - Regex: '.*'
     Priority: 3
 IncludeIsMainRegex: '([-_](test|unittest))?$'
+SortIncludes: false
 IndentWidth: 4
 AllowShortCaseLabelsOnASingleLine: true
 InsertNewlineAtEOF: true
