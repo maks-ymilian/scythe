@@ -175,13 +175,14 @@ static Result ParseIdentifierChain(Array* array)
 
 	while (true)
 	{
+		int lineNumber = CurrentToken()->lineNumber;
 		if (array->array != NULL && MatchOne(Token_Dot) == NULL)
 			break;
 
 		Token* identifier = MatchOne(Token_Identifier);
 		if (identifier == NULL)
 			return array->array != NULL
-					   ? ERROR_RESULT_LINE("Expected identifier after \".\"")
+					   ? ERROR_RESULT("Expected identifier after \".\"", lineNumber, currentFile)
 					   : NOT_FOUND_RESULT;
 
 		if (array->array == NULL)
