@@ -2,7 +2,24 @@
 
 #include <assert.h>
 
-static FuncDeclStmt* currentFunction;
+static Array stack;
+
+static void Push(FuncDeclStmt* function)
+{
+	ArrayAdd(&stack, &function);
+}
+
+static FuncDeclStmt* Pop(void)
+{
+	FuncDeclStmt* function = *(FuncDeclStmt**)stack.array[stack.length - 1];
+	ArrayRemove(&stack, stack.length - 1);
+	return function;
+}
+
+static FuncDeclStmt* Peek(void)
+{
+	return *(FuncDeclStmt**)stack.array[stack.length - 1];
+}
 
 static void VisitStatement(const NodePtr* node)
 {
@@ -11,16 +28,17 @@ static void VisitStatement(const NodePtr* node)
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
-		currentFunction = funcDecl;
+		Push(funcDecl);
 		VisitStatement(&funcDecl->block);
+		Pop();
 		break;
 	}
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
 		assert(returnStmt->function == NULL);
-		assert(currentFunction != NULL);
-		returnStmt->function = currentFunction;
+		returnStmt->function = Peek();
+		assert(returnStmt->function);
 		break;
 	}
 	case Node_BlockStatement:
@@ -62,7 +80,7 @@ static void VisitStatement(const NodePtr* node)
 
 void ReturnTaggingPass(const AST* ast)
 {
-	currentFunction = NULL;
+	stack = AllocateArray(sizeof(FuncDeclStmt*));
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -74,4 +92,6 @@ void ReturnTaggingPass(const AST* ast)
 		for (size_t i = 0; i < module->statements.length; ++i)
 			VisitStatement(module->statements.array[i]);
 	}
+
+	FreeArray(&stack);
 }
