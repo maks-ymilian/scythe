@@ -9,8 +9,6 @@
 	// dead code elimination
 	// namespace flattening
 
-	// char literals (make multibyte chars also work the same)
-	// unicode support?
 	// escape characters in strings
 	// global.* variables
 	// int conversion breaks pass by reference

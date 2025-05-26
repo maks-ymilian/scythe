@@ -9,6 +9,7 @@ typedef enum
 	Token_Float,
 	Token_Int,
 	Token_String,
+	Token_CharLiteral,
 	Token_Char,
 	Token_Bool,
 	Token_Void,

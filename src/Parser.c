@@ -337,10 +337,11 @@ static Result ParseLiteral(NodePtr* out)
 		(TokenType[]){
 			Token_NumberLiteral,
 			Token_StringLiteral,
+			Token_CharLiteral,
 			Token_True,
 			Token_False,
 		},
-		4);
+		5);
 
 	if (token == NULL)
 		return NOT_FOUND_RESULT;
@@ -379,6 +380,17 @@ static Result ParseLiteral(NodePtr* out)
 				.lineNumber = token->lineNumber,
 				.type = Literal_String,
 				.string = AllocateStringLength(token->text, token->textSize),
+			},
+			sizeof(LiteralExpr), Node_Literal);
+		return SUCCESS_RESULT;
+	}
+	case Token_CharLiteral:
+	{
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = token->lineNumber,
+				.type = Literal_Char,
+				.multiChar = AllocateStringLength(token->text, token->textSize),
 			},
 			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;

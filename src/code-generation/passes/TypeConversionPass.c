@@ -89,6 +89,7 @@ static void VisitLiteral(LiteralExpr* literal, TypeInfo* outType)
 	case Literal_Float: *outType = NonPointerType(Primitive_Float); break;
 	case Literal_Int: *outType = NonPointerType(Primitive_Int); break;
 	case Literal_String: *outType = NonPointerType(Primitive_Int); break;
+	case Literal_Char: *outType = NonPointerType(Primitive_Int); break;
 	case Literal_Boolean:
 		literal->type = Literal_Int;
 		literal->intValue = literal->boolean ? 1 : 0;

@@ -67,6 +67,31 @@ static Result ScanIdentifier(void)
 	return SUCCESS_RESULT;
 }
 
+static Result ScanCharLiteral(void)
+{
+	const size_t start = pointer;
+
+	if (source[pointer] != '\'')
+		return NOT_FOUND_RESULT;
+
+	pointer++;
+	while (true)
+	{
+		if (IsEOF(0))
+			return ERROR_RESULT("Char literal is never closed", currentLine, currentFile);
+
+		if (source[pointer] == '\'')
+			break;
+
+		pointer++;
+	}
+
+	AddTokenSubstring(Token_CharLiteral, start + 1, pointer);
+
+	pointer++;
+	return SUCCESS_RESULT;
+}
+
 static Result ScanStringLiteral(void)
 {
 	const size_t start = pointer;
@@ -121,6 +146,7 @@ static Result ScanKeyword(void)
 	{
 		if (tokenType == Token_NumberLiteral ||
 			tokenType == Token_StringLiteral ||
+			tokenType == Token_CharLiteral ||
 			tokenType == Token_Identifier ||
 			tokenType == Token_EndOfFile)
 			continue;
@@ -152,6 +178,7 @@ static Result ScanToken(void)
 	PROPAGATE_FOUND(ScanNumberLiteral());
 	PROPAGATE_FOUND(ScanIdentifier());
 	PROPAGATE_FOUND(ScanStringLiteral());
+	PROPAGATE_FOUND(ScanCharLiteral());
 
 	return ERROR_RESULT("Unexpected character", currentLine, currentFile);
 }

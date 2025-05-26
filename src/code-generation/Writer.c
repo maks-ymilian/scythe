@@ -147,6 +147,11 @@ static void VisitLiteralExpression(LiteralExpr* literal)
 		WriteString(literal->string);
 		WriteChar('\"');
 		break;
+	case Literal_Char:
+		WriteChar('\'');
+		WriteString(literal->multiChar);
+		WriteChar('\'');
+		break;
 	default: INVALID_VALUE(literal->type);
 	}
 }

@@ -123,6 +123,7 @@ typedef enum
 	Literal_Float,
 	Literal_Int,
 	Literal_String,
+	Literal_Char,
 	Literal_Boolean,
 	Literal_PrimitiveType,
 } LiteralType;
@@ -137,6 +138,7 @@ typedef struct
 		char* floatValue;
 		uint64_t intValue;
 		char* string;
+		char* multiChar;
 		bool boolean;
 		PrimitiveType primitiveType;
 	};
