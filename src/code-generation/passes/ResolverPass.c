@@ -35,7 +35,7 @@ static ModifierState currentModifierState;
 
 static Result VisitStatement(NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
-static Result ResolveType(Type* type, bool voidAllowed, bool* isType);
+static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* outIsType);
 static Result VisitBlock(const BlockStmt* block);
 static Result FindFunctionOverloadScoped(const char* text, NodePtr* outNode, size_t argCount, bool* isAmbiguous, int lineNumber);
 
@@ -435,7 +435,7 @@ static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t 
 		return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber, currentFilePath);
 }
 
-static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallExpr* resolveFuncCall, int lineNumber)
+static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallExpr* resolveFuncCall, bool isPublicAPI, int lineNumber)
 {
 	switch (current->type)
 	{
@@ -516,6 +516,9 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		Map* declarations = MapGet(&modules, import->moduleName);
 		assert(declarations != NULL);
 
+		if (isPublicAPI && !import->modifiers.publicValue)
+			return ERROR_RESULT("Types from private imports are not allowed in public declarations", lineNumber, currentFilePath);
+
 		NodePtr* first = GetFirstNode(declarations, text);
 		if (first == NULL)
 			return ERROR_RESULT(
@@ -524,6 +527,9 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 				currentFilePath);
 
 		NodePtr node = *first;
+
+		if (node.type == Node_Import)
+			return ERROR_RESULT("Cannot access member imports from another module", lineNumber, currentFilePath);
 
 		// if resolving the baseExpr of a FuncCallExpr
 		if (resolveFuncCall)
@@ -567,7 +573,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	}
 }
 
-static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall)
+static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, bool isPublicAPI)
 {
 	assert(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
@@ -579,7 +585,7 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall)
 	for (size_t i = 0; i < memberAccess->identifiers.length; ++i)
 	{
 		char* text = *(char**)memberAccess->identifiers.array[i];
-		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, resolveFuncCall, memberAccess->lineNumber));
+		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, resolveFuncCall, isPublicAPI, memberAccess->lineNumber));
 
 		// set varReference to the first one for now
 		if (current.type == Node_VariableDeclaration &&
@@ -610,7 +616,7 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall)
 	return SUCCESS_RESULT;
 }
 
-static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
+static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* outIsType)
 {
 	if (outIsType)
 		*outIsType = true;
@@ -619,7 +625,7 @@ static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
 	{
 	case Node_MemberAccess:
 	{
-		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr, NULL));
+		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr, NULL, isPublicAPI));
 
 		assert(type->expr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = type->expr.ptr;
@@ -633,7 +639,11 @@ static Result ResolveType(Type* type, bool voidAllowed, bool* outIsType)
 			else
 				return ERROR_RESULT("Expression is not a type", memberAccess->lineNumber, currentFilePath);
 		}
-
+		else
+		{
+			if (isPublicAPI && !memberAccess->typeReference->modifiers.publicValue)
+				return ERROR_RESULT("Private types are not allowed in public declarations", memberAccess->lineNumber, currentFilePath);
+		}
 		break;
 	}
 	case Node_Literal:
@@ -664,7 +674,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 		return SUCCESS_RESULT;
 	case Node_MemberAccess:
 	{
-		PROPAGATE_ERROR(ResolveMemberAccess(node, resolveFuncCall));
+		PROPAGATE_ERROR(ResolveMemberAccess(node, resolveFuncCall, false));
 		if (node->type == Node_MemberAccess && checkForValue)
 		{
 			const MemberAccessExpr* memberAccess = node->ptr;
@@ -707,7 +717,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 	{
 		BlockExpr* block = node->ptr;
 		assert(block->block.type == Node_BlockStatement);
-		PROPAGATE_ERROR(ResolveType(&block->type, true, NULL));
+		PROPAGATE_ERROR(ResolveType(&block->type, true, false, NULL));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
 	}
@@ -715,7 +725,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 	{
 		SizeOfExpr* sizeOf = node->ptr;
 		bool isType = false;
-		PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, &isType));
+		PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
 		if (isType)
 		{
 			FreeASTNode(sizeOf->expr);
@@ -818,31 +828,37 @@ static Result SetModifiers(ModifierState* modifiers, int lineNumber)
 	return SUCCESS_RESULT;
 }
 
+static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
+{
+	assert(node->type == Node_VariableDeclaration);
+	VarDeclStmt* varDecl = node->ptr;
+
+	PROPAGATE_ERROR(SetModifiers(&varDecl->modifiers, varDecl->lineNumber));
+
+	if (varDecl->modifiers.externalValue)
+	{
+		if (varDecl->initializer.ptr)
+			return ERROR_RESULT("External variables cannot have initializers", varDecl->lineNumber, currentFilePath);
+	}
+	else
+	{
+		if (varDecl->externalName)
+			return ERROR_RESULT("Only external variables can have external names", varDecl->lineNumber, currentFilePath);
+	}
+
+	PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true, NULL));
+	PROPAGATE_ERROR(ResolveType(&varDecl->type, false, varDecl->modifiers.publicValue || isPublicAPI, NULL));
+	PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
 	case Node_VariableDeclaration:
 	{
-		VarDeclStmt* varDecl = node->ptr;
-
-		PROPAGATE_ERROR(SetModifiers(&varDecl->modifiers, varDecl->lineNumber));
-
-		if (varDecl->modifiers.externalValue)
-		{
-			if (varDecl->initializer.ptr)
-				return ERROR_RESULT("External variables cannot have initializers", varDecl->lineNumber, currentFilePath);
-		}
-		else
-		{
-			if (varDecl->externalName)
-				return ERROR_RESULT("Only external variables can have external names", varDecl->lineNumber, currentFilePath);
-		}
-
-		PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true, NULL));
-		PROPAGATE_ERROR(ResolveType(&varDecl->type, false, NULL));
-		PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
-		return SUCCESS_RESULT;
+		return VisitVariableDeclaration(node, false);
 	}
 	case Node_FunctionDeclaration:
 	{
@@ -865,11 +881,12 @@ static Result VisitStatement(NodePtr* node)
 				return ERROR_RESULT("Only external functions can be variadic functions", funcDecl->lineNumber, currentFilePath);
 		}
 
-		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, NULL));
+		bool isPublicAPI = funcDecl->modifiers.publicValue;
+		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, isPublicAPI, NULL));
 
 		PushScope();
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
+			PROPAGATE_ERROR(VisitVariableDeclaration(funcDecl->parameters.array[i], isPublicAPI));
 
 		if (funcDecl->block.ptr != NULL)
 		{
@@ -901,7 +918,7 @@ static Result VisitStatement(NodePtr* node)
 
 		PushScope();
 		for (size_t i = 0; i < structDecl->members.length; ++i)
-			PROPAGATE_ERROR(VisitStatement(structDecl->members.array[i]));
+			PROPAGATE_ERROR(VisitVariableDeclaration(structDecl->members.array[i], structDecl->modifiers.publicValue));
 		PopScope(NULL);
 
 		PROPAGATE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));

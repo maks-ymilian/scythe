@@ -1,13 +1,13 @@
 // todo:
-	// make the private and public work
-		// public import statement
-		// modifiers should not be allowed in blocks
-	// structs in blocks
+	// struct initializers
+	// add #namedStrings
 	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
+	// structs in blocks
 	// asserts
 	// type casting prolly not hard to add
-	// add #namedStrings
-	// struct initializers
+	// in parser the error line numbers are sometimes on the next line like "Expected ";""
+	// dead code elimination
+	// namespace flattening
 
 	// char literals (make multibyte chars also work the same)
 	// unicode support?
@@ -16,13 +16,18 @@
 	// int conversion breaks pass by reference
 
 // things to test:
+	// make a test for every possible error
 	// assigning wrong types
+	// fuzz test the math?
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions
 	// return and break also inside loops
 	// binary exprs in member access and subscript and dereferencing syntax
 	// public private internal external on functions variables structs imports
 	// import statement
+		// private types in public declarations, structs, variables, functions, parameters, imports,
+		// public types coming from private imports shouldnt be allowed in public declarations
+		// imports pulled in from other imports
 	// passing by reference in built in functions
 	// all built in functions
 
