@@ -361,8 +361,8 @@ static Result CompileProgramTree(const Array* programNodes, char** outCode, size
 
 Result Compile(const char* inputPath, const char* outputPath)
 {
+	PROPAGATE_ERROR(CheckFileWriteable(outputPath));
 	char* outPath = AllocAbsolutePath(outputPath);
-	PROPAGATE_ERROR(CheckFileWriteable(outPath));
 
 	Array programNodes = AllocateArray(sizeof(ProgramNode*));
 	PROPAGATE_ERROR(GenerateProgramNode(&programNodes, inputPath, -1, NULL, NULL));
