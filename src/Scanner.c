@@ -74,7 +74,7 @@ static Result ScanCharLiteral(void)
 	if (source[pointer] != '\'')
 		return NOT_FOUND_RESULT;
 
-	pointer++;
+	++pointer;
 	while (true)
 	{
 		if (IsEOF(0))
@@ -83,7 +83,10 @@ static Result ScanCharLiteral(void)
 		if (source[pointer] == '\'')
 			break;
 
-		pointer++;
+		if (source[pointer] == '\\')
+			++pointer;
+
+		++pointer;
 	}
 
 	AddTokenSubstring(Token_CharLiteral, start + 1, pointer);
@@ -99,7 +102,7 @@ static Result ScanStringLiteral(void)
 	if (source[pointer] != '"')
 		return NOT_FOUND_RESULT;
 
-	pointer++;
+	++pointer;
 	while (true)
 	{
 		if (IsEOF(0))
@@ -108,7 +111,10 @@ static Result ScanStringLiteral(void)
 		if (source[pointer] == '"')
 			break;
 
-		pointer++;
+		if (source[pointer] == '\\')
+			++pointer;
+
+		++pointer;
 	}
 
 	AddTokenSubstring(Token_StringLiteral, start + 1, pointer);

@@ -8,10 +8,10 @@
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// dead code elimination
 	// namespace flattening
+	// other jsfx functionality (global.*)
 
-	// escape characters in strings
-	// global.* variables
 	// int conversion breaks pass by reference
+	// undocumented functions
 
 // things to test:
 	// make a test for every possible error
@@ -28,6 +28,8 @@
 		// imports pulled in from other imports
 	// passing by reference in built in functions
 	// all built in functions
+	// literal types
+	// escape characters
 
 import "builtin/jsfx.scy"
 import "tests/tests.scy"
