@@ -1,21 +1,28 @@
 // todo:
-	// struct initializers
+	// function parameters do not function the same as variables in jsfx
+		// they are not global variables so if you try to use them in a nested function ur fucked buddy
+	// use the tab width feature of jsfx
+	// try inputting wrong paths and folders to the cli on all platforms
+	// function call 40 param limit
+	// structs should be able to have a pointer member of itself
 	// add #namedStrings
 	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
 	// structs in blocks
 	// asserts
-	// type casting prolly not hard to add
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// dead code elimination
+		// unused functions, empty sections
 	// namespace flattening
 	// other jsfx functionality (global.*)
+	// undocumented functions
 
 	// int conversion breaks pass by reference
-	// undocumented functions
 
 // things to test:
 	// make a test for every possible error
 	// assigning wrong types
+	// function nesting
+	// struct initializers, empty, type casting
 	// fuzz test the math?
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions

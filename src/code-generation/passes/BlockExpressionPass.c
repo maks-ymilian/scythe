@@ -5,6 +5,8 @@
 
 #include "StringUtils.h"
 
+static void VisitStatement(NodePtr* node);
+
 static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 {
 	switch (expr->type)
@@ -26,6 +28,8 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 
 		BlockExpr* blockExpr = expr->ptr;
 		BlockStmt* blockStmt = statement->ptr;
+
+		VisitStatement(&blockExpr->block);
 
 		const char* name = "block_expression";
 

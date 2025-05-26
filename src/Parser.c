@@ -16,6 +16,13 @@ static const char* currentFile;
 static Array tokens;
 static size_t pointer;
 
+static Result ParseStatement(NodePtr* out);
+static Result ParseExpression(NodePtr* out);
+static Result ParseBlockStatement(NodePtr* out);
+static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
+static Result ParseModifierDeclaration(NodePtr* out);
+static Result ContinueParsePrimary(NodePtr* inout, bool alreadyParsedDot);
+
 static Token* CurrentToken(void)
 {
 	if (pointer >= tokens.length)
@@ -38,7 +45,10 @@ static Token* Match(const TokenType* types, const size_t length)
 	return NULL;
 }
 
-static Token* MatchOne(const TokenType type) { return Match((TokenType[]){type}, 1); }
+static Token* MatchOne(const TokenType type)
+{
+	return Match((TokenType[]){type}, 1);
+}
 
 static bool IsDigitBase(const char c, const int base)
 {
@@ -129,36 +139,26 @@ static Result EvaluateNumberLiteral(
 	return SUCCESS_RESULT;
 }
 
-typedef Result (*ParseFunction)(NodePtr*);
-static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, const TokenType endToken, bool* hasEllipsis)
+typedef Result (*ParseFunction)(NodePtr*, void*);
+static Result ParseCommaSeparatedList(Array* outArray, const ParseFunction function, void* data, const TokenType endToken, bool* hasEllipsis)
 {
 	*outArray = AllocateArray(sizeof(NodePtr));
 
-	bool first = true;
 	while (true)
 	{
-		if (!first && MatchOne(Token_Comma) == NULL)
-			break;
-
 		NodePtr node = NULL_NODE;
-		PROPAGATE_ERROR(function(&node));
+		PROPAGATE_ERROR(function(&node, data));
 		if (node.ptr == NULL)
 		{
 			if (hasEllipsis != NULL && MatchOne(Token_Ellipsis))
-			{
 				*hasEllipsis = true;
-				break;
-			}
-
-			if (first)
-				break;
-
-			return ERROR_RESULT_LINE(
-				AllocateString1Str("Unexpected token \"%s\"", GetTokenTypeString(CurrentToken()->type)));
+			break;
 		}
 
 		ArrayAdd(outArray, &node);
-		first = false;
+
+		if (MatchOne(Token_Comma) == NULL)
+			break;
 	}
 
 	if (MatchOne(endToken) == NULL)
@@ -194,8 +194,6 @@ static Result ParseIdentifierChain(Array* array)
 
 	return SUCCESS_RESULT;
 }
-
-static Result ParseExpression(NodePtr* out);
 
 static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 {
@@ -286,7 +284,43 @@ static Result ParseType(Type* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseBlockStatement(NodePtr* out);
+static Result ParseStructInitializerPart(NodePtr* out, void* data)
+{
+	NodePtr access = NULL_NODE;
+	PROPAGATE_ERROR(ContinueParsePrimary(&access, false));
+	if (!access.ptr)
+		return NOT_FOUND_RESULT;
+
+	// add name to the start
+	assert(access.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = access.ptr;
+	char* name = AllocateString(data);
+	ArrayInsert(&memberAccess->identifiers, &name, 0);
+
+	const int lineNumber = CurrentToken()->lineNumber;
+	if (!MatchOne(Token_Equals))
+		return ERROR_RESULT_LINE("Expected \"=\"");
+
+	NodePtr expr = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&expr));
+	if (!expr.ptr)
+		return ERROR_RESULT_LINE("Expected expression");
+
+	*out = AllocASTNode(
+		&(ExpressionStmt){
+			.lineNumber = memberAccess->lineNumber,
+			.expr = AllocASTNode(
+				&(BinaryExpr){
+					.lineNumber = lineNumber,
+					.operatorType = Binary_Assignment,
+					.left = access,
+					.right = expr,
+				},
+				sizeof(BinaryExpr), Node_Binary),
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
+	return SUCCESS_RESULT;
+}
 
 static Result ParseBlockExpression(NodePtr* out)
 {
@@ -297,12 +331,114 @@ static Result ParseBlockExpression(NodePtr* out)
 	if (type.expr.ptr == NULL)
 		return NOT_FOUND_RESULT;
 
-	NodePtr block = NULL_NODE;
-	PROPAGATE_ERROR(ParseBlockStatement(&block));
-	if (block.ptr == NULL)
+	enum
 	{
-		pointer = oldPointer;
-		return NOT_FOUND_RESULT;
+		BlockType_BlockExpression,
+		BlockType_StructInitializer,
+		BlockType_TypeCast,
+	} blockType = BlockType_BlockExpression;
+
+	const size_t pointerAfterType = pointer;
+	if (MatchOne(Token_LeftCurlyBracket))
+	{
+		if (MatchOne(Token_Dot) || MatchOne(Token_RightCurlyBracket))
+			blockType = BlockType_StructInitializer;
+		else
+		{
+			NodePtr expr = NULL_NODE;
+			PROPAGATE_ERROR(ParseExpression(&expr));
+			if (expr.ptr && MatchOne(Token_RightCurlyBracket))
+				blockType = BlockType_TypeCast;
+			else
+				blockType = BlockType_BlockExpression;
+		}
+	}
+	pointer = pointerAfterType;
+
+	NodePtr block = NULL_NODE;
+	if (blockType == BlockType_BlockExpression)
+	{
+		PROPAGATE_ERROR(ParseBlockStatement(&block));
+		if (block.ptr == NULL)
+		{
+			pointer = oldPointer;
+			return NOT_FOUND_RESULT;
+		}
+	}
+	else if (blockType == BlockType_StructInitializer) // the parser should not be doing these kinds of transformations but it works so i dont care
+	{
+		if (!MatchOne(Token_LeftCurlyBracket))
+			assert(0);
+
+		Array statements;
+		char tempVariableName[] = "temp";
+		PROPAGATE_ERROR(ParseCommaSeparatedList(&statements, ParseStructInitializerPart, tempVariableName, Token_RightCurlyBracket, NULL));
+
+		NodePtr declaration = AllocASTNode(
+			&(VarDeclStmt){
+				.lineNumber = CurrentToken()->lineNumber,
+				.type = (Type){
+					.expr = CopyASTNode(type.expr),
+					.modifier = type.modifier,
+				},
+				.name = AllocateString(tempVariableName),
+				.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
+				.initializer = NULL_NODE,
+				.uniqueName = -1,
+			},
+			sizeof(VarDeclStmt), Node_VariableDeclaration);
+		ArrayInsert(&statements, &declaration, 0);
+
+		Array identifiers = AllocateArray(sizeof(char*));
+		char* name = AllocateString(tempVariableName);
+		ArrayAdd(&identifiers, &name);
+		NodePtr returnStatement = AllocASTNode(
+			&(ReturnStmt){
+				.lineNumber = CurrentToken()->lineNumber,
+				.expr = AllocASTNode(
+					&(MemberAccessExpr){
+						.lineNumber = CurrentToken()->lineNumber,
+						.start = NULL_NODE,
+						.identifiers = identifiers,
+					},
+					sizeof(MemberAccessExpr), Node_MemberAccess),
+			},
+			sizeof(ReturnStmt), Node_Return);
+		ArrayAdd(&statements, &returnStatement);
+
+		block = AllocASTNode(
+			&(BlockStmt){
+				.lineNumber = CurrentToken()->lineNumber,
+				.statements = statements,
+			},
+			sizeof(BlockStmt), Node_BlockStatement);
+	}
+	else if (blockType == BlockType_TypeCast)
+	{
+		if (!MatchOne(Token_LeftCurlyBracket))
+			assert(0);
+
+		block = AllocASTNode(
+			&(BlockStmt){
+				.lineNumber = CurrentToken()->lineNumber,
+				.statements = AllocateArray(sizeof(NodePtr)),
+			},
+			sizeof(BlockStmt), Node_BlockStatement);
+
+		NodePtr expr = NULL_NODE;
+		PROPAGATE_ERROR(ParseExpression(&expr));
+		assert(expr.ptr);
+		NodePtr returnStatement = AllocASTNode(
+			&(ReturnStmt){
+				.lineNumber = CurrentToken()->lineNumber,
+				.expr = expr,
+			},
+			sizeof(ReturnStmt), Node_Return);
+
+		if (!MatchOne(Token_RightCurlyBracket))
+			assert(0);
+
+		ArrayAdd(&((BlockStmt*)block.ptr)->statements, &returnStatement);
 	}
 
 	*out = AllocASTNode(
@@ -451,6 +587,12 @@ static Result ParseSizeOf(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
+static Result ParseExpression2(NodePtr* out, void* data)
+{
+	(void)data;
+	return ParseExpression(out);
+}
+
 static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 {
 	const int lineNumber = CurrentToken()->lineNumber;
@@ -459,7 +601,7 @@ static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression, Token_RightBracket, NULL));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression2, NULL, Token_RightBracket, NULL));
 
 	*out = AllocASTNode(
 		&(FuncCallExpr){
@@ -968,8 +1110,6 @@ static Result ParseReturnStatement(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseStatement(NodePtr* out);
-
 static void WrapStatementInBlock(NodePtr* node, int lineNumber)
 {
 	Array statements = AllocateArray(sizeof(NodePtr));
@@ -1182,10 +1322,10 @@ static Result ParseVariableDeclaration(
 	return SUCCESS_RESULT;
 }
 
-static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
-
-static Result ParseFullVarDeclNoSemicolon(NodePtr* out)
+static Result ParseFullVarDeclNoSemicolon(NodePtr* out, void* data)
 {
+	(void)data;
+
 	Type type;
 	const Token* identifier;
 	PROPAGATE_ERROR(ParseTypeAndIdentifier(&type, &identifier));
@@ -1202,7 +1342,7 @@ static Result ParseFunctionDeclaration(NodePtr* out, ModifierState modifiers, co
 
 	Array params;
 	bool variadic = false;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseFullVarDeclNoSemicolon, Token_RightBracket, &variadic));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseFullVarDeclNoSemicolon, NULL, Token_RightBracket, &variadic));
 
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
@@ -1233,8 +1373,6 @@ static Result ParseFunctionDeclaration(NodePtr* out, ModifierState modifiers, co
 	return SUCCESS_RESULT;
 }
 
-static Result ParseModifierDeclaration(NodePtr* out);
-
 static Result ParseStructDeclaration(NodePtr* out, ModifierState modifiers)
 {
 	if (MatchOne(Token_Struct) == NULL)
@@ -1251,7 +1389,7 @@ static Result ParseStructDeclaration(NodePtr* out, ModifierState modifiers)
 	while (true)
 	{
 		NodePtr member = NULL_NODE;
-		PROPAGATE_ERROR(ParseFullVarDeclNoSemicolon(&member));
+		PROPAGATE_ERROR(ParseFullVarDeclNoSemicolon(&member, NULL));
 		if (member.ptr == NULL)
 			break;
 

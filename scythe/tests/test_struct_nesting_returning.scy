@@ -23,12 +23,18 @@ Level1 Level1_passthrough(Level1 value)
 
 Level1 doShit(int param1, Level1 value, string z, int w)
 {
-	Level1 new;
-	new.x = value.deep.z;
-	new.y = value.y + value.deep.deep.w;
-	new.deep.z = z;
-	new.deep.deep.w = w;
-	return new;
+	return Level1 {
+		.x = value.deep.z,
+		.y = value.y + value.deep.deep.w,
+		.deep.z = z,
+		.deep.deep.w = w,
+	};
+	// Level1 new;
+	// new.x = value.deep.z;
+	// new.y = value.y + value.deep.deep.w;
+	// new.deep.z = z;
+	// new.deep.deep.w = w;
+	// return new;
 }
 
 struct TestValues
