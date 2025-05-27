@@ -499,6 +499,11 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 	indentationLevel = 0;
 	stream = AllocateMemoryStream();
 
+	WriteString("tabsize: ");
+	WriteUInt64(INDENT_WIDTH);
+	WriteChar('\n');
+	WriteChar('\n');
+
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];

@@ -1,7 +1,6 @@
 // todo:
 	// function parameters do not function the same as variables in jsfx
 		// they are not global variables so if you try to use them in a nested function ur fucked buddy
-	// use the tab width feature of jsfx
 	// try inputting wrong paths and folders to the cli on all platforms
 	// function call 40 param limit
 	// structs should be able to have a pointer member of itself
