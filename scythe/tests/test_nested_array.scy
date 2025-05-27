@@ -19,9 +19,10 @@ struct Matrix
 any* currentOffset = 0;
 any[] AllocateArray(int sizeOfType, int length)
 {
-	any[] array;
-	array.ptr = currentOffset;
-	array.length = length;
+	any[] array = any[] {
+		.ptr = currentOffset,
+		.length = length,
+	};
 	currentOffset += length * sizeOfType;
 	return array;
 }

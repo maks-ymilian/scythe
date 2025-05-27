@@ -891,9 +891,34 @@ static Result VisitStatement(NodePtr* node)
 		if (funcDecl->block.ptr != NULL)
 		{
 			assert(funcDecl->block.type == Node_BlockStatement);
-			const BlockStmt* block = funcDecl->block.ptr;
+			BlockStmt* block = funcDecl->block.ptr;
 			for (size_t i = 0; i < block->statements.length; ++i)
 				PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
+
+			// reassign every parameter to a new variable at the start of every function
+			// because the code working depends on jsfx variables being global and accessible from everywhere
+			// and function parameters arent global in jsfx
+			for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+			{
+				assert(funcDecl->block.type == Node_BlockStatement);
+				BlockStmt* block = funcDecl->block.ptr;
+
+				NodePtr* paramNode = funcDecl->parameters.array[i];
+				assert(paramNode->type == Node_VariableDeclaration);
+				VarDeclStmt* paramVarDecl = paramNode->ptr;
+
+				*paramNode = CopyASTNode(*paramNode);
+
+				assert(!paramVarDecl->initializer.ptr);
+				paramVarDecl->initializer = AllocASTNode(
+					&(MemberAccessExpr){
+						.lineNumber = paramVarDecl->lineNumber,
+						.varReference = paramNode->ptr,
+					},
+					sizeof(MemberAccessExpr), Node_MemberAccess);
+
+				ArrayInsert(&block->statements, &(NodePtr){.ptr = paramVarDecl, .type = Node_VariableDeclaration}, 0);
+			}
 		}
 		PopScope(NULL);
 

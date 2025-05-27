@@ -38,17 +38,19 @@ bool test_equality1(Level1 value1, Level1 value2)
 
 @init
 {
-	Level1 value;
-	value.x = "hiidfsj";
-	value.y = -352;
-	value.l2.z = "sdk;fdsksvn481th0g[vn'md";
-	value.l2.l3.w = 418439;
+	Level1 value = Level1 {
+		.x = "hiidfsj",
+		.y = -352,
+		.l2.z = "sdk;fdsksvn481th0g[vn'md",
+		.l2.l3.w = 418439,
+	};
 
-	Level1 value1;
-	value1.x = "dsjak";
-	value1.y = 3469;
-	value1.l2.z = "kah;g";
-	value1.l2.l3.w = -45983;
+	Level1 value1 = Level1 {
+		.x = "dsjak",
+		.y = 3469,
+		.l2.z = "kah;g",
+		.l2.l3.w = -45983,
+	};
 
 	Level1 value2 = value;
 	Level1 value3 = value1;

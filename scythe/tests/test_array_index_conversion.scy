@@ -5,15 +5,6 @@ struct Test
 	int c;
 }
 
-Test New(int a, int b, int c)
-{
-	Test t;
-	t.a = a;
-	t.b = b;
-	t.c = c;
-	return t;
-}
-
 bool Compare(Test a, Test b)
 {
 	return
@@ -25,7 +16,11 @@ bool Compare(Test a, Test b)
 @init
 {
 	float index = 69;
-	Test example = New(324, 43, 938);
+	Test example = Test {
+		.a = 324,
+		.b = 43,
+		.c = 938,
+	};
 
 	Test[] array;
 	array[index] = example;
