@@ -10,7 +10,7 @@ struct Level2
 	Level3 l3;
 }
 
-public struct Level1
+struct Level1
 {
 	string x;
 	int y;

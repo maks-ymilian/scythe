@@ -30,8 +30,8 @@
 		// private types in public declarations, structs, variables, functions, parameters, imports,
 		// public types coming from private imports shouldnt be allowed in public declarations
 		// imports pulled in from other imports
-	// passing by reference in built in functions
 	// all built in functions
+		// passing by reference
 	// literal types
 	// escape characters
 

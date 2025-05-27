@@ -52,7 +52,7 @@ bool test_equality1(Level1 value1, Level1 value2)
 		.l2.l3.w = -45983,
 	};
 
-	Level1 value2 = value;
+	Level1 value2 = Level1 {value};
 	Level1 value3 = value1;
 	value2.l2 = value3.l2;
 	bool test1 =

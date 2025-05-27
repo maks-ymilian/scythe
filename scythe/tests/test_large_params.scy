@@ -1,0 +1,54 @@
+struct Params
+{
+	int _1;
+	int _2;
+	int _3;
+	int _4;
+	int _5;
+	int _6;
+	int _7;
+	int _8;
+	int _9;
+	int _10;
+	int _11;
+	int _12;
+	int _13;
+	int _14;
+	int _15;
+	int _16;
+	int _17;
+	int _18;
+	int _19;
+	int _20;
+	int _21;
+	int _22;
+	int _23;
+	int _24;
+	int _25;
+	int _26;
+	int _27;
+	int _28;
+	int _29;
+	int _30;
+	int _31;
+	int _32;
+	int _33;
+	int _34;
+	int _35;
+	int _36;
+	int _37;
+	int _38;
+	int _39;
+	int _40;
+}
+
+@init
+{
+	int testParams(Params t)
+	{
+		return t._40; 
+	}
+
+	int value = 42069;
+	bool AAA_test_large_params = testParams(Params { Params {._40 = value}}) == value;
+}

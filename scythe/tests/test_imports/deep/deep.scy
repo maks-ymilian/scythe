@@ -1,0 +1,15 @@
+public:
+int func()
+{
+	return 40;
+}
+
+int func(any a)
+{
+	return 5;
+}
+
+int func(any a, any b)
+{
+	return 3;
+}
