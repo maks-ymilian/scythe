@@ -8,8 +8,8 @@ int main(int argc, char** argv)
 {
 	if (argc < 2 || argc > 3)
 	{
-		printf("Usage: %s <input_file> [output_file]\n", AllocFileName(argv[0]));
-		return 1;
+		fprintf(stderr, "Usage: %s <input_file> [output_file]\n", AllocFileName(argv[0]));
+		return EXIT_FAILURE;
 	}
 
 	const char* inputPath = argv[1];
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 	if (result.type == Result_Success)
 	{
 		printf("Successfully compiled to output file: %s\n", outputPath);
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	else
 	{
@@ -33,6 +33,6 @@ int main(int argc, char** argv)
 		printf("\n");
 
 		printf("Compilation failed.\n");
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
