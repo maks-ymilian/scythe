@@ -1,5 +1,4 @@
 // todo:
-	// try inputting wrong paths and folders to the cli on all platforms
 	// function call 40 param limit
 	// structs should be able to have a pointer member of itself
 	// add #namedStrings

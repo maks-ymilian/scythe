@@ -133,7 +133,19 @@ error:
 
 static Result CheckFileReadable(const char* path, int lineNumber, const char* errorPath)
 {
+	char* errorMessage = NULL;
 	assert(path);
+
+	errno = 0;
+	int result = IsRegularFile(path);
+	if (result == 0)
+		goto error_is_not_file;
+	else if (result != 1)
+		goto error;
+
+	errno = 0;
+	if (!CheckFileAccess(path, false, true))
+		goto error;
 
 	errno = 0;
 	FILE* file = fopen(path, "rb");
@@ -143,19 +155,38 @@ static Result CheckFileReadable(const char* path, int lineNumber, const char* er
 	fclose(file);
 	return SUCCESS_RESULT;
 
+error_is_not_file:
+	if (!errorMessage)
+		errorMessage = "Path is not a regular file";
+
 error:
+	if (!errorMessage)
+		errorMessage = strerror(errno);
+
 	return ERROR_RESULT(
 		AllocateString2Str(
-			"Failed to read file \"%s\": %s",
+			"Failed to write file \"%s\": %s",
 			path,
-			strerror(errno)),
+			errorMessage),
 		lineNumber,
 		errorPath);
 }
 
-static Result CheckFileWriteable(const char* path)
+static Result CheckFileWriteable(const char* path, int lineNumber, const char* errorPath)
 {
+	char* errorMessage = NULL;
 	assert(path);
+
+	errno = 0;
+	int result = IsRegularFile(path);
+	if (result == 0)
+		goto error_is_not_file;
+	else if (result != 1)
+		goto error;
+
+	errno = 0;
+	if (!CheckFileAccess(path, false, true))
+		goto error;
 
 	errno = 0;
 	FILE* file = fopen(path, "wb");
@@ -165,14 +196,21 @@ static Result CheckFileWriteable(const char* path)
 	fclose(file);
 	return SUCCESS_RESULT;
 
+error_is_not_file:
+	if (!errorMessage)
+		errorMessage = "Path is not a regular file";
+
 error:
+	if (!errorMessage)
+		errorMessage = strerror(errno);
+
 	return ERROR_RESULT(
 		AllocateString2Str(
 			"Failed to write file \"%s\": %s",
 			path,
-			strerror(errno)),
-		-1,
-		NULL);
+			errorMessage),
+		lineNumber,
+		errorPath);
 }
 
 static Result CheckForCircularDependency(const ProgramNode* node, const ProgramNode* importedNode, const int lineNumber, const char* errorPath)
@@ -361,7 +399,7 @@ static Result CompileProgramTree(const Array* programNodes, char** outCode, size
 
 Result Compile(const char* inputPath, const char* outputPath)
 {
-	PROPAGATE_ERROR(CheckFileWriteable(outputPath));
+	PROPAGATE_ERROR(CheckFileWriteable(outputPath, -1, NULL));
 	char* outPath = AllocAbsolutePath(outputPath);
 
 	Array programNodes = AllocateArray(sizeof(ProgramNode*));

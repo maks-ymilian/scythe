@@ -8,6 +8,7 @@
 #include <fileapi.h>
 #include <stdlib.h>
 #include <string.h>
+#include <io.h>
 
 #define BUFSIZE 4096
 
@@ -152,6 +153,11 @@ bool ChangeDirectory(const char* path)
 	return SetCurrentDirectory(path);
 }
 
+bool CheckFileAccess(const char* path, bool read, bool write)
+{
+	return _access(path, (read ? 4 : 0) | (write ? 2 : 0)) == 0;
+}
+
 #elif defined(__linux__)
 
 #include <libgen.h>
@@ -246,6 +252,24 @@ error:
 bool ChangeDirectory(const char* path)
 {
 	return chdir(path) == 0;
+}
+
+bool CheckFileAccess(const char* path, bool read, bool write)
+{
+	int permissions = (read ? R_OK : 0) | (write ? W_OK : 0);
+	return access(path, !read && !write ? F_OK : permissions) == 0;
+}
+
+int IsRegularFile(const char* path)
+{
+	struct stat status;
+	if (stat(path, &status) != 0)
+		goto error;
+
+	return S_ISREG(status.st_mode);
+
+error:
+	return -1;
 }
 
 #endif
