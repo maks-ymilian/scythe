@@ -1,6 +1,5 @@
 #include "ResolverPass.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,11 +59,11 @@ static StructDeclStmt* GetSetArrayStructDecl(Type type, StructDeclStmt* structDe
 	case Node_Literal:
 	{
 		LiteralExpr* literal = type.expr.ptr;
-		assert(literal->type == Literal_PrimitiveType);
+		ASSERT(literal->type == Literal_PrimitiveType);
 
 		if (structDecl)
 		{
-			assert(primitiveTypeToArrayStruct[literal->primitiveType] == NULL);
+			ASSERT(primitiveTypeToArrayStruct[literal->primitiveType] == NULL);
 			primitiveTypeToArrayStruct[literal->primitiveType] = structDecl;
 			return structDecl;
 		}
@@ -74,7 +73,7 @@ static StructDeclStmt* GetSetArrayStructDecl(Type type, StructDeclStmt* structDe
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = type.expr.ptr;
-		assert(memberAccess->typeReference != NULL);
+		ASSERT(memberAccess->typeReference != NULL);
 
 		char lookup[64];
 		snprintf(lookup, sizeof(lookup), "%p", (void*)memberAccess->typeReference);
@@ -82,7 +81,7 @@ static StructDeclStmt* GetSetArrayStructDecl(Type type, StructDeclStmt* structDe
 		if (structDecl)
 		{
 			bool success = MapAdd(&structTypeToArrayStruct, lookup, &structDecl);
-			assert(success);
+			ASSERT(success);
 			return structDecl;
 		}
 		else
@@ -133,9 +132,9 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 		});
 	ArrayInsert(&structDecl->members, &lengthMember, ARRAY_STRUCT_LENGTH_MEMBER_INDEX);
 
-	assert(structDecl->members.length == ARRAY_STRUCT_MEMBER_COUNT);
+	ASSERT(structDecl->members.length == ARRAY_STRUCT_MEMBER_COUNT);
 
-	assert(currentModule != NULL);
+	ASSERT(currentModule != NULL);
 	ArrayAdd(&currentModule->statements, &(NodePtr){.ptr = structDecl, .type = Node_StructDeclaration});
 
 	// add so it can be found
@@ -153,7 +152,7 @@ static void ChangeArrayTypeToStruct(Type* type)
 	if (type->expr.type == Node_Literal)
 	{
 		LiteralExpr* literal = type->expr.ptr;
-		assert(literal->type == Literal_PrimitiveType);
+		ASSERT(literal->type == Literal_PrimitiveType);
 		if (literal->primitiveType == Primitive_Void)
 			return;
 	}
@@ -195,7 +194,7 @@ static NodePtr* GetFirstNode(const Map* declarations, const char* key)
 		return NULL;
 	else
 	{
-		assert(array->length >= 1);
+		ASSERT(array->length >= 1);
 		return (NodePtr*)array->array[0];
 	}
 }
@@ -220,7 +219,7 @@ static void PushScope(void)
 
 static void PopScope(Map* outMap)
 {
-	assert(currentScope != NULL);
+	ASSERT(currentScope != NULL);
 	Scope* scope = currentScope;
 
 	currentScope = currentScope->parent;
@@ -235,7 +234,7 @@ static void PopScope(Map* outMap)
 
 static bool VariadicFunctionIsAmbiguous(const char* name, FuncDeclStmt* funcDecl)
 {
-	assert(currentScope != NULL);
+	ASSERT(currentScope != NULL);
 	const Scope* scope = currentScope;
 	for (; scope != NULL; scope = scope->parent)
 	{
@@ -243,11 +242,11 @@ static bool VariadicFunctionIsAmbiguous(const char* name, FuncDeclStmt* funcDecl
 		if (array == NULL)
 			continue;
 
-		assert(array->length >= 1);
+		ASSERT(array->length >= 1);
 		for (size_t i = 0; i < array->length; ++i)
 		{
 			NodePtr* node = array->array[i];
-			assert(node->type == Node_FunctionDeclaration);
+			ASSERT(node->type == Node_FunctionDeclaration);
 			FuncDeclStmt* currentFunc = node->ptr;
 
 			if (currentFunc == funcDecl)
@@ -263,8 +262,8 @@ static bool VariadicFunctionIsAmbiguous(const char* name, FuncDeclStmt* funcDecl
 
 static Result RegisterDeclaration(const char* name, const NodePtr* node, const int lineNumber)
 {
-	assert(currentScope != NULL);
-	assert(node != NULL);
+	ASSERT(currentScope != NULL);
+	ASSERT(node != NULL);
 
 	Array* array = MapGet(&currentScope->declarations, name);
 	if (array)
@@ -280,7 +279,7 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 		ArrayAdd(&array, node);
 
 		if (!MapAdd(&currentScope->declarations, name, &array))
-			assert(0);
+			UNREACHABLE();
 	}
 
 	// check for function overload ambiguity
@@ -314,16 +313,16 @@ static Result ValidateStructAccess(Type type, const char* text, NodePtr* current
 	if (type.expr.type == Node_Literal)
 	{
 		LiteralExpr* literal = type.expr.ptr;
-		assert(literal->type == Literal_PrimitiveType);
+		ASSERT(literal->type == Literal_PrimitiveType);
 		return ERROR_RESULT(
 			AllocateString1Str("Type \"%s\" is not an aggregate type",
 				GetTokenTypeString(primitiveTypeToTokenType[literal->primitiveType])),
 			lineNumber, currentFilePath);
 	}
 
-	assert(type.expr.type == Node_MemberAccess);
+	ASSERT(type.expr.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = type.expr.ptr;
-	assert(memberAccess->typeReference != NULL);
+	ASSERT(memberAccess->typeReference != NULL);
 	StructDeclStmt* structDecl = memberAccess->typeReference;
 	for (size_t i = 0; i < structDecl->members.length; ++i)
 	{
@@ -385,11 +384,11 @@ static bool FindFunctionOverload(const char* name, const Map* declarations, size
 	if (array == NULL)
 		return false;
 
-	assert(array->length >= 1);
+	ASSERT(array->length >= 1);
 	for (size_t i = 0; i < array->length; ++i)
 	{
 		NodePtr* node = array->array[i];
-		assert(node->type == Node_FunctionDeclaration);
+		ASSERT(node->type == Node_FunctionDeclaration);
 		FuncDeclStmt* funcDecl = node->ptr;
 
 		if (CheckFunctionOverload(argCount, funcDecl->parameters.length, funcDecl->variadic))
@@ -416,7 +415,7 @@ static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t 
 	*out = NULL_NODE;
 
 	bool functionNameExists = false;
-	assert(currentScope != NULL);
+	ASSERT(currentScope != NULL);
 	const Scope* scope = currentScope;
 	for (; scope != NULL; scope = scope->parent)
 		functionNameExists = FindFunctionOverload(name, &scope->declarations, argCount, isAmbiguous, out);
@@ -441,7 +440,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	{
 	case Node_Null:
 	{
-		assert(currentScope != NULL);
+		ASSERT(currentScope != NULL);
 
 		const Scope* scope = currentScope;
 		for (; scope != NULL; scope = scope->parent)
@@ -469,9 +468,9 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_FunctionCall:
 	{
 		const FuncCallExpr* funcCall = current->ptr;
-		assert(funcCall->baseExpr.type == Node_MemberAccess);
+		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 		const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
-		assert(memberAccess->funcReference != NULL);
+		ASSERT(memberAccess->funcReference != NULL);
 		const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 		return ValidateStructAccess(funcDecl->type, text, current, lineNumber);
 	}
@@ -486,7 +485,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		{
 			const MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
-			assert(memberAccess->varReference != NULL);
+			ASSERT(memberAccess->varReference != NULL);
 			const VarDeclStmt* varDecl = memberAccess->varReference;
 
 			// dereference
@@ -496,11 +495,11 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 			else if (type.expr.type == Node_MemberAccess)
 			{
 				StructDeclStmt* structDecl = ((MemberAccessExpr*)type.expr.ptr)->typeReference;
-				assert(structDecl);
+				ASSERT(structDecl);
 				if (structDecl->isArrayType) // array
 				{
 					type = GetPtrMember(structDecl)->type;
-					assert(type.modifier == TypeModifier_Pointer);
+					ASSERT(type.modifier == TypeModifier_Pointer);
 					type.modifier = TypeModifier_None;
 				}
 			}
@@ -514,7 +513,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	{
 		const ImportStmt* import = current->ptr;
 		Map* declarations = MapGet(&modules, import->moduleName);
-		assert(declarations != NULL);
+		ASSERT(declarations != NULL);
 
 		if (isPublicAPI && !import->modifiers.publicValue)
 			return ERROR_RESULT("Types from private imports are not allowed in public declarations", lineNumber, currentFilePath);
@@ -534,7 +533,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		// if resolving the baseExpr of a FuncCallExpr
 		if (resolveFuncCall)
 		{
-			assert(node.type == Node_FunctionDeclaration);
+			ASSERT(node.type == Node_FunctionDeclaration);
 
 			node = NULL_NODE;
 			bool exists = FindFunctionOverload(text, declarations, resolveFuncCall->arguments.length, NULL, &node);
@@ -575,13 +574,13 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 
 static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, bool isPublicAPI)
 {
-	assert(node->type == Node_MemberAccess);
+	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 
 	PROPAGATE_ERROR(ResolveExpression(&memberAccess->start, true, NULL));
 
 	NodePtr current = memberAccess->start;
-	assert(memberAccess->identifiers.array != NULL);
+	ASSERT(memberAccess->identifiers.array != NULL);
 	for (size_t i = 0; i < memberAccess->identifiers.length; ++i)
 	{
 		char* text = *(char**)memberAccess->identifiers.array[i];
@@ -602,7 +601,7 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 		memberAccess->typeReference = current.ptr;
 		break;
 	case Node_VariableDeclaration:
-		assert(memberAccess->varReference != NULL);
+		ASSERT(memberAccess->varReference != NULL);
 		// if there is more identifiers after varReference then change it to parent
 		if (memberAccess->varReference != current.ptr)
 		{
@@ -627,7 +626,7 @@ static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* 
 	{
 		PROPAGATE_ERROR(ResolveMemberAccess(&type->expr, NULL, isPublicAPI));
 
-		assert(type->expr.type == Node_MemberAccess);
+		ASSERT(type->expr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = type->expr.ptr;
 		if (memberAccess->typeReference == NULL)
 		{
@@ -652,7 +651,7 @@ static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* 
 			break;
 
 		LiteralExpr* literal = type->expr.ptr;
-		assert(literal->type == Literal_PrimitiveType);
+		ASSERT(literal->type == Literal_PrimitiveType);
 		if (literal->primitiveType == Primitive_Void)
 			return ERROR_RESULT("\"void\" is not allowed here", literal->lineNumber, currentFilePath);
 
@@ -716,7 +715,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 	case Node_BlockExpression:
 	{
 		BlockExpr* block = node->ptr;
-		assert(block->block.type == Node_BlockStatement);
+		ASSERT(block->block.type == Node_BlockStatement);
 		PROPAGATE_ERROR(ResolveType(&block->type, true, false, NULL));
 		PROPAGATE_ERROR(VisitBlock(block->block.ptr));
 		return SUCCESS_RESULT;
@@ -785,11 +784,11 @@ static Result VisitBlock(const BlockStmt* block)
 
 static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool topLevel)
 {
-	assert(importNode->type == Node_Import);
+	ASSERT(importNode->type == Node_Import);
 	const ImportStmt* import = importNode->ptr;
 
 	const Map* declarations = MapGet(&modules, import->moduleName);
-	assert(declarations != NULL);
+	ASSERT(declarations != NULL);
 
 	PROPAGATE_ERROR(RegisterDeclaration(import->moduleName, importNode, import->lineNumber));
 
@@ -798,7 +797,7 @@ static Result RecursiveRegisterImportNode(const NodePtr* importNode, const bool 
 		for (MAP_ITERATE(i, declarations))
 		{
 			Array* array = i->value;
-			assert(array->length >= 1);
+			ASSERT(array->length >= 1);
 
 			NodePtr* node = array->array[0];
 			if (node->type == Node_Import &&
@@ -830,7 +829,7 @@ static Result SetModifiers(ModifierState* modifiers, int lineNumber)
 
 static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
 {
-	assert(node->type == Node_VariableDeclaration);
+	ASSERT(node->type == Node_VariableDeclaration);
 	VarDeclStmt* varDecl = node->ptr;
 
 	PROPAGATE_ERROR(SetModifiers(&varDecl->modifiers, varDecl->lineNumber));
@@ -890,7 +889,7 @@ static Result VisitStatement(NodePtr* node)
 
 		if (funcDecl->block.ptr != NULL)
 		{
-			assert(funcDecl->block.type == Node_BlockStatement);
+			ASSERT(funcDecl->block.type == Node_BlockStatement);
 			BlockStmt* block = funcDecl->block.ptr;
 			for (size_t i = 0; i < block->statements.length; ++i)
 				PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
@@ -900,16 +899,16 @@ static Result VisitStatement(NodePtr* node)
 			// and function parameters arent global in jsfx
 			for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 			{
-				assert(funcDecl->block.type == Node_BlockStatement);
+				ASSERT(funcDecl->block.type == Node_BlockStatement);
 				BlockStmt* block = funcDecl->block.ptr;
 
 				NodePtr* paramNode = funcDecl->parameters.array[i];
-				assert(paramNode->type == Node_VariableDeclaration);
+				ASSERT(paramNode->type == Node_VariableDeclaration);
 				VarDeclStmt* paramVarDecl = paramNode->ptr;
 
 				*paramNode = CopyASTNode(*paramNode);
 
-				assert(!paramVarDecl->initializer.ptr);
+				ASSERT(!paramVarDecl->initializer.ptr);
 				paramVarDecl->initializer = AllocASTNode(
 					&(MemberAccessExpr){
 						.lineNumber = paramVarDecl->lineNumber,
@@ -957,7 +956,7 @@ static Result VisitStatement(NodePtr* node)
 	case Node_Section:
 	{
 		const SectionStmt* section = node->ptr;
-		assert(section->block.type == Node_BlockStatement);
+		ASSERT(section->block.type == Node_BlockStatement);
 		return VisitBlock(section->block.ptr);
 	}
 	case Node_If:
@@ -1045,7 +1044,7 @@ static Result VisitModule(ModuleNode* module)
 	Map declarations;
 	PopScope(&declarations);
 	if (!MapAdd(&modules, module->moduleName, &declarations))
-		assert(0);
+		UNREACHABLE();
 
 	return SUCCESS_RESULT;
 }
@@ -1058,7 +1057,7 @@ Result ResolverPass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		PROPAGATE_ERROR(VisitModule(node->ptr));
 	}
 

@@ -1,15 +1,16 @@
 #include "data-structures/Array.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "Common.h"
 
 #define START_SIZE 16
 
 Array AllocateArray(const size_t sizeOfType)
 {
-	assert(sizeOfType > 0);
+	ASSERT(sizeOfType > 0);
 
 	Array array;
 	array.array = malloc(START_SIZE * sizeof(void*));
@@ -21,15 +22,15 @@ Array AllocateArray(const size_t sizeOfType)
 
 void ArrayAdd(Array* array, const void* item)
 {
-	assert(item != NULL);
-	assert(array->array != NULL);
+	ASSERT(item != NULL);
+	ASSERT(array->array != NULL);
 
 	array->length++;
 	if (array->length > array->cap)
 	{
 		array->cap *= 2;
 		void* new = realloc(array->array, array->cap * sizeof(void*));
-		assert(new != NULL);
+		ASSERT(new != NULL);
 		array->array = new;
 	}
 
@@ -40,15 +41,15 @@ void ArrayAdd(Array* array, const void* item)
 
 void ArrayInsert(Array* array, const void* item, const size_t index)
 {
-	assert(item != NULL);
-	assert(index <= array->length);
+	ASSERT(item != NULL);
+	ASSERT(index <= array->length);
 
 	array->length++;
 	if (array->length > array->cap)
 	{
 		array->cap *= 2;
 		void* new = realloc(array->array, array->cap * sizeof(void*));
-		assert(new != NULL);
+		ASSERT(new != NULL);
 		array->array = new;
 	}
 
@@ -61,7 +62,7 @@ void ArrayInsert(Array* array, const void* item, const size_t index)
 
 void ArrayRemove(Array* array, const size_t index)
 {
-	assert(index < array->length);
+	ASSERT(index < array->length);
 	free(array->array[index]);
 	if (index != array->length - 1)
 		memmove(array->array + index, array->array + index + 1, (array->length - index - 1) * sizeof(void*));
@@ -77,7 +78,7 @@ void FreeArray(const Array* array)
 
 void ArrayClear(Array* array)
 {
-	assert(array->array != NULL);
+	ASSERT(array->array != NULL);
 	for (size_t i = 0; i < array->length; ++i)
 		free(array->array[i]);
 	array->length = 0;

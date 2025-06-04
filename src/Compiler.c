@@ -1,12 +1,11 @@
 #include "Compiler.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "FileUtils.h"
+#include "PlatformUtils.h"
 #include "Parser.h"
 #include "Scanner.h"
 #include "StringUtils.h"
@@ -60,9 +59,9 @@ static void FreeProgramTree(const Array* programNodes)
 
 static Result ReadFile(const char* path, char** outString, size_t* outStringLength, int lineNumber, const char* errorPath)
 {
-	assert(path);
-	assert(outString);
-	assert(outStringLength);
+	ASSERT(path);
+	ASSERT(outString);
+	ASSERT(outStringLength);
 
 	errno = 0;
 	FILE* file = fopen(path, "rb");
@@ -105,7 +104,7 @@ error:
 
 static Result WriteFile(const char* path, const char* bytes, size_t bytesLength)
 {
-	assert(path);
+	ASSERT(path);
 
 	errno = 0;
 	FILE* file = fopen(path, "wb");
@@ -134,7 +133,7 @@ error:
 static Result CheckFileReadable(const char* path, int lineNumber, const char* errorPath)
 {
 	char* errorMessage = NULL;
-	assert(path);
+	ASSERT(path);
 
 	errno = 0;
 	int result = IsRegularFile(path);
@@ -175,7 +174,7 @@ error:
 static Result CheckFileWriteable(const char* path, int lineNumber, const char* errorPath)
 {
 	char* errorMessage = NULL;
-	assert(path);
+	ASSERT(path);
 
 	errno = 0;
 	int result = IsRegularFile(path);

@@ -1,6 +1,5 @@
 #include "Writer.h"
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,23 +55,17 @@ static void WriteUInt64(const uint64_t integer)
 	char string[INT64_MAX_CHARS + 1];
 	int numChars = snprintf(string, sizeof(string), "%" PRIu64, integer);
 	if (numChars < 1)
-	{
-		assert(0);
-		return;
-	}
+		UNREACHABLE();
 	StreamWrite(stream, string, (size_t)numChars);
 }
 
 static void WriteUniqueName(const int uniqueName)
 {
-	assert(uniqueName > 0);
+	ASSERT(uniqueName > 0);
 	char string[INT64_MAX_CHARS + 1];
 	int numChars = snprintf(string, sizeof(string), "%d", uniqueName);
 	if (numChars < 1)
-	{
-		assert(0);
-		return;
-	}
+		UNREACHABLE();
 	StreamWrite(stream, string, (size_t)numChars);
 }
 
@@ -305,11 +298,11 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 
 static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 {
-	assert(varDecl != NULL);
+	ASSERT(varDecl != NULL);
 	if (varDecl->modifiers.externalValue)
 		return;
 
-	assert(varDecl->initializer.ptr != NULL);
+	ASSERT(varDecl->initializer.ptr != NULL);
 
 	VisitBinaryExpression(
 		&(BinaryExpr){
@@ -358,7 +351,7 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 
-		assert(node->type == Node_VariableDeclaration);
+		ASSERT(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
 		WriteString(varDecl->name);
 		WriteChar('_');
@@ -369,7 +362,7 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	}
 	WriteString(")\n");
 
-	assert(funcDecl->block.type == Node_BlockStatement);
+	ASSERT(funcDecl->block.type == Node_BlockStatement);
 	VisitBlock(funcDecl->block.ptr, true);
 }
 
@@ -378,13 +371,13 @@ static void VisitIfStatement(const IfStmt* ifStmt)
 	VisitExpression(ifStmt->expr, NULL);
 	WriteString(" ?\n");
 
-	assert(ifStmt->trueStmt.type == Node_BlockStatement);
+	ASSERT(ifStmt->trueStmt.type == Node_BlockStatement);
 	VisitBlock(ifStmt->trueStmt.ptr, false);
 
 	if (ifStmt->falseStmt.ptr != NULL)
 	{
 		WriteString(" : ");
-		assert(ifStmt->falseStmt.type == Node_BlockStatement);
+		ASSERT(ifStmt->falseStmt.type == Node_BlockStatement);
 		VisitBlock(ifStmt->falseStmt.ptr, false);
 	}
 
@@ -397,7 +390,7 @@ static void VisitWhileStatement(const WhileStmt* whileStmt)
 	VisitExpression(whileStmt->expr, NULL);
 	WriteString(")\n");
 
-	assert(whileStmt->stmt.type == Node_BlockStatement);
+	ASSERT(whileStmt->stmt.type == Node_BlockStatement);
 	VisitBlock(whileStmt->stmt.ptr, true);
 }
 
@@ -461,7 +454,7 @@ static void VisitSection(const SectionStmt* section)
 	WriteString(sectionText);
 	WriteChar('\n');
 
-	assert(section->block.type == Node_BlockStatement);
+	ASSERT(section->block.type == Node_BlockStatement);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
 		VisitStatement(block->statements.array[i]);
@@ -507,7 +500,7 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		VisitModule(node->ptr);
 	}
 

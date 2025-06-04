@@ -1,6 +1,5 @@
 #include "Parser.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -61,7 +60,7 @@ static bool IsDigitBase(const char c, const int base)
 
 static Result StringToUInt64(const char* string, const int base, const int lineNumber, uint64_t* out)
 {
-	assert(
+	ASSERT(
 		base == 10 ||
 		base == 16 ||
 		base == 8 ||
@@ -292,7 +291,7 @@ static Result ParseStructInitializerPart(NodePtr* out, void* data)
 		return NOT_FOUND_RESULT;
 
 	// add name to the start
-	assert(access.type == Node_MemberAccess);
+	ASSERT(access.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = access.ptr;
 	char* name = AllocateString(data);
 	ArrayInsert(&memberAccess->identifiers, &name, 0);
@@ -368,7 +367,7 @@ static Result ParseBlockExpression(NodePtr* out)
 	else if (blockType == BlockType_StructInitializer) // the parser should not be doing these kinds of transformations but it works so i dont care
 	{
 		if (!MatchOne(Token_LeftCurlyBracket))
-			assert(0);
+			UNREACHABLE();
 
 		Array statements;
 		char tempVariableName[] = "temp";
@@ -416,7 +415,7 @@ static Result ParseBlockExpression(NodePtr* out)
 	else if (blockType == BlockType_TypeCast)
 	{
 		if (!MatchOne(Token_LeftCurlyBracket))
-			assert(0);
+			UNREACHABLE();
 
 		block = AllocASTNode(
 			&(BlockStmt){
@@ -427,7 +426,7 @@ static Result ParseBlockExpression(NodePtr* out)
 
 		NodePtr expr = NULL_NODE;
 		PROPAGATE_ERROR(ParseExpression(&expr));
-		assert(expr.ptr);
+		ASSERT(expr.ptr);
 		NodePtr returnStatement = AllocASTNode(
 			&(ReturnStmt){
 				.lineNumber = CurrentToken()->lineNumber,
@@ -436,7 +435,7 @@ static Result ParseBlockExpression(NodePtr* out)
 			sizeof(ReturnStmt), Node_Return);
 
 		if (!MatchOne(Token_RightCurlyBracket))
-			assert(0);
+			UNREACHABLE();
 
 		ArrayAdd(&((BlockStmt*)block.ptr)->statements, &returnStatement);
 	}
@@ -740,7 +739,7 @@ static Result ParsePrimary(NodePtr* out)
 
 	if (identifiers.array != NULL)
 	{
-		assert(out->ptr == NULL);
+		ASSERT(out->ptr == NULL);
 		*out = AllocASTNode(
 			&(MemberAccessExpr){
 				.lineNumber = lineNumber,
@@ -753,7 +752,7 @@ static Result ParsePrimary(NodePtr* out)
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
-	assert(out->ptr != NULL);
+	ASSERT(out->ptr != NULL);
 
 	bool isDereference = false;
 	PROPAGATE_ERROR(ParseCallOrSubscript(out, &isDereference));
@@ -1252,7 +1251,7 @@ static Result ParseSectionStatement(NodePtr* out)
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
 	if (block.ptr == NULL)
 		return ERROR_RESULT_LINE("Expected block after section statement");
-	assert(block.type == Node_BlockStatement);
+	ASSERT(block.type == Node_BlockStatement);
 
 	*out = AllocASTNode(
 		&(SectionStmt){
@@ -1463,7 +1462,7 @@ static Result ParseDeclaration(NodePtr* out, ModifierState modifiers)
 
 static Result ParseModifiers(ModifierState* outModifierState, bool* outHasAnyModifiers)
 {
-	assert(outModifierState);
+	ASSERT(outModifierState);
 	*outModifierState = (ModifierState){
 		.publicSpecified = false,
 		.publicValue = false,

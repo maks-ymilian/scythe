@@ -1,6 +1,5 @@
 #include "BlockExpressionPass.h"
 
-#include <assert.h>
 #include <stdio.h>
 
 #include "StringUtils.h"
@@ -159,7 +158,7 @@ static void VisitStatement(NodePtr* node)
 		for (size_t i = 0; i < structDecl->members.length; i++)
 		{
 			NodePtr* node = structDecl->members.array[i];
-			assert(node->type == Node_VariableDeclaration);
+			ASSERT(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
 			VisitExpression(&varDecl->initializer, node, varDecl->lineNumber);
 		}
@@ -207,7 +206,7 @@ void BlockExpressionPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)

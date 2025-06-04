@@ -1,19 +1,17 @@
 #include "Common.h"
 
-#include <assert.h>
-
 VarDeclStmt* GetPtrMember(StructDeclStmt* type)
 {
-	assert(type->isArrayType);
-	assert(type->members.length == ARRAY_STRUCT_MEMBER_COUNT);
+	ASSERT(type->isArrayType);
+	ASSERT(type->members.length == ARRAY_STRUCT_MEMBER_COUNT);
 	NodePtr* node = type->members.array[ARRAY_STRUCT_PTR_MEMBER_INDEX];
-	assert(node->type == Node_VariableDeclaration);
+	ASSERT(node->type == Node_VariableDeclaration);
 	return node->ptr;
 }
 
 NodePtr AllocIdentifier(VarDeclStmt* varDecl, int lineNumber)
 {
-	assert(varDecl != NULL);
+	ASSERT(varDecl != NULL);
 	return AllocASTNode(
 		&(MemberAccessExpr){
 			.lineNumber = lineNumber,

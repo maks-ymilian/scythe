@@ -1,7 +1,5 @@
 #include "UniqueNamePass.h"
 
-#include <assert.h>
-
 static int uniqueNameCounter = 0;
 
 static void VisitExpression(const NodePtr node)
@@ -69,7 +67,7 @@ static void VisitStatement(const NodePtr node)
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
 			const NodePtr* node = funcDecl->parameters.array[i];
-			assert(node->type == Node_VariableDeclaration);
+			ASSERT(node->type == Node_VariableDeclaration);
 			VisitStatement(*node);
 		}
 		VisitStatement(funcDecl->block);
@@ -98,7 +96,7 @@ static void VisitStatement(const NodePtr node)
 	case Node_Section:
 	{
 		const SectionStmt* section = node.ptr;
-		assert(section->block.type == Node_BlockStatement);
+		ASSERT(section->block.type == Node_BlockStatement);
 		VisitStatement(section->block);
 		break;
 	}
@@ -122,7 +120,7 @@ void UniqueNamePass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)

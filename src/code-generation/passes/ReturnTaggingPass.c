@@ -1,7 +1,5 @@
 #include "ReturnTaggingPass.h"
 
-#include <assert.h>
-
 static Array stack;
 
 static void Push(FuncDeclStmt* function)
@@ -36,9 +34,9 @@ static void VisitStatement(const NodePtr* node)
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
-		assert(returnStmt->function == NULL);
+		ASSERT(returnStmt->function == NULL);
 		returnStmt->function = Peek();
-		assert(returnStmt->function);
+		ASSERT(returnStmt->function);
 		break;
 	}
 	case Node_BlockStatement:
@@ -86,7 +84,7 @@ void ReturnTaggingPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)

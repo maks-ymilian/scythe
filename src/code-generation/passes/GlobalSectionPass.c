@@ -1,15 +1,14 @@
 #include "GlobalSectionPass.h"
 
-#include <assert.h>
 #include <stdio.h>
 
 static NodePtr globalInitSection;
 
 static void AddToInitSection(const NodePtr* node)
 {
-	assert(globalInitSection.type == Node_Section);
+	ASSERT(globalInitSection.type == Node_Section);
 	const SectionStmt* section = globalInitSection.ptr;
-	assert(section->block.type == Node_BlockStatement);
+	ASSERT(section->block.type == Node_BlockStatement);
 	BlockStmt* block = section->block.ptr;
 	ArrayAdd(&block->statements, node);
 }
@@ -120,7 +119,7 @@ void GlobalSectionPass(const AST* ast)
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		ModuleNode* module = node->ptr;
 
 		globalInitSection = AllocASTNode(

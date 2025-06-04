@@ -36,7 +36,7 @@ static TypeInfo GetType(const Type type)
 	if (type.expr.type == Node_Literal)
 	{
 		const LiteralExpr* literal = type.expr.ptr;
-		assert(literal->type == Literal_PrimitiveType);
+		ASSERT(literal->type == Literal_PrimitiveType);
 
 		return (TypeInfo){
 			.effectiveType = isPointer ? Primitive_Int : literal->primitiveType,
@@ -46,7 +46,7 @@ static TypeInfo GetType(const Type type)
 	}
 	else
 	{
-		assert(isPointer);
+		ASSERT(isPointer);
 		return (TypeInfo){
 			.effectiveType = Primitive_Int,
 			.pointerType = Primitive_Any,
@@ -107,7 +107,7 @@ static void VisitMemberAccess(MemberAccessExpr* memberAccess, TypeInfo* outType)
 	else if (memberAccess->varReference != NULL)
 		type = &memberAccess->varReference->type;
 	else
-		assert(0);
+		UNREACHABLE();
 
 	if (outType != NULL)
 		*outType = GetType(*type);
@@ -115,15 +115,15 @@ static void VisitMemberAccess(MemberAccessExpr* memberAccess, TypeInfo* outType)
 
 static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 {
-	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
-	assert(memberAccess->funcReference != NULL);
+	ASSERT(memberAccess->funcReference != NULL);
 	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
 
 	if (outType != NULL)
 		*outType = GetType(funcDecl->type);
 
-	assert(funcDecl->variadic
+	ASSERT(funcDecl->variadic
 			   ? funcCall->arguments.length >= funcDecl->parameters.length
 			   : funcCall->arguments.length == funcDecl->parameters.length);
 
@@ -135,13 +135,13 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 		if (i < funcDecl->parameters.length)
 		{
 			NodePtr* node = funcDecl->parameters.array[i];
-			assert(node->type == Node_VariableDeclaration);
+			ASSERT(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
 			paramType = GetType(varDecl->type);
 		}
 		else
 		{
-			assert(funcDecl->variadic);
+			ASSERT(funcDecl->variadic);
 			paramType = (TypeInfo){
 				.effectiveType = Primitive_Any,
 				.pointerType = Primitive_Any,
@@ -233,7 +233,7 @@ convertError:
 
 static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 {
-	assert(node->type == Node_Binary);
+	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 
 	TypeInfo leftType;
@@ -377,7 +377,7 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 
 static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 {
-	assert(node->type == Node_Unary);
+	ASSERT(node->type == Node_Unary);
 	UnaryExpr* unary = node->ptr;
 
 	TypeInfo exprType;
@@ -503,7 +503,7 @@ static Result VisitExpression(NodePtr* node, TypeInfo* outType)
 
 static Result AddVariableInitializer(VarDeclStmt* varDecl)
 {
-	assert(varDecl != NULL);
+	ASSERT(varDecl != NULL);
 
 	if (varDecl->initializer.ptr != NULL)
 		return SUCCESS_RESULT;
@@ -564,7 +564,7 @@ static Result VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
-		assert(node->type == Node_VariableDeclaration);
+		ASSERT(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
 		PROPAGATE_ERROR(VisitVariableDeclaration(varDecl, false));
@@ -641,7 +641,7 @@ Result TypeConversionPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		currentFilePath = module->path;

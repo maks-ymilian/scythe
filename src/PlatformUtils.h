@@ -11,3 +11,4 @@ char* AllocDirectoryName(const char* path);
 bool ChangeDirectory(const char* path);
 bool CheckFileAccess(const char* path, bool read, bool write);
 int IsRegularFile(const char* path);
+void PrintStackTrace(void);

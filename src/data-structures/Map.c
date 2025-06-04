@@ -1,8 +1,9 @@
 #include "data-structures/Map.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "Common.h"
 
 #define LOAD_FACTOR 0.75
 #define START_SIZE 16
@@ -135,7 +136,7 @@ static Node* NextBucket(const Map* map, const size_t startIndex)
 
 bool MapNext(const Map* map, Node** current)
 {
-	assert(current != NULL);
+	ASSERT(current != NULL);
 
 	if (*current == NULL)
 	{
@@ -174,7 +175,7 @@ static Node* AllocateNode(const Map* map, const char* key, const void* value)
 
 bool MapAdd(Map* map, const char* key, const void* value)
 {
-	assert(map != NULL);
+	ASSERT(map != NULL);
 
 	if (MapGet(map, key) != NULL)
 		return false;

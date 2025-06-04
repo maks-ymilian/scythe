@@ -1,6 +1,5 @@
 #include "SyntaxTree.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -140,7 +139,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		BinaryExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(BinaryExpr), Node_Binary);
-		assert(copy.type == Node_Binary);
+		ASSERT(copy.type == Node_Binary);
 		ptr = copy.ptr;
 
 		ptr->left = CopyASTNode(ptr->left);
@@ -152,7 +151,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		UnaryExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(UnaryExpr), Node_Unary);
-		assert(copy.type == Node_Unary);
+		ASSERT(copy.type == Node_Unary);
 		ptr = copy.ptr;
 
 		ptr->expression = CopyASTNode(ptr->expression);
@@ -163,7 +162,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		LiteralExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(LiteralExpr), Node_Literal);
-		assert(copy.type == Node_Literal);
+		ASSERT(copy.type == Node_Literal);
 		ptr = copy.ptr;
 
 		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
@@ -175,7 +174,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		SubscriptExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(SubscriptExpr), Node_Subscript);
-		assert(copy.type == Node_Subscript);
+		ASSERT(copy.type == Node_Subscript);
 		ptr = copy.ptr;
 
 		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
@@ -189,7 +188,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		FuncCallExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(FuncCallExpr), Node_FunctionCall);
-		assert(copy.type == Node_FunctionCall);
+		ASSERT(copy.type == Node_FunctionCall);
 		ptr = copy.ptr;
 
 		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
@@ -209,7 +208,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		MemberAccessExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(MemberAccessExpr), Node_MemberAccess);
-		assert(copy.type == Node_MemberAccess);
+		ASSERT(copy.type == Node_MemberAccess);
 		ptr = copy.ptr;
 
 		if (ptr->start.ptr != NULL) ptr->start = CopyASTNode(ptr->start);
@@ -229,7 +228,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		BlockExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(BlockExpr), Node_BlockExpression);
-		assert(copy.type == Node_BlockExpression);
+		ASSERT(copy.type == Node_BlockExpression);
 		ptr = copy.ptr;
 
 		ptr->block = CopyASTNode(ptr->block);
@@ -241,7 +240,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		SizeOfExpr* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(SizeOfExpr), Node_SizeOf);
-		assert(copy.type == Node_SizeOf);
+		ASSERT(copy.type == Node_SizeOf);
 		ptr = copy.ptr;
 
 		ptr->expr = CopyASTNode(ptr->expr);
@@ -258,7 +257,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	{
 		VarDeclStmt* ptr = node.ptr;
 		const NodePtr copy = AllocASTNode(ptr, sizeof(VarDeclStmt), Node_VariableDeclaration);
-		assert(copy.type == Node_VariableDeclaration);
+		ASSERT(copy.type == Node_VariableDeclaration);
 		ptr = copy.ptr;
 
 		if (ptr->initializer.ptr) ptr->initializer = CopyASTNode(ptr->initializer);

@@ -1,13 +1,14 @@
-#include "FileUtils.h"
+#include "PlatformUtils.h"
 
 #include "StringUtils.h"
 
 #if defined(_WIN32)
 
+#include <string.h>
+#include <stdlib.h>
+
 #include <windows.h>
 #include <fileapi.h>
-#include <stdlib.h>
-#include <string.h>
 #include <io.h>
 
 #define BUFSIZE 4096
@@ -158,13 +159,22 @@ bool CheckFileAccess(const char* path, bool read, bool write)
 	return _access(path, (read ? 4 : 0) | (write ? 2 : 0)) == 0;
 }
 
+void PrintStackTrace(void)
+{
+}
+
 #elif defined(__linux__)
 
-#include <libgen.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <libgen.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <execinfo.h>
+
+#define MAX_STACK_TRACE_ELEMENTS 10
 
 int IsSameFile(const char* path1, const char* path2)
 {
@@ -270,6 +280,13 @@ int IsRegularFile(const char* path)
 
 error:
 	return -1;
+}
+
+void PrintStackTrace(void)
+{
+	void* pointers[MAX_STACK_TRACE_ELEMENTS];
+	int size = backtrace(pointers, MAX_STACK_TRACE_ELEMENTS);
+	backtrace_symbols_fd(pointers, size, STDERR_FILENO);
 }
 
 #endif

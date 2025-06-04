@@ -1,8 +1,9 @@
 #include "data-structures/MemoryStream.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "Common.h"
 
 #define START_SIZE 256
 
@@ -59,7 +60,7 @@ size_t StreamGetPosition(const MemoryStream* stream) { return stream->position; 
 
 void StreamSetPosition(MemoryStream* stream, const size_t position)
 {
-	assert(position <= stream->position);
+	ASSERT(position <= stream->position);
 	stream->position = position;
 }
 
@@ -79,7 +80,7 @@ static void Reallocate(MemoryStream* stream, const size_t minCapacity)
 
 void StreamWrite(MemoryStream* stream, const void* buffer, const size_t length)
 {
-	assert(buffer != NULL);
+	ASSERT(buffer != NULL);
 
 	if (stream->position + length >= stream->capacity)
 		Reallocate(stream, stream->position + length + 1);

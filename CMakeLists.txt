@@ -6,7 +6,7 @@ set(SOURCES
 	"src/Parser.c"
 	"src/SyntaxTree.c"
 	"src/Compiler.c"
-	"src/FileUtils.c"
+	"src/PlatformUtils.c"
 	"src/StringUtils.c"
 	"src/Token.c"
 

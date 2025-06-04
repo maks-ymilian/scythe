@@ -102,7 +102,7 @@ Result CallArgumentPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		currentFilePath = module->path;

@@ -1,12 +1,10 @@
 #include "ForLoopPass.h"
 
-#include <assert.h>
-
 static void VisitStatement(NodePtr* node);
 
 static void VisitForStatement(NodePtr* node)
 {
-	assert(node->type == Node_For);
+	ASSERT(node->type == Node_For);
 	ForStmt* forStmt = node->ptr;
 
 	VisitStatement(&forStmt->stmt);
@@ -22,7 +20,7 @@ static void VisitForStatement(NodePtr* node)
 			sizeof(LiteralExpr), Node_Literal);
 	}
 
-	assert(forStmt->stmt.type == Node_BlockStatement);
+	ASSERT(forStmt->stmt.type == Node_BlockStatement);
 	BlockStmt* whileBlock = forStmt->stmt.ptr;
 	forStmt->stmt = NULL_NODE;
 
@@ -53,7 +51,7 @@ static void VisitForStatement(NodePtr* node)
 
 	if (forStmt->increment.ptr != NULL)
 	{
-		assert(forStmt->increment.type != Node_ExpressionStatement);
+		ASSERT(forStmt->increment.type != Node_ExpressionStatement);
 		NodePtr node = AllocASTNode(
 			&(ExpressionStmt){
 				.lineNumber = forStmt->lineNumber,
@@ -126,7 +124,7 @@ void ForLoopPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)

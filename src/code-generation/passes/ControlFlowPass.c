@@ -184,7 +184,7 @@ static bool StatementReturns(const NodePtr* node, bool allPaths)
 
 static Result VisitLoopControlStatement(NodePtr* node, const WhileVariables* variables)
 {
-	assert(node->type == Node_LoopControl);
+	ASSERT(node->type == Node_LoopControl);
 	LoopControlStmt* loopControl = node->ptr;
 
 	if (variables == NULL)
@@ -223,7 +223,7 @@ static Result VisitReturnStatement(
 	const WhileVariables* whileVars,
 	bool isVoid)
 {
-	assert(node->type == Node_Return);
+	ASSERT(node->type == Node_Return);
 	ReturnStmt* returnStmt = node->ptr;
 
 	Array statements = AllocateArray(sizeof(NodePtr));
@@ -278,7 +278,7 @@ static Result VisitBlock(
 	const WhileVariables* whileVars,
 	bool isVoid)
 {
-	assert(blockNode.type == Node_BlockStatement);
+	ASSERT(blockNode.type == Node_BlockStatement);
 	BlockStmt* block = blockNode.ptr;
 
 	for (size_t i = 1; i < block->statements.length; i++)
@@ -295,8 +295,8 @@ static Result VisitBlock(
 				: AllocIfFlagIsFalse(whileVars->continueFlagDecl, &statements, -1);
 		ArrayAdd(&block->statements, &ifNode);
 
-		assert(ifNode.type == Node_If);
-		assert(((NodePtr*)block->statements.array[i])->ptr == ifNode.ptr);
+		ASSERT(ifNode.type == Node_If);
+		ASSERT(((NodePtr*)block->statements.array[i])->ptr == ifNode.ptr);
 	}
 
 	for (size_t i = 0; i < block->statements.length; i++)
@@ -351,9 +351,9 @@ static Result VisitBlock(
 
 static Result VisitWhileStatement(NodePtr* node, const ReturnVariables* returnVars, bool isVoid)
 {
-	assert(node->type == Node_While);
+	ASSERT(node->type == Node_While);
 	WhileStmt* whileStmt = node->ptr;
-	assert(whileStmt->stmt.type == Node_BlockStatement);
+	ASSERT(whileStmt->stmt.type == Node_BlockStatement);
 	BlockStmt* whileBlock = whileStmt->stmt.ptr;
 
 	BlockStmt* block = AllocASTNode(
@@ -409,7 +409,7 @@ static Result VisitFunctionBlock(NodePtr blockNode, const Type* returnType)
 	if (blockNode.ptr == NULL)
 		return SUCCESS_RESULT;
 
-	assert(blockNode.type == Node_BlockStatement);
+	ASSERT(blockNode.type == Node_BlockStatement);
 	BlockStmt* block = blockNode.ptr;
 
 	NodePtr innerBlock = CreateInnerBlock(block);
@@ -475,7 +475,7 @@ Result ControlFlowPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		currentFilePath = module->path;

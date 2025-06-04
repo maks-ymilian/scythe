@@ -1,8 +1,7 @@
 #include <stdio.h>
-#include <assert.h>
 
 #include "Compiler.h"
-#include "FileUtils.h"
+#include "PlatformUtils.h"
 
 int main(int argc, char** argv)
 {
@@ -25,8 +24,8 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		assert(result.type == Result_Error);
-		assert(result.errorMessage != NULL);
+		ASSERT(result.type == Result_Error);
+		ASSERT(result.errorMessage != NULL);
 		printf("ERROR: %s", result.errorMessage);
 		if (result.lineNumber > 0) printf(" (line %d)", result.lineNumber);
 		if (result.filePath != NULL) printf(" (%s)", result.filePath);

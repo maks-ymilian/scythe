@@ -1,6 +1,5 @@
 #include "MemberExpansionPass.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,7 +21,7 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
 static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
 {
-	assert(aggregateVarDecl != NULL);
+	ASSERT(aggregateVarDecl != NULL);
 	for (size_t i = 0; i < aggregateVarDecl->instantiatedVariables.length; ++i)
 	{
 		VarDeclStmt** varDecl = aggregateVarDecl->instantiatedVariables.array[i];
@@ -34,8 +33,8 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggreg
 
 static TypeInfo GetTypeInfoFromType(const Type type)
 {
-	assert(type.expr.ptr != NULL);
-	assert(type.modifier == TypeModifier_None ||
+	ASSERT(type.expr.ptr != NULL);
+	ASSERT(type.modifier == TypeModifier_None ||
 		   type.modifier == TypeModifier_Pointer);
 
 	StructDeclStmt* structDecl = NULL;
@@ -45,7 +44,7 @@ static TypeInfo GetTypeInfoFromType(const Type type)
 	{
 		const MemberAccessExpr* memberAccess = type.expr.ptr;
 		structDecl = memberAccess->typeReference;
-		assert(structDecl != NULL);
+		ASSERT(structDecl != NULL);
 		break;
 	}
 	case Node_Literal:
@@ -67,7 +66,7 @@ static size_t ForEachStructMember(
 	void* data,
 	size_t* currentIndex)
 {
-	assert(type != NULL);
+	ASSERT(type != NULL);
 
 	size_t index = 0;
 	if (currentIndex == NULL)
@@ -76,7 +75,7 @@ static size_t ForEachStructMember(
 	for (size_t i = 0; i < type->members.length; i++)
 	{
 		const NodePtr* memberNode = type->members.array[i];
-		assert(memberNode->type == Node_VariableDeclaration);
+		ASSERT(memberNode->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = memberNode->ptr;
 
 		StructDeclStmt* memberType = GetTypeInfoFromType(varDecl->type).effectiveType;
@@ -111,10 +110,10 @@ static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node.ptr;
-		assert(funcCall->baseExpr.type == Node_MemberAccess);
+		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		FuncDeclStmt* funcDecl = memberAccess->funcReference;
-		assert(funcDecl != NULL);
+		ASSERT(funcDecl != NULL);
 
 		if (funcDecl->oldType.expr.ptr == NULL)
 			return nullTypeInfo;
@@ -235,7 +234,7 @@ static Result CheckTypeConversion(TypeInfo from, TypeInfo to, const int lineNumb
 		{
 			VarDeclStmt* fromPtr = GetPtrMember(from.effectiveType);
 			VarDeclStmt* toPtr = GetPtrMember(to.effectiveType);
-			assert(fromPtr && toPtr);
+			ASSERT(fromPtr && toPtr);
 
 			bool allowed = false;
 
@@ -341,15 +340,15 @@ typedef struct
 
 static void CollapseSubscriptMemberAccess(NodePtr* node)
 {
-	assert(node->type == Node_MemberAccess);
+	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
-	assert(memberAccess->start.type == Node_Subscript);
+	ASSERT(memberAccess->start.type == Node_Subscript);
 	SubscriptExpr* subscript = memberAccess->start.ptr;
 
 	TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
-	assert(typeInfo.isPointer);
+	ASSERT(typeInfo.isPointer);
 	StructDeclStmt* type = typeInfo.pointerType;
-	assert(type);
+	ASSERT(type);
 
 	subscript->indexExpr = AllocStructOffsetCalculation(
 		AllocIntConversion(subscript->indexExpr, subscript->lineNumber),
@@ -382,7 +381,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			if (memberAccess->start.type == Node_Subscript)
 			{
 				NodePtr new = CopyASTNode(node);
-				assert(new.type == Node_MemberAccess);
+				ASSERT(new.type == Node_MemberAccess);
 				MemberAccessExpr* memberAccess = new.ptr;
 				memberAccess->varReference = member;
 				CollapseSubscriptMemberAccess(&new);
@@ -391,7 +390,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			else if (memberAccess->start.type == Node_FunctionCall)
 				TODO();
 			else
-				assert(0);
+				UNREACHABLE();
 		}
 		else // its an identifier
 		{
@@ -399,7 +398,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 									   ? memberAccess->parentReference
 									   : memberAccess->varReference;
 			VarDeclStmt* instance = FindInstantiated(member->name, varDecl);
-			assert(instance != NULL);
+			ASSERT(instance != NULL);
 			return AllocIdentifier(instance, -1);
 		}
 	}
@@ -410,14 +409,14 @@ static NodePtr AllocStructMemberAssignmentExpr(
 		else
 		{
 			FuncCallExpr* funcCall = node.ptr;
-			assert(funcCall->baseExpr.type == Node_MemberAccess);
+			ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 			MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
 			FuncDeclStmt* funcDecl = identifier->funcReference;
-			assert(funcDecl != NULL);
-			assert(funcDecl->globalReturn != NULL);
+			ASSERT(funcDecl != NULL);
+			ASSERT(funcDecl->globalReturn != NULL);
 
 			VarDeclStmt* instance = FindInstantiated(member->name, funcDecl->globalReturn);
-			assert(instance != NULL);
+			ASSERT(instance != NULL);
 			return AllocIdentifier(instance, -1);
 		}
 	}
@@ -452,19 +451,19 @@ static size_t Max(size_t a, size_t b)
 
 static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* containingStatement)
 {
-	assert(funcCall->baseExpr.type == Node_MemberAccess);
+	ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 	MemberAccessExpr* identifier = funcCall->baseExpr.ptr;
 	FuncDeclStmt* funcDecl = identifier->funcReference;
-	assert(funcDecl != NULL);
+	ASSERT(funcDecl != NULL);
 
-	assert(funcDecl->variadic
+	ASSERT(funcDecl->variadic
 			   ? funcCall->arguments.length >= funcDecl->oldParameters.length
 			   : funcCall->arguments.length == funcDecl->oldParameters.length);
 
 	size_t length = Max(funcCall->arguments.length, funcDecl->oldParameters.length);
 	for (size_t paramIndex = 0, argIndex = 0; paramIndex < length; ++argIndex, ++paramIndex)
 	{
-		assert(argIndex < funcCall->arguments.length);
+		ASSERT(argIndex < funcCall->arguments.length);
 		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
 		NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
 
@@ -473,13 +472,13 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 		if (paramIndex < funcDecl->oldParameters.length)
 		{
 			NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
-			assert(paramNode->type == Node_VariableDeclaration);
+			ASSERT(paramNode->type == Node_VariableDeclaration);
 			VarDeclStmt* param = paramNode->ptr;
 			paramType = GetTypeInfoFromType(param->type);
 		}
 		else
 		{
-			assert(funcDecl->variadic);
+			ASSERT(funcDecl->variadic);
 			paramType = (TypeInfo){
 				.effectiveType = NULL,
 				.pointerType = NULL,
@@ -539,7 +538,7 @@ static NodePtr AllocBlockStmt(const int lineNumber)
 
 static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 {
-	assert(node->type == Node_Binary);
+	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
 	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
@@ -607,7 +606,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	// the pass that breaks up chained assignment and equality will take care of this
 	// all struct assignment expressions will be unchained in an expression statement
 	// todo add the pass for this
-	assert(containingStatement->type == Node_ExpressionStatement);
+	ASSERT(containingStatement->type == Node_ExpressionStatement);
 
 	FreeASTNode(*containingStatement);
 	*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
@@ -628,11 +627,11 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 			currentFilePath);
 
 	// test_accessing_from_function.scy
-	assert(subscript->baseExpr.type == Node_MemberAccess);
+	ASSERT(subscript->baseExpr.type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
 	// make the member access point to the ptr member inside the array type
-	assert(memberAccess->varReference != NULL);
+	ASSERT(memberAccess->varReference != NULL);
 	if (!memberAccess->parentReference)
 		memberAccess->parentReference = memberAccess->varReference;
 
@@ -644,7 +643,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 
 static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 {
-	assert(node->type == Node_MemberAccess);
+	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 
 	if (memberAccess->parentReference == NULL)
@@ -654,7 +653,7 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 	if (GetTypeInfoFromExpression(*node).effectiveType == NULL)
 	{
 		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
-		assert(instantiated != NULL);
+		ASSERT(instantiated != NULL);
 		NodePtr new = AllocIdentifier(instantiated, memberAccess->lineNumber);
 		FreeASTNode(*node);
 		*node = new;
@@ -663,7 +662,7 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 
 static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 {
-	assert(node->type == Node_MemberAccess);
+	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 
 	if (memberAccess->start.ptr != NULL)
@@ -683,9 +682,9 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 			TODO();
 		}
 		else
-			assert(0);
+			UNREACHABLE();
 
-		assert(memberAccess->start.ptr == NULL);
+		ASSERT(memberAccess->start.ptr == NULL);
 	}
 
 	MakeMemberAccessesPointToInstantiated(node);
@@ -694,7 +693,7 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 
 static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
 {
-	assert(node->type == Node_Unary);
+	ASSERT(node->type == Node_Unary);
 	UnaryExpr* unary = node->ptr;
 
 	PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
@@ -725,7 +724,7 @@ static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
 {
-	assert(node->type == Node_SizeOf);
+	ASSERT(node->type == Node_SizeOf);
 	SizeOfExpr* sizeOf = node->ptr;
 
 	TypeInfo typeInfo = (TypeInfo){.effectiveType = NULL};
@@ -838,7 +837,7 @@ static Result VisitExpressionStatement(NodePtr* node)
 {
 	// todo a statement that does something could actually be removed e.g a[funcCall()].n;
 
-	assert(node->type == Node_ExpressionStatement);
+	ASSERT(node->type == Node_ExpressionStatement);
 	ExpressionStmt* exprStmt = node->ptr;
 
 	if (exprStmt->expr.type == Node_MemberAccess)
@@ -862,7 +861,7 @@ static Result VisitStatement(NodePtr* node);
 
 static Result VisitFunctionDeclaration(NodePtr* node)
 {
-	assert(node->type == Node_FunctionDeclaration);
+	ASSERT(node->type == Node_FunctionDeclaration);
 	FuncDeclStmt* funcDecl = node->ptr;
 
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -876,7 +875,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 
-		assert(node->type == Node_VariableDeclaration);
+		ASSERT(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
 		TypeInfo type = GetTypeInfoFromType(varDecl->type);
@@ -927,8 +926,8 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		*node = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 
 		VarDeclStmt* first = GetMemberAtIndex(type, 0);
-		assert(first != NULL);
-		assert(funcDecl->oldType.expr.ptr == NULL);
+		ASSERT(first != NULL);
+		ASSERT(funcDecl->oldType.expr.ptr == NULL);
 		funcDecl->oldType = funcDecl->type;
 		funcDecl->type.expr = CopyASTNode(first->type.expr);
 		funcDecl->type.modifier = first->type.modifier;
@@ -936,7 +935,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 	if (!funcDecl->modifiers.externalValue)
 	{
-		assert(funcDecl->block.type == Node_BlockStatement);
+		ASSERT(funcDecl->block.type == Node_BlockStatement);
 		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 	}
 
@@ -945,10 +944,10 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 static Result VisitReturnStatement(NodePtr* node)
 {
-	assert(node->type == Node_Return);
+	ASSERT(node->type == Node_Return);
 	ReturnStmt* returnStmt = node->ptr;
 
-	assert(returnStmt->function != NULL);
+	ASSERT(returnStmt->function != NULL);
 	TypeInfo exprType = GetTypeInfoFromExpression(returnStmt->expr);
 	TypeInfo returnType =
 		returnStmt->function->oldType.expr.ptr != NULL
@@ -968,7 +967,7 @@ static Result VisitReturnStatement(NodePtr* node)
 	BlockStmt* block = AllocBlockStmt(returnStmt->lineNumber).ptr;
 
 	VarDeclStmt* globalReturn = returnStmt->function->globalReturn;
-	assert(globalReturn != NULL);
+	ASSERT(globalReturn != NULL);
 	NodePtr statement = AllocAssignmentStatement(
 		AllocASTNode(
 			&(MemberAccessExpr){
@@ -996,7 +995,7 @@ static Result VisitReturnStatement(NodePtr* node)
 
 static Result VisitVariableDeclaration(NodePtr* node)
 {
-	assert(node->type == Node_VariableDeclaration);
+	ASSERT(node->type == Node_VariableDeclaration);
 	VarDeclStmt* varDecl = node->ptr;
 
 	StructDeclStmt* type = GetTypeInfoFromType(varDecl->type).effectiveType;
@@ -1112,7 +1111,7 @@ Result MemberExpansionPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		currentFilePath = module->path;

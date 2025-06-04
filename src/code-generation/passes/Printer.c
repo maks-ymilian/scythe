@@ -1,7 +1,5 @@
 #include "Printer.h"
 
-#include <assert.h>
-
 static void VisitStatement(const NodePtr* node);
 static void VisitExpression(const NodePtr* node)
 {
@@ -161,7 +159,7 @@ void Printer(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)

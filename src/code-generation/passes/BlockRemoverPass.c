@@ -1,13 +1,11 @@
 #include "BlockRemoverPass.h"
 
-#include <assert.h>
-
 static void VisitBlock(NodePtr node)
 {
 	if (node.ptr == NULL)
 		return;
 
-	assert(node.type == Node_BlockStatement);
+	ASSERT(node.type == Node_BlockStatement);
 	BlockStmt* block = node.ptr;
 
 	for (size_t i = 0; i < block->statements.length; ++i)
@@ -29,7 +27,7 @@ static void VisitBlock(NodePtr node)
 		{
 			IfStmt* ifStmt = node->ptr;
 
-			assert(ifStmt->trueStmt.type == Node_BlockStatement);
+			ASSERT(ifStmt->trueStmt.type == Node_BlockStatement);
 			BlockStmt* trueBlock = ifStmt->trueStmt.ptr;
 			if (trueBlock->statements.length == 0)
 			{
@@ -50,7 +48,7 @@ static void VisitBlock(NodePtr node)
 
 			if (ifStmt->falseStmt.ptr != NULL)
 			{
-				assert(ifStmt->falseStmt.type == Node_BlockStatement);
+				ASSERT(ifStmt->falseStmt.type == Node_BlockStatement);
 				BlockStmt* falseBlock = ifStmt->falseStmt.ptr;
 				if (falseBlock->statements.length == 0)
 				{
@@ -123,7 +121,7 @@ void BlockRemoverPass(const AST* ast)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 
-		assert(node->type == Node_Module);
+		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
