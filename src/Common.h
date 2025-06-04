@@ -22,10 +22,10 @@
 	}                                              \
 	while (0)
 
-#define TODO()                     \
-	do                             \
-	{                              \
-		fprintf(stderr, "todo\n"); \
-		exit(EXIT_FAILURE);        \
-	}                              \
+#define TODO()                                                  \
+	do                                                          \
+	{                                                           \
+		fprintf(stderr, "todo in %s:%u\n", __FILE__, __LINE__); \
+		exit(EXIT_FAILURE);                                     \
+	}                                                           \
 	while (0)
