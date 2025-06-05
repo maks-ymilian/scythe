@@ -1,0 +1,135 @@
+struct Node
+{
+	int data;
+	Node* next;
+}
+
+int null = 0;
+
+int stackPointer = 1;
+any* stackalloc(int size)
+{
+	int pointer = stackPointer;
+	stackPointer += size;
+	return pointer;
+}
+
+private Node* createNode(int data) // todo remove private
+{
+	Node* newNode = stackalloc(sizeof(Node));
+	newNode->data = data;
+	newNode->next = null;
+	return newNode;
+}
+
+void appendNode(Node* head, int data)
+{
+	if (head == null)
+		return;
+
+	Node* newNode = createNode(data);
+	Node* temp = head;
+	while (temp->next != null)
+		temp = temp->next;
+	temp->next = newNode;
+}
+
+void sortList(Node* head)
+{
+	if (head == null || head->next == null)
+		return; // Zero or one element: already sorted
+
+	bool swapped = true;
+	while (swapped)
+	{
+		swapped = false;
+		Node* current = head;
+
+		// Iterate through the list, comparing each node with its next
+		while (current != null && current->next != null)
+		{
+			if (current->data > current->next->data)
+			{
+				// Swap the data values
+				int tempData = current->data;
+				current->data = current->next->data;
+				current->next->data = tempData;
+				swapped = true;
+			}
+			current = current->next;
+		}
+		// If we completed a full pass without swapping, the list is sorted
+	}
+}
+
+bool areEqual(Node* n1, Node* n2)
+{
+	// Traverse both lists in tandem
+	while (n1 != null && n2 != null)
+	{
+		if (n1->data != n2->data)
+			return false;
+		n1 = n1->next;
+		n2 = n2->next;
+	}
+
+	// If both reached null simultaneously, they are equal; otherwise lengths differ
+	if (n1 == null && n2 == null)
+		return true;
+	else
+		return false;
+}
+
+bool test()
+{
+	Node* list1 = createNode(489);
+	appendNode(list1, -48);
+	appendNode(list1, -28);
+	appendNode(list1, 448);
+
+	Node* list2 = createNode(489);
+	appendNode(list2, -48);
+	appendNode(list2, -28);
+	appendNode(list2, 448);
+
+	if (!areEqual(list1, list2))
+		return false;
+
+	appendNode(list2, 0);
+
+	if (areEqual(list1, list2))
+		return false;
+
+	Node* list3 = createNode(498);
+	appendNode(list3, 84);
+	appendNode(list3, -21);
+	appendNode(list3, -83);
+	appendNode(list3, -389);
+	appendNode(list3, -3899);
+	appendNode(list3, -38999);
+	appendNode(list3, -389999);
+
+	Node* list4 = createNode(-389999);
+	appendNode(list4, -38999);
+	appendNode(list4, -3899);
+	appendNode(list4, -389);
+	appendNode(list4, -83);
+	appendNode(list4, -21);
+	appendNode(list4, 84);
+	appendNode(list4, 498);
+
+	if (areEqual(list3, list4))
+		return false;
+
+	sortList(list3);
+
+	if (!areEqual(list3, list4))
+		return false;
+	
+	return true;
+}
+
+@init
+{
+	bool AAA_test_linked_list = test();
+}
