@@ -6,6 +6,26 @@
 #define ARRAY_STRUCT_PTR_MEMBER_INDEX 0
 #define ARRAY_STRUCT_LENGTH_MEMBER_INDEX 1
 
+typedef struct
+{
+	StructDeclStmt* effectiveType;
+	StructDeclStmt* pointerType;
+	bool isPointer;
+} StructTypeInfo;
+
+typedef struct
+{
+	PrimitiveType effectiveType;
+	PrimitiveType pointerType;
+	bool pointerTypeIsStruct;
+	bool isPointer;
+} PrimitiveTypeInfo;
+
+StructTypeInfo GetStructTypeInfoFromType(Type type);
+StructTypeInfo GetStructTypeInfoFromExpr(NodePtr node);
+PrimitiveTypeInfo GetPrimitiveTypeInfoFromType(Type type);
+PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node);
+
 VarDeclStmt* GetPtrMember(StructDeclStmt* type);
 
 NodePtr AllocIdentifier(VarDeclStmt* varDecl, int lineNumber);

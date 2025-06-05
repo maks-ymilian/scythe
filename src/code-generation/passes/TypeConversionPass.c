@@ -6,57 +6,22 @@
 #include "Common.h"
 #include "StringUtils.h"
 
-typedef struct
-{
-	PrimitiveType effectiveType;
-	PrimitiveType pointerType;
-	bool pointerTypeIsStruct;
-	bool isPointer;
-} TypeInfo;
-
 static const char* currentFilePath = NULL;
 
-static Result VisitExpression(NodePtr* node, TypeInfo* outType);
-static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targetType, int lineNumber);
+static Result VisitExpression(NodePtr* node);
+static Result ConvertExpression(NodePtr* expr, PrimitiveTypeInfo exprType, PrimitiveTypeInfo targetType, int lineNumber);
 static Result VisitStatement(const NodePtr* node);
 
-static TypeInfo NonPointerType(PrimitiveType type)
+static PrimitiveTypeInfo NonPointerType(PrimitiveType type)
 {
-	return (TypeInfo){
+	return (PrimitiveTypeInfo){
 		.effectiveType = type,
 		.pointerType = type,
 		.isPointer = false,
 	};
 }
 
-static TypeInfo GetType(const Type type)
-{
-	const bool isPointer = type.modifier == TypeModifier_Pointer;
-
-	if (type.expr.type == Node_Literal)
-	{
-		const LiteralExpr* literal = type.expr.ptr;
-		ASSERT(literal->type == Literal_PrimitiveType);
-
-		return (TypeInfo){
-			.effectiveType = isPointer ? Primitive_Int : literal->primitiveType,
-			.pointerType = literal->primitiveType,
-			.isPointer = isPointer,
-		};
-	}
-	else
-	{
-		ASSERT(isPointer);
-		return (TypeInfo){
-			.effectiveType = Primitive_Int,
-			.pointerType = Primitive_Any,
-			.pointerTypeIsStruct = true,
-			.isPointer = true,
-		};
-	}
-}
-
-static char* AllocTypeName(TypeInfo typeInfo)
+static char* AllocTypeName(PrimitiveTypeInfo typeInfo)
 {
 	PrimitiveType type = typeInfo.isPointer ? typeInfo.pointerType : typeInfo.effectiveType;
 	const char* name = GetTokenTypeString(primitiveTypeToTokenType[type]);
@@ -79,49 +44,12 @@ static char* AllocTypeName(TypeInfo typeInfo)
 	return out;
 }
 
-static void VisitLiteral(LiteralExpr* literal, TypeInfo* outType)
-{
-	if (outType == NULL)
-		return;
-
-	switch (literal->type)
-	{
-	case Literal_Float: *outType = NonPointerType(Primitive_Float); break;
-	case Literal_Int: *outType = NonPointerType(Primitive_Int); break;
-	case Literal_String: *outType = NonPointerType(Primitive_Int); break;
-	case Literal_Char: *outType = NonPointerType(Primitive_Int); break;
-	case Literal_Boolean:
-		literal->type = Literal_Int;
-		literal->intValue = literal->boolean ? 1 : 0;
-		*outType = NonPointerType(Primitive_Bool);
-		break;
-	default: INVALID_VALUE(literal->type);
-	}
-}
-
-static void VisitMemberAccess(MemberAccessExpr* memberAccess, TypeInfo* outType)
-{
-	Type* type = NULL;
-	if (memberAccess->funcReference != NULL)
-		type = &memberAccess->funcReference->type;
-	else if (memberAccess->varReference != NULL)
-		type = &memberAccess->varReference->type;
-	else
-		UNREACHABLE();
-
-	if (outType != NULL)
-		*outType = GetType(*type);
-}
-
-static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
+static Result VisitFunctionCall(FuncCallExpr* funcCall)
 {
 	ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 	const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 	ASSERT(memberAccess->funcReference != NULL);
 	const FuncDeclStmt* funcDecl = memberAccess->funcReference;
-
-	if (outType != NULL)
-		*outType = GetType(funcDecl->type);
 
 	ASSERT(funcDecl->variadic
 			   ? funcCall->arguments.length >= funcDecl->parameters.length
@@ -131,27 +59,27 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall, TypeInfo* outType)
 	{
 		NodePtr* arg = funcCall->arguments.array[i];
 
-		TypeInfo paramType;
+		PrimitiveTypeInfo paramType;
 		if (i < funcDecl->parameters.length)
 		{
 			NodePtr* node = funcDecl->parameters.array[i];
 			ASSERT(node->type == Node_VariableDeclaration);
 			VarDeclStmt* varDecl = node->ptr;
-			paramType = GetType(varDecl->type);
+			paramType = GetPrimitiveTypeInfoFromType(varDecl->type);
 		}
 		else
 		{
 			ASSERT(funcDecl->variadic);
-			paramType = (TypeInfo){
+			paramType = (PrimitiveTypeInfo){
 				.effectiveType = Primitive_Any,
 				.pointerType = Primitive_Any,
 				.isPointer = false,
 			};
 		}
 
-		TypeInfo exprType;
-		PROPAGATE_ERROR(VisitExpression(arg, &exprType));
-		PROPAGATE_ERROR(ConvertExpression(arg, exprType, paramType, funcCall->lineNumber));
+		PrimitiveTypeInfo typeInfo = GetPrimitiveTypeInfoFromExpr(*arg);
+		PROPAGATE_ERROR(VisitExpression(arg));
+		PROPAGATE_ERROR(ConvertExpression(arg, typeInfo, paramType, funcCall->lineNumber));
 	}
 
 	return SUCCESS_RESULT;
@@ -174,7 +102,7 @@ static NodePtr AllocBoolConversion(const NodePtr expr, const int lineNumber)
 		sizeof(UnaryExpr), Node_Unary);
 }
 
-static Result ConvertExpression(NodePtr* expr, TypeInfo exprType, TypeInfo targetType, int lineNumber)
+static Result ConvertExpression(NodePtr* expr, PrimitiveTypeInfo exprType, PrimitiveTypeInfo targetType, int lineNumber)
 {
 	if (exprType.effectiveType == Primitive_Void || targetType.effectiveType == Primitive_Void)
 		goto convertError;
@@ -231,15 +159,15 @@ convertError:
 }
 }
 
-static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
+static Result VisitBinaryExpression(NodePtr* node)
 {
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 
-	TypeInfo leftType;
-	TypeInfo rightType;
-	PROPAGATE_ERROR(VisitExpression(&binary->left, &leftType));
-	PROPAGATE_ERROR(VisitExpression(&binary->right, &rightType));
+	PrimitiveTypeInfo leftType = GetPrimitiveTypeInfoFromExpr(binary->left);
+	PrimitiveTypeInfo rightType = GetPrimitiveTypeInfoFromExpr(binary->right);
+	PROPAGATE_ERROR(VisitExpression(&binary->left));
+	PROPAGATE_ERROR(VisitExpression(&binary->right));
 
 	switch (binary->operatorType)
 	{
@@ -257,8 +185,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 					GetTokenTypeString(primitiveTypeToTokenType[rightType.effectiveType])),
 				binary->lineNumber,
 				currentFilePath);
-
-		if (outType != NULL) *outType = NonPointerType(Primitive_Bool);
 		break;
 	}
 
@@ -267,7 +193,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 	{
 		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, NonPointerType(Primitive_Bool), binary->lineNumber));
 		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, NonPointerType(Primitive_Bool), binary->lineNumber));
-		if (outType != NULL) *outType = NonPointerType(Primitive_Bool);
 		break;
 	}
 
@@ -279,7 +204,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 	{
 		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, NonPointerType(Primitive_Float), binary->lineNumber));
 		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, NonPointerType(Primitive_Float), binary->lineNumber));
-		if (outType != NULL) *outType = NonPointerType(Primitive_Bool);
 		break;
 	}
 
@@ -297,16 +221,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 			(binary->operatorType == Binary_Divide ||
 				binary->operatorType == Binary_Exponentiation))
 			*node = AllocIntConversion(*node, binary->lineNumber);
-
-		PrimitiveType type;
-		if (leftType.effectiveType == Primitive_Int && rightType.effectiveType == Primitive_Int &&
-			binary->operatorType != Binary_Divide &&
-			binary->operatorType != Binary_Exponentiation)
-			type = Primitive_Int;
-		else
-			type = Primitive_Float;
-
-		if (outType != NULL) *outType = NonPointerType(type);
 		break;
 	}
 
@@ -320,7 +234,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 	{
 		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, NonPointerType(Primitive_Float), binary->lineNumber));
 		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, NonPointerType(Primitive_Float), binary->lineNumber));
-		if (outType != NULL) *outType = NonPointerType(Primitive_Int);
 		break;
 	}
 
@@ -337,8 +250,6 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 			rightType,
 			leftType,
 			binary->lineNumber));
-
-		if (outType != NULL) *outType = leftType;
 		break;
 	}
 
@@ -363,9 +274,7 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 			sizeof(BinaryExpr), Node_Binary);
 		binary->operatorType = Binary_Assignment;
 
-		PROPAGATE_ERROR(VisitBinaryExpression(node, NULL));
-
-		if (outType != NULL) *outType = leftType;
+		PROPAGATE_ERROR(VisitBinaryExpression(node));
 		break;
 	}
 
@@ -375,13 +284,13 @@ static Result VisitBinaryExpression(NodePtr* node, TypeInfo* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
+static Result VisitUnaryExpression(NodePtr* node)
 {
 	ASSERT(node->type == Node_Unary);
 	UnaryExpr* unary = node->ptr;
 
-	TypeInfo exprType;
-	PROPAGATE_ERROR(VisitExpression(&unary->expression, &exprType));
+	PrimitiveTypeInfo exprType = GetPrimitiveTypeInfoFromExpr(unary->expression);
+	PROPAGATE_ERROR(VisitExpression(&unary->expression));
 
 	switch (unary->operatorType)
 	{
@@ -408,7 +317,7 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 		unary->expression = NULL_NODE;
 		FreeASTNode((NodePtr){.ptr = unary, .type = Node_Unary});
 
-		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
+		PROPAGATE_ERROR(VisitBinaryExpression(node));
 		break;
 	}
 	case Unary_Minus:
@@ -419,8 +328,6 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 			exprType,
 			NonPointerType(Primitive_Float),
 			unary->lineNumber));
-
-		if (outType != NULL) *outType = exprType;
 		break;
 	}
 	case Unary_Negate:
@@ -430,8 +337,6 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 			exprType,
 			NonPointerType(Primitive_Bool),
 			unary->lineNumber));
-
-		if (outType != NULL) *outType = NonPointerType(Primitive_Bool);
 		break;
 	}
 
@@ -441,61 +346,63 @@ static Result VisitUnaryExpression(NodePtr* node, TypeInfo* outType)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitSubscriptExpression(SubscriptExpr* subscript, TypeInfo* outType)
+static Result VisitSubscriptExpression(SubscriptExpr* subscript)
 {
-	TypeInfo addressType;
-	PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr, &addressType));
+	PrimitiveTypeInfo baseType = GetPrimitiveTypeInfoFromExpr(subscript->baseExpr);
+	PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr));
 	PROPAGATE_ERROR(ConvertExpression(
 		&subscript->baseExpr,
-		addressType,
+		baseType,
 		NonPointerType(Primitive_Int),
 		subscript->lineNumber));
 
-	TypeInfo indexType;
-	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, &indexType));
+	PrimitiveTypeInfo indexType = GetPrimitiveTypeInfoFromExpr(subscript->indexExpr);
+	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr));
 	PROPAGATE_ERROR(ConvertExpression(
 		&subscript->indexExpr,
 		indexType,
 		NonPointerType(Primitive_Int),
 		subscript->lineNumber));
 
-	if (outType != NULL)
-	{
-		if (subscript->typeBeforeCollapse.expr.ptr)
-			*outType = GetType(subscript->typeBeforeCollapse);
-		else
-		{
-			if (addressType.isPointer)
-				*outType = NonPointerType(addressType.pointerType);
-			else
-				*outType = NonPointerType(Primitive_Any);
-		}
-	}
 	return SUCCESS_RESULT;
 }
 
-static Result VisitExpression(NodePtr* node, TypeInfo* outType)
+static Result VisitExpression(NodePtr* node)
 {
 	switch (node->type)
 	{
-	case Node_Binary:
-		PROPAGATE_ERROR(VisitBinaryExpression(node, outType));
-		break;
-	case Node_Unary:
-		PROPAGATE_ERROR(VisitUnaryExpression(node, outType));
-		break;
 	case Node_MemberAccess:
-		VisitMemberAccess(node->ptr, outType);
 		break;
+	case Node_Binary:
+	{
+		PROPAGATE_ERROR(VisitBinaryExpression(node));
+		break;
+	}
+	case Node_Unary:
+	{
+		PROPAGATE_ERROR(VisitUnaryExpression(node));
+		break;
+	}
 	case Node_Literal:
-		VisitLiteral(node->ptr, outType);
+	{
+		LiteralExpr* literal = node->ptr;
+		if (literal->type == Literal_Boolean)
+		{
+			literal->type = Literal_Int;
+			literal->intValue = literal->boolean ? 1 : 0;
+		}
 		break;
+	}
 	case Node_FunctionCall:
-		PROPAGATE_ERROR(VisitFunctionCall(node->ptr, outType));
+	{
+		PROPAGATE_ERROR(VisitFunctionCall(node->ptr));
 		break;
+	}
 	case Node_Subscript:
-		PROPAGATE_ERROR(VisitSubscriptExpression(node->ptr, outType));
+	{
+		PROPAGATE_ERROR(VisitSubscriptExpression(node->ptr));
 		break;
+	}
 	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;
@@ -508,7 +415,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 	if (varDecl->initializer.ptr != NULL)
 		return SUCCESS_RESULT;
 
-	switch (GetType(varDecl->type).effectiveType)
+	switch (GetPrimitiveTypeInfoFromType(varDecl->type).effectiveType)
 	{
 	case Primitive_Any:
 	case Primitive_Float:
@@ -534,7 +441,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 			sizeof(LiteralExpr), Node_Literal);
 		break;
 	}
-	default: INVALID_VALUE(GetType(varDecl->type).effectiveType);
+	default: INVALID_VALUE(GetPrimitiveTypeInfoFromType(varDecl->type).effectiveType);
 	}
 
 	return SUCCESS_RESULT;
@@ -547,12 +454,12 @@ static Result VisitVariableDeclaration(VarDeclStmt* varDecl, const bool addIniti
 
 	if (varDecl->initializer.ptr != NULL)
 	{
-		TypeInfo type;
-		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, &type));
+		PrimitiveTypeInfo initializerType = GetPrimitiveTypeInfoFromExpr(varDecl->initializer);
+		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer));
 		PROPAGATE_ERROR(ConvertExpression(
 			&varDecl->initializer,
-			type,
-			GetType(varDecl->type),
+			initializerType,
+			GetPrimitiveTypeInfoFromType(varDecl->type),
 			varDecl->lineNumber));
 	}
 
@@ -593,7 +500,7 @@ static Result VisitStatement(const NodePtr* node)
 	case Node_ExpressionStatement:
 	{
 		ExpressionStmt* expressionStmt = node->ptr;
-		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr, NULL));
+		PROPAGATE_ERROR(VisitExpression(&expressionStmt->expr));
 		break;
 	}
 	case Node_BlockStatement:
@@ -608,9 +515,9 @@ static Result VisitStatement(const NodePtr* node)
 		IfStmt* ifStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
-		TypeInfo type;
-		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, &type));
-		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, type, NonPointerType(Primitive_Bool), ifStmt->lineNumber));
+		PrimitiveTypeInfo exprType = GetPrimitiveTypeInfoFromExpr(ifStmt->expr);
+		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr));
+		PROPAGATE_ERROR(ConvertExpression(&ifStmt->expr, exprType, NonPointerType(Primitive_Bool), ifStmt->lineNumber));
 		break;
 	}
 	case Node_Section:
@@ -623,9 +530,9 @@ static Result VisitStatement(const NodePtr* node)
 	{
 		WhileStmt* whileStmt = node->ptr;
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
-		TypeInfo type;
-		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, &type));
-		PROPAGATE_ERROR(ConvertExpression(&whileStmt->expr, type, NonPointerType(Primitive_Bool), whileStmt->lineNumber));
+		PrimitiveTypeInfo exprType = GetPrimitiveTypeInfoFromExpr(whileStmt->expr);
+		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr));
+		PROPAGATE_ERROR(ConvertExpression(&whileStmt->expr, exprType, NonPointerType(Primitive_Bool), whileStmt->lineNumber));
 		break;
 	}
 	case Node_Import:

@@ -23,12 +23,21 @@ Level1 Level1_passthrough(Level1 value)
 
 Level1 doShit(int param1, Level1 value, string z, int w)
 {
-	Level1 new;
-	new.x = value.deep.z;
-	new.y = value.y + value.deep.deep.w;
-	new.deep.z = z;
-	new.deep.deep.w = w;
-	return new;
+	return Level1 {
+		.x = value.deep.z,
+		.y = value.y + value.deep.deep.w,
+		.deep.z = z,
+		.deep.deep.w = w,
+	};
+}
+
+bool test_equality(Level1 value1, Level1 value2)
+{
+	return
+		value1.x == value2.x &&
+		value1.y == value2.y &&
+		value1.deep.z == value2.deep.z &&
+		value1.deep.deep.w == value2.deep.deep.w;
 }
 
 struct TestValues
@@ -40,34 +49,63 @@ struct TestValues
 	string str2;
 }
 
-@init
+bool test()
 {
-	TestValues testValues;
-	testValues.num1 = 19;
-	testValues.num2 = 48;
-	testValues.num3 = 54;
-	testValues.str1 = "yeahe";
-	testValues.str2 = "other";
+	TestValues testValues = TestValues {
+		.num1 = 19,
+		.num2 = 48,
+		.num3 = 54,
+		.str1 = "yeahe",
+		.str2 = "other",
+	};
 
-	Level1 value;
-	value.y = testValues.num1;
-	value.deep.z = testValues.str1;
-	value.deep.deep.w = testValues.num2;
+	Level1 value = Level1 {
+		.y = testValues.num1,
+		.deep = Level2 {
+			.z = testValues.str1,
+			.deep = Level3 {
+				.w = testValues.num2,
+			},
+		},
+	};
 
-	Level1 value1;
-	value1.x = "irrelevant";
-	value1.y = -1;
-	value1.deep.z = "irrelevant1";
-	value1.deep.deep.w = -1;
+	Level1 value1 = Level1 {
+		.x = "irrelevant",
+		.y = -1,
+		.deep.z = "irrelevant1",
+		.deep.deep.w = -1,
+	};
 
-	Level1 value2 = value1;
-	Level1 value3 = value1;
-	Level1 value4 = value1;
-	Level1 value5 = value1;
-	Level1 value6 = value1;
-	Level1 value7 = value1;
-	Level1 value8 = value1;
-	Level1 value9 = value1;
+	Level1 value2;
+	Level1 value3;
+	Level1 value4;
+	Level1 value5;
+	Level1 value6;
+	Level1 value7;
+	Level1 value8;
+	Level1 value9;
+
+	if (!test_equality(value2, value3) ||
+		!test_equality(value3, value4) ||
+		!test_equality(value4, value5) ||
+		!test_equality(value5, value6) ||
+		!test_equality(value6, value7) ||
+		!test_equality(value7, value8) ||
+		!test_equality(value8, value9) ||
+		test_equality(value9, value1))
+		return false;
+
+	value2 = value3 = value4 = value5 = value6 = value7 = value8 = value9 = value1;
+
+	if (!test_equality(value2, value3) ||
+		!test_equality(value3, value4) ||
+		!test_equality(value4, value5) ||
+		!test_equality(value5, value6) ||
+		!test_equality(value6, value7) ||
+		!test_equality(value7, value8) ||
+		!test_equality(value8, value9) ||
+		!test_equality(value9, value1))
+		return false;
 
 	Level1 ret = value8 = value9 = Level1 {
 		return value7 = Level1_passthrough(
@@ -87,16 +125,7 @@ struct TestValues
 			value.deep.deep.w == testValues.num3;
 	}
 
-	bool test_equality(Level1 value1, Level1 value2)
-	{
-		return
-			value1.x == value2.x &&
-			value1.y == value2.y &&
-			value1.deep.z == value2.deep.z &&
-			value1.deep.deep.w == value2.deep.deep.w;
-	}
-
-	bool AAA_test_struct_assignment_passing_chained =
+	return
 		test_the_values(ret, testValues) &&
 		test_equality(value, value1) &&
 		test_equality(value, value2) &&
@@ -107,4 +136,9 @@ struct TestValues
 		test_equality(ret, value7) &&
 		test_equality(ret, value8) &&
 		test_equality(ret, value9);
+}
+
+@init
+{
+	bool AAA_test_struct_assignment_passing_chained = test();
 }

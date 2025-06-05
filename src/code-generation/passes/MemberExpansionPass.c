@@ -6,13 +6,6 @@
 #include "Common.h"
 #include "StringUtils.h"
 
-typedef struct
-{
-	StructDeclStmt* effectiveType;
-	StructDeclStmt* pointerType;
-	bool isPointer;
-} TypeInfo;
-
 static Array nodesToDelete;
 
 static const char* currentFilePath = NULL;
@@ -31,185 +24,7 @@ static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggreg
 	return NULL;
 }
 
-static TypeInfo GetTypeInfoFromType(const Type type)
-{
-	ASSERT(type.expr.ptr != NULL);
-	ASSERT(type.modifier == TypeModifier_None ||
-		   type.modifier == TypeModifier_Pointer);
-
-	StructDeclStmt* structDecl = NULL;
-	switch (type.expr.type)
-	{
-	case Node_MemberAccess:
-	{
-		const MemberAccessExpr* memberAccess = type.expr.ptr;
-		structDecl = memberAccess->typeReference;
-		ASSERT(structDecl != NULL);
-		break;
-	}
-	case Node_Literal:
-		break;
-	default: INVALID_VALUE(type.expr.type);
-	}
-
-	return (TypeInfo){
-		.effectiveType = type.modifier == TypeModifier_Pointer ? NULL : structDecl,
-		.pointerType = type.modifier == TypeModifier_Pointer ? structDecl : NULL,
-		.isPointer = type.modifier == TypeModifier_Pointer,
-	};
-}
-
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
-static size_t ForEachStructMember(
-	StructDeclStmt* type,
-	const StructMemberFunc func,
-	void* data,
-	size_t* currentIndex)
-{
-	ASSERT(type != NULL);
-
-	size_t index = 0;
-	if (currentIndex == NULL)
-		currentIndex = &index;
-
-	for (size_t i = 0; i < type->members.length; i++)
-	{
-		const NodePtr* memberNode = type->members.array[i];
-		ASSERT(memberNode->type == Node_VariableDeclaration);
-		VarDeclStmt* varDecl = memberNode->ptr;
-
-		StructDeclStmt* memberType = GetTypeInfoFromType(varDecl->type).effectiveType;
-		if (memberType == NULL)
-		{
-			if (func != NULL)
-				func(varDecl, *currentIndex, data);
-			(*currentIndex)++;
-		}
-		else
-			ForEachStructMember(memberType, func, data, currentIndex);
-	}
-
-	return *currentIndex;
-}
-
-static TypeInfo GetTypeInfoFromExpression(const NodePtr node)
-{
-	const TypeInfo nullTypeInfo =
-		(TypeInfo){
-			.effectiveType = NULL,
-			.pointerType = NULL,
-			.isPointer = false,
-		};
-
-	switch (node.type)
-	{
-	case Node_Literal:
-	{
-		return nullTypeInfo;
-	}
-	case Node_FunctionCall:
-	{
-		FuncCallExpr* funcCall = node.ptr;
-		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
-		MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
-		FuncDeclStmt* funcDecl = memberAccess->funcReference;
-		ASSERT(funcDecl != NULL);
-
-		if (funcDecl->oldType.expr.ptr == NULL)
-			return nullTypeInfo;
-
-		TypeInfo typeInfo = GetTypeInfoFromType(funcDecl->oldType);
-		if (typeInfo.effectiveType != NULL)
-			return typeInfo;
-
-		return GetTypeInfoFromType(funcDecl->type);
-	}
-	case Node_MemberAccess:
-	{
-		MemberAccessExpr* memberAccess = node.ptr;
-		VarDeclStmt* varDecl = memberAccess->varReference;
-		if (varDecl == NULL)
-			return nullTypeInfo;
-		return GetTypeInfoFromType(varDecl->type);
-	}
-	case Node_Subscript:
-	{
-		const SubscriptExpr* subscript = node.ptr;
-		if (subscript->typeBeforeCollapse.expr.ptr)
-			return GetTypeInfoFromType(subscript->typeBeforeCollapse);
-		else
-		{
-			TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
-			if (typeInfo.isPointer)
-				return (TypeInfo){
-					.effectiveType = typeInfo.pointerType,
-					.pointerType = NULL,
-					.isPointer = false,
-				};
-
-			return typeInfo;
-		}
-	}
-	case Node_Binary:
-	{
-		BinaryExpr* binary = node.ptr;
-
-		if (binary->operatorType == Binary_Assignment ||
-			binary->operatorType == Binary_AddAssign ||
-			binary->operatorType == Binary_SubtractAssign ||
-			binary->operatorType == Binary_MultiplyAssign ||
-			binary->operatorType == Binary_DivideAssign ||
-			binary->operatorType == Binary_ModuloAssign ||
-			binary->operatorType == Binary_ExponentAssign ||
-			binary->operatorType == Binary_BitAndAssign ||
-			binary->operatorType == Binary_BitOrAssign ||
-			binary->operatorType == Binary_XORAssign)
-			return GetTypeInfoFromExpression(binary->left);
-
-		if (binary->operatorType == Binary_Add ||
-			binary->operatorType == Binary_Subtract)
-		{
-			TypeInfo left = GetTypeInfoFromExpression(binary->left);
-			TypeInfo right = GetTypeInfoFromExpression(binary->right);
-
-			StructDeclStmt* type = NULL;
-			if (left.isPointer && left.pointerType)
-				type = left.pointerType;
-
-			if (right.isPointer && right.pointerType)
-				type = right.pointerType;
-
-			// different pointer types are assignable to each other so
-			// if both are struct pointers and theyre different types
-			// then there is no type
-			if (left.isPointer && left.pointerType &&
-				right.isPointer && right.pointerType &&
-				left.pointerType != right.pointerType)
-				return nullTypeInfo;
-
-			if (!type)
-				return nullTypeInfo;
-
-			return (TypeInfo){
-				.effectiveType = NULL,
-				.pointerType = type,
-				.isPointer = true,
-			};
-		}
-
-		return nullTypeInfo;
-	}
-	case Node_Unary:
-	{
-		UnaryExpr* unary = node.ptr;
-		return GetTypeInfoFromExpression(unary->expression);
-	}
-
-	default: INVALID_VALUE(node.type);
-	}
-}
-
-static Result CheckTypeConversion(TypeInfo from, TypeInfo to, const int lineNumber)
+static Result CheckTypeConversion(StructTypeInfo from, StructTypeInfo to, const int lineNumber)
 {
 	if (!from.effectiveType && to.effectiveType)
 		return ERROR_RESULT(
@@ -265,6 +80,39 @@ static Result CheckTypeConversion(TypeInfo from, TypeInfo to, const int lineNumb
 	}
 
 	return SUCCESS_RESULT;
+}
+
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
+static size_t ForEachStructMember(
+	StructDeclStmt* type,
+	const StructMemberFunc func,
+	void* data,
+	size_t* currentIndex)
+{
+	ASSERT(type != NULL);
+
+	size_t index = 0;
+	if (currentIndex == NULL)
+		currentIndex = &index;
+
+	for (size_t i = 0; i < type->members.length; i++)
+	{
+		const NodePtr* memberNode = type->members.array[i];
+		ASSERT(memberNode->type == Node_VariableDeclaration);
+		VarDeclStmt* varDecl = memberNode->ptr;
+
+		StructDeclStmt* memberType = GetStructTypeInfoFromType(varDecl->type).effectiveType;
+		if (memberType == NULL)
+		{
+			if (func != NULL)
+				func(varDecl, *currentIndex, data);
+			(*currentIndex)++;
+		}
+		else
+			ForEachStructMember(memberType, func, data, currentIndex);
+	}
+
+	return *currentIndex;
 }
 
 static NodePtr AllocMultiply(NodePtr left, NodePtr right, int lineNumber)
@@ -345,7 +193,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 	ASSERT(memberAccess->start.type == Node_Subscript);
 	SubscriptExpr* subscript = memberAccess->start.ptr;
 
-	TypeInfo typeInfo = GetTypeInfoFromExpression(subscript->baseExpr);
+	StructTypeInfo typeInfo = GetStructTypeInfoFromExpr(subscript->baseExpr);
 	ASSERT(typeInfo.isPointer);
 	StructDeclStmt* type = typeInfo.pointerType;
 	ASSERT(type);
@@ -467,19 +315,19 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 		PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[argIndex], containingStatement));
 		NodePtr argument = *(NodePtr*)funcCall->arguments.array[argIndex];
 
-		TypeInfo argType = GetTypeInfoFromExpression(argument);
-		TypeInfo paramType;
+		StructTypeInfo argType = GetStructTypeInfoFromExpr(argument);
+		StructTypeInfo paramType;
 		if (paramIndex < funcDecl->oldParameters.length)
 		{
 			NodePtr* paramNode = funcDecl->oldParameters.array[paramIndex];
 			ASSERT(paramNode->type == Node_VariableDeclaration);
 			VarDeclStmt* param = paramNode->ptr;
-			paramType = GetTypeInfoFromType(param->type);
+			paramType = GetStructTypeInfoFromType(param->type);
 		}
 		else
 		{
 			ASSERT(funcDecl->variadic);
-			paramType = (TypeInfo){
+			paramType = (StructTypeInfo){
 				.effectiveType = NULL,
 				.pointerType = NULL,
 				.isPointer = false,
@@ -543,8 +391,8 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
 	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
 
-	TypeInfo leftType = GetTypeInfoFromExpression(binary->left);
-	TypeInfo rightType = GetTypeInfoFromExpression(binary->right);
+	StructTypeInfo leftType = GetStructTypeInfoFromExpr(binary->left);
+	StructTypeInfo rightType = GetStructTypeInfoFromExpr(binary->right);
 	PROPAGATE_ERROR(CheckTypeConversion(leftType, rightType, binary->lineNumber));
 
 	// special case for adding to pointer variables
@@ -605,7 +453,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	// the pass that breaks up chained assignment and equality will take care of this
 	// all struct assignment expressions will be unchained in an expression statement
-	// todo add the pass for this
 	ASSERT(containingStatement->type == Node_ExpressionStatement);
 
 	FreeASTNode(*containingStatement);
@@ -617,7 +464,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 {
 	PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, containingStatement));
 
-	TypeInfo type = GetTypeInfoFromExpression(subscript->baseExpr);
+	StructTypeInfo type = GetStructTypeInfoFromExpr(subscript->baseExpr);
 	if (!type.effectiveType)
 		return VisitExpression(&subscript->baseExpr, containingStatement);
 
@@ -650,7 +497,7 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 		return;
 
 	// if its primitive type
-	if (GetTypeInfoFromExpression(*node).effectiveType == NULL)
+	if (GetStructTypeInfoFromExpr(*node).effectiveType == NULL)
 	{
 		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
 		ASSERT(instantiated != NULL);
@@ -672,7 +519,7 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 		if (memberAccess->start.type == Node_Subscript)
 		{
 			// only if its a primitive type
-			if (!GetTypeInfoFromType(memberAccess->varReference->type).effectiveType)
+			if (!GetStructTypeInfoFromType(memberAccess->varReference->type).effectiveType)
 				CollapseSubscriptMemberAccess(node);
 			return SUCCESS_RESULT;
 		}
@@ -701,7 +548,7 @@ static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
 	if (unary->operatorType == Unary_Increment ||
 		unary->operatorType == Unary_Decrement)
 	{
-		TypeInfo typeInfo = GetTypeInfoFromExpression(unary->expression);
+		StructTypeInfo typeInfo = GetStructTypeInfoFromExpr(unary->expression);
 		if (typeInfo.isPointer && typeInfo.pointerType)
 		{
 			NodePtr old = *node;
@@ -727,14 +574,14 @@ static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
 	ASSERT(node->type == Node_SizeOf);
 	SizeOfExpr* sizeOf = node->ptr;
 
-	TypeInfo typeInfo = (TypeInfo){.effectiveType = NULL};
+	StructTypeInfo typeInfo = (StructTypeInfo){.effectiveType = NULL};
 	if (sizeOf->expr.ptr)
 	{
 		PROPAGATE_ERROR(VisitExpression(&sizeOf->expr, containingStatement));
-		typeInfo = GetTypeInfoFromExpression(sizeOf->expr);
+		typeInfo = GetStructTypeInfoFromExpr(sizeOf->expr);
 	}
 	else
-		typeInfo = GetTypeInfoFromType(sizeOf->type);
+		typeInfo = GetStructTypeInfoFromType(sizeOf->type);
 
 	uint64_t value = typeInfo.effectiveType ? CountStructMembers(typeInfo.effectiveType) : 1;
 	int lineNumber = sizeOf->lineNumber;
@@ -845,7 +692,7 @@ static Result VisitExpressionStatement(NodePtr* node)
 		MemberAccessExpr* memberAccess = exprStmt->expr.ptr;
 		if (memberAccess->start.ptr == NULL ||
 			(memberAccess->start.type == Node_Subscript &&
-				GetTypeInfoFromExpression(exprStmt->expr).effectiveType))
+				GetStructTypeInfoFromExpr(exprStmt->expr).effectiveType))
 		{
 			FreeASTNode(*node);
 			*node = NULL_NODE;
@@ -878,7 +725,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		ASSERT(node->type == Node_VariableDeclaration);
 		VarDeclStmt* varDecl = node->ptr;
 
-		TypeInfo type = GetTypeInfoFromType(varDecl->type);
+		StructTypeInfo type = GetStructTypeInfoFromType(varDecl->type);
 		if (type.effectiveType == NULL)
 			continue;
 
@@ -889,7 +736,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 
 		if (varDecl->initializer.ptr != NULL)
 			PROPAGATE_ERROR(CheckTypeConversion(
-				GetTypeInfoFromExpression(varDecl->initializer),
+				GetStructTypeInfoFromExpr(varDecl->initializer),
 				type,
 				varDecl->lineNumber));
 
@@ -899,7 +746,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		i--;
 	}
 
-	StructDeclStmt* type = GetTypeInfoFromType(funcDecl->type).effectiveType;
+	StructDeclStmt* type = GetStructTypeInfoFromType(funcDecl->type).effectiveType;
 	if (type != NULL)
 	{
 		if (funcDecl->modifiers.externalValue)
@@ -948,11 +795,11 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	ASSERT(returnStmt->function != NULL);
-	TypeInfo exprType = GetTypeInfoFromExpression(returnStmt->expr);
-	TypeInfo returnType =
+	StructTypeInfo exprType = GetStructTypeInfoFromExpr(returnStmt->expr);
+	StructTypeInfo returnType =
 		returnStmt->function->oldType.expr.ptr != NULL
-			? GetTypeInfoFromType(returnStmt->function->oldType)
-			: (TypeInfo){.effectiveType = NULL};
+			? GetStructTypeInfoFromType(returnStmt->function->oldType)
+			: (StructTypeInfo){.effectiveType = NULL};
 
 	if (returnType.effectiveType == NULL && exprType.effectiveType == NULL)
 	{
@@ -998,7 +845,7 @@ static Result VisitVariableDeclaration(NodePtr* node)
 	ASSERT(node->type == Node_VariableDeclaration);
 	VarDeclStmt* varDecl = node->ptr;
 
-	StructDeclStmt* type = GetTypeInfoFromType(varDecl->type).effectiveType;
+	StructDeclStmt* type = GetStructTypeInfoFromType(varDecl->type).effectiveType;
 	if (type == NULL)
 	{
 		if (varDecl->initializer.ptr != NULL)
