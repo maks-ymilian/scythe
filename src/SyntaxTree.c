@@ -243,8 +243,8 @@ NodePtr CopyASTNode(const NodePtr node)
 		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
-		ptr->expr = CopyASTNode(ptr->expr);
-		ptr->type.expr = CopyASTNode(ptr->type.expr);
+		if (ptr->expr.ptr) ptr->expr = CopyASTNode(ptr->expr);
+		if (ptr->type.expr.ptr) ptr->type.expr = CopyASTNode(ptr->type.expr);
 
 		return copy;
 	}

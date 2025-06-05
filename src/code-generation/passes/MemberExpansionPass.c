@@ -774,9 +774,12 @@ static Result VisitReturnStatement(NodePtr* node)
 	ReturnStmt* returnStmt = node->ptr;
 
 	ASSERT(returnStmt->function != NULL);
-	StructTypeInfo exprType = GetStructTypeInfoFromExpr(returnStmt->expr);
+	StructTypeInfo exprType =
+		returnStmt->expr.ptr
+			? GetStructTypeInfoFromExpr(returnStmt->expr)
+			: (StructTypeInfo){.effectiveType = NULL};
 	StructTypeInfo returnType =
-		returnStmt->function->oldType.expr.ptr != NULL
+		returnStmt->function->oldType.expr.ptr
 			? GetStructTypeInfoFromType(returnStmt->function->oldType)
 			: (StructTypeInfo){.effectiveType = NULL};
 
