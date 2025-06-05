@@ -953,12 +953,22 @@ static Result VisitStatement(NodePtr* node)
 		if (structDecl->members.length == 0)
 			return ERROR_RESULT("Cannot define an empty struct", structDecl->lineNumber, currentFilePath);
 
+		PROPAGATE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));
+
 		PushScope();
 		for (size_t i = 0; i < structDecl->members.length; ++i)
-			PROPAGATE_ERROR(VisitVariableDeclaration(structDecl->members.array[i], structDecl->modifiers.publicValue));
+		{
+			NodePtr* node = structDecl->members.array[i];
+			ASSERT(node->type == Node_VariableDeclaration);
+			PROPAGATE_ERROR(VisitVariableDeclaration(node, structDecl->modifiers.publicValue));
+
+			VarDeclStmt* varDecl = node->ptr;
+			StructTypeInfo typeInfo = GetStructTypeInfoFromType(varDecl->type);
+			if (typeInfo.effectiveType == structDecl)
+				return ERROR_RESULT("Struct member causes a cycle in the struct layout", varDecl->lineNumber, currentFilePath);
+		}
 		PopScope(NULL);
 
-		PROPAGATE_ERROR(RegisterDeclaration(structDecl->name, node, structDecl->lineNumber));
 		return SUCCESS_RESULT;
 	}
 
