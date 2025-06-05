@@ -40,8 +40,11 @@ StructTypeInfo GetStructTypeInfoFromExpr(NodePtr node)
 	switch (node.type)
 	{
 	case Node_Literal:
-	{
 		return nullTypeInfo;
+	case Node_BlockExpression:
+	{
+		BlockExpr* blockExpr = node.ptr;
+		return GetStructTypeInfoFromType(blockExpr->type);
 	}
 	case Node_FunctionCall:
 	{

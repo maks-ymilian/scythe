@@ -13,7 +13,8 @@ static void VisitMemberAccess(NodePtr* node)
 	MemberAccessExpr* memberAccess = node->ptr;
 	VisitExpression(&memberAccess->start);
 
-	if (memberAccess->start.type == Node_FunctionCall)
+	if (memberAccess->start.type == Node_FunctionCall ||
+		memberAccess->start.type == Node_BlockExpression)
 	{
 		BlockStmt* blockStmt = AllocASTNode(
 			&(BlockStmt){

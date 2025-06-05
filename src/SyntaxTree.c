@@ -138,8 +138,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_Binary:
 	{
 		BinaryExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(BinaryExpr), Node_Binary);
-		ASSERT(copy.type == Node_Binary);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		ptr->left = CopyASTNode(ptr->left);
@@ -150,8 +150,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_Unary:
 	{
 		UnaryExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(UnaryExpr), Node_Unary);
-		ASSERT(copy.type == Node_Unary);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		ptr->expression = CopyASTNode(ptr->expression);
@@ -161,8 +161,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_Literal:
 	{
 		LiteralExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(LiteralExpr), Node_Literal);
-		ASSERT(copy.type == Node_Literal);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
@@ -173,7 +173,7 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_Subscript:
 	{
 		SubscriptExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(SubscriptExpr), Node_Subscript);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
 		ASSERT(copy.type == Node_Subscript);
 		ptr = copy.ptr;
 
@@ -187,8 +187,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(FuncCallExpr), Node_FunctionCall);
-		ASSERT(copy.type == Node_FunctionCall);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		ptr->baseExpr = CopyASTNode(ptr->baseExpr);
@@ -207,8 +207,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(MemberAccessExpr), Node_MemberAccess);
-		ASSERT(copy.type == Node_MemberAccess);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		if (ptr->start.ptr != NULL) ptr->start = CopyASTNode(ptr->start);
@@ -227,8 +227,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_BlockExpression:
 	{
 		BlockExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(BlockExpr), Node_BlockExpression);
-		ASSERT(copy.type == Node_BlockExpression);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		ptr->block = CopyASTNode(ptr->block);
@@ -239,8 +239,8 @@ NodePtr CopyASTNode(const NodePtr node)
 	case Node_SizeOf:
 	{
 		SizeOfExpr* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(SizeOfExpr), Node_SizeOf);
-		ASSERT(copy.type == Node_SizeOf);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		ptr->expr = CopyASTNode(ptr->expr);
@@ -250,14 +250,44 @@ NodePtr CopyASTNode(const NodePtr node)
 	}
 
 	case Node_ExpressionStatement:
+	{
+		ExpressionStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->expr = CopyASTNode(ptr->expr);
+
+		return copy;
+	}
 	case Node_Import:
+	{
+		ImportStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->path = AllocateString(ptr->path);
+		ptr->moduleName = AllocateString(ptr->moduleName);
+
+		return copy;
+	}
 	case Node_Section:
-		goto unimplemented;
+	{
+		SectionStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->block = CopyASTNode(ptr->block);
+
+		return copy;
+	}
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* ptr = node.ptr;
-		const NodePtr copy = AllocASTNode(ptr, sizeof(VarDeclStmt), Node_VariableDeclaration);
-		ASSERT(copy.type == Node_VariableDeclaration);
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
 		if (ptr->initializer.ptr) ptr->initializer = CopyASTNode(ptr->initializer);
@@ -277,15 +307,146 @@ NodePtr CopyASTNode(const NodePtr node)
 		return copy;
 	}
 	case Node_FunctionDeclaration:
+	{
+		FuncDeclStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->type.expr = CopyASTNode(ptr->type.expr);
+		ptr->oldType.expr = CopyASTNode(ptr->oldType.expr);
+
+		ptr->name = AllocateString(ptr->name);
+		ptr->externalName = AllocateString(ptr->externalName);
+
+		Array parameters = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->parameters.length; ++i)
+		{
+			NodePtr* node = ptr->parameters.array[0];
+			NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&parameters, &copy);
+		}
+		ptr->parameters = parameters;
+
+		Array oldParameters = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->oldParameters.length; ++i)
+		{
+			NodePtr* node = ptr->oldParameters.array[0];
+			NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&oldParameters, &copy);
+		}
+		ptr->oldParameters = oldParameters;
+
+		ptr->block = CopyASTNode(ptr->block);
+
+		return copy;
+	}
 	case Node_StructDeclaration:
+	{
+		StructDeclStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->name = AllocateString(ptr->name);
+
+		Array members = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->members.length; ++i)
+		{
+			NodePtr* node = ptr->members.array[i];
+			NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&members, &copy);
+		}
+		ptr->members = members;
+
+		return copy;
+	}
 	case Node_Modifier:
+	{
+		ModifierStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		return copy;
+	}
 	case Node_BlockStatement:
+	{
+		BlockStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		Array statements = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->statements.length; ++i)
+		{
+			NodePtr* node = ptr->statements.array[i];
+			NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&statements, &copy);
+		}
+		ptr->statements = statements;
+
+		return copy;
+	}
 	case Node_If:
+	{
+		IfStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->expr = CopyASTNode(ptr->expr);
+		ptr->trueStmt = CopyASTNode(ptr->trueStmt);
+		ptr->falseStmt = CopyASTNode(ptr->falseStmt);
+
+		return copy;
+	}
 	case Node_While:
+	{
+		WhileStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->expr = CopyASTNode(ptr->expr);
+		ptr->stmt = CopyASTNode(ptr->stmt);
+
+		return copy;
+	}
 	case Node_For:
+	{
+		ForStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->initialization = CopyASTNode(ptr->initialization);
+		ptr->condition = CopyASTNode(ptr->condition);
+		ptr->increment = CopyASTNode(ptr->increment);
+		ptr->stmt = CopyASTNode(ptr->stmt);
+
+		return copy;
+	}
 	case Node_LoopControl:
+	{
+		LoopControlStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		return copy;
+	}
 	case Node_Return:
-	unimplemented:
+	{
+		ReturnStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->expr = CopyASTNode(ptr->expr);
+
+		return copy;
+	}
 	default: INVALID_VALUE(node.type);
 	}
 }

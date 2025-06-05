@@ -758,7 +758,10 @@ static Result ParsePrimary(NodePtr* out)
 	PROPAGATE_ERROR(ParseCallOrSubscript(out, &isDereference));
 
 	if (out->type == Node_FunctionCall ||
-		out->type == Node_Subscript)
+		out->type == Node_Subscript ||
+		out->type == Node_Binary ||
+		out->type == Node_Unary ||
+		out->type == Node_BlockExpression)
 	{
 		NodePtr prev = *out;
 		const Result result = ContinueParsePrimary(out, isDereference);

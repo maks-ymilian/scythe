@@ -427,11 +427,14 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 {
 	switch (current->type)
 	{
+	case Node_StructDeclaration:
+	case Node_FunctionDeclaration:
+		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	case Node_Null:
 	{
 		ASSERT(currentScope != NULL);
 
-		const Scope* scope = currentScope;
+		Scope* scope = currentScope;
 		for (; scope != NULL; scope = scope->parent)
 		{
 			NodePtr* node = GetFirstNode(&scope->declarations, text);
@@ -451,17 +454,14 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	}
 	case Node_VariableDeclaration:
 	{
-		const VarDeclStmt* varDecl = current->ptr;
+		VarDeclStmt* varDecl = current->ptr;
 		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
 	}
 	case Node_FunctionCall:
+	case Node_BlockExpression:
+	case Node_Binary:
 	{
-		const FuncCallExpr* funcCall = current->ptr;
-		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
-		const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
-		ASSERT(memberAccess->funcReference != NULL);
-		const FuncDeclStmt* funcDecl = memberAccess->funcReference;
-		return ValidateStructAccess(GetStructTypeInfoFromType(funcDecl->type), text, current, lineNumber);
+		return ValidateStructAccess(GetStructTypeInfoFromExpr(*current), text, current, lineNumber);
 	}
 	case Node_Subscript:
 	{
@@ -486,7 +486,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	}
 	case Node_Import:
 	{
-		const ImportStmt* import = current->ptr;
+		ImportStmt* import = current->ptr;
 		Map* declarations = MapGet(&modules, import->moduleName);
 		ASSERT(declarations != NULL);
 
@@ -540,9 +540,6 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		*current = node;
 		return SUCCESS_RESULT;
 	}
-	case Node_StructDeclaration:
-	case Node_FunctionDeclaration:
-		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	default: INVALID_VALUE(current->type);
 	}
 }
@@ -762,6 +759,8 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 					break;
 				}
 				case Node_FunctionCall:
+				case Node_BlockExpression:
+				case Node_Binary:
 				{
 					subscript->baseExpr = AllocASTNode(
 						&(MemberAccessExpr){

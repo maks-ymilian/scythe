@@ -2,7 +2,6 @@
 	// function call 40 param limit
 	// structs should be able to have a pointer member of itself
 	// add #namedStrings
-	// binary and unary expressions as start of member access, binary expressions as baseExpr of subscript
 	// structs in blocks
 	// asserts
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""

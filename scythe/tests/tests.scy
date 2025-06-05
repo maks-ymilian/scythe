@@ -12,5 +12,6 @@ import "test_array_index_conversion.scy"
 import "test_large_params.scy"
 import "test_imports.scy"
 import "test_type_casting.scy"
+import "test_accessing_from_expressions.scy"
 
 any AAA__________ = 7777777777777777777;
