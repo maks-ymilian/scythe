@@ -23,20 +23,27 @@ struct Level1
 
 	Level1 get()
 	{
-		Level1 value;
-		value.l2.l3.arr.ptr = 10;
-		return value;
+		return Level1 {.l2.l3.arr.ptr = 10};
 	}
 
 	int[] get1()
 	{
-		int[] value;
-		value.ptr = 100;
+		int[] value = int[] {.ptr = 100};
 		value[0] = 699;
 		return value;
 	}
 
+	Level1[] get2()
+	{
+		Level1[] value = Level1[] {.ptr = 1000};
+		value[0].l2.l3.arr.ptr = 10000;
+		value[0].l2.l3.arr[0] = 69420;
+		return value;
+	}
+
 	bool AAA_test_accessing_from_function =
+		get().l2.l3.arr.ptr == 10 &&
 		get().l2.l3.arr[0] == 69 &&
-		get1()[0] == 699;
+		get1()[0] == 699 &&
+		get2()[0].l2.l3.arr[0] == 69420;
 }

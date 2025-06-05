@@ -174,17 +174,21 @@ static Result VisitBinaryExpression(NodePtr* node)
 	case Binary_IsEqual:
 	case Binary_NotEqual:
 	{
-		if (leftType.effectiveType != rightType.effectiveType &&
-			(leftType.effectiveType != Primitive_Int || rightType.effectiveType != Primitive_Float) &&
-			(leftType.effectiveType != Primitive_Float || rightType.effectiveType != Primitive_Int))
-			return ERROR_RESULT(
-				AllocateString3Str(
-					"Cannot use operator \"%s\" on type \"%s\" and \"%s\"",
-					GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
-					GetTokenTypeString(primitiveTypeToTokenType[leftType.effectiveType]),
-					GetTokenTypeString(primitiveTypeToTokenType[rightType.effectiveType])),
-				binary->lineNumber,
-				currentFilePath);
+		if (leftType.effectiveType != Primitive_Any &&
+			rightType.effectiveType != Primitive_Any)
+		{
+			if (leftType.effectiveType != rightType.effectiveType &&
+				(leftType.effectiveType != Primitive_Int || rightType.effectiveType != Primitive_Float) &&
+				(leftType.effectiveType != Primitive_Float || rightType.effectiveType != Primitive_Int))
+				return ERROR_RESULT(
+					AllocateString3Str(
+						"Cannot use operator \"%s\" on type \"%s\" and \"%s\"",
+						GetTokenTypeString(binaryOperatorToTokenType[binary->operatorType]),
+						GetTokenTypeString(primitiveTypeToTokenType[leftType.effectiveType]),
+						GetTokenTypeString(primitiveTypeToTokenType[rightType.effectiveType])),
+					binary->lineNumber,
+					currentFilePath);
+		}
 		break;
 	}
 

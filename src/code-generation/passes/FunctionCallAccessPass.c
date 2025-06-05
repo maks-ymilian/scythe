@@ -1,113 +1,103 @@
-#include "ChainedAssignmentPass.h"
+#include "FunctionCallAccessPass.h"
 
 #include "Common.h"
+#include "StringUtils.h"
 
-static void VisitExpression(NodePtr* node, bool parentIsExprStmt);
 static void VisitStatement(NodePtr* node);
+static void VisitExpression(NodePtr* node);
 
-static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
+
+static void VisitMemberAccess(NodePtr* node)
 {
-	ASSERT(node->type == Node_Binary);
-	BinaryExpr* binary = node->ptr;
+	ASSERT(node->type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = node->ptr;
+	VisitExpression(&memberAccess->start);
 
-	VisitExpression(&binary->left, false);
-	VisitExpression(&binary->right, false);
-
-	NodePtr* nested = NULL;
-	if (parentIsExprStmt)
-	{
-		if (binary->operatorType != Binary_Assignment)
-			return;
-
-		ASSERT(binary->left.type != Node_Binary);
-		if (binary->right.type != Node_Binary)
-			return;
-
-		nested = &binary->right;
-	}
-	else
-		nested = node;
-
-	ASSERT(nested->type == Node_Binary);
-	BinaryExpr* nestedBinary = nested->ptr;
-	if (nestedBinary->operatorType == Binary_Assignment)
+	if (memberAccess->start.type == Node_FunctionCall)
 	{
 		BlockStmt* blockStmt = AllocASTNode(
 			&(BlockStmt){
-				.lineNumber = nestedBinary->lineNumber,
+				.lineNumber = memberAccess->lineNumber,
 				.statements = AllocateArray(sizeof(NodePtr)),
 			},
 			sizeof(BlockStmt), Node_BlockStatement)
 								   .ptr;
 		NodePtr blockExpr = AllocASTNode(
 			&(BlockExpr){
-				.type = AllocTypeFromExpr(*nested, nestedBinary->lineNumber),
+				.type = AllocTypeFromExpr(*node, memberAccess->lineNumber),
 				.block = (NodePtr){.ptr = blockStmt, .type = Node_BlockStatement},
 			},
 			sizeof(BlockExpr), Node_BlockExpression);
 
-		NodePtr exprStmt = AllocASTNode(
-			&(ExpressionStmt){
-				.lineNumber = nestedBinary->lineNumber,
-				.expr = *nested,
+		NodePtr varDecl = AllocASTNode(
+			&(VarDeclStmt){
+				.lineNumber = memberAccess->lineNumber,
+				.initializer = memberAccess->start,
+				.type = AllocTypeFromExpr(memberAccess->start, memberAccess->lineNumber),
+				.name = AllocateString("temp"),
+				.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
+				.uniqueName = -1,
 			},
-			sizeof(ExpressionStmt), Node_ExpressionStatement);
-		ArrayAdd(&blockStmt->statements, &exprStmt);
+			sizeof(VarDeclStmt), Node_VariableDeclaration);
+		ArrayAdd(&blockStmt->statements, &varDecl);
 
 		NodePtr returnStmt = AllocASTNode(
 			&(ReturnStmt){
-				.lineNumber = nestedBinary->lineNumber,
-				.expr = CopyASTNode(nestedBinary->left),
+				.lineNumber = memberAccess->lineNumber,
+				.expr = *node,
 			},
 			sizeof(ReturnStmt), Node_Return);
 		ArrayAdd(&blockStmt->statements, &returnStmt);
 
-		*nested = blockExpr;
+		memberAccess->start = NULL_NODE;
+		memberAccess->parentReference = varDecl.ptr;
+		*node = blockExpr;
 	}
 }
 
-static void VisitExpression(NodePtr* node, bool parentIsExprStmt)
+static void VisitExpression(NodePtr* node)
 {
 	switch (node->type)
 	{
 	case Node_Literal:
 	case Node_Null:
 		break;
+	case Node_MemberAccess:
+	{
+		VisitMemberAccess(node);
+		break;
+	}
 	case Node_Binary:
 	{
-		VisitBinaryExpression(node, parentIsExprStmt);
+		BinaryExpr* binary = node->ptr;
+		VisitExpression(&binary->left);
+		VisitExpression(&binary->right);
 		break;
 	}
 	case Node_Unary:
 	{
 		UnaryExpr* unary = node->ptr;
-		VisitExpression(&unary->expression, false);
+		VisitExpression(&unary->expression);
 		break;
 	}
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node->ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; i++)
-			VisitExpression(funcCall->arguments.array[i], false);
-		break;
-	}
-	case Node_MemberAccess:
-	{
-		MemberAccessExpr* memberAccess = node->ptr;
-		VisitExpression(&memberAccess->start, false);
+			VisitExpression(funcCall->arguments.array[i]);
 		break;
 	}
 	case Node_Subscript:
 	{
 		SubscriptExpr* subscript = node->ptr;
-		VisitExpression(&subscript->baseExpr, false);
-		VisitExpression(&subscript->indexExpr, false);
+		VisitExpression(&subscript->baseExpr);
+		VisitExpression(&subscript->indexExpr);
 		break;
 	}
 	case Node_SizeOf:
 	{
 		SizeOfExpr* sizeOf = node->ptr;
-		VisitExpression(&sizeOf->expr, false);
+		VisitExpression(&sizeOf->expr);
 		break;
 	}
 	case Node_BlockExpression:
@@ -132,13 +122,13 @@ static void VisitStatement(NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
-		VisitExpression(&varDecl->initializer, false);
+		VisitExpression(&varDecl->initializer);
 		break;
 	}
 	case Node_ExpressionStatement:
 	{
 		ExpressionStmt* exprStmt = node->ptr;
-		VisitExpression(&exprStmt->expr, true);
+		VisitExpression(&exprStmt->expr);
 		break;
 	}
 	case Node_FunctionDeclaration:
@@ -161,13 +151,13 @@ static void VisitStatement(NodePtr* node)
 		IfStmt* ifStmt = node->ptr;
 		VisitStatement(&ifStmt->trueStmt);
 		VisitStatement(&ifStmt->falseStmt);
-		VisitExpression(&ifStmt->expr, false);
+		VisitExpression(&ifStmt->expr);
 		break;
 	}
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
-		VisitExpression(&returnStmt->expr, false);
+		VisitExpression(&returnStmt->expr);
 		break;
 	}
 	case Node_Section:
@@ -179,7 +169,7 @@ static void VisitStatement(NodePtr* node)
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node->ptr;
-		VisitExpression(&whileStmt->expr, false);
+		VisitExpression(&whileStmt->expr);
 		VisitStatement(&whileStmt->stmt);
 		break;
 	}
@@ -187,8 +177,8 @@ static void VisitStatement(NodePtr* node)
 	{
 		ForStmt* forStmt = node->ptr;
 		VisitStatement(&forStmt->initialization);
-		VisitExpression(&forStmt->condition, false);
-		VisitExpression(&forStmt->increment, false);
+		VisitExpression(&forStmt->condition);
+		VisitExpression(&forStmt->increment);
 		VisitStatement(&forStmt->stmt);
 		break;
 	}
@@ -196,7 +186,7 @@ static void VisitStatement(NodePtr* node)
 	}
 }
 
-void ChainedAssignmentPass(const AST* ast)
+void FunctionCallAccessPass(const AST* ast)
 {
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{

@@ -13,11 +13,13 @@
 #include "passes/TypeConversionPass.h"
 #include "passes/UniqueNamePass.h"
 #include "passes/ChainedAssignmentPass.h"
+#include "passes/FunctionCallAccessPass.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
 	ChainedAssignmentPass(syntaxTree);
+	FunctionCallAccessPass(syntaxTree);
 	BlockExpressionPass(syntaxTree);
 	ForLoopPass(syntaxTree);
 	ReturnTaggingPass(syntaxTree);

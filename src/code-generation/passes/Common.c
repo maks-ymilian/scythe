@@ -52,13 +52,11 @@ StructTypeInfo GetStructTypeInfoFromExpr(NodePtr node)
 		ASSERT(funcDecl != NULL);
 
 		if (funcDecl->oldType.expr.ptr == NULL)
-			return nullTypeInfo;
+			return GetStructTypeInfoFromType(funcDecl->type);
 
 		StructTypeInfo typeInfo = GetStructTypeInfoFromType(funcDecl->oldType);
-		if (typeInfo.effectiveType != NULL)
-			return typeInfo;
-
-		return GetStructTypeInfoFromType(funcDecl->type);
+		ASSERT(typeInfo.effectiveType);
+		return typeInfo;
 	}
 	case Node_MemberAccess:
 	{
@@ -302,6 +300,39 @@ PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node)
 		}
 	}
 	default: INVALID_VALUE(node.type);
+	}
+}
+
+Type AllocTypeFromExpr(NodePtr node, int lineNumber)
+{
+	StructTypeInfo structType = GetStructTypeInfoFromExpr(node);
+	StructDeclStmt* type = structType.isPointer ? structType.pointerType : structType.effectiveType;
+	if (type)
+	{
+		return (Type){
+			.expr = AllocASTNode(
+				&(MemberAccessExpr){
+					.lineNumber = lineNumber,
+					.typeReference = type,
+				},
+				sizeof(MemberAccessExpr), Node_MemberAccess),
+			.modifier = structType.isPointer ? TypeModifier_Pointer : TypeModifier_None,
+		};
+	}
+	else
+	{
+		PrimitiveTypeInfo primitiveType = GetPrimitiveTypeInfoFromExpr(node);
+		ASSERT(!primitiveType.pointerTypeIsStruct);
+		return (Type){
+			.expr = AllocASTNode(
+				&(LiteralExpr){
+					.lineNumber = lineNumber,
+					.type = Literal_PrimitiveType,
+					.primitiveType = primitiveType.isPointer ? primitiveType.pointerType : primitiveType.effectiveType,
+				},
+				sizeof(LiteralExpr), Node_Literal),
+			.modifier = primitiveType.isPointer ? TypeModifier_Pointer : TypeModifier_None,
+		};
 	}
 }
 

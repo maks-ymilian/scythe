@@ -235,8 +235,6 @@ static NodePtr AllocStructMemberAssignmentExpr(
 				CollapseSubscriptMemberAccess(&new);
 				return new;
 			}
-			else if (memberAccess->start.type == Node_FunctionCall)
-				TODO();
 			else
 				UNREACHABLE();
 		}
@@ -468,21 +466,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript, NodePtr* contai
 	if (!type.effectiveType)
 		return VisitExpression(&subscript->baseExpr, containingStatement);
 
-	if (!type.effectiveType->isArrayType)
-		return ERROR_RESULT("Cannot index into non-array type",
-			subscript->lineNumber,
-			currentFilePath);
-
-	// test_accessing_from_function.scy
-	ASSERT(subscript->baseExpr.type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
-
-	// make the member access point to the ptr member inside the array type
-	ASSERT(memberAccess->varReference != NULL);
-	if (!memberAccess->parentReference)
-		memberAccess->parentReference = memberAccess->varReference;
-
-	memberAccess->varReference = GetPtrMember(type.effectiveType);
+	ASSERT(type.effectiveType->isArrayType);
 
 	PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr, containingStatement));
 	return SUCCESS_RESULT;
@@ -522,11 +506,6 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 			if (!GetStructTypeInfoFromType(memberAccess->varReference->type).effectiveType)
 				CollapseSubscriptMemberAccess(node);
 			return SUCCESS_RESULT;
-		}
-		else if (memberAccess->start.type == Node_FunctionCall)
-		{
-			// test_accessing_from_function.scy
-			TODO();
 		}
 		else
 			UNREACHABLE();

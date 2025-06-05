@@ -29,6 +29,7 @@ set(SOURCES
 	"src/code-generation/passes/ForLoopPass.c"
 	"src/code-generation/passes/Printer.c"
 	"src/code-generation/passes/ChainedAssignmentPass.c"
+	"src/code-generation/passes/FunctionCallAccessPass.c"
 )
 
 option(ASAN_OPTIONS "" OFF)

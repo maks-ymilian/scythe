@@ -305,28 +305,17 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 	return SUCCESS_RESULT;
 }
 
-static Result ValidateStructAccess(Type type, const char* text, NodePtr* current, int lineNumber)
+static Result ValidateStructAccess(StructTypeInfo type, const char* text, NodePtr* current, int lineNumber)
 {
-	if (type.modifier == TypeModifier_Pointer)
+	if (type.isPointer)
 		return ERROR_RESULT("Cannot access members in pointer type", lineNumber, currentFilePath);
 
-	if (type.expr.type == Node_Literal)
-	{
-		LiteralExpr* literal = type.expr.ptr;
-		ASSERT(literal->type == Literal_PrimitiveType);
-		return ERROR_RESULT(
-			AllocateString1Str("Type \"%s\" is not an aggregate type",
-				GetTokenTypeString(primitiveTypeToTokenType[literal->primitiveType])),
-			lineNumber, currentFilePath);
-	}
+	if (!type.effectiveType)
+		return ERROR_RESULT("Cannot access member in a non-aggregate type", lineNumber, currentFilePath);
 
-	ASSERT(type.expr.type == Node_MemberAccess);
-	MemberAccessExpr* memberAccess = type.expr.ptr;
-	ASSERT(memberAccess->typeReference != NULL);
-	StructDeclStmt* structDecl = memberAccess->typeReference;
-	for (size_t i = 0; i < structDecl->members.length; ++i)
+	for (size_t i = 0; i < type.effectiveType->members.length; ++i)
 	{
-		const NodePtr* node = structDecl->members.array[i];
+		const NodePtr* node = type.effectiveType->members.array[i];
 		if (node->type != Node_VariableDeclaration)
 			continue;
 
@@ -338,14 +327,14 @@ static Result ValidateStructAccess(Type type, const char* text, NodePtr* current
 		}
 	}
 
-	if (structDecl->isArrayType)
+	if (type.effectiveType->isArrayType)
 		return ERROR_RESULT(
 			AllocateString1Str("Member \"%s\" does not exist in array type", text),
 			lineNumber,
 			currentFilePath);
 	else
 		return ERROR_RESULT(
-			AllocateString2Str("Member \"%s\" does not exist in type \"%s\"", text, structDecl->name),
+			AllocateString2Str("Member \"%s\" does not exist in type \"%s\"", text, type.effectiveType->name),
 			lineNumber,
 			currentFilePath);
 }
@@ -463,7 +452,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_VariableDeclaration:
 	{
 		const VarDeclStmt* varDecl = current->ptr;
-		return ValidateStructAccess(varDecl->type, text, current, lineNumber);
+		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
 	}
 	case Node_FunctionCall:
 	{
@@ -472,42 +461,28 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		const MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		ASSERT(memberAccess->funcReference != NULL);
 		const FuncDeclStmt* funcDecl = memberAccess->funcReference;
-		return ValidateStructAccess(funcDecl->type, text, current, lineNumber);
+		return ValidateStructAccess(GetStructTypeInfoFromType(funcDecl->type), text, current, lineNumber);
 	}
 	case Node_Subscript:
 	{
-		const SubscriptExpr* subscript = current->ptr;
+		SubscriptExpr* subscript = current->ptr;
+		StructTypeInfo type = GetStructTypeInfoFromExpr(subscript->baseExpr);
 
-		// todo
-		switch (subscript->baseExpr.type)
+		// dereference
+		if (type.effectiveType &&
+			type.effectiveType->isArrayType)
 		{
-		case Node_MemberAccess:
+			type = GetStructTypeInfoFromType(GetPtrMember(type.effectiveType)->type);
+			ASSERT(type.isPointer);
+		}
+
+		if (type.isPointer)
 		{
-			const MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
-
-			ASSERT(memberAccess->varReference != NULL);
-			const VarDeclStmt* varDecl = memberAccess->varReference;
-
-			// dereference
-			Type type = varDecl->type;
-			if (type.modifier == TypeModifier_Pointer) // pointer
-				type.modifier = TypeModifier_None;
-			else if (type.expr.type == Node_MemberAccess)
-			{
-				StructDeclStmt* structDecl = ((MemberAccessExpr*)type.expr.ptr)->typeReference;
-				ASSERT(structDecl);
-				if (structDecl->isArrayType) // array
-				{
-					type = GetPtrMember(structDecl)->type;
-					ASSERT(type.modifier == TypeModifier_Pointer);
-					type.modifier = TypeModifier_None;
-				}
-			}
-
-			return ValidateStructAccess(type, text, current, lineNumber);
+			type.isPointer = false;
+			type.effectiveType = type.pointerType;
+			type.pointerType = NULL;
 		}
-		default: INVALID_VALUE(subscript->baseExpr.type);
-		}
+		return ValidateStructAccess(type, text, current, lineNumber);
 	}
 	case Node_Import:
 	{
@@ -766,6 +741,45 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 		SubscriptExpr* subscript = node->ptr;
 		PROPAGATE_ERROR(ResolveExpression(&subscript->baseExpr, true, NULL));
 		PROPAGATE_ERROR(ResolveExpression(&subscript->indexExpr, true, NULL));
+
+		StructTypeInfo type = GetStructTypeInfoFromExpr(subscript->baseExpr);
+
+		if (type.effectiveType)
+		{
+			if (type.effectiveType->isArrayType)
+			{
+				// make the member access point to the ptr member inside the array type
+				switch (subscript->baseExpr.type)
+				{
+				case Node_MemberAccess:
+				{
+					MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
+
+					if (!memberAccess->parentReference)
+						memberAccess->parentReference = memberAccess->varReference;
+
+					memberAccess->varReference = GetPtrMember(type.effectiveType);
+					break;
+				}
+				case Node_FunctionCall:
+				{
+					subscript->baseExpr = AllocASTNode(
+						&(MemberAccessExpr){
+							.lineNumber = subscript->lineNumber,
+							.start = subscript->baseExpr,
+							.varReference = GetPtrMember(type.effectiveType),
+						},
+						sizeof(MemberAccessExpr), Node_MemberAccess);
+					break;
+				}
+				default: INVALID_VALUE(subscript->baseExpr.type);
+				}
+			}
+			else
+				return ERROR_RESULT("Cannot index into non-array type",
+					subscript->lineNumber,
+					currentFilePath);
+		}
 		return SUCCESS_RESULT;
 	}
 	default: INVALID_VALUE(node->type);

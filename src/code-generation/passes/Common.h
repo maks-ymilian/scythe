@@ -25,6 +25,7 @@ StructTypeInfo GetStructTypeInfoFromType(Type type);
 StructTypeInfo GetStructTypeInfoFromExpr(NodePtr node);
 PrimitiveTypeInfo GetPrimitiveTypeInfoFromType(Type type);
 PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node);
+Type AllocTypeFromExpr(NodePtr node, int lineNumber);
 
 VarDeclStmt* GetPtrMember(StructDeclStmt* type);
 
