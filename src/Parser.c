@@ -21,6 +21,7 @@ static Result ParseBlockStatement(NodePtr* out);
 static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
 static Result ParseModifierDeclaration(NodePtr* out);
 static Result ContinueParsePrimary(NodePtr* inout, bool alreadyParsedDot);
+static Result ParseFullVarDeclNoSemicolon(NodePtr* out, void* data);
 
 static Token* CurrentToken(void)
 {
@@ -586,10 +587,12 @@ static Result ParseSizeOf(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseExpression2(NodePtr* out, void* data)
+static Result ParseExpressionOrVariableDeclaration(NodePtr* out, void* data)
 {
 	(void)data;
-	return ParseExpression(out);
+	PROPAGATE_FOUND(ParseExpression(out));
+	PROPAGATE_FOUND(ParseFullVarDeclNoSemicolon(out, NULL));
+	return NOT_FOUND_RESULT;
 }
 
 static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
@@ -600,7 +603,7 @@ static Result ParseFunctionCall(NodePtr expr, NodePtr* out)
 		return NOT_FOUND_RESULT;
 
 	Array params;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpression2, NULL, Token_RightBracket, NULL));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&params, ParseExpressionOrVariableDeclaration, NULL, Token_RightBracket, NULL));
 
 	*out = AllocASTNode(
 		&(FuncCallExpr){

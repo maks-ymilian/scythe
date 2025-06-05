@@ -726,7 +726,13 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 			goto notFunctionError;
 
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
-			PROPAGATE_ERROR(ResolveExpression(funcCall->arguments.array[i], true, NULL));
+		{
+			NodePtr* node = funcCall->arguments.array[i];
+			if (node->type == Node_VariableDeclaration)
+				return ERROR_RESULT("Function call argument must be an expression", ((VarDeclStmt*)node->ptr)->lineNumber, currentFilePath);
+
+			PROPAGATE_ERROR(ResolveExpression(node, true, NULL));
+		}
 
 		return SUCCESS_RESULT;
 

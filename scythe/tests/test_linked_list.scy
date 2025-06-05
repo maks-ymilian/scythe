@@ -14,7 +14,7 @@ any* stackalloc(int size)
 	return pointer;
 }
 
-private Node* createNode(int data) // todo remove private
+Node* createNode(int data)
 {
 	Node* newNode = stackalloc(sizeof(Node));
 	newNode->data = data;
