@@ -17,7 +17,6 @@
 	// make a test for every possible error
 	// assigning wrong types
 	// function nesting
-	// struct initializers, empty, type casting
 	// fuzz test the math?
 	// lvalue rvalue assignment
 	// OPERATORS and type conversions

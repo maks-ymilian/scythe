@@ -25,10 +25,10 @@ struct Sample
 float playSpeed = 0.9; // slider
 float seconds = 10; // slider
 
-Sample[] buffer; @init { buffer = Sample[] { // todo
+Sample[] buffer = Sample[] {
 	.ptr = 0,
 	.length = jsfx.sample_rate * seconds,
-};}
+};
 float write = 0;
 float play = 0;
 

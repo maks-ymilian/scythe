@@ -82,6 +82,7 @@ static void VisitModule(ModuleNode* module)
 		}
 		case Node_StructDeclaration:
 		case Node_VariableDeclaration:
+		case Node_ExpressionStatement:
 		{
 			AddToInitSection(stmt);
 			ArrayRemove(&module->statements, i);

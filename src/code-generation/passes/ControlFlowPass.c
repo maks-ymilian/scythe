@@ -459,6 +459,7 @@ static Result VisitGlobalStatement(const NodePtr* node)
 			PROPAGATE_ERROR(VisitGlobalStatement(block->statements.array[i]));
 		break;
 	}
+	case Node_ExpressionStatement:
 	case Node_VariableDeclaration:
 	case Node_Import:
 	case Node_Null:
