@@ -1,6 +1,20 @@
 // todo:
+	// sliders
+		// slider1:variable_name=5<0,10,1>slider description -- REAPER 5.0+
+
+		// slider1:0<0,5,1{zerolabel,onelabel,twolabel,threelabel,fourlabel,fivelabel}>some setting
+
+		// slider1:0<0,127,1>-Hidden parameter
+		
+		// slider1:5<0,10,0.1:log>slider description -- REAPER 6.74+
+		// slider1:5<0,10,0.1:log=2>slider description
+		// slider1:5<0,10,0.1:sqr>slider description
+		// slider1:5<0,10,0.1:sqr=3>slider description
+		// slider1:5<0,10,0.1:log!>slider description
+
+		// value, min, max, increment, description, hidden, shape, midpoint, exponent, linear_automation
+		// builtin slider functions
 	// function call 40 param limit
-	// structs should be able to have a pointer member of itself
 	// add #namedStrings
 	// structs in blocks
 	// asserts

@@ -122,13 +122,7 @@ static StructDeclStmt* CreateOrGetArrayStructDecl(Type type)
 	NodePtr lengthMember = AllocMemberVarDecl("length",
 		(Type){
 			.modifier = TypeModifier_None,
-			.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = -1,
-					.type = Literal_PrimitiveType,
-					.primitiveType = Primitive_Int,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.expr = AllocPrimitiveType(Primitive_Int, -1),
 		});
 	ArrayInsert(&structDecl->members, &lengthMember, ARRAY_STRUCT_LENGTH_MEMBER_INDEX);
 
@@ -682,7 +676,63 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 			return ResolveExpression(node, checkForValue, NULL);
 		}
 
-		return ResolveExpression(&unary->expression, true, NULL);
+		PROPAGATE_ERROR(ResolveExpression(&unary->expression, true, NULL));
+
+		// syntax sugar for postfix increment/decrement
+		if (unary->postfix)
+		{
+			ASSERT(unary->operatorType == Unary_Increment ||
+				   unary->operatorType == Unary_Decrement);
+
+			BlockStmt* blockStmt = AllocASTNode(
+				&(BlockStmt){
+					.lineNumber = unary->lineNumber,
+					.statements = AllocateArray(sizeof(NodePtr)),
+				},
+				sizeof(BlockStmt), Node_BlockStatement)
+									   .ptr;
+
+			VarDeclStmt* varDecl = AllocASTNode(
+				&(VarDeclStmt){
+					.lineNumber = unary->lineNumber,
+					.type = AllocTypeFromExpr(unary->expression, unary->lineNumber),
+					.name = AllocateString("temp"),
+					.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
+					.uniqueName = -1,
+					.initializer = CopyASTNode(unary->expression),
+				},
+				sizeof(VarDeclStmt), Node_VariableDeclaration)
+									   .ptr;
+
+			unary->postfix = false;
+			NodePtr increment = AllocASTNode(
+				&(ExpressionStmt){
+					.lineNumber = unary->lineNumber,
+					.expr = *node,
+				},
+				sizeof(ExpressionStmt), Node_ExpressionStatement);
+
+			NodePtr returnStmt = AllocASTNode(
+				&(ReturnStmt){
+					.lineNumber = unary->lineNumber,
+					.expr = AllocIdentifier(varDecl, unary->lineNumber),
+				},
+				sizeof(ReturnStmt), Node_Return);
+
+			*node = AllocASTNode(
+				&(BlockExpr){
+					.type = AllocTypeFromExpr(unary->expression, unary->lineNumber),
+					.block = (NodePtr){.ptr = blockStmt, .type = Node_BlockStatement},
+				},
+				sizeof(BlockExpr), Node_BlockExpression);
+
+			ArrayAdd(&blockStmt->statements, &(NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
+			ArrayAdd(&blockStmt->statements, &increment);
+			ArrayAdd(&blockStmt->statements, &returnStmt);
+			return SUCCESS_RESULT;
+		}
+
+		return SUCCESS_RESULT;
 	}
 	case Node_BlockExpression:
 	{

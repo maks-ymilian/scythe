@@ -107,6 +107,7 @@ typedef struct
 	int lineNumber;
 	UnaryOperator operatorType;
 	NodePtr expression;
+	bool postfix;
 } UnaryExpr;
 
 typedef enum
@@ -158,12 +159,11 @@ typedef enum
 	TypeModifier_Array,
 } TypeModifier;
 
-typedef struct Type Type;
-struct Type
+typedef struct
 {
 	NodePtr expr;
 	TypeModifier modifier;
-};
+} Type;
 
 typedef struct
 {

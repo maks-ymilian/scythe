@@ -32,13 +32,7 @@ static NodePtr AllocFlagDecl(const char* name, const int lineNumber)
 			.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
 			.uniqueName = -1,
 			.type.modifier = TypeModifier_None,
-			.type.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_PrimitiveType,
-					.primitiveType = Primitive_Bool,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.type.expr = AllocPrimitiveType(Primitive_Bool, lineNumber),
 			.initializer = AllocASTNode(
 				&(LiteralExpr){
 					.lineNumber = lineNumber,

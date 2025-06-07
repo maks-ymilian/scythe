@@ -33,14 +33,14 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 	int m = a.rows[0].array.length;      // number of columns in a (and rows in b)
 	int p = b.rows[0].array.length;      // number of columns in b
 
-	for (int i = 0; i < n; ++i)
+	for (int i = 0; i < n; i++)
 	{
-		for (int j = 0; j < p; ++j)
+		for (int j = 0; j < p; j++)
 		{
 			int sum = 0;
 
 			// Compute dot product of row i of a and column j of b
-			for (int k = 0; k < m; ++k)
+			for (int k = 0; k < m; k++)
 				sum += a.rows[i].array[k] * b.rows[k].array[j];
 
 			c->rows[i].array[j] = sum;
@@ -59,13 +59,13 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 		{
 			row->array = AllocateArray(1, cols);
 
-			for (int i = 0; i < cols; void { ++i; ++number; })
+			for (int i = 0; i < cols; void { i++; number++; })
 				row->array[i] = number;
 		}
 
 		matrix->rows = AllocateArray(sizeof(Row), rows);
 
-		for (int i = 0; i < rows; ++i)
+		for (int i = 0; i < rows; i++)
 			InitializeRow(matrix->rows.ptr + i, cols);
 	}
 

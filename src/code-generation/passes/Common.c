@@ -208,14 +208,14 @@ PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node)
 		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 		MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		FuncDeclStmt* funcDecl = memberAccess->funcReference;
-		ASSERT(funcDecl != NULL);
+		ASSERT(funcDecl);
 		return GetPrimitiveTypeInfoFromType(funcDecl->type);
 	}
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = node.ptr;
 		VarDeclStmt* varDecl = memberAccess->varReference;
-		ASSERT(varDecl != NULL);
+		ASSERT(varDecl);
 		return GetPrimitiveTypeInfoFromType(varDecl->type);
 	}
 	case Node_Subscript:
@@ -327,13 +327,7 @@ Type AllocTypeFromExpr(NodePtr node, int lineNumber)
 		PrimitiveTypeInfo primitiveType = GetPrimitiveTypeInfoFromExpr(node);
 		ASSERT(!primitiveType.pointerTypeIsStruct);
 		return (Type){
-			.expr = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_PrimitiveType,
-					.primitiveType = primitiveType.isPointer ? primitiveType.pointerType : primitiveType.effectiveType,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.expr = AllocPrimitiveType(primitiveType.isPointer ? primitiveType.pointerType : primitiveType.effectiveType, lineNumber),
 			.modifier = primitiveType.isPointer ? TypeModifier_Pointer : TypeModifier_None,
 		};
 	}
@@ -412,4 +406,15 @@ NodePtr AllocIntConversion(NodePtr expr, int lineNumber)
 				sizeof(LiteralExpr), Node_Literal),
 		},
 		sizeof(BinaryExpr), Node_Binary);
+}
+
+NodePtr AllocPrimitiveType(PrimitiveType primitiveType, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_PrimitiveType,
+			.primitiveType = primitiveType,
+		},
+		sizeof(LiteralExpr), Node_Literal);
 }

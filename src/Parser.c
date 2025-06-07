@@ -47,7 +47,7 @@ static Token* Match(const TokenType* types, const size_t length)
 
 static Token* MatchOne(const TokenType type)
 {
-	return Match((TokenType[]){type}, 1);
+	return Match(&type, 1);
 }
 
 static bool IsDigitBase(const char c, const int base)
@@ -197,17 +197,16 @@ static Result ParseIdentifierChain(Array* array)
 
 static bool ParsePrimitiveType(PrimitiveType* out, int* outLineNumber)
 {
-	const Token* primitiveType = Match(
-		(TokenType[]){
-			Token_Any,
-			Token_Float,
-			Token_Int,
-			Token_String,
-			Token_Char,
-			Token_Bool,
-			Token_Void,
-		},
-		7);
+	TokenType operators[] = {
+		Token_Any,
+		Token_Float,
+		Token_Int,
+		Token_String,
+		Token_Char,
+		Token_Bool,
+		Token_Void,
+	};
+	const Token* primitiveType = Match(operators, COUNTOF(operators));
 
 	if (primitiveType == NULL)
 		return false;
@@ -469,15 +468,14 @@ static Result ParseExpressionInBrackets(NodePtr* out)
 
 static Result ParseLiteral(NodePtr* out)
 {
-	const Token* token = Match(
-		(TokenType[]){
-			Token_NumberLiteral,
-			Token_StringLiteral,
-			Token_CharLiteral,
-			Token_True,
-			Token_False,
-		},
-		5);
+	TokenType operators[] = {
+		Token_NumberLiteral,
+		Token_StringLiteral,
+		Token_CharLiteral,
+		Token_True,
+		Token_False,
+	};
+	const Token* token = Match(operators, COUNTOF(operators));
 
 	if (token == NULL)
 		return NOT_FOUND_RESULT;
@@ -785,14 +783,22 @@ static Result ParsePrimary(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
-static Result ParseUnary(NodePtr* out)
+static Result ParsePrefixUnary(NodePtr* out)
 {
-	const Token* operator= Match((TokenType[]){Token_Plus, Token_Minus, Token_Exclamation, Token_PlusPlus, Token_MinusMinus, Token_Asterisk}, 6);
+	TokenType operators[] = {
+		Token_Plus,
+		Token_Minus,
+		Token_Exclamation,
+		Token_PlusPlus,
+		Token_MinusMinus,
+		Token_Asterisk,
+	};
+	const Token* operator= Match(operators, COUNTOF(operators));
 	if (operator== NULL)
 		return ParsePrimary(out);
 
 	NodePtr expr;
-	if (ParseUnary(&expr).type != Result_Success)
+	if (ParsePrefixUnary(&expr).type != Result_Success)
 		return ERROR_RESULT_LINE(
 			AllocateString1Str("Expected expression after operator \"%s\"", GetTokenTypeString(operator->type)));
 
@@ -801,8 +807,31 @@ static Result ParseUnary(NodePtr* out)
 			.lineNumber = operator->lineNumber,
 			.expression = expr,
 			.operatorType = tokenTypeToUnaryOperator[operator->type],
+			.postfix = false,
 		},
 		sizeof(UnaryExpr), Node_Unary);
+	return SUCCESS_RESULT;
+}
+
+static Result ParsePostfixUnary(NodePtr* out)
+{
+	Result result = ParsePrefixUnary(out);
+	if (result.type != Result_Success)
+		return result;
+
+	TokenType operators[] = {Token_PlusPlus, Token_MinusMinus};
+	Token* operator= Match(operators, COUNTOF(operators));
+	if (operator!= NULL)
+	{
+		*out = AllocASTNode(
+			&(UnaryExpr){
+				.lineNumber = operator->lineNumber,
+				.expression = *out,
+				.operatorType = tokenTypeToUnaryOperator[operator->type],
+				.postfix = true,
+			}, sizeof(UnaryExpr), Node_Unary);
+	}
+
 	return SUCCESS_RESULT;
 }
 
@@ -874,9 +903,6 @@ static Result ParseLeftBinary(
 	if (result.type != Result_Success)
 		return result;
 
-	if (MatchOne(Token_PlusPlus) || MatchOne(Token_MinusMinus))
-		return ERROR_RESULT_LINE("Postfix increment is not supported. Use prefix increment (++i) instead");
-
 	const Token* op = Match(operators, operatorsLength);
 	while (op != NULL)
 	{
@@ -904,127 +930,113 @@ static Result ParseLeftBinary(
 
 static Result ParseExponentiation(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseUnary,
-		(TokenType[]){
-			Token_Caret,
-		},
-		1);
+	TokenType operators[] = {Token_Caret};
+	return ParseLeftBinary(out, ParsePostfixUnary, operators, COUNTOF(operators));
 }
 
 static Result ParseMultiplicative(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseExponentiation,
-		(TokenType[]){
-			Token_Asterisk,
-			Token_Slash,
-			Token_Percent,
-		},
-		3);
+	TokenType operators[] = {
+		Token_Asterisk,
+		Token_Slash,
+		Token_Percent,
+	};
+	return ParseLeftBinary(out, ParseExponentiation, operators, COUNTOF(operators));
 }
 
 static Result ParseAdditive(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseMultiplicative,
-		(TokenType[]){
-			Token_Plus,
-			Token_Minus,
-		},
-		2);
+	TokenType operators[] = {
+		Token_Plus,
+		Token_Minus,
+	};
+	return ParseLeftBinary(out, ParseMultiplicative, operators, COUNTOF(operators));
 }
 
 static Result ParseBitShift(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseAdditive,
-		(TokenType[]){
-			Token_LeftAngleLeftAngle,
-			Token_RightAngleRightAngle,
-		},
-		2);
+	TokenType operators[] = {
+		Token_LeftAngleLeftAngle,
+		Token_RightAngleRightAngle,
+	};
+	return ParseLeftBinary(out, ParseAdditive, operators, COUNTOF(operators));
 }
 
 static Result ParseRelational(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseBitShift,
-		(TokenType[]){
-			Token_RightAngleBracket,
-			Token_RightAngleEquals,
-			Token_LeftAngleBracket,
-			Token_LeftAngleEquals,
-		},
-		4);
+	TokenType operators[] = {
+		Token_RightAngleBracket,
+		Token_RightAngleEquals,
+		Token_LeftAngleBracket,
+		Token_LeftAngleEquals,
+	};
+	return ParseLeftBinary(out, ParseBitShift, operators, COUNTOF(operators));
 }
 
 static Result ParseEquality(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseRelational,
-		(TokenType[]){
-			Token_EqualsEquals,
-			Token_ExclamationEquals,
-		},
-		2);
+	TokenType operators[] = {
+		Token_EqualsEquals,
+		Token_ExclamationEquals,
+	};
+	return ParseLeftBinary(out, ParseRelational, operators, COUNTOF(operators));
 }
 
 static Result ParseBitwiseAnd(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseEquality,
-		(TokenType[]){
-			Token_Ampersand,
-		},
-		1);
+	TokenType operators[] = {
+		Token_Ampersand,
+	};
+	return ParseLeftBinary(out, ParseEquality, operators, COUNTOF(operators));
 }
 
 static Result ParseXOR(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseBitwiseAnd,
-		(TokenType[]){
-			Token_Tilde,
-		},
-		1);
+	TokenType operators[] = {
+		Token_Tilde,
+	};
+	return ParseLeftBinary(out, ParseBitwiseAnd, operators, COUNTOF(operators));
 }
 
 static Result ParseBitwiseOr(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseXOR,
-		(TokenType[]){
-			Token_Pipe,
-		},
-		1);
+	TokenType operators[] = {
+		Token_Pipe,
+	};
+	return ParseLeftBinary(out, ParseXOR, operators, COUNTOF(operators));
 }
 
 static Result ParseBooleanAnd(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseBitwiseOr,
-		(TokenType[]){
-			Token_AmpersandAmpersand,
-		},
-		1);
+	TokenType operators[] = {
+		Token_AmpersandAmpersand,
+	};
+	return ParseLeftBinary(out, ParseBitwiseOr, operators, COUNTOF(operators));
 }
 
 static Result ParseBooleanOr(NodePtr* out)
 {
-	return ParseLeftBinary(out, ParseBooleanAnd,
-		(TokenType[]){
-			Token_PipePipe,
-		},
-		1);
+	TokenType operators[] = {
+		Token_PipePipe,
+	};
+	return ParseLeftBinary(out, ParseBooleanAnd, operators, COUNTOF(operators));
 }
 
 static Result ParseAssignment(NodePtr* out)
 {
-	return ParseRightBinary(out, ParseBooleanOr,
-		(TokenType[]){
-			Token_Equals,
-			Token_PlusEquals,
-			Token_MinusEquals,
-			Token_AsteriskEquals,
-			Token_SlashEquals,
-			Token_PercentEquals,
-			Token_CaretEquals,
-			Token_AmpersandEquals,
-			Token_PipeEquals,
-			Token_TildeEquals,
-		},
-		10);
+	TokenType operators[] = {
+		Token_Equals,
+		Token_PlusEquals,
+		Token_MinusEquals,
+		Token_AsteriskEquals,
+		Token_SlashEquals,
+		Token_PercentEquals,
+		Token_CaretEquals,
+		Token_AmpersandEquals,
+		Token_PipeEquals,
+		Token_TildeEquals,
+	};
+	return ParseRightBinary(out, ParseBooleanOr, operators, COUNTOF(operators));
 }
 
 static Result ParseExpression(NodePtr* out)
@@ -1241,7 +1253,7 @@ static Result ParseSectionStatement(NodePtr* out)
 
 	SectionType sectionType = Section_Init;
 	bool sectionFound = false;
-	for (size_t i = 0; i < sizeof(sectionTypes) / sizeof(TokenType); ++i)
+	for (size_t i = 0; i < COUNTOF(sectionTypes); ++i)
 	{
 		if (strncmp(identifier->text, sectionNames[i], identifier->textSize) == 0)
 		{
@@ -1483,7 +1495,13 @@ static Result ParseModifiers(ModifierState* outModifierState, bool* outHasAnyMod
 	*outHasAnyModifiers = false;
 
 	Token* token = NULL;
-	while ((token = Match((TokenType[]){Token_Public, Token_Private, Token_External, Token_Internal}, 4)))
+	TokenType operators[] = {
+		Token_Public,
+		Token_Private,
+		Token_External,
+		Token_Internal,
+	};
+	while ((token = Match(operators, COUNTOF(operators))))
 	{
 		*outHasAnyModifiers = true;
 
@@ -1643,7 +1661,8 @@ static Result ParseForStatement(NodePtr* out)
 
 static Result ParseLoopControlStatement(NodePtr* out)
 {
-	const Token* token = Match((TokenType[]){Token_Break, Token_Continue}, 2);
+	TokenType operators[] = {Token_Break, Token_Continue};
+	const Token* token = Match(operators, COUNTOF(operators));
 	if (token == NULL) return NOT_FOUND_RESULT;
 
 	if (MatchOne(Token_Semicolon) == NULL)

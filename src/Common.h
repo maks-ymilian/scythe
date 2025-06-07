@@ -5,6 +5,8 @@
 
 #include "PlatformUtils.h"
 
+#define COUNTOF(x) (sizeof(x) / sizeof(*(x)))
+
 #define UNREACHABLE()                                                       \
 	do                                                                      \
 	{                                                                       \

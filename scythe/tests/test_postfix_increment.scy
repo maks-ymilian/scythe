@@ -1,0 +1,26 @@
+@init
+{
+	bool AAA_test_postfix_increment = bool {
+		int a = 5;
+		int b = a++;
+		int c = a;
+		return
+			a == 6 &&
+			b == 5 &&
+			c == 6 &&
+			++a == 7 &&
+			a++ == 7 &&
+			a == 8;
+	} && bool {
+		int a = 5;
+		int b = a--;
+		int c = a;
+		return
+			a == 4 &&
+			b == 5 &&
+			c == 4 &&
+			--a == 3 &&
+			a-- == 3 &&
+			a == 2;
+	};
+}
