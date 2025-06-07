@@ -94,10 +94,14 @@ static Result ReadFile(const char* path, char** outString, size_t* outStringLeng
 
 error:
 	return ERROR_RESULT(
-		AllocateString2Str(
-			"Failed to read file \"%s\": %s",
-			path,
-			strerror(errno)),
+		errno != 0
+			? AllocateString2Str(
+				  "Failed to read file \"%s\": %s",
+				  path,
+				  strerror(errno))
+			: AllocateString1Str(
+				  "Failed to read file \"%s\"",
+				  path),
 		lineNumber,
 		errorPath);
 }
@@ -122,10 +126,14 @@ static Result WriteFile(const char* path, const char* bytes, size_t bytesLength)
 
 error:
 	return ERROR_RESULT(
-		AllocateString2Str(
-			"Failed to write file \"%s\": %s",
-			path,
-			strerror(errno)),
+		errno != 0
+			? AllocateString2Str(
+				  "Failed to write file \"%s\": %s",
+				  path,
+				  strerror(errno))
+			: AllocateString1Str(
+				  "Failed to write file \"%s\"",
+				  path),
 		-1,
 		NULL);
 }
@@ -159,14 +167,18 @@ error_is_not_file:
 		errorMessage = "Path is not a regular file";
 
 error:
-	if (!errorMessage)
+	if (!errorMessage && errno != 0)
 		errorMessage = strerror(errno);
 
 	return ERROR_RESULT(
-		AllocateString2Str(
-			"Failed to write file \"%s\": %s",
-			path,
-			errorMessage),
+		errorMessage
+			? AllocateString2Str(
+				  "Failed to write file \"%s\": %s",
+				  path,
+				  errorMessage)
+			: AllocateString1Str(
+				  "Failed to write file \"%s\"",
+				  path),
 		lineNumber,
 		errorPath);
 }
@@ -175,6 +187,11 @@ static Result CheckFileWriteable(const char* path, int lineNumber, const char* e
 {
 	char* errorMessage = NULL;
 	ASSERT(path);
+
+	errno = 0;
+	FILE* file = fopen(path, "wb");
+	if (file == NULL)
+		goto error;
 
 	errno = 0;
 	int result = IsRegularFile(path);
@@ -187,11 +204,6 @@ static Result CheckFileWriteable(const char* path, int lineNumber, const char* e
 	if (!CheckFileAccess(path, false, true))
 		goto error;
 
-	errno = 0;
-	FILE* file = fopen(path, "wb");
-	if (file == NULL)
-		goto error;
-
 	fclose(file);
 	return SUCCESS_RESULT;
 
@@ -200,14 +212,18 @@ error_is_not_file:
 		errorMessage = "Path is not a regular file";
 
 error:
-	if (!errorMessage)
+	if (!errorMessage && errno != 0)
 		errorMessage = strerror(errno);
 
 	return ERROR_RESULT(
-		AllocateString2Str(
-			"Failed to write file \"%s\": %s",
-			path,
-			errorMessage),
+		errorMessage
+			? AllocateString2Str(
+				  "Failed to write file \"%s\": %s",
+				  path,
+				  errorMessage)
+			: AllocateString1Str(
+				  "Failed to write file \"%s\"",
+				  path),
 		lineNumber,
 		errorPath);
 }

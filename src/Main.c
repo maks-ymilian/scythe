@@ -26,12 +26,12 @@ int main(int argc, char** argv)
 	{
 		ASSERT(result.type == Result_Error);
 		ASSERT(result.errorMessage != NULL);
-		printf("ERROR: %s", result.errorMessage);
-		if (result.lineNumber > 0) printf(" (line %d)", result.lineNumber);
-		if (result.filePath != NULL) printf(" (%s)", result.filePath);
-		printf("\n");
+		fprintf(stderr, "ERROR: %s", result.errorMessage);
+		if (result.lineNumber > 0) fprintf(stderr, " (line %d)", result.lineNumber);
+		if (result.filePath != NULL) fprintf(stderr, " (%s)", result.filePath);
+		fprintf(stderr, "\n");
 
-		printf("Compilation failed.\n");
+		fprintf(stderr, "Compilation failed.\n");
 		return EXIT_FAILURE;
 	}
 }

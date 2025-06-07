@@ -159,6 +159,41 @@ bool CheckFileAccess(const char* path, bool read, bool write)
 	return _access(path, (read ? 4 : 0) | (write ? 2 : 0)) == 0;
 }
 
+int IsRegularFile(const char* path)
+{
+	HANDLE file = INVALID_HANDLE_VALUE;
+
+	file = CreateFileA(
+		path,
+		0,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	if (file == INVALID_HANDLE_VALUE) goto error;
+
+	BY_HANDLE_FILE_INFORMATION fileInfo;
+	if (!GetFileInformationByHandle(file, &fileInfo)) goto error;
+
+	if (fileInfo.dwFileAttributes != FILE_ATTRIBUTE_NORMAL &&
+		fileInfo.dwFileAttributes != FILE_ATTRIBUTE_ARCHIVE)
+		return false;
+
+	FILE_STANDARD_INFO fileStandardInfo;
+	if (!GetFileInformationByHandleEx(file, FileStandardInfo, &fileStandardInfo, sizeof(fileStandardInfo)))
+		goto error;
+
+	CloseHandle(file);
+
+	return !fileStandardInfo.Directory;
+
+error:
+	if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
+
+	return -1;
+}
+
 void PrintStackTrace(void)
 {
 }
