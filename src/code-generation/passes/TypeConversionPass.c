@@ -489,6 +489,8 @@ static Result VisitStatement(const NodePtr* node)
 {
 	switch (node->type)
 	{
+	case Node_Import:
+	case Node_Input:
 	case Node_Null:
 		break;
 	case Node_FunctionDeclaration:
@@ -539,8 +541,6 @@ static Result VisitStatement(const NodePtr* node)
 		PROPAGATE_ERROR(ConvertExpression(&whileStmt->expr, exprType, NonPointerType(Primitive_Bool), whileStmt->lineNumber));
 		break;
 	}
-	case Node_Import:
-		break;
 	default: INVALID_VALUE(node->type);
 	}
 	return SUCCESS_RESULT;

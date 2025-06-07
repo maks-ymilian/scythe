@@ -101,3 +101,8 @@ void StreamWriteByte(MemoryStream* stream, const char data)
 	if (stream->position > stream->length)
 		stream->length = stream->position;
 }
+
+void StreamWriteStream(MemoryStream* destination, MemoryStream* source)
+{
+	StreamWrite(destination, source->buffer, source->position);
+}

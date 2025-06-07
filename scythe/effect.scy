@@ -2,6 +2,9 @@ import "builtin/jsfx.scy"
 
 @gfx
 {
+	// todo
+	// slider inScope;
+
 	gfx.set(0.3, 0.5, 0.6);
 
 	int spacing = 10;
@@ -22,15 +25,39 @@ struct Sample
 	float r;
 }
 
-float playSpeed = 0.9; // slider
-float seconds = 10; // slider
-
-Sample[] buffer = Sample[] {
-	.ptr = 0,
-	.length = jsfx.sample_rate * seconds,
+external float playSpeed;
+public input playSpeed {
+	default_value: 1,
+	// min: -2, todo
+	max: 4,
 };
-float write = 0;
-float play = 0;
+
+external float samples;
+public input samples {
+	default_value: 1000,
+	min: 1,
+	max: 48000,
+	increment: 1,
+	shape: {
+		type: log,
+		midpoint: 1000,
+	},
+};
+
+
+Sample[] buffer;
+float write;
+float play;
+
+@slider
+{
+	buffer = Sample[] {
+		.ptr = 0,
+		.length = samples,
+	};
+	write = 0;
+	play = 0;
+}
 
 @sample
 {

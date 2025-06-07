@@ -1,21 +1,14 @@
 // todo:
+	// enums
 	// sliders
-		// slider1:variable_name=5<0,10,1>slider description -- REAPER 5.0+
-
 		// slider1:0<0,5,1{zerolabel,onelabel,twolabel,threelabel,fourlabel,fivelabel}>some setting
-
-		// slider1:0<0,127,1>-Hidden parameter
-		
-		// slider1:5<0,10,0.1:log>slider description -- REAPER 6.74+
-		// slider1:5<0,10,0.1:log=2>slider description
-		// slider1:5<0,10,0.1:sqr>slider description
-		// slider1:5<0,10,0.1:sqr=3>slider description
-		// slider1:5<0,10,0.1:log!>slider description
-
-		// value, min, max, increment, description, hidden, shape, midpoint, exponent, linear_automation
+		// always have - at start of description and then show them in an init section
 		// builtin slider functions
+			// slider number, sliderX
+	// desc, tags, author, options, in_pin, out_pin, ...
 	// function call 40 param limit
 	// add #namedStrings
+	// control characters in strings
 	// structs in blocks
 	// asserts
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
@@ -25,6 +18,7 @@
 	// other jsfx functionality (global.*)
 	// undocumented functions
 	// double pointers?
+	// check if built in function overloads are correct
 
 	// int conversion breaks pass by reference
 

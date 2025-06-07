@@ -119,6 +119,11 @@ static void VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
+	case Node_LoopControl:
+	case Node_Import:
+	case Node_Input:
+	case Node_Null:
+		break;
 	case Node_BlockStatement:
 	{
 		const BlockStmt* block = node->ptr;
@@ -192,10 +197,6 @@ static void VisitStatement(NodePtr* node)
 		VisitStatement(&forStmt->stmt);
 		break;
 	}
-	case Node_LoopControl:
-	case Node_Import:
-	case Node_Null:
-		break;
 	default: INVALID_VALUE(node->type);
 	}
 }

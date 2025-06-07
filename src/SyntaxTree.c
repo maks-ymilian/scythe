@@ -447,6 +447,54 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		return copy;
 	}
+	case Node_Input:
+	{
+		InputStmt* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		ptr->defaultValue = AllocateString(ptr->defaultValue);
+		ptr->min = AllocateString(ptr->min);
+		ptr->max = AllocateString(ptr->max);
+		ptr->increment = AllocateString(ptr->increment);
+		ptr->description = AllocateString(ptr->description);
+		ptr->midpoint = AllocateString(ptr->midpoint);
+		ptr->exponent = AllocateString(ptr->exponent);
+
+		ptr->name = AllocateString(ptr->name);
+
+		return copy;
+	}
+	case Node_PropertyList:
+	{
+		PropertyListNode* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		Array properties = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->list.length; ++i)
+		{
+			NodePtr* node = ptr->list.array[i];
+			NodePtr copy = CopyASTNode(*node);
+			ArrayAdd(&properties, &copy);
+		}
+		ptr->list = properties;
+
+		return copy;
+	}
+	case Node_Property:
+	{
+		PropertyNode* ptr = node.ptr;
+		const NodePtr copy = AllocASTNode(ptr, sizeof(*ptr), node.type);
+		ASSERT(copy.type == node.type);
+		ptr = copy.ptr;
+
+		FreeASTNode(ptr->value);
+
+		return copy;
+	}
 	default: INVALID_VALUE(node.type);
 	}
 }
@@ -612,6 +660,35 @@ void FreeASTNode(const NodePtr node)
 	{
 		const ReturnStmt* ptr = node.ptr;
 		FreeASTNode(ptr->expr);
+		break;
+	}
+
+	case Node_Input:
+	{
+		InputStmt* ptr = node.ptr;
+		free(ptr->name);
+
+		free(ptr->defaultValue);
+		free(ptr->min);
+		free(ptr->max);
+		free(ptr->increment);
+		free(ptr->description);
+		free(ptr->midpoint);
+		free(ptr->exponent);
+		break;
+	}
+	case Node_PropertyList:
+	{
+		PropertyListNode* ptr = node.ptr;
+		for (size_t i = 0; i < ptr->list.length; ++i)
+			FreeASTNode(*(NodePtr*)ptr->list.array[i]);
+		FreeArray(&ptr->list);
+		break;
+	}
+	case Node_Property:
+	{
+		PropertyNode* ptr = node.ptr;
+		FreeASTNode(ptr->value);
 		break;
 	}
 

@@ -95,6 +95,11 @@ static void VisitGlobalStatement(const NodePtr* node)
 {
 	switch (node->type)
 	{
+	case Node_VariableDeclaration:
+	case Node_Import:
+	case Node_Input:
+	case Node_Null:
+		break;
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
@@ -107,10 +112,6 @@ static void VisitGlobalStatement(const NodePtr* node)
 		VisitBlock(funcDecl->block);
 		break;
 	}
-	case Node_VariableDeclaration:
-	case Node_Import:
-	case Node_Null:
-		break;
 	default: INVALID_VALUE(node->type);
 	}
 }

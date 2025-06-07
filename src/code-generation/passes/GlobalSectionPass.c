@@ -24,6 +24,13 @@ static void VisitBlock(const NodePtr* node)
 		const NodePtr* node = block->statements.array[i];
 		switch (node->type)
 		{
+		case Node_Return:
+		case Node_LoopControl:
+		case Node_ExpressionStatement:
+		case Node_VariableDeclaration:
+		case Node_Input:
+		case Node_Null:
+			break;
 		case Node_FunctionDeclaration:
 		{
 			const FuncDeclStmt* funcDecl = node->ptr;
@@ -52,12 +59,6 @@ static void VisitBlock(const NodePtr* node)
 			VisitBlock(&whileStmt->stmt);
 			break;
 		}
-		case Node_Return:
-		case Node_LoopControl:
-		case Node_ExpressionStatement:
-		case Node_VariableDeclaration:
-		case Node_Null:
-			break;
 		default: INVALID_VALUE(node->type);
 		}
 	}
@@ -70,6 +71,10 @@ static void VisitModule(ModuleNode* module)
 		const NodePtr* stmt = module->statements.array[i];
 		switch (stmt->type)
 		{
+		case Node_Import:
+		case Node_Input:
+		case Node_Null:
+			break;
 		case Node_FunctionDeclaration:
 		{
 			const FuncDeclStmt* funcDecl = stmt->ptr;
@@ -107,9 +112,6 @@ static void VisitModule(ModuleNode* module)
 			i--;
 			break;
 		}
-		case Node_Import:
-		case Node_Null:
-			break;
 		default: INVALID_VALUE(stmt->type);
 		}
 	}

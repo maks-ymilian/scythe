@@ -1,11 +1,10 @@
 public external:
-void change(any slider) as sliderchange;
+void change(any sliderOrMask) as sliderchange;
 
-void automate(any slider) as slider_automate;
-void automate(any slider, bool end_touch) as slider_automate;
+void automate(any sliderOrMask) as slider_automate;
+void automate(any sliderOrMask, bool end_touch) as slider_automate;
 
-int show(any slider) as slider_show;
-int show(any slider, int value) as slider_show;
+int show(any sliderOrMask, int value) as slider_show;
 
 any slider(int sliderindex) as slider;
 int next_change(int sliderindex, float nextval) as slider_next_chg;

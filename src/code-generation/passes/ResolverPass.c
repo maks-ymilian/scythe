@@ -920,6 +920,237 @@ static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
 	return SUCCESS_RESULT;
 }
 
+static Result SetNumberProperty(NodePtr value, void* destination, int lineNumber)
+{
+	ASSERT(destination);
+
+	char** number = destination;
+	if (*number)
+		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
+
+	if (value.type != Node_Literal)
+		goto invalidValue;
+	LiteralExpr* literal = value.ptr;
+
+	if (literal->type == Literal_Float)
+		*number = AllocateString(literal->floatValue);
+	else if (literal->type == Literal_Int)
+		*number = AllocUInt64ToString(literal->intValue);
+	else
+		goto invalidValue;
+
+	return SUCCESS_RESULT;
+
+invalidValue:
+	return ERROR_RESULT("Expected number value", lineNumber, currentFilePath);
+}
+
+static Result SetStringProperty(NodePtr value, void* destination, int lineNumber)
+{
+	ASSERT(destination);
+
+	char** string = destination;
+	if (*string)
+		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
+
+	if (value.type != Node_Literal)
+		goto invalidValue;
+	LiteralExpr* literal = value.ptr;
+
+	if (literal->type != Literal_String)
+		goto invalidValue;
+
+	*string = AllocateString(literal->string);
+	return SUCCESS_RESULT;
+
+invalidValue:
+	return ERROR_RESULT("Expected string value", lineNumber, currentFilePath);
+}
+
+static Result SetBooleanProperty(NodePtr value, void* destination, int lineNumber)
+{
+	ASSERT(destination);
+
+	PropertyBoolean* boolean = destination;
+	if (*boolean != PropertyBoolean_NotSet)
+		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
+
+	if (value.type != Node_Literal)
+		goto invalidValue;
+	LiteralExpr* literal = value.ptr;
+
+	if (literal->type != Literal_Boolean)
+		goto invalidValue;
+
+	*boolean = literal->boolean;
+	return SUCCESS_RESULT;
+
+invalidValue:
+	return ERROR_RESULT("Expected boolean value", lineNumber, currentFilePath);
+}
+
+static Result SetShapeTypeProperty(NodePtr value, void* destination, int lineNumber)
+{
+	ASSERT(destination);
+
+	SliderShape* shape = destination;
+	if (*shape != SliderShape_NotSet)
+		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
+
+	if (value.type != Node_MemberAccess)
+		goto invalidValue;
+	MemberAccessExpr* memberAccess = value.ptr;
+
+	if (memberAccess->identifiers.length != 1 ||
+		memberAccess->start.ptr)
+		goto invalidValue;
+
+	char* string = *(char**)memberAccess->identifiers.array[0];
+	ASSERT(string);
+	if (strcmp(string, "log") == 0)
+		*shape = SliderShape_Logarithmic;
+	else if (strcmp(string, "exp") == 0)
+		*shape = SliderShape_Exponential;
+	else
+		return ERROR_RESULT(
+			AllocateString1Str("Unknown slider shape type \"%s\"", string),
+			lineNumber, currentFilePath);
+
+	return SUCCESS_RESULT;
+
+invalidValue:
+	return ERROR_RESULT("Expected slider shape type", lineNumber, currentFilePath);
+}
+
+static Result SetShapeProperties(InputStmt* slider, PropertyListNode* properties)
+{
+	for (size_t i = 0; i < properties->list.length; ++i)
+	{
+		NodePtr* node = properties->list.array[i];
+		ASSERT(node->type = Node_Property);
+
+		PropertyNode* property = node->ptr;
+		switch (property->type)
+		{
+		case PropertyType_Type:
+			PROPAGATE_ERROR(SetShapeTypeProperty(property->value, &slider->shape, property->lineNumber));
+			break;
+		case PropertyType_Midpoint:
+			PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->midpoint, property->lineNumber));
+			break;
+		case PropertyType_Exponent:
+			PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->exponent, property->lineNumber));
+			break;
+		case PropertyType_LinearAutomation:
+			PROPAGATE_ERROR(SetBooleanProperty(property->value, &slider->linear_automation, property->lineNumber));
+			break;
+		default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result SetInputProperties(InputStmt* slider)
+{
+	// initialize all to not set
+	slider->defaultValue = NULL;
+	slider->min = NULL;
+	slider->max = NULL;
+	slider->increment = NULL;
+	slider->description = NULL;
+	slider->midpoint = NULL;
+	slider->exponent = NULL;
+	slider->shape = SliderShape_NotSet;
+	slider->hidden = PropertyBoolean_NotSet;
+	slider->linear_automation = PropertyBoolean_NotSet;
+
+	// set properties
+	if (slider->propertyList.ptr)
+	{
+		ASSERT(slider->propertyList.type == Node_PropertyList);
+		PropertyListNode* properties = slider->propertyList.ptr;
+		for (size_t i = 0; i < properties->list.length; ++i)
+		{
+			NodePtr* node = properties->list.array[i];
+			ASSERT(node->type = Node_Property);
+
+			PropertyNode* property = node->ptr;
+			switch (property->type)
+			{
+			case PropertyType_DefaultValue:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->defaultValue, property->lineNumber));
+				break;
+			case PropertyType_Min:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->min, property->lineNumber));
+				break;
+			case PropertyType_Max:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->max, property->lineNumber));
+				break;
+			case PropertyType_Increment:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->increment, property->lineNumber));
+				break;
+			case PropertyType_Description:
+				PROPAGATE_ERROR(SetStringProperty(property->value, &slider->description, property->lineNumber));
+				break;
+			case PropertyType_Hidden:
+				PROPAGATE_ERROR(SetBooleanProperty(property->value, &slider->hidden, property->lineNumber));
+				break;
+			case PropertyType_Shape:
+			{
+				if (property->value.type != Node_PropertyList)
+					return ERROR_RESULT("Expected property list", property->lineNumber, currentFilePath);
+
+				PropertyListNode* properties = property->value.ptr;
+				PROPAGATE_ERROR(SetShapeProperties(slider, properties));
+				break;
+			}
+			default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+			}
+		}
+	}
+
+	// validate
+	if (slider->shape == SliderShape_NotSet)
+	{
+		if (slider->linear_automation != PropertyBoolean_NotSet)
+			return ERROR_RESULT("Cannot set \"linear_automation\" property if shape type is not set", slider->lineNumber, currentFilePath);
+		if (slider->midpoint)
+			return ERROR_RESULT("Cannot set \"midpoint\" property if shape type is not set", slider->lineNumber, currentFilePath);
+		if (slider->exponent)
+			return ERROR_RESULT("Cannot set \"exponent\" property if shape type is not set", slider->lineNumber, currentFilePath);
+	}
+	else if (slider->shape == SliderShape_Logarithmic)
+	{
+		if (slider->exponent)
+			return ERROR_RESULT("Cannot set \"exponent\" property if shape type is logarithmic", slider->lineNumber, currentFilePath);
+		if (!slider->midpoint)
+			return ERROR_RESULT("Must set \"midpoint\" property if shape type is logarithmic", slider->lineNumber, currentFilePath);
+	}
+	else if (slider->shape == SliderShape_Exponential)
+	{
+		if (slider->midpoint)
+			return ERROR_RESULT("Cannot set \"midpoint\" property if shape type is exponential", slider->lineNumber, currentFilePath);
+	}
+	else
+		UNREACHABLE();
+
+	// if not set, set to default value
+	if (!slider->defaultValue) slider->defaultValue = AllocateString("0");
+	if (!slider->min) slider->min = AllocateString("0");
+	if (!slider->max) slider->max = AllocateString("10");
+	if (!slider->increment) slider->increment = AllocateString("0");
+	if (!slider->description) slider->description = AllocateString(slider->name);
+	if (!slider->exponent) slider->exponent = AllocateString("2");
+
+	if (slider->hidden == PropertyBoolean_NotSet)
+		slider->hidden = false;
+	if (slider->linear_automation == PropertyBoolean_NotSet)
+		slider->linear_automation = false;
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
@@ -1101,6 +1332,17 @@ static Result VisitStatement(NodePtr* node)
 
 		FreeASTNode(*node);
 		*node = NULL_NODE;
+		return SUCCESS_RESULT;
+	}
+	case Node_Input:
+	{
+		InputStmt* input = node->ptr;
+		PROPAGATE_ERROR(SetModifiers(&input->modifiers, input->lineNumber));
+
+		if (input->modifiers.externalValue)
+			return ERROR_RESULT("Input statements can only be internal", input->lineNumber, currentFilePath);
+
+		PROPAGATE_ERROR(SetInputProperties(input));
 		return SUCCESS_RESULT;
 	}
 	case Node_LoopControl:

@@ -1,17 +1,17 @@
-int test_loops(int input)
+int test_loops(int value)
 {
-	int result = input;
+	int result = value;
 	int outer_counter = 0;
 
-	while (outer_counter < input)
+	while (outer_counter < value)
 	{
 		int middle_counter = 0;
 
-		while (middle_counter < (input * 2))
+		while (middle_counter < (value * 2))
 		{
 			int inner_counter = 0;
 
-			while (inner_counter < (input * 3))
+			while (inner_counter < (value * 3))
 			{
 				result += (outer_counter * middle_counter) - (inner_counter / 2);
 
@@ -30,7 +30,7 @@ int test_loops(int input)
 				inner_counter += 1;
 			}
 
-			if (middle_counter > (input * 2) / 2)
+			if (middle_counter > (value * 2) / 2)
 				break;
 
 			middle_counter += 1;

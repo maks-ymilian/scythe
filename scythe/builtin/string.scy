@@ -15,7 +15,7 @@ int compare_i(string str, string str2, int maxlen) as strnicmp;
 
 string copy_from(string str, string srcstr, int offset) as strcpy_from;
 string copy_substring(string str, string srcstr, int offset, int maxlen) as strcpy_substr;
-string copy_from_slider(string str, any slider) as strcpy_fromslider;
+string copy_from_slider(string str, any sliderOrIndex) as strcpy_fromslider;
 
 any get_char(string str, int offset) as str_getchar;
 any get_char(string str, int offset, char type) as str_getchar;

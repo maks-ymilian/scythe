@@ -17,6 +17,7 @@ void FreeMemoryStream(MemoryStream* stream, bool freeBuffer);
 
 void StreamWrite(MemoryStream* stream, const void* buffer, size_t length);
 void StreamWriteByte(MemoryStream* stream, char data);
+void StreamWriteStream(MemoryStream* destination, MemoryStream* source);
 
 Buffer StreamRead(MemoryStream* stream, size_t length);
 Buffer StreamRewindRead(MemoryStream* stream, size_t offset);

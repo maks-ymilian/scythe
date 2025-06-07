@@ -47,6 +47,11 @@ static void VisitStatement(const NodePtr node)
 {
 	switch (node.type)
 	{
+	case Node_Import:
+	case Node_StructDeclaration:
+	case Node_Input:
+	case Node_Null:
+		break;
 	case Node_ExpressionStatement:
 	{
 		const ExpressionStmt* exprStmt = node.ptr;
@@ -73,8 +78,6 @@ static void VisitStatement(const NodePtr node)
 		VisitStatement(funcDecl->block);
 		break;
 	}
-	case Node_StructDeclaration:
-		break;
 	case Node_BlockStatement:
 	{
 		const BlockStmt* block = node.ptr;
@@ -107,9 +110,6 @@ static void VisitStatement(const NodePtr node)
 		VisitStatement(whileStmt->stmt);
 		break;
 	}
-	case Node_Import:
-	case Node_Null:
-		break;
 	default: INVALID_VALUE(node.type);
 	}
 }

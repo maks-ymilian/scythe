@@ -33,6 +33,8 @@ const char* GetTokenTypeString(TokenType tokenType)
 
 	case Token_SizeOf: return "sizeof";
 
+	case Token_Input: return "input";
+
 	// literals
 	case Token_NumberLiteral: return "NumberLiteral";
 	case Token_StringLiteral: return "StringLiteral";

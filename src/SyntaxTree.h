@@ -39,6 +39,10 @@ typedef enum
 
 	Node_Return,
 
+	Node_Input,
+	Node_Property,
+	Node_PropertyList,
+
 	Node_Module,
 } NodeType;
 
@@ -327,6 +331,65 @@ typedef struct
 	NodePtr expr;
 	FuncDeclStmt* function;
 } ReturnStmt;
+
+typedef enum
+{
+	PropertyType_DefaultValue,
+	PropertyType_Min,
+	PropertyType_Max,
+	PropertyType_Increment,
+	PropertyType_Description,
+	PropertyType_Hidden,
+	PropertyType_Shape,
+	PropertyType_Midpoint,
+	PropertyType_Exponent,
+	PropertyType_LinearAutomation,
+	PropertyType_Type,
+} PropertyType;
+
+typedef struct
+{
+	int lineNumber;
+	PropertyType type;
+	NodePtr value;
+} PropertyNode;
+
+typedef struct
+{
+	Array list;
+} PropertyListNode;
+
+typedef enum
+{
+	SliderShape_NotSet,
+	SliderShape_Logarithmic,
+	SliderShape_Exponential,
+} SliderShape;
+
+typedef enum
+{
+	PropertyBoolean_NotSet = -1,
+	PropertyBoolean_True = true,
+	PropertyBoolean_False = false,
+} PropertyBoolean;
+
+typedef struct
+{
+	int lineNumber;
+	char* name;
+	NodePtr propertyList;
+	ModifierState modifiers;
+	char* defaultValue;
+	char* min;
+	char* max;
+	char* increment;
+	char* description;
+	char* midpoint;
+	char* exponent;
+	SliderShape shape;
+	PropertyBoolean hidden;
+	PropertyBoolean linear_automation;
+} InputStmt;
 
 typedef struct
 {

@@ -10,9 +10,11 @@
 #define INDENT_WIDTH 4
 #define INDENT_STRING "    "
 
-static MemoryStream* stream;
+static MemoryStream* sections;
+static MemoryStream* descriptionLines;
 
 static int indentationLevel;
+static uint64_t sliderNumber;
 
 static const int binaryPrecedence[] = {
 	[Binary_Exponentiation] = 18,
@@ -50,7 +52,7 @@ static const int binaryPrecedence[] = {
 	[Binary_XORAssign] = 0,
 };
 
-static void WriteUInt64(const uint64_t integer)
+static void WriteUInt64(uint64_t integer, MemoryStream* stream)
 {
 	char string[INT64_MAX_CHARS + 1];
 	int numChars = snprintf(string, sizeof(string), "%" PRIu64, integer);
@@ -59,7 +61,7 @@ static void WriteUInt64(const uint64_t integer)
 	StreamWrite(stream, string, (size_t)numChars);
 }
 
-static void WriteUniqueName(const int uniqueName)
+static void WriteUniqueName(int uniqueName, MemoryStream* stream)
 {
 	ASSERT(uniqueName > 0);
 	char string[INT64_MAX_CHARS + 1];
@@ -69,7 +71,7 @@ static void WriteUniqueName(const int uniqueName)
 	StreamWrite(stream, string, (size_t)numChars);
 }
 
-static void WriteString(const char* str)
+static void WriteString(const char* str, MemoryStream* stream)
 {
 	const size_t length = strlen(str);
 	if (length == 0)
@@ -84,7 +86,7 @@ static void WriteString(const char* str)
 	}
 }
 
-static void WriteChar(const char chr)
+static void WriteChar(char chr, MemoryStream* stream)
 {
 	StreamWriteByte(stream, chr);
 
@@ -95,13 +97,13 @@ static void WriteChar(const char chr)
 	}
 }
 
-static void PushIndent(void)
+static void PushIndent(MemoryStream* stream)
 {
 	StreamWrite(stream, INDENT_STRING, INDENT_WIDTH);
 	indentationLevel++;
 }
 
-static void PopIndent(void)
+static void PopIndent(MemoryStream* stream)
 {
 	const Buffer lastChars = StreamRewindRead(stream, INDENT_WIDTH);
 	if (memcmp(INDENT_STRING, lastChars.buffer, INDENT_WIDTH) == 0)
@@ -118,32 +120,32 @@ static void VisitFunctionCall(FuncCallExpr* funcCall)
 
 	VisitExpression(funcCall->baseExpr, &funcCallNode);
 
-	WriteChar('(');
+	WriteChar('(', sections);
 	for (size_t i = 0; i < funcCall->arguments.length; ++i)
 	{
 		VisitExpression(*(NodePtr*)funcCall->arguments.array[i], &funcCallNode);
 
 		if (i < funcCall->arguments.length - 1)
-			WriteString(", ");
+			WriteString(", ", sections);
 	}
-	WriteChar(')');
+	WriteChar(')', sections);
 }
 
 static void VisitLiteralExpression(LiteralExpr* literal)
 {
 	switch (literal->type)
 	{
-	case Literal_Float: WriteString(literal->floatValue); break;
-	case Literal_Int: WriteUInt64(literal->intValue); break;
+	case Literal_Float: WriteString(literal->floatValue, sections); break;
+	case Literal_Int: WriteUInt64(literal->intValue, sections); break;
 	case Literal_String:
-		WriteChar('\"');
-		WriteString(literal->string);
-		WriteChar('\"');
+		WriteChar('\"', sections);
+		WriteString(literal->string, sections);
+		WriteChar('\"', sections);
 		break;
 	case Literal_Char:
-		WriteChar('\'');
-		WriteString(literal->multiChar);
-		WriteChar('\'');
+		WriteChar('\'', sections);
+		WriteString(literal->multiChar, sections);
+		WriteChar('\'', sections);
 		break;
 	default: INVALID_VALUE(literal->type);
 	}
@@ -205,13 +207,13 @@ static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 
 	NodePtr binaryNode = (NodePtr){.ptr = binary, .type = Node_Binary};
 
-	if (writeBrackets) WriteChar('(');
+	if (writeBrackets) WriteChar('(', sections);
 	VisitExpression(binary->left, &binaryNode);
-	WriteChar(' ');
-	WriteString(operator);
-	WriteChar(' ');
+	WriteChar(' ', sections);
+	WriteString(operator, sections);
+	WriteChar(' ', sections);
 	VisitExpression(binary->right, &binaryNode);
-	if (writeBrackets) WriteChar(')');
+	if (writeBrackets) WriteChar(')', sections);
 }
 
 static void VisitUnaryExpression(UnaryExpr* unary)
@@ -225,7 +227,7 @@ static void VisitUnaryExpression(UnaryExpr* unary)
 	default: INVALID_VALUE(unary->operatorType);
 	}
 
-	WriteString(operator);
+	WriteString(operator, sections);
 	VisitExpression(unary->expression, &(NodePtr){.ptr = unary, .type = Node_Unary});
 }
 
@@ -234,9 +236,9 @@ static void VisitSubscriptExpression(SubscriptExpr* subscript)
 	NodePtr node = (NodePtr){.ptr = subscript, .type = Node_Subscript};
 
 	VisitExpression(subscript->baseExpr, &node);
-	WriteChar('[');
+	WriteChar('[', sections);
 	VisitExpression(subscript->indexExpr, &node);
-	WriteChar(']');
+	WriteChar(']', sections);
 }
 
 static bool IsExternal(const MemberAccessExpr* identifier)
@@ -274,11 +276,11 @@ static char* GetName(const MemberAccessExpr* identifier, bool external)
 
 static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
 {
-	WriteString(GetName(identifier, IsExternal(identifier)));
+	WriteString(GetName(identifier, IsExternal(identifier)), sections);
 	if (!IsExternal(identifier))
 	{
-		WriteChar('_');
-		WriteUniqueName(GetUniqueName(identifier));
+		WriteChar('_', sections);
+		WriteUniqueName(GetUniqueName(identifier), sections);
 	}
 }
 
@@ -322,18 +324,18 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 				Node_MemberAccess},
 		},
 		NULL);
-	WriteString(";\n");
+	WriteString(";\n", sections);
 }
 
 static void VisitBlock(const BlockStmt* block, const bool semicolon)
 {
-	WriteString("(\n");
-	PushIndent();
+	WriteString("(\n", sections);
+	PushIndent(sections);
 	for (size_t i = 0; i < block->statements.length; ++i)
 		VisitStatement(block->statements.array[i]);
-	PopIndent();
-	WriteChar(')');
-	if (semicolon) WriteString(";\n");
+	PopIndent(sections);
+	WriteChar(')', sections);
+	if (semicolon) WriteString(";\n", sections);
 }
 
 static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
@@ -341,26 +343,26 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	if (funcDecl->modifiers.externalValue)
 		return;
 
-	WriteString("function ");
-	WriteString(funcDecl->name);
-	WriteChar('_');
-	WriteUniqueName(funcDecl->uniqueName);
+	WriteString("function ", sections);
+	WriteString(funcDecl->name, sections);
+	WriteChar('_', sections);
+	WriteUniqueName(funcDecl->uniqueName, sections);
 
-	WriteChar('(');
+	WriteChar('(', sections);
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 	{
 		const NodePtr* node = funcDecl->parameters.array[i];
 
 		ASSERT(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
-		WriteString(varDecl->name);
-		WriteChar('_');
-		WriteUniqueName(varDecl->uniqueName);
+		WriteString(varDecl->name, sections);
+		WriteChar('_', sections);
+		WriteUniqueName(varDecl->uniqueName, sections);
 
 		if (i < funcDecl->parameters.length - 1)
-			WriteString(", ");
+			WriteString(", ", sections);
 	}
-	WriteString(")\n");
+	WriteString(")\n", sections);
 
 	ASSERT(funcDecl->block.type == Node_BlockStatement);
 	VisitBlock(funcDecl->block.ptr, true);
@@ -369,26 +371,26 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 static void VisitIfStatement(const IfStmt* ifStmt)
 {
 	VisitExpression(ifStmt->expr, NULL);
-	WriteString(" ?\n");
+	WriteString(" ?\n", sections);
 
 	ASSERT(ifStmt->trueStmt.type == Node_BlockStatement);
 	VisitBlock(ifStmt->trueStmt.ptr, false);
 
 	if (ifStmt->falseStmt.ptr != NULL)
 	{
-		WriteString(" : ");
+		WriteString(" : ", sections);
 		ASSERT(ifStmt->falseStmt.type == Node_BlockStatement);
 		VisitBlock(ifStmt->falseStmt.ptr, false);
 	}
 
-	WriteString(";\n");
+	WriteString(";\n", sections);
 }
 
 static void VisitWhileStatement(const WhileStmt* whileStmt)
 {
-	WriteString("while (");
+	WriteString("while (", sections);
 	VisitExpression(whileStmt->expr, NULL);
-	WriteString(")\n");
+	WriteString(")\n", sections);
 
 	ASSERT(whileStmt->stmt.type == Node_BlockStatement);
 	VisitBlock(whileStmt->stmt.ptr, true);
@@ -412,7 +414,7 @@ static void VisitStatement(const NodePtr* node)
 	{
 		const ExpressionStmt* expressionStmt = node->ptr;
 		VisitExpression(expressionStmt->expr, NULL);
-		WriteString(";\n");
+		WriteString(";\n", sections);
 		break;
 	}
 	case Node_BlockStatement:
@@ -450,25 +452,66 @@ static void VisitSection(const SectionStmt* section)
 	default: INVALID_VALUE(section->sectionType);
 	}
 
-	WriteChar('@');
-	WriteString(sectionText);
-	WriteChar('\n');
+	WriteChar('@', sections);
+	WriteString(sectionText, sections);
+	WriteChar('\n', sections);
 
 	ASSERT(section->block.type == Node_BlockStatement);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
 		VisitStatement(block->statements.array[i]);
 
-	WriteChar('\n');
+	WriteChar('\n', sections);
+}
+
+static void WriteSlider(const InputStmt* slider)
+{
+	WriteString("slider", descriptionLines);
+	WriteUInt64(sliderNumber++, descriptionLines);
+	WriteChar(':', descriptionLines);
+
+	WriteString(slider->name, descriptionLines);
+	WriteChar('=', descriptionLines);
+	WriteString(slider->defaultValue, descriptionLines);
+
+	WriteChar('<', descriptionLines);
+	WriteString(slider->min, descriptionLines);
+	WriteChar(',', descriptionLines);
+	WriteString(slider->max, descriptionLines);
+	WriteChar(',', descriptionLines);
+	WriteString(slider->increment, descriptionLines);
+	if (slider->shape == SliderShape_Logarithmic)
+	{
+		WriteString(":log", descriptionLines);
+		if (slider->linear_automation)
+			WriteChar('!', descriptionLines);
+		WriteChar('=', descriptionLines);
+		WriteString(slider->midpoint, descriptionLines);
+	}
+	else if (slider->shape == SliderShape_Exponential)
+	{
+		WriteString(":sqr", descriptionLines);
+		if (slider->linear_automation)
+			WriteChar('!', descriptionLines);
+		WriteChar('=', descriptionLines);
+		WriteString(slider->exponent, descriptionLines);
+	}
+	WriteChar('>', descriptionLines);
+
+	if (slider->hidden)
+		WriteChar('-', descriptionLines);
+	WriteString(slider->description, descriptionLines);
+
+	WriteChar('\n', descriptionLines);
 }
 
 static void VisitModule(const ModuleNode* module)
 {
 	if (module->statements.length != 0)
 	{
-		WriteString("// Module: ");
-		WriteString(module->moduleName);
-		WriteChar('\n');
+		WriteString("// Module: ", sections);
+		WriteString(module->moduleName, sections);
+		WriteChar('\n', sections);
 	}
 
 	for (size_t i = 0; i < module->statements.length; ++i)
@@ -478,6 +521,9 @@ static void VisitModule(const ModuleNode* module)
 		{
 		case Node_Section:
 			VisitSection(stmt->ptr);
+			break;
+		case Node_Input:
+			WriteSlider(stmt->ptr);
 			break;
 		case Node_Import:
 		case Node_Null:
@@ -490,12 +536,14 @@ static void VisitModule(const ModuleNode* module)
 void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 {
 	indentationLevel = 0;
-	stream = AllocateMemoryStream();
+	sliderNumber = 1;
 
-	WriteString("tabsize: ");
-	WriteUInt64(INDENT_WIDTH);
-	WriteChar('\n');
-	WriteChar('\n');
+	sections = AllocateMemoryStream();
+	descriptionLines = AllocateMemoryStream();
+
+	WriteString("tabsize: ", descriptionLines);
+	WriteUInt64(INDENT_WIDTH, descriptionLines);
+	WriteChar('\n', descriptionLines);
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -504,8 +552,15 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 		VisitModule(node->ptr);
 	}
 
-	const Buffer buffer = StreamGetBuffer(stream);
-	FreeMemoryStream(stream, false);
-	if (outBuffer != NULL) *outBuffer = buffer.buffer;
-	if (outLength != NULL) *outLength = buffer.length;
+	MemoryStream* main = AllocateMemoryStream();
+	StreamWriteStream(main, descriptionLines);
+	StreamWriteByte(main, '\n');
+	StreamWriteStream(main, sections);
+
+	FreeMemoryStream(descriptionLines, true);
+	FreeMemoryStream(sections, true);
+
+	if (outBuffer != NULL) *outBuffer = StreamGetBuffer(main).buffer;
+	if (outLength != NULL) *outLength = StreamGetBuffer(main).length;
+	FreeMemoryStream(main, false);
 }

@@ -22,6 +22,7 @@ static Result ParseTypeAndIdentifier(Type* type, const Token** identifier);
 static Result ParseModifierDeclaration(NodePtr* out);
 static Result ContinueParsePrimary(NodePtr* inout, bool alreadyParsedDot);
 static Result ParseFullVarDeclNoSemicolon(NodePtr* out, void* data);
+static Result ParsePropertyList(NodePtr* out);
 
 static Token* CurrentToken(void)
 {
@@ -1553,12 +1554,116 @@ moreThanOne:
 	return ERROR_RESULT_LINE("Cannot have more than one modifier of the same type");
 }
 
+static Result StringToPropertyType(const char* string, size_t stringSize, PropertyType* out)
+{
+	if (strncmp(string, "default_value", stringSize) == 0)
+		*out = PropertyType_DefaultValue;
+	else if (strncmp(string, "min", stringSize) == 0)
+		*out = PropertyType_Min;
+	else if (strncmp(string, "max", stringSize) == 0)
+		*out = PropertyType_Max;
+	else if (strncmp(string, "increment", stringSize) == 0)
+		*out = PropertyType_Increment;
+	else if (strncmp(string, "description", stringSize) == 0)
+		*out = PropertyType_Description;
+	else if (strncmp(string, "hidden", stringSize) == 0)
+		*out = PropertyType_Hidden;
+	else if (strncmp(string, "shape", stringSize) == 0)
+		*out = PropertyType_Shape;
+	else if (strncmp(string, "midpoint", stringSize) == 0)
+		*out = PropertyType_Midpoint;
+	else if (strncmp(string, "exponent", stringSize) == 0)
+		*out = PropertyType_Exponent;
+	else if (strncmp(string, "linear_automation", stringSize) == 0)
+		*out = PropertyType_LinearAutomation;
+	else if (strncmp(string, "type", stringSize) == 0)
+		*out = PropertyType_Type;
+	else
+		return ERROR_RESULT_LINE("Invalid property type");
+
+	return SUCCESS_RESULT;
+}
+
+static Result ParseProperty(NodePtr* out, void* data)
+{
+	(void)data;
+
+	Token* property = MatchOne(Token_Identifier);
+	if (!property)
+		return NOT_FOUND_RESULT;
+
+	PropertyType propertyType;
+	PROPAGATE_ERROR(StringToPropertyType(property->text, property->textSize, &propertyType));
+
+	if (!MatchOne(Token_Colon))
+		return ERROR_RESULT_LINE("Expected \":\"");
+
+	NodePtr value = NULL_NODE;
+	PROPAGATE_ERROR(ParseExpression(&value));
+	if (!value.ptr)
+		PROPAGATE_ERROR(ParsePropertyList(&value));
+	if (!value.ptr)
+		return ERROR_RESULT_LINE("Expected value");
+
+	*out = AllocASTNode(
+		&(PropertyNode){
+			.lineNumber = property->lineNumber,
+			.type = propertyType,
+			.value = value,
+		},
+		sizeof(PropertyNode), Node_Property);
+	return SUCCESS_RESULT;
+}
+
+static Result ParsePropertyList(NodePtr* out)
+{
+	if (!MatchOne(Token_LeftCurlyBracket))
+		return NOT_FOUND_RESULT;
+
+	Array list;
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&list, ParseProperty, NULL, Token_RightCurlyBracket, false));
+
+	*out = AllocASTNode(
+		&(PropertyListNode){
+			.list = list,
+		},
+		sizeof(PropertyListNode), Node_PropertyList);
+	return SUCCESS_RESULT;
+}
+
+static Result ParseInputStatement(NodePtr* out, ModifierState modifiers)
+{
+	if (!MatchOne(Token_Input))
+		return NOT_FOUND_RESULT;
+
+	Token* name = MatchOne(Token_Identifier);
+	if (!name)
+		return ERROR_RESULT_LINE("Expected input name");
+
+	NodePtr list = NULL_NODE;
+	PROPAGATE_ERROR(ParsePropertyList(&list));
+
+	if (!MatchOne(Token_Semicolon))
+		return ERROR_RESULT_LINE("Expected \";\"");
+
+	*out = AllocASTNode(
+		&(InputStmt){
+			.lineNumber = name->lineNumber,
+			.name = AllocateStringLength(name->text, name->textSize),
+			.propertyList = list,
+			.modifiers = modifiers,
+		},
+		sizeof(InputStmt), Node_Input);
+	return SUCCESS_RESULT;
+}
+
 static Result ParseModifierDeclaration(NodePtr* out)
 {
 	ModifierState modifierState;
 	bool hasAnyModifiers;
 	PROPAGATE_ERROR(ParseModifiers(&modifierState, &hasAnyModifiers));
 
+	PROPAGATE_FOUND(ParseInputStatement(out, modifierState));
 	PROPAGATE_FOUND(ParseStructDeclaration(out, modifierState));
 	PROPAGATE_FOUND(ParseImportStatement(out, modifierState));
 	PROPAGATE_FOUND(ParseDeclaration(out, modifierState));
@@ -1745,7 +1850,8 @@ static Result ParseProgram(AST* out)
 			stmt.type != Node_StructDeclaration &&
 			stmt.type != Node_VariableDeclaration &&
 			stmt.type != Node_Modifier &&
-			stmt.type != Node_Import)
+			stmt.type != Node_Import &&
+			stmt.type != Node_Input)
 			return ERROR_RESULT_LINE(
 				"Expected section statement, variable declaration, struct declaration, or function declaration");
 

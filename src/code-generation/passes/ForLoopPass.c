@@ -69,6 +69,15 @@ static void VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
+	case Node_Return:
+	case Node_VariableDeclaration:
+	case Node_StructDeclaration:
+	case Node_ExpressionStatement:
+	case Node_LoopControl:
+	case Node_Import:
+	case Node_Input:
+	case Node_Null:
+		break;
 	case Node_For:
 	{
 		VisitForStatement(node);
@@ -106,14 +115,6 @@ static void VisitStatement(NodePtr* node)
 		VisitStatement(&whileStmt->stmt);
 		break;
 	}
-	case Node_Return:
-	case Node_VariableDeclaration:
-	case Node_StructDeclaration:
-	case Node_ExpressionStatement:
-	case Node_LoopControl:
-	case Node_Import:
-	case Node_Null:
-		break;
 	default: INVALID_VALUE(node->type);
 	}
 }

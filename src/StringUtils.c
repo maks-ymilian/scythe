@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Common.h"
+
 size_t SignedIntCharCount(int64_t number)
 {
 	if (number < 0)
@@ -74,6 +76,14 @@ size_t UnsignedIntCharCount(uint64_t number)
 	if (number < 1000000000000000000ULL) return 18;
 	if (number < 10000000000000000000ULL) return 19;
 	return 20;
+}
+
+char* AllocUInt64ToString(uint64_t integer)
+{
+	char string[INT64_MAX_CHARS + 1];
+	int numChars = snprintf(string, sizeof(string), "%" PRIu64, integer);
+	ASSERT(numChars >= 1);
+	return AllocateStringLength(string, (size_t)numChars);
 }
 
 char* AllocateString(const char* string)

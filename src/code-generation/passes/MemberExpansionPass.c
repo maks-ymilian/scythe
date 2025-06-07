@@ -868,6 +868,11 @@ static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
+	case Node_LoopControl:
+	case Node_Import:
+	case Node_Input:
+	case Node_Null:
+		break;
 	case Node_VariableDeclaration:
 	{
 		PROPAGATE_ERROR(VisitVariableDeclaration(node));
@@ -922,10 +927,6 @@ static Result VisitStatement(NodePtr* node)
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		break;
 	}
-	case Node_LoopControl:
-	case Node_Import:
-	case Node_Null:
-		break;
 	default: INVALID_VALUE(node->type);
 	}
 

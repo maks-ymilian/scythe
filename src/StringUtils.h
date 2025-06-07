@@ -8,6 +8,8 @@
 size_t SignedIntCharCount(int64_t number);
 size_t UnsignedIntCharCount(uint64_t number);
 
+char* AllocUInt64ToString(uint64_t integer);
+
 char* AllocateString(const char* string);
 char* AllocateStringLength(const char* string, size_t length);
 char* AllocateString1Str(const char* format, const char* insert);

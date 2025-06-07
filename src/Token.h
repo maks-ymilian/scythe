@@ -34,6 +34,8 @@ typedef enum
 
 	Token_SizeOf,
 
+	Token_Input,
+
 	// literals
 	Token_NumberLiteral,
 	Token_StringLiteral,
