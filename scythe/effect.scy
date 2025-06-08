@@ -20,9 +20,9 @@ import "builtin/jsfx.scy"
 }
 
 public input playSpeed {
-	default_value: 1,
-	// min: -2,
-	max: 4,
+	default_value: 0,
+	min: -2,
+	max: 2,
 };
 
 public input samples {
@@ -63,6 +63,8 @@ float play;
 	// keep pointers in range
 	while (play >= buffer.length) play -= buffer.length;
 	while (write >= buffer.length) write -= buffer.length;
+	while (play < buffer.ptr) play += buffer.length;
+	while (write < buffer.ptr) write += buffer.length;
 
 	// write
 	buffer[write] = Sample {

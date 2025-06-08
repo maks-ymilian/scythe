@@ -928,6 +928,21 @@ static Result SetNumberProperty(NodePtr value, void* destination, int lineNumber
 	if (*number)
 		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
 
+	bool isNegative = false;
+	if (value.type == Node_Unary)
+	{
+		UnaryExpr* unary = value.ptr;
+		if (unary->operatorType == Unary_Minus ||
+			unary->operatorType == Unary_Plus)
+		{
+			ASSERT(!unary->postfix);
+			isNegative = unary->operatorType == Unary_Minus;
+			value = unary->expression;
+		}
+		else
+			goto invalidValue;
+	}
+
 	if (value.type != Node_Literal)
 		goto invalidValue;
 	LiteralExpr* literal = value.ptr;
@@ -935,7 +950,7 @@ static Result SetNumberProperty(NodePtr value, void* destination, int lineNumber
 	if (literal->type != Literal_Number)
 		goto invalidValue;
 
-	*number = AllocateString(literal->number);
+	*number = AllocateString2Str("%s%s", isNegative ? "-" : "", literal->number);
 	return SUCCESS_RESULT;
 
 invalidValue:
