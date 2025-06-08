@@ -213,7 +213,7 @@ static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 	else if (parentExpr->type == Node_Binary)
 	{
 		BinaryExpr* parent = parentExpr->ptr;
-		if (binaryPrecedence[binary->operatorType] >= binaryPrecedence[parent->operatorType])
+		if (binaryPrecedence[binary->operatorType] > binaryPrecedence[parent->operatorType])
 			writeBrackets = false;
 	}
 
