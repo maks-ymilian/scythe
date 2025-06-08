@@ -1,13 +1,15 @@
 // todo:
+	// link built in library to executable
+	// int conversion breaks pass by reference
 	// enums
 		// enum sliders
-	// make it so all sections are in the same scope
+	// add #namedStrings
+	// ternary
+	// gfx size
 	// desc, tags, author, options, in_pin, out_pin, ...
 	// function call 40 param limit
-	// add #namedStrings
 	// control characters in strings
 	// structs in blocks
-	// asserts
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// dead code elimination
 		// unused functions, empty sections
@@ -16,8 +18,7 @@
 	// undocumented functions
 	// double pointers?
 	// check if built in function overloads are correct
-
-	// int conversion breaks pass by reference
+	// asserts
 
 // things to test:
 	// make a test for every possible error
