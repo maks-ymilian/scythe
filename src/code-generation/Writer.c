@@ -22,13 +22,12 @@ static const char watermark[] =
 	"  |_______/  \\_______/ \\____  $$   \\___/  |__/  |__/ \\_______/\n"
 	"                       /$$  | $$                              \n"
 	"                      |  $$$$$$/                              \n"
-	"                       \\______/                               \n\n";
+	"                       \\______/                               \n";
 
 static MemoryStream* sections;
 static MemoryStream* descriptionLines;
 
 static int indentationLevel;
-static uint64_t sliderNumber;
 
 static const int binaryPrecedence[] = {
 	[Binary_Exponentiation] = 18,
@@ -480,7 +479,7 @@ static void VisitSection(const SectionStmt* section)
 static void WriteSlider(const InputStmt* slider)
 {
 	WriteString("slider", descriptionLines);
-	WriteUInt64(sliderNumber++, descriptionLines);
+	WriteUInt64(slider->sliderNumber, descriptionLines);
 	WriteChar(':', descriptionLines);
 
 	ASSERT(slider->varDecl.type == Node_VariableDeclaration);
@@ -552,7 +551,6 @@ static void VisitModule(const ModuleNode* module)
 void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 {
 	indentationLevel = 0;
-	sliderNumber = 1;
 
 	sections = AllocateMemoryStream();
 	descriptionLines = AllocateMemoryStream();
@@ -570,6 +568,7 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 
 	MemoryStream* main = AllocateMemoryStream();
 	WriteString(watermark, main);
+	StreamWriteByte(main, '\n');
 	StreamWriteStream(main, descriptionLines);
 	StreamWriteByte(main, '\n');
 	StreamWriteStream(main, sections);

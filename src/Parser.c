@@ -1653,7 +1653,6 @@ static Result ParseInputStatement(NodePtr* out, ModifierState modifiers)
 			.lineNumber = name->lineNumber,
 			.name = AllocateStringLength(name->text, name->textSize),
 			.propertyList = list,
-			.varDecl = NULL_NODE,
 			.modifiers = modifiers,
 		},
 		sizeof(InputStmt), Node_Input);

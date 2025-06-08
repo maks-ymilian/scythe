@@ -32,6 +32,8 @@ static StructDeclStmt* primitiveTypeToArrayStruct[] = {
 
 static ModifierState currentModifierState;
 
+static uint64_t sliderNumber;
+
 static Result VisitStatement(NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
 static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* outIsType);
@@ -423,6 +425,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	{
 	case Node_StructDeclaration:
 	case Node_FunctionDeclaration:
+	case Node_Input:
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	case Node_Null:
 	{
@@ -449,7 +452,18 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = current->ptr;
-		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
+
+		// special case for accessing slider number in input statement
+		if (varDecl->inputStmt)
+		{
+			if (strcmp(text, "sliderNumber") != 0)
+				return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
+
+			*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_Input};
+			return SUCCESS_RESULT;
+		}
+		else
+			return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
 	}
 	case Node_FunctionCall:
 	case Node_BlockExpression:
@@ -561,12 +575,17 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 	switch (current.type)
 	{
 	case Node_FunctionDeclaration:
+	{
 		memberAccess->funcReference = current.ptr;
 		break;
+	}
 	case Node_StructDeclaration:
+	{
 		memberAccess->typeReference = current.ptr;
 		break;
+	}
 	case Node_VariableDeclaration:
+	{
 		ASSERT(memberAccess->varReference != NULL);
 		// if there is more identifiers after varReference then change it to parent
 		if (memberAccess->varReference != current.ptr)
@@ -575,6 +594,17 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 			memberAccess->varReference = current.ptr;
 		}
 		break;
+	}
+
+	// special case for accessing slider number in input statement
+	case Node_Input:
+	{
+		InputStmt* input = current.ptr;
+		int lineNumber = memberAccess->lineNumber;
+		FreeASTNode(*node);
+		*node = AllocUInt64Integer(input->sliderNumber, lineNumber);
+		break;
+	}
 	default: INVALID_VALUE(current.type);
 	}
 
@@ -1373,10 +1403,12 @@ static Result VisitStatement(NodePtr* node)
 					.publicValue = input->modifiers.publicValue,
 				},
 				.uniqueName = -1,
+				.inputStmt = input,
 			},
 			sizeof(VarDeclStmt), Node_VariableDeclaration);
 		PROPAGATE_ERROR(VisitStatement(&input->varDecl));
 
+		input->sliderNumber = sliderNumber++;
 		return SUCCESS_RESULT;
 	}
 	case Node_LoopControl:
@@ -1406,6 +1438,8 @@ static Result VisitModule(ModuleNode* module)
 
 Result ResolverPass(const AST* ast)
 {
+	sliderNumber = 1;
+
 	structTypeToArrayStruct = AllocateMap(sizeof(StructDeclStmt*));
 
 	modules = AllocateMap(sizeof(Map));

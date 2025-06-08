@@ -219,12 +219,47 @@ typedef struct
 	NodePtr block;
 } SectionStmt;
 
+typedef enum
+{
+	SliderShape_NotSet,
+	SliderShape_Logarithmic,
+	SliderShape_Exponential,
+} SliderShape;
+
+typedef enum
+{
+	PropertyBoolean_NotSet = -1,
+	PropertyBoolean_True = true,
+	PropertyBoolean_False = false,
+} PropertyBoolean;
+
+typedef struct
+{
+	int lineNumber;
+	char* name;
+	NodePtr propertyList;
+	NodePtr varDecl;
+	ModifierState modifiers;
+	char* defaultValue;
+	char* min;
+	char* max;
+	char* increment;
+	char* description;
+	char* midpoint;
+	char* exponent;
+	SliderShape shape;
+	PropertyBoolean hidden;
+	PropertyBoolean linear_automation;
+	uint64_t sliderNumber;
+} InputStmt;
+
 typedef struct
 {
 	int lineNumber;
 	Type type;
 	char* name;
 	char* externalName;
+	InputStmt* inputStmt;
 	NodePtr initializer;
 	Array instantiatedVariables;
 	ModifierState modifiers;
@@ -356,39 +391,6 @@ typedef struct
 {
 	Array list;
 } PropertyListNode;
-
-typedef enum
-{
-	SliderShape_NotSet,
-	SliderShape_Logarithmic,
-	SliderShape_Exponential,
-} SliderShape;
-
-typedef enum
-{
-	PropertyBoolean_NotSet = -1,
-	PropertyBoolean_True = true,
-	PropertyBoolean_False = false,
-} PropertyBoolean;
-
-typedef struct
-{
-	int lineNumber;
-	char* name;
-	NodePtr propertyList;
-	NodePtr varDecl;
-	ModifierState modifiers;
-	char* defaultValue;
-	char* min;
-	char* max;
-	char* increment;
-	char* description;
-	char* midpoint;
-	char* exponent;
-	SliderShape shape;
-	PropertyBoolean hidden;
-	PropertyBoolean linear_automation;
-} InputStmt;
 
 typedef struct
 {
