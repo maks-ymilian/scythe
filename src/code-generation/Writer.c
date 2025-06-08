@@ -470,7 +470,10 @@ static void WriteSlider(const InputStmt* slider)
 	WriteUInt64(sliderNumber++, descriptionLines);
 	WriteChar(':', descriptionLines);
 
+	ASSERT(slider->varDecl.type == Node_VariableDeclaration);
 	WriteString(slider->name, descriptionLines);
+	WriteChar('_', descriptionLines);
+	WriteUniqueName(((VarDeclStmt*)slider->varDecl.ptr)->uniqueName, descriptionLines);
 	WriteChar('=', descriptionLines);
 	WriteString(slider->defaultValue, descriptionLines);
 

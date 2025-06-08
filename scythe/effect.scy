@@ -3,7 +3,7 @@ import "builtin/jsfx.scy"
 @gfx
 {
 	// todo
-	// slider inScope;
+	// input inScope;
 
 	gfx.set(0.3, 0.5, 0.6);
 
@@ -19,20 +19,12 @@ import "builtin/jsfx.scy"
 	gfx.get_pixel(result, 0, 0);
 }
 
-struct Sample
-{
-	float l;
-	float r;
-}
-
-external float playSpeed;
 public input playSpeed {
 	default_value: 1,
 	// min: -2, todo
 	max: 4,
 };
 
-external float samples;
 public input samples {
 	default_value: 1000,
 	min: 1,
@@ -44,6 +36,11 @@ public input samples {
 	},
 };
 
+struct Sample
+{
+	float l;
+	float r;
+}
 
 Sample[] buffer;
 float write;
@@ -57,6 +54,8 @@ float play;
 	};
 	write = 0;
 	play = 0;
+
+	mem.set(0, 0, buffer.length * sizeof(Sample));
 }
 
 @sample

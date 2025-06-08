@@ -378,6 +378,7 @@ typedef struct
 	int lineNumber;
 	char* name;
 	NodePtr propertyList;
+	NodePtr varDecl;
 	ModifierState modifiers;
 	char* defaultValue;
 	char* min;

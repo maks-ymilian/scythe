@@ -1343,6 +1343,25 @@ static Result VisitStatement(NodePtr* node)
 			return ERROR_RESULT("Input statements can only be internal", input->lineNumber, currentFilePath);
 
 		PROPAGATE_ERROR(SetInputProperties(input));
+
+		input->varDecl = AllocASTNode(
+			&(VarDeclStmt){
+				.lineNumber = input->lineNumber,
+				.type = (Type){
+					.expr = AllocPrimitiveType(Primitive_Float, input->lineNumber),
+					.modifier = TypeModifier_None,
+				},
+				.name = AllocateString(input->name),
+				.instantiatedVariables = AllocateArray(sizeof(VarDeclStmt*)),
+				.modifiers = (ModifierState){
+					.publicSpecified = true,
+					.publicValue = input->modifiers.publicValue,
+				},
+				.uniqueName = -1,
+			},
+			sizeof(VarDeclStmt), Node_VariableDeclaration);
+		PROPAGATE_ERROR(VisitStatement(&input->varDecl));
+
 		return SUCCESS_RESULT;
 	}
 	case Node_LoopControl:

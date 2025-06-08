@@ -464,6 +464,9 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		ptr->name = AllocateString(ptr->name);
 
+		ptr->varDecl = CopyASTNode(ptr->varDecl);
+		ptr->propertyList = CopyASTNode(ptr->propertyList);
+
 		return copy;
 	}
 	case Node_PropertyList:
@@ -675,6 +678,9 @@ void FreeASTNode(const NodePtr node)
 		free(ptr->description);
 		free(ptr->midpoint);
 		free(ptr->exponent);
+
+		FreeASTNode(ptr->varDecl);
+		FreeASTNode(ptr->propertyList);
 		break;
 	}
 	case Node_PropertyList:

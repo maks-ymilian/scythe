@@ -1,5 +1,6 @@
 // todo:
 	// enums
+	// make it so all sections are in the same scope
 	// sliders
 		// slider1:0<0,5,1{zerolabel,onelabel,twolabel,threelabel,fourlabel,fivelabel}>some setting
 		// always have - at start of description and then show them in an init section

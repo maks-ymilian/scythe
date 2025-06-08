@@ -49,7 +49,6 @@ static void VisitStatement(const NodePtr node)
 	{
 	case Node_Import:
 	case Node_StructDeclaration:
-	case Node_Input:
 	case Node_Null:
 		break;
 	case Node_ExpressionStatement:
@@ -76,6 +75,13 @@ static void VisitStatement(const NodePtr node)
 			VisitStatement(*node);
 		}
 		VisitStatement(funcDecl->block);
+		break;
+	}
+	case Node_Input:
+	{
+		InputStmt* input = node.ptr;
+		ASSERT(input->varDecl.type == Node_VariableDeclaration);
+		VisitStatement(input->varDecl);
 		break;
 	}
 	case Node_BlockStatement:
