@@ -1,5 +1,21 @@
 import "builtin/jsfx.scy"
 
+public input playSpeed {
+	default_value: 0,
+	min: -2,
+	max: 2,
+};
+
+public input samples {
+	default_value: 1000,
+	min: 1,
+	max: 48000,
+	increment: 1, shape: {
+		type: log,
+		midpoint: 1000,
+	},
+};
+
 @gfx
 {
 	gfx.set(0.3, 0.5, 0.6);
@@ -16,23 +32,6 @@ import "builtin/jsfx.scy"
 	gfx.get_pixel(result, 0, 0);
 }
 
-public input playSpeed {
-	default_value: 0,
-	min: -2,
-	max: 2,
-};
-
-public input samples {
-	default_value: 1000,
-	min: 1,
-	max: 48000,
-	increment: 1,
-	shape: {
-		type: log,
-		midpoint: 1000,
-	},
-};
-
 struct Sample
 {
 	float l;
@@ -47,7 +46,7 @@ float play;
 {
 	buffer = Sample[] {
 		.ptr = 0,
-		.length = samples,
+		.length = samples.value,
 	};
 	write = 0;
 	play = 0;
@@ -75,5 +74,5 @@ float play;
 	// play
 	jsfx.spl0 = buffer[play].l;
 	jsfx.spl1 = buffer[play].r;
-	play += playSpeed;
+	play += playSpeed.value;
 }

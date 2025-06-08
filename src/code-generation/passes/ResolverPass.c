@@ -425,7 +425,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	{
 	case Node_StructDeclaration:
 	case Node_FunctionDeclaration:
-	case Node_Input:
+	case Node_Return: // part of the hack
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	case Node_Null:
 	{
@@ -441,6 +441,14 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 				if (resolveFuncCall && node->type == Node_FunctionDeclaration)
 					return FindFunctionOverloadScoped(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
 
+				// special case for accessing members in input variable
+				if (node->type == Node_VariableDeclaration &&
+					((VarDeclStmt*)node->ptr)->inputStmt)
+				{
+					*current = (NodePtr){.ptr = ((VarDeclStmt*)node->ptr)->inputStmt, .type = Node_Input};
+					return SUCCESS_RESULT;
+				}
+
 				*current = *node;
 				return SUCCESS_RESULT;
 			}
@@ -452,18 +460,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = current->ptr;
-
-		// special case for accessing slider number in input statement
-		if (varDecl->inputStmt)
-		{
-			if (strcmp(text, "sliderNumber") != 0)
-				return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
-
-			*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_Input};
-			return SUCCESS_RESULT;
-		}
-		else
-			return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
+		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
 	}
 	case Node_FunctionCall:
 	case Node_BlockExpression:
@@ -548,6 +545,19 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		*current = node;
 		return SUCCESS_RESULT;
 	}
+	case Node_Input:
+	{
+		InputStmt* input = current->ptr;
+
+		if (strcmp(text, "sliderNumber") == 0)
+			*current = (NodePtr){.ptr = input, .type = Node_Return}; // Node_Return here is a hack
+		else if (strcmp(text, "value") == 0)
+			*current = input->varDecl;
+		else
+			return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
+
+		return SUCCESS_RESULT;
+	}
 	default: INVALID_VALUE(current->type);
 	}
 }
@@ -595,9 +605,12 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 		}
 		break;
 	}
-
-	// special case for accessing slider number in input statement
 	case Node_Input:
+	{
+		return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
+	}
+	// stupid hack for accessing sliderNumber member in input variable
+	case Node_Return:
 	{
 		InputStmt* input = current.ptr;
 		int lineNumber = memberAccess->lineNumber;
