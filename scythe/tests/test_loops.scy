@@ -13,7 +13,7 @@ int test_loops(int value)
 
 			while (inner_counter < (value * 3))
 			{
-				result += (outer_counter * middle_counter) - (inner_counter / 2);
+				result += (outer_counter * middle_counter) - int{inner_counter / 2};
 
 				if (result > 10000)
 				{
