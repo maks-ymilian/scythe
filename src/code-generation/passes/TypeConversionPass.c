@@ -309,13 +309,7 @@ static Result VisitUnaryExpression(NodePtr* node)
 						? Binary_AddAssign
 						: Binary_SubtractAssign,
 				.left = unary->expression,
-				.right = AllocASTNode(
-					&(LiteralExpr){
-						.lineNumber = unary->lineNumber,
-						.type = Literal_Int,
-						.intValue = 1,
-					},
-					sizeof(LiteralExpr), Node_Literal),
+				.right = AllocUInt64Integer(1, unary->lineNumber),
 			},
 			sizeof(BinaryExpr), Node_Binary);
 		unary->expression = NULL_NODE;
@@ -392,8 +386,8 @@ static Result VisitExpression(NodePtr* node)
 		LiteralExpr* literal = node->ptr;
 		if (literal->type == Literal_Boolean)
 		{
-			literal->type = Literal_Int;
-			literal->intValue = literal->boolean ? 1 : 0;
+			literal->type = Literal_Number;
+			literal->number = AllocUInt64ToString(literal->boolean ? 1 : 0);
 		}
 		break;
 	}
@@ -425,13 +419,7 @@ static Result AddVariableInitializer(VarDeclStmt* varDecl)
 	case Primitive_Float:
 	case Primitive_Int:
 	{
-		varDecl->initializer = AllocASTNode(
-			&(LiteralExpr){
-				.lineNumber = varDecl->lineNumber,
-				.type = Literal_Int,
-				.intValue = 0,
-			},
-			sizeof(LiteralExpr), Node_Literal);
+		varDecl->initializer = AllocUInt64Integer(0, varDecl->lineNumber);
 		break;
 	}
 	case Primitive_Bool:

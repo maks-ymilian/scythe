@@ -149,8 +149,7 @@ static void VisitLiteralExpression(LiteralExpr* literal)
 {
 	switch (literal->type)
 	{
-	case Literal_Float: WriteString(literal->floatValue, sections); break;
-	case Literal_Int: WriteUInt64(literal->intValue, sections); break;
+	case Literal_Number: WriteString(literal->number, sections); break;
 	case Literal_String:
 		WriteChar('\"', sections);
 		WriteString(literal->string, sections);

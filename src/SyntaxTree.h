@@ -125,8 +125,7 @@ typedef enum
 
 typedef enum
 {
-	Literal_Float,
-	Literal_Int,
+	Literal_Number,
 	Literal_String,
 	Literal_Char,
 	Literal_Boolean,
@@ -140,8 +139,7 @@ typedef struct
 
 	union
 	{
-		char* floatValue;
-		uint64_t intValue;
+		char* number;
 		char* string;
 		char* multiChar;
 		bool boolean;

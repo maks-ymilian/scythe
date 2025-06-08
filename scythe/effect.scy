@@ -21,7 +21,7 @@ import "builtin/jsfx.scy"
 
 public input playSpeed {
 	default_value: 1,
-	// min: -2, todo
+	// min: -2,
 	max: 4,
 };
 

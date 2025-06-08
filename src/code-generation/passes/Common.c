@@ -1,5 +1,7 @@
 #include "Common.h"
 
+#include "StringUtils.h"
+
 StructTypeInfo GetStructTypeInfoFromType(Type type)
 {
 	ASSERT(type.expr.ptr != NULL);
@@ -191,9 +193,8 @@ PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node)
 		LiteralExpr* literal = node.ptr;
 		switch (literal->type)
 		{
-		case Literal_Float:
+		case Literal_Number:
 			return NonPointerType(Primitive_Float);
-		case Literal_Int:
 		case Literal_String:
 		case Literal_Char:
 			return NonPointerType(Primitive_Int);
@@ -379,17 +380,6 @@ NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr value, int lineNumber)
 	return AllocAssignmentStatement(AllocIdentifier(varDecl, lineNumber), value, lineNumber);
 }
 
-NodePtr AllocInteger(uint64_t value, int lineNumber)
-{
-	return AllocASTNode(
-		&(LiteralExpr){
-			.lineNumber = lineNumber,
-			.type = Literal_Int,
-			.intValue = value,
-		},
-		sizeof(LiteralExpr), Node_Literal);
-}
-
 NodePtr AllocIntConversion(NodePtr expr, int lineNumber)
 {
 	return AllocASTNode(
@@ -397,13 +387,7 @@ NodePtr AllocIntConversion(NodePtr expr, int lineNumber)
 			.lineNumber = lineNumber,
 			.operatorType = Binary_BitOr,
 			.right = expr,
-			.left = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = 0,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.left = AllocUInt64Integer(0, lineNumber),
 		},
 		sizeof(BinaryExpr), Node_Binary);
 }
@@ -415,6 +399,28 @@ NodePtr AllocPrimitiveType(PrimitiveType primitiveType, int lineNumber)
 			.lineNumber = lineNumber,
 			.type = Literal_PrimitiveType,
 			.primitiveType = primitiveType,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
+
+NodePtr AllocUInt64Integer(uint64_t value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Number,
+			.number = AllocUInt64ToString(value),
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
+
+NodePtr AllocSizeInteger(size_t value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Number,
+			.number = AllocUInt64ToString(value),
 		},
 		sizeof(LiteralExpr), Node_Literal);
 }

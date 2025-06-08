@@ -1,5 +1,7 @@
 #include "BlockRemoverPass.h"
 
+#include "Common.h"
+
 static void VisitBlock(NodePtr node)
 {
 	if (node.ptr == NULL)
@@ -34,13 +36,7 @@ static void VisitBlock(NodePtr node)
 				NodePtr nothing = AllocASTNode(
 					&(ExpressionStmt){
 						.lineNumber = ifStmt->lineNumber,
-						.expr = AllocASTNode(
-							&(LiteralExpr){
-								.lineNumber = ifStmt->lineNumber,
-								.type = Literal_Int,
-								.intValue = 0,
-							},
-							sizeof(LiteralExpr), Node_Literal),
+						.expr = AllocUInt64Integer(0, ifStmt->lineNumber),
 					},
 					sizeof(ExpressionStmt), Node_ExpressionStatement);
 				ArrayAdd(&trueBlock->statements, &nothing);

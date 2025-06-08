@@ -133,14 +133,8 @@ static NodePtr AllocStructOffsetCalculation(NodePtr offset, size_t memberIndex, 
 		&(BinaryExpr){
 			.lineNumber = lineNumber,
 			.operatorType = Binary_Add,
-			.left = AllocMultiply(offset, AllocInteger(memberCount, lineNumber), lineNumber),
-			.right = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = lineNumber,
-					.type = Literal_Int,
-					.intValue = memberIndex,
-				},
-				sizeof(LiteralExpr), Node_Literal),
+			.left = AllocMultiply(offset, AllocSizeInteger(memberCount, lineNumber), lineNumber),
+			.right = AllocSizeInteger(memberIndex, lineNumber),
 		},
 		sizeof(BinaryExpr), Node_Binary);
 }
@@ -401,13 +395,13 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 		if (leftType.isPointer && leftType.pointerType && !rightType.isPointer)
 			binary->right = AllocMultiply(
 				binary->right,
-				AllocInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
+				AllocSizeInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
 				binary->lineNumber);
 
 		if (rightType.isPointer && rightType.pointerType && !leftType.isPointer)
 			binary->left = AllocMultiply(
 				binary->left,
-				AllocInteger(CountStructMembers(rightType.pointerType), binary->lineNumber),
+				AllocSizeInteger(CountStructMembers(rightType.pointerType), binary->lineNumber),
 				binary->lineNumber);
 	}
 	else if ((binary->operatorType == Binary_AddAssign ||
@@ -415,7 +409,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			 leftType.isPointer && leftType.pointerType && !rightType.isPointer)
 		binary->right = AllocMultiply(
 			binary->right,
-			AllocInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
+			AllocSizeInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
 			binary->lineNumber);
 
 	if (leftType.effectiveType == NULL && rightType.effectiveType == NULL)
@@ -536,7 +530,7 @@ static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
 					.lineNumber = unary->lineNumber,
 					.operatorType = unary->operatorType == Unary_Increment ? Binary_AddAssign : Binary_SubtractAssign,
 					.left = unary->expression,
-					.right = AllocInteger(CountStructMembers(typeInfo.pointerType), unary->lineNumber),
+					.right = AllocSizeInteger(CountStructMembers(typeInfo.pointerType), unary->lineNumber),
 				},
 				sizeof(BinaryExpr), Node_Binary);
 
@@ -565,7 +559,7 @@ static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
 	uint64_t value = typeInfo.effectiveType ? CountStructMembers(typeInfo.effectiveType) : 1;
 	int lineNumber = sizeOf->lineNumber;
 	FreeASTNode(*node);
-	*node = AllocInteger(value, lineNumber);
+	*node = AllocUInt64Integer(value, lineNumber);
 	return SUCCESS_RESULT;
 }
 

@@ -165,7 +165,7 @@ NodePtr CopyASTNode(const NodePtr node)
 		ASSERT(copy.type == node.type);
 		ptr = copy.ptr;
 
-		if (ptr->type == Literal_Float) ptr->floatValue = AllocateString(ptr->floatValue);
+		if (ptr->type == Literal_Number) ptr->number = AllocateString(ptr->number);
 		if (ptr->type == Literal_String) ptr->string = AllocateString(ptr->string);
 
 		return copy;
@@ -533,7 +533,7 @@ void FreeASTNode(const NodePtr node)
 	{
 		const LiteralExpr* ptr = node.ptr;
 		if (ptr->type == Literal_String) free(ptr->string);
-		if (ptr->type == Literal_Float) free(ptr->floatValue);
+		if (ptr->type == Literal_Number) free(ptr->number);
 		break;
 	}
 	case Node_FunctionCall:

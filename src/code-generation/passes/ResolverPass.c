@@ -667,7 +667,7 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 				&(SubscriptExpr){
 					.lineNumber = unary->lineNumber,
 					.baseExpr = unary->expression,
-					.indexExpr = AllocInteger(0, unary->lineNumber),
+					.indexExpr = AllocUInt64Integer(0, unary->lineNumber),
 				},
 				sizeof(SubscriptExpr), Node_Subscript);
 			unary->expression = NULL_NODE;
@@ -932,13 +932,10 @@ static Result SetNumberProperty(NodePtr value, void* destination, int lineNumber
 		goto invalidValue;
 	LiteralExpr* literal = value.ptr;
 
-	if (literal->type == Literal_Float)
-		*number = AllocateString(literal->floatValue);
-	else if (literal->type == Literal_Int)
-		*number = AllocUInt64ToString(literal->intValue);
-	else
+	if (literal->type != Literal_Number)
 		goto invalidValue;
 
+	*number = AllocateString(literal->number);
 	return SUCCESS_RESULT;
 
 invalidValue:

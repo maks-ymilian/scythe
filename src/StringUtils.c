@@ -6,84 +6,28 @@
 
 #include "Common.h"
 
-size_t SignedIntCharCount(int64_t number)
-{
-	if (number < 0)
-	{
-		if (number > -10LL) return 2;
-		if (number > -100LL) return 3;
-		if (number > -1000LL) return 4;
-		if (number > -10000LL) return 5;
-		if (number > -100000LL) return 6;
-		if (number > -1000000LL) return 7;
-		if (number > -10000000LL) return 8;
-		if (number > -100000000LL) return 9;
-		if (number > -1000000000LL) return 10;
-		if (number > -10000000000LL) return 11;
-		if (number > -100000000000LL) return 12;
-		if (number > -1000000000000LL) return 13;
-		if (number > -10000000000000LL) return 14;
-		if (number > -100000000000000LL) return 15;
-		if (number > -1000000000000000LL) return 16;
-		if (number > -10000000000000000LL) return 17;
-		if (number > -100000000000000000LL) return 18;
-		if (number > -1000000000000000000LL) return 19;
-		return 20;
-	}
-	else
-	{
-		if (number < 10LL) return 1;
-		if (number < 100LL) return 2;
-		if (number < 1000LL) return 3;
-		if (number < 10000LL) return 4;
-		if (number < 100000LL) return 5;
-		if (number < 1000000LL) return 6;
-		if (number < 10000000LL) return 7;
-		if (number < 100000000LL) return 8;
-		if (number < 1000000000LL) return 9;
-		if (number < 10000000000LL) return 10;
-		if (number < 100000000000LL) return 11;
-		if (number < 1000000000000LL) return 12;
-		if (number < 10000000000000LL) return 13;
-		if (number < 100000000000000LL) return 14;
-		if (number < 1000000000000000LL) return 15;
-		if (number < 10000000000000000LL) return 16;
-		if (number < 100000000000000000LL) return 17;
-		if (number < 1000000000000000000LL) return 18;
-		return 19;
-	}
-}
-
-size_t UnsignedIntCharCount(uint64_t number)
-{
-	if (number < 10ULL) return 1;
-	if (number < 100ULL) return 2;
-	if (number < 1000ULL) return 3;
-	if (number < 10000ULL) return 4;
-	if (number < 100000ULL) return 5;
-	if (number < 1000000ULL) return 6;
-	if (number < 10000000ULL) return 7;
-	if (number < 100000000ULL) return 8;
-	if (number < 1000000000ULL) return 9;
-	if (number < 10000000000ULL) return 10;
-	if (number < 100000000000ULL) return 11;
-	if (number < 1000000000000ULL) return 12;
-	if (number < 10000000000000ULL) return 13;
-	if (number < 100000000000000ULL) return 14;
-	if (number < 1000000000000000ULL) return 15;
-	if (number < 10000000000000000ULL) return 16;
-	if (number < 100000000000000000ULL) return 17;
-	if (number < 1000000000000000000ULL) return 18;
-	if (number < 10000000000000000000ULL) return 19;
-	return 20;
-}
-
 char* AllocUInt64ToString(uint64_t integer)
 {
-	char string[INT64_MAX_CHARS + 1];
-	int numChars = snprintf(string, sizeof(string), "%" PRIu64, integer);
+	int numChars = snprintf(NULL, 0, "%" PRIu64, integer);
 	ASSERT(numChars >= 1);
-	return AllocateStringLength(string, (size_t)numChars);
+	char* string = malloc((size_t)numChars + 1);
+
+	if (snprintf(string, (size_t)numChars + 1, "%" PRIu64, integer) != numChars)
+		ASSERT(0);
+
+	return string;
+}
+
+char* AllocSizeToString(size_t integer)
+{
+	int numChars = snprintf(NULL, 0, "%zu", integer);
+	ASSERT(numChars >= 1);
+	char* string = malloc((size_t)numChars + 1);
+
+	if (snprintf(string, (size_t)numChars + 1, "%zu", integer) != numChars)
+		ASSERT(0);
+
+	return string;
 }
 
 char* AllocateString(const char* string)
@@ -134,9 +78,9 @@ char* AllocateString3Str(const char* format, const char* insert1, const char* in
 	return str;
 }
 
-char* AllocateString2Int(const char* format, const int insert1, const int insert2)
+char* AllocateString2Int(const char* format, int64_t insert1, int64_t insert2)
 {
-	const size_t insertLength = SignedIntCharCount(insert1) + SignedIntCharCount(insert2);
+	const size_t insertLength = INT64_CHAR_COUNT(insert1) + INT64_CHAR_COUNT(insert2);
 	const size_t formatLength = strlen(format) - 4;
 	const size_t bufferLength = insertLength + formatLength + 1;
 	char* str = malloc(bufferLength);
@@ -144,9 +88,9 @@ char* AllocateString2Int(const char* format, const int insert1, const int insert
 	return str;
 }
 
-char* AllocateString1Str1Int(const char* format, const char* insert1, const int insert2)
+char* AllocateString1Str1Int(const char* format, const char* insert1, int64_t insert2)
 {
-	const size_t insertLength = strlen(insert1) + SignedIntCharCount(insert2);
+	const size_t insertLength = strlen(insert1) + INT64_CHAR_COUNT(insert2);
 	const size_t formatLength = strlen(format) - 4;
 	const size_t bufferLength = insertLength + formatLength + 1;
 	char* str = malloc(bufferLength);

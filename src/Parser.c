@@ -46,12 +46,12 @@ static Token* Match(const TokenType* types, const size_t length)
 	return NULL;
 }
 
-static Token* MatchOne(const TokenType type)
+static Token* MatchOne(TokenType type)
 {
 	return Match(&type, 1);
 }
 
-static bool IsDigitBase(const char c, const int base)
+static bool IsDigitBase(char c, int base)
 {
 	if (base == 10) return isdigit(c);
 	if (base == 16) return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
@@ -60,7 +60,7 @@ static bool IsDigitBase(const char c, const int base)
 	INVALID_VALUE(base);
 }
 
-static Result StringToUInt64(const char* string, const int base, const int lineNumber, uint64_t* out)
+static Result StringToUInt64(const char* string, size_t stringLength, int base, int lineNumber, uint64_t* out)
 {
 	ASSERT(
 		base == 10 ||
@@ -68,75 +68,87 @@ static Result StringToUInt64(const char* string, const int base, const int lineN
 		base == 8 ||
 		base == 2);
 
-	for (int i = 0; string[i] != '\0'; ++i)
+	if (stringLength == 0)
+		goto invalidInteger;
+
+	for (size_t i = 0; i < stringLength; ++i)
 		if (!IsDigitBase(string[i], base))
 			return ERROR_RESULT(AllocateString2Int("Invalid integer literal %d %d", string[i], base), lineNumber, currentFile);
 
-	*out = strtoull(string, NULL, base);
+	if (stringLength > UINT64_MAX_CHARS)
+		goto invalidInteger;
+
+	char stringCopy[UINT64_MAX_CHARS + 1];
+	memcpy(stringCopy, string, stringLength);
+	stringCopy[stringLength] = '\0';
+	*out = strtoull(stringCopy, NULL, base);
 
 	if (*out == UINT64_MAX)
-		return ERROR_RESULT("Invalid integer literal", lineNumber, currentFile);
+		goto invalidInteger;
 
 	if (*out == 0)
 	{
 		bool isZero = true;
-		for (int i = 0; string[i] != '\0'; ++i)
+		for (size_t i = 0; i < stringLength; ++i)
 			if (string[i] != '0') isZero = false;
 
 		if (!isZero)
-			return ERROR_RESULT("Invalid integer literal", lineNumber, currentFile);
+			goto invalidInteger;
 	}
 
 	return SUCCESS_RESULT;
+
+invalidInteger:
+	return ERROR_RESULT("Invalid integer literal", lineNumber, currentFile);
 }
 
 static Result EvaluateNumberLiteral(
 	const char* string,
 	size_t stringLength,
-	const int lineNumber,
-	bool* outIsInteger,
-	double* outFloat,
-	uint64_t* outInt)
+	int lineNumber,
+	char** outString)
 {
-	char* text = malloc(stringLength + 1);
-	memcpy(text, string, stringLength);
-	text[stringLength] = '\0';
+	ASSERT(stringLength >= 1);
 
-	*outIsInteger = true;
-	for (int i = 0; text[i] != '\0'; ++i)
-		if (text[i] == '.') *outIsInteger = false;
+	bool isInteger = true;
+	for (size_t i = 0; i < stringLength; ++i)
+		if (string[i] == '.') isInteger = false;
 
-	if (!*outIsInteger)
+	if (!isInteger)
 	{
-		int consumedChars;
-		if (sscanf(text, "%lf%n", outFloat, &consumedChars) != 1)
-			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
-		if (fpclassify(*outFloat) != FP_NORMAL && fpclassify(*outFloat) != FP_ZERO)
-			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
-		if (text[consumedChars] != '\0')
+		double floatValue;
+		ssize_t consumedChars; // for some reason this needs to be signed???
+		if (sscanf(string, "%lf%zn", &floatValue, &consumedChars) != 1)
 			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 
-		free(text);
+		if (fpclassify(floatValue) != FP_NORMAL && fpclassify(floatValue) != FP_ZERO)
+			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
+
+		ASSERT(consumedChars >= 0);
+		if ((size_t)consumedChars != stringLength)
+			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
+
+		*outString = AllocateStringLength(string, stringLength);
 		return SUCCESS_RESULT;
 	}
 
-	size_t index = 0;
 	int base = 10;
-	if (text[index] == '0')
+	if (string[0] == '0' && stringLength >= 2)
 	{
-		if (tolower(text[index + 1]) == 'x')
+		if (tolower(string[1]) == 'x')
 			base = 16;
-		else if (tolower(text[index + 1]) == 'o')
+		else if (tolower(string[1]) == 'o')
 			base = 8;
-		else if (tolower(text[index + 1]) == 'b')
+		else if (tolower(string[1]) == 'b')
 			base = 2;
-
-		if (base != 10) index += 2;
 	}
 
-	PROPAGATE_ERROR(StringToUInt64(text + index, base, lineNumber, outInt));
+	uint64_t intValue;
+	size_t index = base == 10 ? 0 : 2;
+	ASSERT(index <= stringLength);
+	PROPAGATE_ERROR(StringToUInt64(string + index, stringLength - index, base, lineNumber, &intValue));
 
-	free(text);
+	*outString = AllocUInt64ToString(intValue);
 	return SUCCESS_RESULT;
 }
 
@@ -485,27 +497,17 @@ static Result ParseLiteral(NodePtr* out)
 	{
 	case Token_NumberLiteral:
 	{
-		bool isInteger;
-		double floatValue;
-		uint64_t intValue;
-		PROPAGATE_ERROR(EvaluateNumberLiteral(token->text, token->textSize, token->lineNumber, &isInteger, &floatValue, &intValue));
+		char* number = NULL;
+		PROPAGATE_ERROR(EvaluateNumberLiteral(token->text, token->textSize, token->lineNumber, &number));
+		ASSERT(number);
 
-		if (isInteger)
-			*out = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = token->lineNumber,
-					.type = Literal_Int,
-					.intValue = intValue,
-				},
-				sizeof(LiteralExpr), Node_Literal);
-		else
-			*out = AllocASTNode(
-				&(LiteralExpr){
-					.lineNumber = token->lineNumber,
-					.type = Literal_Float,
-					.floatValue = AllocateStringLength(token->text, token->textSize),
-				},
-				sizeof(LiteralExpr), Node_Literal);
+		*out = AllocASTNode(
+			&(LiteralExpr){
+				.lineNumber = token->lineNumber,
+				.type = Literal_Number,
+				.number = number,
+			},
+			sizeof(LiteralExpr), Node_Literal);
 		return SUCCESS_RESULT;
 	}
 	case Token_StringLiteral:
@@ -638,8 +640,8 @@ static Result ParseSubscript(NodePtr expr, NodePtr* out, bool* isDereference)
 				.indexExpr = AllocASTNode(
 					&(LiteralExpr){
 						.lineNumber = firstToken->lineNumber,
-						.type = Literal_Int,
-						.intValue = 0,
+						.type = Literal_Number,
+						.number = AllocateString("0"),
 					},
 					sizeof(LiteralExpr), Node_Literal),
 			},

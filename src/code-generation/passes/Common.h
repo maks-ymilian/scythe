@@ -32,6 +32,8 @@ VarDeclStmt* GetPtrMember(StructDeclStmt* type);
 NodePtr AllocIdentifier(VarDeclStmt* varDecl, int lineNumber);
 NodePtr AllocSetVariable(VarDeclStmt* varDecl, NodePtr value, int lineNumber);
 NodePtr AllocAssignmentStatement(NodePtr left, NodePtr right, int lineNumber);
-NodePtr AllocInteger(uint64_t value, int lineNumber);
 NodePtr AllocIntConversion(NodePtr expr, int lineNumber);
 NodePtr AllocPrimitiveType(PrimitiveType primitiveType, int lineNumber);
+
+NodePtr AllocUInt64Integer(uint64_t value, int lineNumber);
+NodePtr AllocSizeInteger(size_t value, int lineNumber);
