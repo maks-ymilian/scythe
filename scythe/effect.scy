@@ -2,9 +2,6 @@ import "builtin/jsfx.scy"
 
 @gfx
 {
-	// todo
-	// input inScope;
-
 	gfx.set(0.3, 0.5, 0.6);
 
 	int spacing = 10;

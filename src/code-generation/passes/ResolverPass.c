@@ -1354,6 +1354,9 @@ static Result VisitStatement(NodePtr* node)
 		if (input->modifiers.externalValue)
 			return ERROR_RESULT("Input statements can only be internal", input->lineNumber, currentFilePath);
 
+		if (currentScope->parent)
+			return ERROR_RESULT("Input statements are only allowed in global scope", input->lineNumber, currentFilePath);
+
 		PROPAGATE_ERROR(SetInputProperties(input));
 
 		input->varDecl = AllocASTNode(
