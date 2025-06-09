@@ -1619,11 +1619,11 @@ static Result ParseProperty(NodePtr* out, void* data)
 
 static Result ParsePropertyList(NodePtr* out)
 {
-	if (!MatchOne(Token_LeftCurlyBracket))
+	if (!MatchOne(Token_LeftSquareBracket))
 		return NOT_FOUND_RESULT;
 
 	Array list;
-	PROPAGATE_ERROR(ParseCommaSeparatedList(&list, ParseProperty, NULL, Token_RightCurlyBracket, false));
+	PROPAGATE_ERROR(ParseCommaSeparatedList(&list, ParseProperty, NULL, Token_RightSquareBracket, false));
 
 	*out = AllocASTNode(
 		&(PropertyListNode){

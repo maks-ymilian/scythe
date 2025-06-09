@@ -24,12 +24,12 @@
 
 import "builtin/jsfx.scy"
 
-input thresh      { default_value: 0,   min: -60, max: 0,    increment: 0.1, description: "Threshold (dB)", };
-input ratio_enum  { default_value: 5,   min: 0,   max: 9,    increment: 1,   description: "Ratio", };
-input makeup      { default_value: 0,   min: -20, max: 20,   increment: 0.1, description: "Gain (dB)", };
-input attack      { default_value: 20,  min: 20,  max: 2000, increment: 10,  description: "Attack (uS)", };
-input release     { default_value: 250, min: 20,  max: 1000, increment: 1,   description: "Release (mS)", };
-input mix_percent { default_value: 100, min: 0,   max: 100,  increment: 0.1, description: "Mix (%)", };
+input thresh      [ default_value: 0,   min: -60, max: 0,    increment: 0.1, description: "Threshold (dB)", ];
+input ratio_enum  [ default_value: 5,   min: 0,   max: 9,    increment: 1,   description: "Ratio", ];
+input makeup      [ default_value: 0,   min: -20, max: 20,   increment: 0.1, description: "Gain (dB)", ];
+input attack      [ default_value: 20,  min: 20,  max: 2000, increment: 10,  description: "Attack (uS)", ];
+input release     [ default_value: 250, min: 20,  max: 1000, increment: 1,   description: "Release (mS)", ];
+input mix_percent [ default_value: 100, min: 0,   max: 100,  increment: 0.1, description: "Mix (%)", ];
 
 float LOG_TO_DB = 8.6858896380650365530225783783321; // 20 / ln(10)
 float DB_TO_LOG = 0.11512925464970228420089957273422; // ln(10) / 20 
