@@ -1,23 +1,23 @@
 // todo:
-	// link built in library to executable
 	// int conversion breaks pass by reference
+	// function call 40 param limit
+	// control characters in strings
+	// in parser the error line numbers are sometimes on the next line like "Expected ";""
+	// check if built in function overloads are correct
+
+	// link built in library to executable
 	// enums
 		// enum sliders
 	// add #namedStrings
 	// ternary
-	// gfx size
 	// desc, tags, author, options, in_pin, out_pin, ...
-	// function call 40 param limit
-	// control characters in strings
 	// structs in blocks
-	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// dead code elimination
 		// unused functions, empty sections
 	// namespace flattening
 	// other jsfx functionality (global.*)
 	// undocumented functions
 	// double pointers?
-	// check if built in function overloads are correct
 	// asserts
 
 // things to test:

@@ -2,21 +2,24 @@
 
 static Array stack;
 
-static void Push(FuncDeclStmt* function)
+static void Push(NodePtr function)
 {
 	ArrayAdd(&stack, &function);
 }
 
-static FuncDeclStmt* Pop(void)
+static NodePtr Peek(void)
 {
-	FuncDeclStmt* function = *(FuncDeclStmt**)stack.array[stack.length - 1];
-	ArrayRemove(&stack, stack.length - 1);
-	return function;
+	ASSERT(stack.length != 0);
+	NodePtr* function = stack.array[stack.length - 1];
+	ASSERT(function);
+	return *function;
 }
 
-static FuncDeclStmt* Peek(void)
+static NodePtr Pop(void)
 {
-	return *(FuncDeclStmt**)stack.array[stack.length - 1];
+	NodePtr function = Peek();
+	ArrayRemove(&stack, stack.length - 1);
+	return function;
 }
 
 static void VisitStatement(const NodePtr* node)
@@ -34,7 +37,7 @@ static void VisitStatement(const NodePtr* node)
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
-		Push(funcDecl);
+		Push(*node);
 		VisitStatement(&funcDecl->block);
 		Pop();
 		break;
@@ -42,9 +45,9 @@ static void VisitStatement(const NodePtr* node)
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
-		ASSERT(returnStmt->function == NULL);
+		ASSERT(returnStmt->function.ptr == NULL);
 		returnStmt->function = Peek();
-		ASSERT(returnStmt->function);
+		ASSERT(returnStmt->function.ptr);
 		break;
 	}
 	case Node_BlockStatement:
@@ -64,7 +67,9 @@ static void VisitStatement(const NodePtr* node)
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
+		Push(*node);
 		VisitStatement(&section->block);
+		Pop();
 		break;
 	}
 	case Node_While:
@@ -79,7 +84,7 @@ static void VisitStatement(const NodePtr* node)
 
 void ReturnTaggingPass(const AST* ast)
 {
-	stack = AllocateArray(sizeof(FuncDeclStmt*));
+	stack = AllocateArray(sizeof(NodePtr));
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{

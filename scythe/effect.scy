@@ -56,6 +56,10 @@ float play;
 
 @sample
 {
+	// prevent extreme lag
+	if (buffer.length <= 0)
+		return;
+
 	// keep pointers in range
 	while (play >= buffer.length) play -= buffer.length;
 	while (write >= buffer.length) write -= buffer.length;

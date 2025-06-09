@@ -767,15 +767,20 @@ static Result VisitReturnStatement(NodePtr* node)
 	ASSERT(node->type == Node_Return);
 	ReturnStmt* returnStmt = node->ptr;
 
-	ASSERT(returnStmt->function != NULL);
-	StructTypeInfo exprType =
-		returnStmt->expr.ptr
-			? GetStructTypeInfoFromExpr(returnStmt->expr)
-			: (StructTypeInfo){.effectiveType = NULL};
-	StructTypeInfo returnType =
-		returnStmt->function->oldType.expr.ptr
-			? GetStructTypeInfoFromType(returnStmt->function->oldType)
-			: (StructTypeInfo){.effectiveType = NULL};
+	StructTypeInfo exprType = (StructTypeInfo){.effectiveType = NULL};
+	if (returnStmt->expr.ptr)
+		exprType = GetStructTypeInfoFromExpr(returnStmt->expr);
+
+	StructTypeInfo returnType = (StructTypeInfo){.effectiveType = NULL};
+	FuncDeclStmt* function = NULL;
+	if (returnStmt->function.type == Node_FunctionDeclaration)
+	{
+		function = returnStmt->function.ptr;
+		if (function->oldType.expr.ptr)
+			returnType = GetStructTypeInfoFromType(function->oldType);
+	}
+	else
+		ASSERT(returnStmt->function.type == Node_Section); // you can return from a section
 
 	if (returnType.effectiveType == NULL && exprType.effectiveType == NULL)
 	{
@@ -789,7 +794,7 @@ static Result VisitReturnStatement(NodePtr* node)
 
 	BlockStmt* block = AllocBlockStmt(returnStmt->lineNumber).ptr;
 
-	VarDeclStmt* globalReturn = returnStmt->function->globalReturn;
+	VarDeclStmt* globalReturn = function->globalReturn;
 	ASSERT(globalReturn != NULL);
 	NodePtr statement = AllocAssignmentStatement(
 		AllocASTNode(

@@ -1124,7 +1124,6 @@ static Result ParseReturnStatement(NodePtr* out)
 		&(ReturnStmt){
 			.lineNumber = returnToken->lineNumber,
 			.expr = expr,
-			.function = NULL,
 		},
 		sizeof(ReturnStmt), Node_Return);
 	return SUCCESS_RESULT;

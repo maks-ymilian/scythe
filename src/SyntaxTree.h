@@ -365,7 +365,7 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr expr;
-	FuncDeclStmt* function;
+	NodePtr function;
 } ReturnStmt;
 
 typedef enum
