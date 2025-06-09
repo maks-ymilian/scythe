@@ -217,6 +217,9 @@ typedef struct
 	SectionType sectionType;
 	int lineNumber;
 	NodePtr block;
+	NodePtr propertyList;
+	char* width;
+	char* height;
 } SectionStmt;
 
 typedef enum
@@ -378,6 +381,8 @@ typedef enum
 	PropertyType_Exponent,
 	PropertyType_LinearAutomation,
 	PropertyType_Type,
+	PropertyType_Width,
+	PropertyType_Height,
 } PropertyType;
 
 typedef struct

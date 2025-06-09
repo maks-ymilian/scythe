@@ -1268,6 +1268,9 @@ static Result ParseSectionStatement(NodePtr* out)
 	if (!sectionFound)
 		return ERROR_RESULT_LINE("Unknown section type");
 
+	NodePtr list = NULL_NODE;
+	PROPAGATE_ERROR(ParsePropertyList(&list));
+
 	NodePtr block = NULL_NODE;
 	PROPAGATE_ERROR(ParseBlockStatement(&block));
 	if (block.ptr == NULL)
@@ -1278,7 +1281,9 @@ static Result ParseSectionStatement(NodePtr* out)
 		&(SectionStmt){
 			.lineNumber = identifier->lineNumber,
 			.sectionType = sectionType,
-			.block = block},
+			.block = block,
+			.propertyList = list,
+		},
 		sizeof(SectionStmt), Node_Section);
 	return SUCCESS_RESULT;
 }
@@ -1580,6 +1585,10 @@ static Result StringToPropertyType(const char* string, size_t stringSize, Proper
 		*out = PropertyType_LinearAutomation;
 	else if (strncmp(string, "type", stringSize) == 0)
 		*out = PropertyType_Type;
+	else if (strncmp(string, "width", stringSize) == 0)
+		*out = PropertyType_Width;
+	else if (strncmp(string, "height", stringSize) == 0)
+		*out = PropertyType_Height;
 	else
 		return ERROR_RESULT_LINE("Invalid property type");
 

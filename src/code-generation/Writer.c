@@ -450,7 +450,7 @@ static void VisitStatement(const NodePtr* node)
 	}
 }
 
-static void VisitSection(const SectionStmt* section)
+static void WriteSection(const SectionStmt* section)
 {
 	const char* sectionText = NULL;
 	switch (section->sectionType)
@@ -466,6 +466,24 @@ static void VisitSection(const SectionStmt* section)
 
 	WriteChar('@', sections);
 	WriteString(sectionText, sections);
+
+	if (section->sectionType == Section_GFX)
+	{
+		if (section->width)
+		{
+			WriteChar(' ', sections);
+			WriteString(section->width, sections);
+		}
+		if (section->height)
+		{
+			if (!section->width)
+				WriteString(" 0", sections);
+
+			WriteChar(' ', sections);
+			WriteString(section->height, sections);
+		}
+	}
+
 	WriteChar('\n', sections);
 
 	ASSERT(section->block.type == Node_BlockStatement);
@@ -520,7 +538,7 @@ static void WriteSlider(const InputStmt* slider)
 	WriteChar('\n', descriptionLines);
 }
 
-static void VisitModule(const ModuleNode* module)
+static void WriteModule(const ModuleNode* module)
 {
 	if (module->statements.length != 0)
 	{
@@ -535,7 +553,7 @@ static void VisitModule(const ModuleNode* module)
 		switch (stmt->type)
 		{
 		case Node_Section:
-			VisitSection(stmt->ptr);
+			WriteSection(stmt->ptr);
 			break;
 		case Node_Input:
 			WriteSlider(stmt->ptr);
@@ -563,7 +581,7 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 	{
 		const NodePtr* node = ast->nodes.array[i];
 		ASSERT(node->type == Node_Module);
-		VisitModule(node->ptr);
+		WriteModule(node->ptr);
 	}
 
 	MemoryStream* main = AllocateMemoryStream();

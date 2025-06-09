@@ -149,8 +149,7 @@ float maxover;
 	jsfx.spl1 += ospl1 * (1 - mix);
 }
 
-@gfx
-// 0 32 // request horizontal/vertical heights (0 means dont care)
+@gfx [ height: 32 ]
 {
 	gr_meter *= math.exp(1 / 30);
 	if (gr_meter > 1)

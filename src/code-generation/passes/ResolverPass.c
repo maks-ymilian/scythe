@@ -1206,6 +1206,40 @@ static Result SetInputProperties(InputStmt* slider)
 	return SUCCESS_RESULT;
 }
 
+static Result SetSectionProperties(SectionStmt* section)
+{
+	section->width = NULL;
+	section->height = NULL;
+
+	if (section->propertyList.ptr)
+	{
+		if (section->sectionType != Section_GFX)
+			return ERROR_RESULT("Properties are only allowed in an \"@gfx\" section", section->lineNumber, currentFilePath);
+
+		ASSERT(section->propertyList.type == Node_PropertyList);
+		PropertyListNode* properties = section->propertyList.ptr;
+		for (size_t i = 0; i < properties->list.length; ++i)
+		{
+			NodePtr* node = properties->list.array[i];
+			ASSERT(node->type = Node_Property);
+
+			PropertyNode* property = node->ptr;
+			switch (property->type)
+			{
+			case PropertyType_Width:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &section->width, property->lineNumber));
+				break;
+			case PropertyType_Height:
+				PROPAGATE_ERROR(SetNumberProperty(property->value, &section->height, property->lineNumber));
+				break;
+			default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+			}
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
@@ -1320,8 +1354,11 @@ static Result VisitStatement(NodePtr* node)
 
 	case Node_Section:
 	{
-		const SectionStmt* section = node->ptr;
+		SectionStmt* section = node->ptr;
 		ASSERT(section->block.type == Node_BlockStatement);
+
+		PROPAGATE_ERROR(SetSectionProperties(section));
+
 		return VisitBlock(section->block.ptr);
 	}
 	case Node_If:
