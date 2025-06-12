@@ -200,6 +200,7 @@ typedef struct
 	char* path;
 	char* moduleName;
 	ModifierState modifiers;
+	bool builtIn;
 } ImportStmt;
 
 typedef enum

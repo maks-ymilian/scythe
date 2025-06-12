@@ -1,5 +1,41 @@
 cmake_minimum_required(VERSION 3.10)
 
+project(scythe C)
+
+option(USE_DEBUG "" OFF)
+if (USE_DEBUG)
+	message(STATUS "Using debug options")
+	add_compile_options(
+		-Werror -Wall -Wextra -pedantic-errors
+
+		-Wmissing-prototypes
+		-Wcast-qual
+		-Wsign-conversion
+		-Wconversion
+		-Wincompatible-pointer-types
+		-Wint-conversion
+		-Wuninitialized
+		-Wnarrowing
+		-Wvla
+		-Wunused-variable
+		-Wunused-function
+		-Wunused-parameter
+	)
+
+	option(USE_SANITIZERS "" OFF)
+	option(USE_SANITIZERS_EX "" OFF)
+	if (USE_SANITIZERS OR USE_SANITIZERS_EX)
+		message(STATUS "Using sanitizers")
+		add_compile_options(-O0 -g -fsanitize=address,undefined)
+		add_link_options(-fsanitize=address,undefined)
+		if (USE_SANITIZERS_EX)
+			message(STATUS "Using more sanitizers")
+			add_compile_options(-fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
+			add_link_options(-fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
+		endif ()
+	endif ()
+endif ()
+
 set(SOURCES
 	"src/Main.c"
 	"src/Scanner.c"
@@ -38,44 +74,25 @@ if (ASAN_OPTIONS)
 	list(APPEND SOURCES "src/ASanOptions.c")
 endif ()
 
-project(scythe C)
+add_executable(bin2c "bin2c/bin2c.c")
+set(GENERATED_FILE "${CMAKE_CURRENT_BINARY_DIR}/BuiltIn.c")
+set(BUILTIN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/*")
+add_custom_command(
+	OUTPUT ${GENERATED_FILE}
+	COMMENT "Generating ${GENERATED_FILE}"
+	DEPENDS ${BUILTIN_FILES}
+	COMMAND
+		"${CMAKE_CURRENT_BINARY_DIR}/bin2c"
+		${GENERATED_FILE}
+		${BUILTIN_FILES}
+)
+list(APPEND SOURCES ${GENERATED_FILE})
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 17)
-set_property(TARGET ${PROJECT_NAME} PROPERTY C_EXTENSIONS OFF)
-target_compile_definitions(${PROJECT_NAME} PRIVATE _XOPEN_SOURCE=700 _CRT_SECURE_NO_WARNINGS)
-target_include_directories(${PROJECT_NAME} PRIVATE "src")
+add_executable(scythe ${SOURCES})
 
-option(USE_DEBUG "" OFF)
-if (USE_DEBUG)
-	message(STATUS "Using debug options")
-	target_compile_options(${PROJECT_NAME} PRIVATE
-		-Werror -Wall -Wextra -pedantic-errors
+set_property(TARGET scythe bin2c PROPERTY C_STANDARD 17)
+set_property(TARGET scythe bin2c PROPERTY C_EXTENSIONS OFF)
+target_include_directories(scythe PRIVATE "src")
+target_compile_definitions(scythe PRIVATE _XOPEN_SOURCE=700 _CRT_SECURE_NO_WARNINGS)
 
-		-Wmissing-prototypes
-		-Wcast-qual
-		-Wsign-conversion
-		-Wconversion
-		-Wincompatible-pointer-types
-		-Wint-conversion
-		-Wuninitialized
-		-Wnarrowing
-		-Wvla
-		-Wunused-variable
-		-Wunused-function
-		-Wunused-parameter
-	)
-
-	option(USE_SANITIZERS "" OFF)
-	option(USE_SANITIZERS_EX "" OFF)
-	if (USE_SANITIZERS OR USE_SANITIZERS_EX)
-		message(STATUS "Using sanitizers")
-		target_compile_options(${PROJECT_NAME} PRIVATE -O0 -g -fsanitize=address,undefined)
-		target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
-		if (USE_SANITIZERS_EX)
-			message(STATUS "Using more sanitizers")
-			target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
-			target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
-		endif ()
-	endif ()
-endif ()
+add_dependencies(scythe bin2c)

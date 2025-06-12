@@ -11,6 +11,9 @@
 #include "StringUtils.h"
 #include "code-generation/CodeGenerator.h"
 #include "data-structures/Array.h"
+#include "BuiltIn.h"
+
+#define STRINGIFY(x) #x
 
 typedef struct
 {
@@ -18,6 +21,7 @@ typedef struct
 	Array dependencies;
 	char* path;
 	char* moduleName;
+	bool isBuiltIn;
 	bool searched;
 } ProgramNode;
 
@@ -154,11 +158,11 @@ error:
 	return ERROR_RESULT(
 		errorMessage
 			? AllocateString2Str(
-				  "Failed to write file \"%s\": %s",
+				  "Failed to read file \"%s\": %s",
 				  path,
 				  errorMessage)
 			: AllocateString1Str(
-				  "Failed to write file \"%s\"",
+				  "Failed to read file \"%s\"",
 				  path),
 		lineNumber,
 		errorPath);
@@ -253,6 +257,71 @@ static bool ChangeDirectoryToFileName(const char* fileName)
 	return true;
 }
 
+static ProgramNode* GenerateBuiltInProgramNode(Array* programNodes, const char* moduleName, const char* source, size_t sourceLength)
+{
+	// if it already exists return the existing one
+	for (size_t i = 0; i < programNodes->length; ++i)
+	{
+		ProgramNode* programNode = *(ProgramNode**)programNodes->array[i];
+		if (strcmp(programNode->moduleName, moduleName) == 0)
+			return programNode;
+	}
+
+	ProgramNode* thisProgramNode = malloc(sizeof(ProgramNode));
+	*thisProgramNode = (ProgramNode){
+		.path = AllocateString(moduleName),
+		.moduleName = AllocateString(moduleName),
+		.dependencies = AllocateArray(sizeof(ProgramDependency)),
+		.isBuiltIn = true,
+	};
+
+	// PROPAGATE_ERROR(CheckForModuleNameConflict(thisProgramNode->moduleName, programNodes, containingLineNumber, containingPath));
+
+	ArrayAdd(programNodes, &thisProgramNode);
+
+	Array tokens;
+	Result result = Scan(thisProgramNode->path, source, sourceLength, &tokens);
+	ASSERT(result.type == Result_Success);
+	result = Parse(thisProgramNode->path, &tokens, &thisProgramNode->ast);
+	ASSERT(result.type == Result_Success);
+	FreeArray(&tokens);
+	return thisProgramNode;
+}
+
+static void AddBuiltInDependency(AST* ast, Array* dependencies, Array* programNodes, const char* moduleName, const char* source, size_t sourceLength)
+{
+	NodePtr node = AllocASTNode(
+		&(ImportStmt){
+			.lineNumber = -1,
+			.path = AllocateString(moduleName),
+			.moduleName = AllocateString(moduleName),
+			.builtIn = true,
+		},
+		sizeof(ImportStmt), Node_Import);
+	ArrayInsert(&ast->nodes, &node, 0);
+
+	ArrayAdd(dependencies, &(ProgramDependency){
+							   .node = GenerateBuiltInProgramNode(programNodes, moduleName, source, sourceLength),
+							   .importLineNumber = -1,
+						   });
+}
+
+static void AddBuiltInDependencies(AST* ast, Array* dependencies, Array* programNodes)
+{
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(jsfx), jsfx, jsfx_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(math), math, math_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(string), string, string_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(gfx), gfx, gfx_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(time), time, time_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(file), file, file_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(mem), mem, mem_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(stack), stack, stack_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(atomic), atomic, atomic_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(slider), slider, slider_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(midi), midi, midi_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(pin_mapper), pin_mapper, pin_mapper_length);
+}
+
 static Result GenerateProgramNode(
 	Array* programNodes,
 	const char* path,
@@ -265,13 +334,9 @@ static Result GenerateProgramNode(
 	ProgramNode* thisProgramNode = malloc(sizeof(ProgramNode));
 	{
 		char* absolutePath = AllocAbsolutePath(path);
-		if (!absolutePath)
-			goto error;
-
+		ASSERT(absolutePath);
 		char* moduleName = AllocFileNameNoExtension(path);
-		if (!moduleName)
-			goto error;
-
+		ASSERT(moduleName);
 		*thisProgramNode = (ProgramNode){
 			.path = absolutePath,
 			.moduleName = moduleName,
@@ -281,9 +346,11 @@ static Result GenerateProgramNode(
 	for (size_t i = 0; i < programNodes->length; ++i)
 	{
 		ProgramNode* node = *(ProgramNode**)programNodes->array[i];
+		if (node->isBuiltIn)
+			continue;
+
 		int result = IsSameFile(thisProgramNode->path, node->path);
-		if (result == -1)
-			goto error;
+		ASSERT(result != -1);
 
 		if (result)
 		{
@@ -312,6 +379,7 @@ static Result GenerateProgramNode(
 	FreeArray(&tokens);
 
 	thisProgramNode->dependencies = AllocateArray(sizeof(ProgramDependency));
+	AddBuiltInDependencies(&thisProgramNode->ast, &thisProgramNode->dependencies, programNodes); // todo try redefining the built in libraraies
 	for (size_t i = 0; i < thisProgramNode->ast.nodes.length; ++i)
 	{
 		const NodePtr* node = thisProgramNode->ast.nodes.array[i];
@@ -321,12 +389,15 @@ static Result GenerateProgramNode(
 			break;
 
 		ImportStmt* importStmt = node->ptr;
+		if (importStmt->builtIn)
+			continue;
+
 		ProgramNode* importProgramNode = NULL;
 		if (strlen(importStmt->path) == 0)
 			return ERROR_RESULT("Empty import statements are not allowed", importStmt->lineNumber, thisProgramNode->path);
 
-		if (!ChangeDirectoryToFileName(thisProgramNode->path))
-			goto error;
+		bool success = ChangeDirectoryToFileName(thisProgramNode->path);
+		ASSERT(success);
 
 		PROPAGATE_ERROR(GenerateProgramNode(programNodes, importStmt->path, importStmt->lineNumber, thisProgramNode->path, &importProgramNode));
 		importStmt->moduleName = AllocateString(importProgramNode->moduleName);
@@ -343,9 +414,6 @@ static Result GenerateProgramNode(
 	if (outProgramNode)
 		*outProgramNode = thisProgramNode;
 	return SUCCESS_RESULT;
-
-error:
-	return ERROR_RESULT("Internal compiler error", -1, NULL);
 }
 
 typedef void (*ProgramTreeVisitFunc)(const ProgramNode*, void*);

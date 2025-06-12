@@ -264,8 +264,11 @@ static Result RegisterDeclaration(const char* name, const NodePtr* node, const i
 	Array* array = MapGet(&currentScope->declarations, name);
 	if (array)
 	{
-		if (node->type != Node_FunctionDeclaration)
-			return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
+		if (node->type != Node_FunctionDeclaration) // allow function overloads
+		{
+			if (!(node->type == Node_Import && ((ImportStmt*)node->ptr)->builtIn)) // if its a built in import allow multiple definitions
+				return ERROR_RESULT(AllocateString1Str("\"%s\" is already defined", name), lineNumber, currentFilePath);
+		}
 
 		ArrayAdd(array, node);
 	}

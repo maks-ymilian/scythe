@@ -59,6 +59,11 @@ static void VisitExpression(const NodePtr* node)
 		printf("Literal");
 		break;
 	}
+	case Node_SizeOf:
+	{
+		printf("SizeOf");
+		break;
+	}
 	case Node_Null:
 	{
 		printf("Null");
@@ -144,8 +149,14 @@ static void VisitStatement(const NodePtr* node)
 		VisitStatement(&forStmt->stmt);
 		break;
 	}
-	case Node_LoopControl:
 	case Node_Import:
+	{
+		const ImportStmt* importStmt = node->ptr;
+		printf("path:%s\nmodule:%s\n", importStmt->path, importStmt->moduleName);
+	}
+	case Node_Input:
+	case Node_Modifier:
+	case Node_LoopControl:
 	case Node_Null:
 		break;
 	default: INVALID_VALUE(node->type);
@@ -162,6 +173,7 @@ void Printer(const AST* ast)
 		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
+		printf("*************************************** MODULE: %s *****************************************\n", module->moduleName);
 		for (size_t i = 0; i < module->statements.length; ++i)
 			VisitStatement(module->statements.array[i]);
 	}

@@ -22,8 +22,6 @@
 //STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
 //THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import "builtin/jsfx.scy"
-
 input thresh      [ default_value: 0,   min: -60, max: 0,    increment: 0.1, description: "Threshold (dB)", ];
 input ratio_enum  [ default_value: 5,   min: 0,   max: 9,    increment: 1,   description: "Ratio", ];
 input makeup      [ default_value: 0,   min: -20, max: 20,   increment: 0.1, description: "Gain (dB)", ];

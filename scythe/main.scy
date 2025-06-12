@@ -5,7 +5,6 @@
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// check if built in function overloads are correct
 
-	// link built in library to executable
 	// enums
 		// enum sliders
 	// add #namedStrings
@@ -39,6 +38,5 @@
 	// literal types
 	// escape characters
 
-import "builtin/jsfx.scy"
 import "tests/tests.scy"
 import "effect.scy"
