@@ -36,6 +36,8 @@ if (USE_DEBUG)
 	endif ()
 endif ()
 
+add_compile_definitions(_XOPEN_SOURCE=700 _CRT_SECURE_NO_WARNINGS)
+
 set(SOURCES
 	"src/Main.c"
 	"src/Scanner.c"
@@ -76,23 +78,31 @@ endif ()
 
 add_executable(bin2c "bin2c/bin2c.c")
 set(GENERATED_FILE "${CMAKE_CURRENT_BINARY_DIR}/BuiltIn.c")
-set(BUILTIN_FILES "${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/*")
+set(BUILTIN_FILES
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/atomic.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/file.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/gfx.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/jsfx.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/math.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/mem.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/midi.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/pin_mapper.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/slider.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/stack.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/string.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/time.scy"
+)
 add_custom_command(
 	OUTPUT ${GENERATED_FILE}
 	COMMENT "Generating ${GENERATED_FILE}"
 	DEPENDS ${BUILTIN_FILES}
-	COMMAND
-		"${CMAKE_CURRENT_BINARY_DIR}/bin2c"
-		${GENERATED_FILE}
-		${BUILTIN_FILES}
+	COMMAND "$<TARGET_FILE_DIR:bin2c>/bin2c" ${GENERATED_FILE} ${BUILTIN_FILES}
 )
 list(APPEND SOURCES ${GENERATED_FILE})
 
 add_executable(scythe ${SOURCES})
+target_include_directories(scythe PRIVATE "src")
+add_dependencies(scythe bin2c)
 
 set_property(TARGET scythe bin2c PROPERTY C_STANDARD 17)
 set_property(TARGET scythe bin2c PROPERTY C_EXTENSIONS OFF)
-target_include_directories(scythe PRIVATE "src")
-target_compile_definitions(scythe PRIVATE _XOPEN_SOURCE=700 _CRT_SECURE_NO_WARNINGS)
-
-add_dependencies(scythe bin2c)

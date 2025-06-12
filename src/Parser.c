@@ -117,8 +117,8 @@ static Result EvaluateNumberLiteral(
 	if (!isInteger)
 	{
 		double floatValue;
-		ssize_t consumedChars; // for some reason this needs to be signed???
-		if (sscanf(string, "%lf%zn", &floatValue, &consumedChars) != 1)
+		int consumedChars;
+		if (sscanf(string, "%lf%n", &floatValue, &consumedChars) != 1)
 			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 
 		if (fpclassify(floatValue) != FP_NORMAL && fpclassify(floatValue) != FP_ZERO)
