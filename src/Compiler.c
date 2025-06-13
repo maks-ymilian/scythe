@@ -275,8 +275,6 @@ static ProgramNode* GenerateBuiltInProgramNode(Array* programNodes, const char* 
 		.isBuiltIn = true,
 	};
 
-	// PROPAGATE_ERROR(CheckForModuleNameConflict(thisProgramNode->moduleName, programNodes, containingLineNumber, containingPath));
-
 	ArrayAdd(programNodes, &thisProgramNode);
 
 	Array tokens;
@@ -364,10 +362,6 @@ static Result GenerateProgramNode(
 		}
 	}
 
-	PROPAGATE_ERROR(CheckForModuleNameConflict(thisProgramNode->moduleName, programNodes, containingLineNumber, containingPath));
-
-	ArrayAdd(programNodes, &thisProgramNode);
-
 	char* source = NULL;
 	size_t sourceLength = 0;
 	PROPAGATE_ERROR(ReadFile(thisProgramNode->path, &source, &sourceLength, containingLineNumber, containingPath));
@@ -380,6 +374,10 @@ static Result GenerateProgramNode(
 
 	thisProgramNode->dependencies = AllocateArray(sizeof(ProgramDependency));
 	AddBuiltInDependencies(&thisProgramNode->ast, &thisProgramNode->dependencies, programNodes); // todo try redefining the built in libraraies
+
+	PROPAGATE_ERROR(CheckForModuleNameConflict(thisProgramNode->moduleName, programNodes, containingLineNumber, containingPath));
+	ArrayAdd(programNodes, &thisProgramNode);
+
 	for (size_t i = 0; i < thisProgramNode->ast.nodes.length; ++i)
 	{
 		const NodePtr* node = thisProgramNode->ast.nodes.array[i];
