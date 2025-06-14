@@ -165,7 +165,7 @@ static bool StatementReturns(const NodePtr* node, bool allPaths)
 	case Node_While:
 	{
 		const WhileStmt* whileStmt = node->ptr;
-		return StatementReturns(&whileStmt->stmt, allPaths);
+		return allPaths ? false : StatementReturns(&whileStmt->stmt, allPaths);
 	}
 	case Node_FunctionDeclaration:
 	case Node_ExpressionStatement:
