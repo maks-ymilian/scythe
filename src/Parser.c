@@ -353,7 +353,14 @@ static Result ParseBlockExpression(NodePtr* out)
 	const size_t pointerAfterType = pointer;
 	if (MatchOne(Token_LeftCurlyBracket))
 	{
-		if (MatchOne(Token_Dot) || MatchOne(Token_RightCurlyBracket))
+		if (MatchOne(Token_Dot))
+			blockType = BlockType_StructInitializer;
+		else if (type.modifier == TypeModifier_None &&
+				 type.expr.type == Node_Literal &&
+				 ((LiteralExpr*)type.expr.ptr)->type == Literal_PrimitiveType &&
+				 ((LiteralExpr*)type.expr.ptr)->primitiveType == Primitive_Void)
+			blockType = BlockType_BlockExpression;
+		else if (MatchOne(Token_RightCurlyBracket))
 			blockType = BlockType_StructInitializer;
 		else
 		{
