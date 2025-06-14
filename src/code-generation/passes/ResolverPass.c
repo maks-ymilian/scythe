@@ -845,41 +845,39 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 
 		if (type.effectiveType)
 		{
-			if (type.effectiveType->isArrayType)
-			{
-				// make the member access point to the ptr member inside the array type
-				switch (subscript->baseExpr.type)
-				{
-				case Node_MemberAccess:
-				{
-					MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
-
-					if (!memberAccess->parentReference)
-						memberAccess->parentReference = memberAccess->varReference;
-
-					memberAccess->varReference = GetPtrMember(type.effectiveType);
-					break;
-				}
-				case Node_FunctionCall:
-				case Node_BlockExpression:
-				case Node_Binary:
-				{
-					subscript->baseExpr = AllocASTNode(
-						&(MemberAccessExpr){
-							.lineNumber = subscript->lineNumber,
-							.start = subscript->baseExpr,
-							.varReference = GetPtrMember(type.effectiveType),
-						},
-						sizeof(MemberAccessExpr), Node_MemberAccess);
-					break;
-				}
-				default: INVALID_VALUE(subscript->baseExpr.type);
-				}
-			}
-			else
+			if (!type.effectiveType->isArrayType)
 				return ERROR_RESULT("Cannot index into non-array type",
 					subscript->lineNumber,
 					currentFilePath);
+
+			// make the member access point to the ptr member inside the array type
+			switch (subscript->baseExpr.type)
+			{
+			case Node_MemberAccess:
+			{
+				MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
+
+				if (!memberAccess->parentReference)
+					memberAccess->parentReference = memberAccess->varReference;
+
+				memberAccess->varReference = GetPtrMember(type.effectiveType);
+				break;
+			}
+			case Node_FunctionCall:
+			case Node_BlockExpression:
+			case Node_Binary:
+			{
+				subscript->baseExpr = AllocASTNode(
+					&(MemberAccessExpr){
+						.lineNumber = subscript->lineNumber,
+						.start = subscript->baseExpr,
+						.varReference = GetPtrMember(type.effectiveType),
+					},
+					sizeof(MemberAccessExpr), Node_MemberAccess);
+				break;
+			}
+			default: INVALID_VALUE(subscript->baseExpr.type);
+			}
 		}
 		return SUCCESS_RESULT;
 	}
