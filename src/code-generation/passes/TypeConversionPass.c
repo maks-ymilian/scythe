@@ -107,14 +107,10 @@ static Result ConvertExpression(NodePtr* expr, PrimitiveTypeInfo exprType, Primi
 	if (exprType.effectiveType == Primitive_Void || targetType.effectiveType == Primitive_Void)
 		goto convertError;
 
-	if (exprType.effectiveType == Primitive_Any || targetType.effectiveType == Primitive_Any ||
-		(!exprType.pointerTypeIsStruct && exprType.pointerType == Primitive_Any) ||
-		(!targetType.pointerTypeIsStruct && targetType.pointerType == Primitive_Any))
+	if (exprType.effectiveType == Primitive_Any || targetType.effectiveType == Primitive_Any)
 		return SUCCESS_RESULT;
 
-	if (exprType.effectiveType == targetType.effectiveType &&
-		exprType.pointerType == targetType.pointerType &&
-		exprType.isPointer == targetType.isPointer)
+	if (exprType.effectiveType == targetType.effectiveType)
 		return SUCCESS_RESULT;
 
 	switch (targetType.effectiveType)
