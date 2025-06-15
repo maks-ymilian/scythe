@@ -85,23 +85,6 @@ static Result VisitFunctionCall(FuncCallExpr* funcCall)
 	return SUCCESS_RESULT;
 }
 
-static NodePtr AllocBoolConversion(const NodePtr expr, const int lineNumber)
-{
-	return AllocASTNode(
-		&(UnaryExpr){
-			.lineNumber = lineNumber,
-			.operatorType = Unary_Negate,
-			.expression = AllocASTNode(
-				&(UnaryExpr){
-					.lineNumber = lineNumber,
-					.operatorType = Unary_Negate,
-					.expression = expr,
-				},
-				sizeof(UnaryExpr), Node_Unary),
-		},
-		sizeof(UnaryExpr), Node_Unary);
-}
-
 static Result ConvertExpression(NodePtr* expr, PrimitiveTypeInfo exprType, PrimitiveTypeInfo targetType, int lineNumber)
 {
 	if (exprType.effectiveType == Primitive_Void || targetType.effectiveType == Primitive_Void)
@@ -135,12 +118,7 @@ static Result ConvertExpression(NodePtr* expr, PrimitiveTypeInfo exprType, Primi
 		return SUCCESS_RESULT;
 	}
 	case Primitive_Bool:
-	{
-		if (exprType.effectiveType != Primitive_Float && exprType.effectiveType != Primitive_Int)
-			goto convertError;
-		*expr = AllocBoolConversion(*expr, lineNumber);
-		return SUCCESS_RESULT;
-	}
+		goto convertError;
 	default: INVALID_VALUE(targetType.effectiveType);
 	}
 
