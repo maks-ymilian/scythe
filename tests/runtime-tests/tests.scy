@@ -15,5 +15,6 @@ import "test_accessing_from_expressions.scy"
 import "test_linked_list.scy"
 import "test_postfix_increment.scy"
 import "test_strings.scy"
+import "test_input.scy"
 
 any AAA__________ = 7777777777777777777;

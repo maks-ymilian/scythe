@@ -1,0 +1,20 @@
+input input1;
+input input2 [
+	default_value: 69.420,
+	max: 10,
+];
+input input3 [
+	default_value: 69.420,
+	max: 100
+];
+
+@init
+{
+	bool AAA_test_input = 
+		input1.value == 0 &&
+		input2.value == 69.420 &&
+		input3.value == 69.420 &&
+		input1.sliderNumber == 1 &&
+		input2.sliderNumber == 2 &&
+		input3.sliderNumber == 3;
+}

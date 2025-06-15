@@ -429,6 +429,7 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_StructDeclaration:
 	case Node_FunctionDeclaration:
 	case Node_Return: // part of the hack
+	case Node_LoopControl: // part of the hack
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	case Node_Null:
 	{
@@ -444,14 +445,6 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 				if (resolveFuncCall && node->type == Node_FunctionDeclaration)
 					return FindFunctionOverloadScoped(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
 
-				// special case for accessing members in input variable
-				if (node->type == Node_VariableDeclaration &&
-					((VarDeclStmt*)node->ptr)->inputStmt)
-				{
-					*current = (NodePtr){.ptr = ((VarDeclStmt*)node->ptr)->inputStmt, .type = Node_Input};
-					return SUCCESS_RESULT;
-				}
-
 				*current = *node;
 				return SUCCESS_RESULT;
 			}
@@ -463,7 +456,20 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = current->ptr;
-		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
+
+		if (varDecl->inputStmt)
+		{
+			if (strcmp(text, "sliderNumber") == 0)
+				*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_Return}; // Node_Return here is a hack
+			else if (strcmp(text, "value") == 0)
+				*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_LoopControl}; // also here is a hack
+			else
+				return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
+
+			return SUCCESS_RESULT;
+		}
+		else
+			return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
 	}
 	case Node_FunctionCall:
 	case Node_BlockExpression:
@@ -548,19 +554,6 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 		*current = node;
 		return SUCCESS_RESULT;
 	}
-	case Node_Input:
-	{
-		InputStmt* input = current->ptr;
-
-		if (strcmp(text, "sliderNumber") == 0)
-			*current = (NodePtr){.ptr = input, .type = Node_Return}; // Node_Return here is a hack
-		else if (strcmp(text, "value") == 0)
-			*current = input->varDecl;
-		else
-			return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
-
-		return SUCCESS_RESULT;
-	}
 	default: INVALID_VALUE(current->type);
 	}
 }
@@ -599,6 +592,9 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 	}
 	case Node_VariableDeclaration:
 	{
+		if (((VarDeclStmt*)current.ptr)->inputStmt)
+			return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
+
 		ASSERT(memberAccess->varReference != NULL);
 		// if there is more identifiers after varReference then change it to parent
 		if (memberAccess->varReference != current.ptr)
@@ -608,10 +604,7 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 		}
 		break;
 	}
-	case Node_Input:
-	{
-		return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
-	}
+
 	// stupid hack for accessing sliderNumber member in input variable
 	case Node_Return:
 	{
@@ -619,6 +612,13 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 		int lineNumber = memberAccess->lineNumber;
 		FreeASTNode(*node);
 		*node = AllocUInt64Integer(input->sliderNumber, lineNumber);
+		break;
+	}
+	// stupid hack for accessing value member in input variable
+	case Node_LoopControl:
+	{
+		InputStmt* input = current.ptr;
+		memberAccess->varReference = input->varDecl.ptr;
 		break;
 	}
 	default: INVALID_VALUE(current.type);
@@ -1471,7 +1471,7 @@ static Result VisitStatement(NodePtr* node)
 			sizeof(VarDeclStmt), Node_VariableDeclaration);
 		PROPAGATE_ERROR(VisitStatement(&input->varDecl));
 
-		input->sliderNumber = sliderNumber++;
+		input->sliderNumber = ++sliderNumber;
 		return SUCCESS_RESULT;
 	}
 	case Node_LoopControl:
@@ -1501,8 +1501,6 @@ static Result VisitModule(ModuleNode* module)
 
 Result ResolverPass(const AST* ast)
 {
-	sliderNumber = 1;
-
 	structTypeToArrayStruct = AllocateMap(sizeof(StructDeclStmt*));
 
 	modules = AllocateMap(sizeof(Map));

@@ -129,16 +129,14 @@ imported.ImportedType type;
 //<!>Unknown identifier "imported_private"<!> imported_private.privateVar;
 
 //<!>Unknown member in input variable "unknown"<!> inp.unknown;
-	// todo
-	//<!>Unknown member in input variable "unknown"<!> imported.importedInput.unknown;
-	//<!>Unknown member in input variable "unknown"<!> imported_public.importedInput.unknown;
+//<!>Unknown member in input variable "unknown"<!> imported.importedInput.unknown;
+//<!>Unknown member in input variable "unknown"<!> imported_public.importedInput.unknown;
 
 //<!>Cannot use input variable by itself<!> inp;
-	// todo
-	//<!>Cannot use input variable by itself<!> imported.importedInput;
-	//<!>Cannot use input variable by itself<!> imported_public.importedInput;
+//<!>Cannot use input variable by itself<!> imported.importedInput;
+//<!>Cannot use input variable by itself<!> imported_public.importedInput;
 
-//<!>Expression is not a type<!> imported_public.importedInput a;
+//<!>Cannot use input variable by itself<!> imported_public.importedInput a;
 }
 
 private struct PrivateType { any a; }
