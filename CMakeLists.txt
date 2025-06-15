@@ -89,7 +89,7 @@ set(BUILTIN_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/pin_mapper.scy"
 	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/slider.scy"
 	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/stack.scy"
-	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/string.scy"
+	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/str.scy"
 	"${CMAKE_CURRENT_SOURCE_DIR}/scythe/builtin/time.scy"
 )
 add_custom_command(

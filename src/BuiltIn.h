@@ -6,8 +6,8 @@ extern const size_t jsfx_length;
 extern const char math[];
 extern const size_t math_length;
 
-extern const char string[];
-extern const size_t string_length;
+extern const char str[];
+extern const size_t str_length;
 
 extern const char gfx[];
 extern const size_t gfx_length;

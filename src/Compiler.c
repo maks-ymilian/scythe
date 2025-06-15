@@ -308,7 +308,7 @@ static void AddBuiltInDependencies(AST* ast, Array* dependencies, Array* program
 {
 	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(jsfx), jsfx, jsfx_length);
 	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(math), math, math_length);
-	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(string), string, string_length);
+	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(str), str, str_length);
 	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(gfx), gfx, gfx_length);
 	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(time), time, time_length);
 	AddBuiltInDependency(ast, dependencies, programNodes, STRINGIFY(file), file, file_length);
