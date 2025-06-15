@@ -1,3 +1,26 @@
+int funcTest(int k, int f)
+{
+	if (k == 1)
+		return 5;
+	else
+	{
+		if (k == 3 && f == 5)
+		return 6;
+	}
+
+	int a = 1;
+
+	while (false)
+		return 3;
+
+	while (true)
+		return 2;
+
+	return 3;
+	int p;
+	p = 1;
+}
+
 int test_loops(int value)
 {
 	int result = value;
@@ -47,9 +70,13 @@ int test_loops(int value)
 
 @init
 {
-	int sum = 0;
-	for (int i = 0; i <= 50; i += 1)
-		sum += test_loops(i);
-
-	bool AAA_test_loops = sum == -3781499;
+	bool AAA_test_control_flow = int {
+		int sum = 0;
+		for (int i = 0; i <= 50; i += 1)
+			sum += test_loops(i);
+		return sum;
+	} == -3781499 &&
+		funcTest(3, 5.2) == 6 &&
+		funcTest(1, 5.2) == 5 &&
+		funcTest(3, 6) == 2;
 }

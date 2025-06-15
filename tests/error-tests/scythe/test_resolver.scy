@@ -1,0 +1,315 @@
+//<!>Import statements can only be internal<!> private external import "imported_private.scy"
+private external:
+//<!>Import statements can only be internal<!> private external import "imported_private.scy"
+//<!>Import statements can only be internal<!> public import "imported_private.scy"
+private internal import "imported.scy"
+internal:
+
+//<!>"slider" is already defined<!> input slider;
+input inp;
+//<!>"inp" is already defined<!> input inp;
+
+struct def { any a; }
+//<!>"def" is already defined<!> struct def { any a; }
+
+int var;
+//<!>"var" is already defined<!> int var;
+@init
+{
+	int var;
+//<!>"var" is already defined<!> int var;
+}
+
+void func() {}
+//<!>Function declaration "func" is ambiguous with another overload<!> void func() {}
+
+@init
+{
+//<!>Could not find overload for function "func" with 1 parameter(s)<!> func(1);
+
+	void func(int a) {}
+//<!>Function declaration "func" is ambiguous with another overload<!> void func(any a) {}
+
+	func(1);
+	
+	void func(any a, any b)
+	{
+//<!>Could not find overload for function "func" with 2 parameter(s)<!> func(1, 1);
+
+		void func(any a, any b) {}
+
+		func(1, 1);
+	}
+
+	{
+//<!>Function declaration "func" is ambiguous with another overload<!> void func(any a, any b) {}
+		void func(any a, any b, any c) {}
+	}
+
+	void func(any a, any b, any c) {}
+
+	{
+//<!>Function declaration "func" is ambiguous with another overload<!> void func(any a, any b, any c) {}
+	}
+}
+
+@init
+{
+	void func(int a) {}
+}
+
+void func(int a) {}
+
+//<!>Function declaration "func" is ambiguous with another overload<!> external void func(...);
+//<!>Function declaration "func" is ambiguous with another overload<!> external void func(any a, ...);
+external void func(any a, any b, ...);
+@init
+{
+	func(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,);
+
+//<!>Function declaration "func" is ambiguous with another overload<!> void func(any a1,any a2,any a3,any a4,any a5,any a6,any a7,any a8,any a9,any a10,any a11,any a12,) {}
+
+//<!>Unknown identifier "unknown"<!> unknown();
+}
+
+@init
+{
+	int* a;
+	def* b;
+//<!>Cannot access members in pointer type<!> a.member;
+//<!>Cannot access members in pointer type<!> b.member;
+
+	int c;
+//<!>Cannot access member in a non-aggregate type<!> c.member;
+	
+//<!>Member "member" does not exist in type "def"<!> b->member;
+	
+	any[] arr;
+//<!>Member "member" does not exist in array type<!> arr.member;
+}
+
+@init
+{
+//<!>Invalid member access<!> def.member;
+//<!>Invalid member access<!> func.member;
+//<!>Invalid member access<!> inp.sliderNumber.member;
+
+//<!>Unknown identifier<!> unknown;
+}
+
+//<!>Types from private imports are not allowed in public declarations<!> public imported.ImportedType type;
+public struct PublicErrorStruct { any a;
+//<!>Types from private imports are not allowed in public declarations<!> imported.ImportedType type;
+}
+//<!>Types from private imports are not allowed in public declarations<!> public imported.ImportedType PublicErrorFunc() {}
+//<!>Types from private imports are not allowed in public declarations<!> public void PublicErrorFunc(imported.ImportedType a) {}
+imported.ImportedType type;
+
+@init
+{
+//<!>Unknown identifier "unknown" in module "imported"<!> imported.unknown;
+//<!>Cannot access member imports from another module<!> imported.imported_private.whatever;
+//<!>Cannot access member imports from another module<!> imported.imported_public.whatever;
+
+//<!>Unknown identifier "unknown" in module "imported"<!> imported.unknown();
+//<!>Could not find overload for function "ImportedFunc" with 1 parameter(s)<!> imported.ImportedFunc(1);
+
+//<!>Declaration "privateInput" in module "imported" is private<!> imported.privateInput;
+//<!>Declaration "PrivateType" in module "imported" is private<!> imported.PrivateType a;
+//<!>Declaration "PrivateFunc" in module "imported" is private<!> imported.PrivateFunc();
+//<!>Declaration "privateVar" in module "imported" is private<!> imported.privateVar;
+
+//<!>Declaration "privateInput" in module "imported_public" is private<!> imported_public.privateInput;
+//<!>Declaration "PrivateType" in module "imported_public" is private<!> imported_public.PrivateType a;
+//<!>Declaration "PrivateFunc" in module "imported_public" is private<!> imported_public.PrivateFunc();
+//<!>Declaration "privateVar" in module "imported_public" is private<!> imported_public.privateVar;
+//<!>Unknown identifier "imported_private"<!> imported_private.privateInput;
+//<!>Unknown identifier "imported_private"<!> imported_private.PrivateType a;
+//<!>Unknown identifier "imported_private"<!> imported_private.PrivateFunc();
+//<!>Unknown identifier "imported_private"<!> imported_private.privateVar;
+
+//<!>Unknown member in input variable "unknown"<!> inp.unknown;
+	// todo
+	//<!>Unknown member in input variable "unknown"<!> imported.importedInput.unknown;
+	//<!>Unknown member in input variable "unknown"<!> imported_public.importedInput.unknown;
+
+//<!>Cannot use input variable by itself<!> inp;
+	// todo
+	//<!>Cannot use input variable by itself<!> imported.importedInput;
+	//<!>Cannot use input variable by itself<!> imported_public.importedInput;
+
+//<!>Expression is not a type<!> imported_public.importedInput a;
+}
+
+private struct PrivateType { any a; }
+//<!>Private types are not allowed in public declarations<!> public PrivateType a;
+//<!>Private types are not allowed in public declarations<!> public PrivateType errorFunc() { return PrivateType{}; }
+//<!>Private types are not allowed in public declarations<!> public void errorFunc(PrivateType a) {}
+public struct ErrorStruct { any a;
+//<!>Private types are not allowed in public declarations<!> PrivateType b;
+}
+
+@init
+{
+//<!>"void" is not allowed here<!> void voidVar;
+//<!>"void" is not allowed here<!> void[] voidVar;
+//<!>"void" is not allowed here<!> void voidVar(void* a) {}
+//<!>"void" is not allowed here<!> void{ .a = 3 };
+//<!>"void" is not allowed here<!> sizeof(void);
+//<!>"void" is not allowed here<!> void[]{};
+	void{};
+	void{ return; };
+
+//<!>Expression is not a variable or value<!> def;
+//<!>Expression is not a variable or value<!> def + 1;
+//<!>Expression is not a variable or value<!> *def;
+//<!>Expression is not a variable or value<!> func(def);
+
+//<!>Function call argument must be an expression<!> func(int a);
+
+//<!>Expression is not a function<!> def();
+//<!>Expression is not a function<!> var();
+
+def def;
+//<!>Cannot index into non-array type<!> def[0];
+
+//<!>Declarations with modifiers must be in global scope<!> public int decl;
+//<!>Declarations with modifiers must be in global scope<!> private int decl;
+//<!>Declarations with modifiers must be in global scope<!> external int decl;
+//<!>Declarations with modifiers must be in global scope<!> internal int decl;
+//<!>Declarations with modifiers must be in global scope<!> public int decl() {}
+//<!>Declarations with modifiers must be in global scope<!> private int decl() {}
+//<!>Declarations with modifiers must be in global scope<!> external int decl() {}
+//<!>Declarations with modifiers must be in global scope<!> internal int decl() {}
+}
+
+//<!>External variables cannot have initializers<!> external int ext = 234;
+//<!>Only external variables can have external names<!> int ext as a;
+
+input samples [
+	description: "desc",
+//<!>Cannot set property twice<!> description: "desc",
+	shape: [
+		type: log,
+//<!>Cannot set property twice<!> type: log,
+		midpoint: 1000,
+		linear_automation: true,
+//<!>Cannot set property twice<!> linear_automation: true,
+//<!>Cannot set "exponent" property if shape type is logarithmic<!> exponent: 1,
+	],
+];
+input samples1 [
+//<!>Expected number value<!> min: true,
+//<!>Expected string value<!> description: true,
+	shape: [
+//<!>Expected slider shape type<!> type: true,
+//<!>Unknown slider shape type<!> type: whatever,
+//<!>Cannot set "midpoint" property if shape type is exponential<!> midpoint: 1,
+		type: exp,
+//<!>Expected boolean value<!> linear_automation: 1,
+//<!>Invalid property type<!> min: 1,
+	],
+//<!>Invalid property type<!> type: log,
+//<!>Expected property list<!> shape: 1,
+];
+input samples2 [
+	shape: [
+//<!>Cannot set "linear_automation" property if shape type is not set<!> linear_automation: true,
+//<!>Cannot set "midpoint" property if shape type is not set<!> midpoint: 0,
+//<!>Cannot set "exponent" property if shape type is not set<!> exponent: 0,
+	],
+];
+//<!>Must set "midpoint" property if shape type is logarithmic<!> input samples3 [ shape: [ type: log ] ];
+
+@gfx [ width: 50,
+//<!>Cannot set property twice<!> width: 50,
+//<!>Invalid property type<!> min: 50,
+] {}
+
+//<!>Properties are only allowed in an "@gfx" section<!> @init [] {}
+
+internal:
+	void extblock1() {}
+//<!>External functions cannot have code blocks<!> external void extblock() {}
+	internal void interna1() {}
+
+//<!>Expected code block after function declaration<!> void extblock1();
+	external void extblock2();
+//<!>Expected code block after function declaration<!> internal void interna1();
+
+//<!>Only external functions can have external names<!> void extblock1() {} as name
+//<!>External functions cannot have code blocks<!> external void extblock() {} as name
+//<!>Only external functions can have external names<!> internal void interna1() {} as name
+
+//<!>Only external functions can have external names<!> void extblock1() as name;
+	external void extblock9() as name;
+//<!>Only external functions can have external names<!> internal void interna1() as name;
+
+//<!>Only external functions can be variadic functions<!> void extblock1(...) {}
+//<!>External functions cannot have code blocks<!> external void extblock(...) {}
+//<!>Only external functions can be variadic functions<!> internal void interna1(...) {}
+
+//<!>Expected code block after function declaration<!> void extblock1(...);
+	external void extblock200(...);
+//<!>Expected code block after function declaration<!> internal void interna100(...);
+
+//<!>Only external functions can have external names<!> void extblock100(...) {} as name
+//<!>External functions cannot have code blocks<!> external void extblock00(...) {} as name
+//<!>Only external functions can have external names<!> internal void interna100(...) {} as name
+
+//<!>Only external functions can have external names<!> void extblock100(...) as name;
+	external void extblock900(...) as name;
+//<!>Only external functions can have external names<!> internal void interna100(...) as name;
+
+//<!>Input statements can only be internal<!> private external input extinput1;
+private external:
+internal input extinput;
+//<!>Input statements can only be internal<!> private input extinput1;
+
+//<!>External functions cannot have code blocks<!> void extblock() {}
+//<!>External functions cannot have code blocks<!> external void extblock() {}
+	internal void interna() {}
+
+	void extblock5();
+	external void extblock();
+//<!>Expected code block after function declaration<!> internal void interna();
+
+//<!>External functions cannot have code blocks<!> void extblock() {} as name
+//<!>External functions cannot have code blocks<!> external void extblock() {} as name
+//<!>Only external functions can have external names<!> internal void interna() {} as name
+
+	void extblock50() as name;
+	external void extblock00() as name;
+//<!>Only external functions can have external names<!> internal void interna() as name;
+
+//<!>External functions cannot have code blocks<!> void extblock00(...) {}
+//<!>External functions cannot have code blocks<!> external void extblock00(...) {}
+//<!>Only external functions can be variadic functions<!> internal void interna00(...) {}
+
+	void extblock500(...);
+	external void extblock001(...);
+//<!>Expected code block after function declaration<!> internal void interna00(...);
+
+//<!>External functions cannot have code blocks<!> void extblock00(...) {} as name
+//<!>External functions cannot have code blocks<!> external void extblock00(...) {} as name
+//<!>Only external functions can have external names<!> internal void interna00(...) {} as name
+
+	void extblock5000(...) as name;
+	external void extblock0000(...) as name;
+//<!>Only external functions can have external names<!> internal void interna849(...) as name;
+
+//<!>Struct declarations can only be internal<!> private struct declll { any a; }
+internal:
+//<!>Struct declarations can only be internal<!> external struct declll { any a; }
+
+//<!>Cannot define an empty struct<!> struct empty {}
+
+struct cycle { any a; any b;
+//<!>Struct member causes a cycle in the struct layout<!> cycle c;
+any d; }
+
+void scope()
+{
+//<!>Modifier statements are only allowed in global scope<!> internal:
+//<!>Input statements are only allowed in global scope<!> input yea;
+}

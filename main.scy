@@ -20,23 +20,10 @@
 	// asserts
 
 // things to test:
-	// make a test for every possible error
-	// assigning wrong types
-	// function nesting
-	// fuzz test the math?
-	// lvalue rvalue assignment
+	// test math
 	// OPERATORS and type conversions
-	// return and break also inside loops
-	// binary exprs in member access and subscript and dereferencing syntax
-	// public private internal external on functions variables structs imports
-	// import statement
-		// private types in public declarations, structs, variables, functions, parameters, imports,
-		// public types coming from private imports shouldnt be allowed in public declarations
-		// imports pulled in from other imports
 	// all built in functions
 		// passing by reference
-	// literal types
-	// escape characters
 
-import "tests/tests.scy"
-import "effect.scy"
+import "tests/runtime-tests/tests.scy"
+import "scythe/examples/effect.scy"

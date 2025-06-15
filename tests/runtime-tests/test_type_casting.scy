@@ -4,8 +4,7 @@
 		int {5439.4} == 5439 &&
 		int {83.9} == 83 &&
 		float {83.9} == 83.9 &&
-		bool {83.9} == true &&
-		bool {-49} == true &&
-		bool {0} == false
+		bool {any {1}} == true &&
+		bool {any {0}} == false
 	};
 }

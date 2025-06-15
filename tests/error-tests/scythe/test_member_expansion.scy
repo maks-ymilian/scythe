@@ -1,0 +1,78 @@
+struct type1 { any a; }
+struct type2 { any a; }
+
+@init
+{
+//<!>Cannot convert a non-aggregate type to an aggregate type<!> type1{} = any{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> any{} = type1{};
+//<!>Cannot convert a non-aggregate type to an aggregate type<!> any[]{} = any{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> any{} = any[]{};
+
+	type1{} = type1{};
+//<!>Cannot convert between incompatible aggregate types<!> type1{} = type2{};
+//<!>Cannot convert between incompatible aggregate types<!> type2{} = type1{};
+	type2{} = type2{};
+
+	any[]{} = int[]{};
+	int[]{} = any[]{};
+	any[]{} = any[]{};
+	int[]{} = int[]{};
+
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> float[]{} = int[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> int[]{} = float[]{};
+	
+//<!>Cannot convert between incompatible aggregate types<!> type1[]{} = type1{};
+//<!>Cannot convert between incompatible aggregate types<!> type1{} = type1[]{};
+
+	type1*{} = type1*{};
+//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> type2*{} = type1*{};
+//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> type1*{} = type2*{};
+	type2*{} = type2*{};
+
+	type2*{} = any{type1*{}};
+	type1*{} = any{type2*{}};
+	type2*{} = any*{type1*{}};
+	type1*{} = any*{type2*{}};
+
+	type1*{} = any*{};
+	any*{} = any*{};
+	any*{} = type1*{};
+
+	type1[]{} = type1[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> type2[]{} = type1[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> type1[]{} = type2[]{};
+	type2[]{} = type2[]{};
+
+	type2[]{} = any[]{type1[]{}};
+	type1[]{} = any[]{type2[]{}};
+
+	type1[]{} = any[]{};
+	any[]{} = any[]{};
+	any[]{} = type1[]{};
+}
+
+@init
+{
+//<!>Cannot use operator "+" on aggregate types<!> type1{} + type1{};
+//<!>Cannot use operator "+=" on aggregate types<!> type1{} += type1{};
+
+	type1 t;
+	type1 func() { return type1{}; }
+
+	// todo
+	// (type1{} = type1{}) = type1{};
+	t = type1{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> ++0 = type1{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> true = type1{};
+	type1[]{}[0] = type1{};
+	func() = type1{};
+	type1{} = type1{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> sizeof(0) = type1{};
+}
+
+//<!>External functions cannot have any parameters of an aggregate type<!> external void func(any b, type1 a, ...);
+//<!>External functions cannot have any parameters of an aggregate type<!> external void func(any b, any[] a, ...);
+//<!>External functions cannot return an aggregate type<!> external type1 func();
+//<!>External functions cannot return an aggregate type<!> external any[] func();
+//<!>External variable declarations cannot be of an aggregate type<!> external type1 a;
+//<!>External variable declarations cannot be of an aggregate type<!> external any[] a;

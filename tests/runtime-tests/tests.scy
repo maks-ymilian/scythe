@@ -1,4 +1,3 @@
-import "test_loops.scy"
 import "test_struct_nesting_returning.scy"
 import "test_block_expr_scope.scy"
 import "test_scope.scy"
@@ -15,5 +14,6 @@ import "test_type_casting.scy"
 import "test_accessing_from_expressions.scy"
 import "test_linked_list.scy"
 import "test_postfix_increment.scy"
+import "test_strings.scy"
 
 any AAA__________ = 7777777777777777777;

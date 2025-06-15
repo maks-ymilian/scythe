@@ -1,0 +1,71 @@
+@init
+{
+//<!>"break" is not allowed here<!> break;
+//<!>"continue" is not allowed here<!> continue;
+	{
+//<!>"break" is not allowed here<!> break;
+//<!>"continue" is not allowed here<!> continue;
+	}
+}
+
+void func()
+{
+//<!>"break" is not allowed here<!> break;
+//<!>"continue" is not allowed here<!> continue;
+	while (true)
+	{
+		break;
+		continue;
+		{
+			break;
+			continue;
+		}
+		void f1()
+		{
+//<!>"break" is not allowed here<!> break;
+//<!>"continue" is not allowed here<!> continue;
+			while (true)
+			{
+				break;
+				continue;
+				{
+					break;
+					continue;
+				}
+				int f1()
+				{
+//<!>"break" is not allowed here<!> break;
+//<!>"continue" is not allowed here<!> continue;
+//<!>Non-void function must return a value<!> return;
+					return 1;
+					void f1()
+					{
+						return
+//<!>Void function cannot return a value<!> 1
+						;
+					}
+				}
+			}
+			return
+//<!>Void function cannot return a value<!> 1
+			;
+		}
+		return
+//<!>Void function cannot return a value<!> void {}
+		;
+	}
+
+	return
+//<!>Void function cannot return a value<!> ""
+	;
+}
+
+//<!>Not all control paths return a value<!> int fg() {}
+//<!>Not all control paths return a value<!> int fg() { if (true) return 1; }
+//<!>Not all control paths return a value<!> int fg1() { if (true) return 1; while (false) return 1; while (true) return 1; for (;;) return 1; }
+
+void func1() { while (true) { break; continue; { break; continue; } void f1() { while (true) { break; continue; { break; continue; } int f1() { return 1; void f1() { return;
+//<!>Not all control paths return a value<!> int fg() {}
+//<!>Not all control paths return a value<!> int fg() { if (true) return 1; }
+//<!>Not all control paths return a value<!> int fg1() { if (true) return 1; while (false) return 1; while (true) return 1; for (;;) return 1; }
+} } } return; } return; } return; }

@@ -1,0 +1,6 @@
+@init
+{
+//<!>String literal is never closed<!> "string literal\"
+//<!>Char literal is never closed<!> 'char literal\'
+//<!>Unexpected character<!> ¬
+}

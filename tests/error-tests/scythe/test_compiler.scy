@@ -1,0 +1,15 @@
+//<!>Failed to read file "nonexistent/nonexistent"<!> import "nonexistent/nonexistent"
+//<!>Failed to read file "../scythe"<!> import "../scythe"
+//<!>Failed to read file "."<!> import "."
+//<!>Failed to read file ".."<!> import ".."
+
+//<!>Empty import statements are not allowed<!> import ""
+
+//<!>Circular dependency detected<!> import "test_compiler.scy"
+//<!>Circular dependency detected<!> import "circular.scy"
+
+//<!>Failed to read file "jsfx"<!> import "jsfx"
+//<!>Module "math" is already defined<!> import "math"
+
+import "imported.scy"
+//<!>Module "imported" is already defined<!> import "imported.scy1"

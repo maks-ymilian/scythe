@@ -1,0 +1,37 @@
+//<!>Cannot have more than one modifier of the same type<!> external external:
+//<!>Cannot have more than one modifier of the same type<!> external external external:
+//<!>Cannot have more than one modifier of the same type<!> public private:
+//<!>Cannot have more than one modifier of the same type<!> internal private public:
+//<!>Cannot have more than one modifier of the same type<!> internal external:
+external:
+internal:
+public:
+private:
+external private:
+external public:
+internal private:
+internal public:
+public internal:
+public external:
+private internal:
+private external:
+
+private internal:
+struct s { any a; }
+int var;
+void func() {}
+
+@init
+{
+	sizeof(1 + 1);
+	sizeof(!false);
+	sizeof(true);
+	sizeof(var);
+	sizeof(s);
+	sizeof(s[]);
+	// todo
+	// sizeof(var[0]);
+	// sizeof(func());
+	// sizeof(s{});
+	sizeof(sizeof(0));
+}

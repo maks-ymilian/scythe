@@ -1,0 +1,180 @@
+struct s { any a; }
+
+@init
+{
+	any{} = any{};
+	any{} = float{};
+	any{} = int{};
+	any{} = bool{};
+//<!>Cannot convert type "void" to "any"<!> any{} = void{};
+
+	float{} = any{};
+	float{} = float{};
+	float{} = int{};
+//<!>Cannot convert type "bool" to "float"<!> float{} = bool{};
+//<!>Cannot convert type "void" to "float"<!> float{} = void{};
+
+	int{} = any{};
+	int{} = float{};
+	int{} = int{};
+//<!>Cannot convert type "bool" to "int"<!> int{} = bool{};
+//<!>Cannot convert type "void" to "int"<!> int{} = void{};
+
+	bool{} = any{};
+//<!>Cannot convert type "float" to "bool<!> bool{} = float{};
+//<!>Cannot convert type "int" to "bool<!> bool{} = int{};
+	bool{} = bool{};
+//<!>Cannot convert type "void" to "bool"<!> bool{} = void{};
+
+//<!>Cannot convert type "any" to "void"<!> void{} = any{};
+//<!>Cannot convert type "float" to "void"<!> void{} = float{};
+//<!>Cannot convert type "int" to "void"<!> void{} = int{};
+//<!>Cannot convert type "bool" to "void"<!> void{} = bool{};
+//<!>Cannot convert type "void" to "void"<!> void{} = void{};
+
+	any*{} = any*{};
+	any*{} = float*{};
+	any*{} = int*{};
+	any*{} = bool*{};
+//<!>"void" is not allowed here<!> any*{} = void*{};
+	any*{} = s*{};
+
+	float*{} = any*{};
+	float*{} = float*{};
+	float*{} = int*{};
+	float*{} = bool*{};
+//<!>"void" is not allowed here<!> float*{} = void*{};
+	float*{} = s*{};
+
+	int*{} = any*{};
+	int*{} = float*{};
+	int*{} = int*{};
+	int*{} = bool*{};
+//<!>"void" is not allowed here<!> int*{} = void*{};
+	int*{} = s*{};
+
+	bool*{} = any*{};
+	bool*{} = float*{};
+	bool*{} = int*{};
+	bool*{} = bool*{};
+//<!>"void" is not allowed here<!> bool*{} = void*{};
+	bool*{} = s*{};
+
+//<!>"void" is not allowed here<!> void*{} = any*{};
+//<!>"void" is not allowed here<!> void*{} = float*{};
+//<!>"void" is not allowed here<!> void*{} = int*{};
+//<!>"void" is not allowed here<!> void*{} = bool*{};
+//<!>"void" is not allowed here<!> void*{} = void*{};
+//<!>"void" is not allowed here<!> void*{} = s*{};
+
+	s*{} = any*{};
+	s*{} = float*{};
+	s*{} = int*{};
+	s*{} = bool*{};
+//<!>"void" is not allowed here<!> s*{} = void*{};
+	s*{} = s*{};
+}
+
+@init
+{
+	any{} == any{};
+	any{} == float{};
+	any{} == int{};
+	any{} == bool{};
+//<!>Cannot convert type "void" to "any"<!> any{} == void{};
+
+	float{} == any{};
+	float{} == float{};
+	float{} == int{};
+//<!>Cannot convert type "bool" to "float"<!> float{} == bool{};
+//<!>Cannot convert type "void" to "float"<!> float{} == void{};
+
+	int{} == any{};
+	int{} == float{};
+	int{} == int{};
+//<!>Cannot convert type "bool" to "float"<!> int{} == bool{};
+//<!>Cannot convert type "void" to "float"<!> int{} == void{};
+
+	bool{} == any{};
+//<!>Cannot convert type "float" to "bool"<!> bool{} == float{};
+//<!>Cannot convert type "int" to "bool"<!> bool{} == int{};
+	bool{} == bool{};
+//<!>Cannot convert type "void" to "bool"<!> bool{} == void{};
+
+//<!>Cannot convert type "any" to "void"<!> void{} == any{};
+//<!>Cannot convert type "float" to "void"<!> void{} == float{};
+//<!>Cannot convert type "int" to "void"<!> void{} == int{};
+//<!>Cannot convert type "bool" to "void"<!> void{} == bool{};
+//<!>Cannot convert type "void" to "void"<!> void{} == void{};
+
+	any*{} == any*{};
+	any*{} == float*{};
+	any*{} == int*{};
+	any*{} == bool*{};
+//<!>"void" is not allowed here<!> any*{} == void*{};
+	any*{} == s*{};
+
+	float*{} == any*{};
+	float*{} == float*{};
+	float*{} == int*{};
+	float*{} == bool*{};
+//<!>"void" is not allowed here<!> float*{} == void*{};
+	float*{} == s*{};
+
+	int*{} == any*{};
+	int*{} == float*{};
+	int*{} == int*{};
+	int*{} == bool*{};
+//<!>"void" is not allowed here<!> int*{} == void*{};
+	int*{} == s*{};
+
+	bool*{} == any*{};
+	bool*{} == float*{};
+	bool*{} == int*{};
+	bool*{} == bool*{};
+//<!>"void" is not allowed here<!> bool*{} == void*{};
+	bool*{} == s*{};
+
+//<!>"void" is not allowed here<!> void*{} == any*{};
+//<!>"void" is not allowed here<!> void*{} == float*{};
+//<!>"void" is not allowed here<!> void*{} == int*{};
+//<!>"void" is not allowed here<!> void*{} == bool*{};
+//<!>"void" is not allowed here<!> void*{} == void*{};
+//<!>"void" is not allowed here<!> void*{} == s*{};
+
+	s*{} == any*{};
+	s*{} == float*{};
+	s*{} == int*{};
+	s*{} == bool*{};
+//<!>"void" is not allowed here<!> s*{} == void*{};
+	s*{} == s*{};
+}
+
+@init
+{
+	int a; a = 0;
+	any func() { return 0; }
+	s yeah;
+
+	// todo
+	// (yeah = yeah) = yeah;
+	// (a = a) = a;
+	// (0 + 0) = 0;
+//<!>Left operand of assignment must be a variable<!> (++0) = 0;
+//<!>Left operand of assignment must be a variable<!> false = 0;
+	a[0] = 0;
+	func() = 0;
+	any { return 0; } = 0;
+//<!>Left operand of assignment must be a variable<!> sizeof(0) = 0;
+
+	// todo
+	// (yeah += yeah) += yeah;
+	// (a += a) += a;
+	// (0 + 0) += 0;
+//<!>Left operand of assignment must be a variable<!> (++0) += 0;
+//<!>Left operand of assignment must be a variable<!> false += 0;
+	a[0] += 0;
+	func() += 0;
+	any { return 0; } += 0;
+//<!>Left operand of assignment must be a variable<!> sizeof(0) += 0;
+}

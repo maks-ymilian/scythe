@@ -1,0 +1,13 @@
+private import "imported_private.scy"
+public import "imported_public.scy"
+
+public:
+input importedInput;
+struct ImportedType { any a; }
+void ImportedFunc() {}
+
+private:
+input privateInput;
+struct PrivateType { any a; }
+void PrivateFunc() {}
+any privateVar;
