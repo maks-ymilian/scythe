@@ -29,9 +29,8 @@ void func() {}
 	sizeof(var);
 	sizeof(s);
 	sizeof(s[]);
-	// todo
-	// sizeof(var[0]);
-	// sizeof(func());
-	// sizeof(s{});
+	sizeof(var[0]);
+	sizeof(func());
+	sizeof(s{});
 	sizeof(sizeof(0));
 }

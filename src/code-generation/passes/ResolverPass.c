@@ -794,6 +794,17 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 		bool isType = false;
 		if (sizeOf->type.expr.ptr)
 			PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
+		else if (sizeOf->expr.type == Node_MemberAccess &&
+				 !((MemberAccessExpr*)sizeOf->expr.ptr)->start.ptr)
+		{
+			sizeOf->type.expr = sizeOf->expr;
+			PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
+			if (!isType)
+				sizeOf->type.expr = NULL_NODE;
+			else
+				sizeOf->expr = NULL_NODE;
+		}
+
 		if (isType)
 		{
 			FreeASTNode(sizeOf->expr);

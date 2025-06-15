@@ -567,15 +567,13 @@ static Result ParseSizeOf(NodePtr* out)
 
 	NodePtr expr = NULL_NODE;
 	Type type = (Type){.expr = NULL_NODE};
-	PROPAGATE_ERROR(ParseType(&type));
-	if (type.expr.ptr == NULL)
+	PROPAGATE_ERROR(ParseExpression(&expr));
+	if (expr.ptr == NULL)
 	{
-		PROPAGATE_ERROR(ParseExpression(&expr));
-		if (expr.ptr == NULL)
+		PROPAGATE_ERROR(ParseType(&type));
+		if (type.expr.ptr == NULL)
 			return ERROR_RESULT_LINE("Expected expression or type after \"sizeof\"");
-	}
-	else
-	{
+
 		if (type.expr.type == Node_MemberAccess &&
 			type.modifier == TypeModifier_None)
 			expr = CopyASTNode(type.expr);
