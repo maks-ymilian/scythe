@@ -380,6 +380,13 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
+
+	if (binary->operatorType == Binary_Assignment &&
+		binary->left.type != Node_MemberAccess &&
+		binary->left.type != Node_Subscript &&
+		binary->left.type != Node_FunctionCall)
+		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
+
 	PROPAGATE_ERROR(VisitExpression(&binary->left, containingStatement));
 	PROPAGATE_ERROR(VisitExpression(&binary->right, containingStatement));
 
@@ -426,10 +433,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	ASSERT(binary->left.type == Node_MemberAccess ||
-		   binary->left.type == Node_Subscript ||
-		   binary->left.type == Node_FunctionCall);
-
 	ForEachStructMember(type,
 		GenerateStructMemberAssignment,
 		&(GenerateStructMemberAssignmentData){
@@ -444,7 +447,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 	// all struct assignment expressions will be unchained in an expression statement
 	ASSERT(containingStatement->type == Node_ExpressionStatement);
 
-	FreeASTNode(*containingStatement);
+	ArrayAdd(&nodesToDelete, containingStatement);
 	*containingStatement = (NodePtr){.ptr = block, .type = Node_BlockStatement};
 	return SUCCESS_RESULT;
 }
@@ -903,6 +906,7 @@ static Result VisitStatement(NodePtr* node)
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
 		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
 		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, node));
+		PROPAGATE_ERROR(CheckTypeConversion(GetStructTypeInfoFromExpr(ifStmt->expr), (StructTypeInfo){.effectiveType = NULL}, ifStmt->lineNumber));
 		break;
 	}
 	case Node_Return:
@@ -921,6 +925,7 @@ static Result VisitStatement(NodePtr* node)
 		WhileStmt* whileStmt = node->ptr;
 		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, node));
 		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
+		PROPAGATE_ERROR(CheckTypeConversion(GetStructTypeInfoFromExpr(whileStmt->expr), (StructTypeInfo){.effectiveType = NULL}, whileStmt->lineNumber));
 		break;
 	}
 	default: INVALID_VALUE(node->type);

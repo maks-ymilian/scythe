@@ -157,6 +157,9 @@ PrimitiveTypeInfo GetPrimitiveTypeInfoFromType(Type type)
 		const LiteralExpr* literal = type.expr.ptr;
 		ASSERT(literal->type == Literal_PrimitiveType);
 
+		PrimitiveType pp = literal->primitiveType;
+		(void)pp;
+
 		return (PrimitiveTypeInfo){
 			.effectiveType = isPointer ? Primitive_Int : literal->primitiveType,
 			.pointerType = literal->primitiveType,

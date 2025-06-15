@@ -10,6 +10,10 @@ static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 
+	if (binary->left.type == Node_Binary &&
+		((BinaryExpr*)binary->left.ptr)->operatorType == Binary_Assignment)
+		return;
+
 	VisitExpression(&binary->left, false);
 	VisitExpression(&binary->right, false);
 
@@ -19,7 +23,6 @@ static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 		if (binary->operatorType != Binary_Assignment)
 			return;
 
-		ASSERT(binary->left.type != Node_Binary);
 		if (binary->right.type != Node_Binary)
 			return;
 
@@ -30,40 +33,40 @@ static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 
 	ASSERT(nested->type == Node_Binary);
 	BinaryExpr* nestedBinary = nested->ptr;
-	if (nestedBinary->operatorType == Binary_Assignment)
-	{
-		BlockStmt* blockStmt = AllocASTNode(
-			&(BlockStmt){
-				.lineNumber = nestedBinary->lineNumber,
-				.statements = AllocateArray(sizeof(NodePtr)),
-			},
-			sizeof(BlockStmt), Node_BlockStatement)
-								   .ptr;
-		NodePtr blockExpr = AllocASTNode(
-			&(BlockExpr){
-				.type = AllocTypeFromExpr(*nested, nestedBinary->lineNumber),
-				.block = (NodePtr){.ptr = blockStmt, .type = Node_BlockStatement},
-			},
-			sizeof(BlockExpr), Node_BlockExpression);
+	if (nestedBinary->operatorType != Binary_Assignment)
+		return;
 
-		NodePtr exprStmt = AllocASTNode(
-			&(ExpressionStmt){
-				.lineNumber = nestedBinary->lineNumber,
-				.expr = *nested,
-			},
-			sizeof(ExpressionStmt), Node_ExpressionStatement);
-		ArrayAdd(&blockStmt->statements, &exprStmt);
+	BlockStmt* blockStmt = AllocASTNode(
+		&(BlockStmt){
+			.lineNumber = nestedBinary->lineNumber,
+			.statements = AllocateArray(sizeof(NodePtr)),
+		},
+		sizeof(BlockStmt), Node_BlockStatement)
+							   .ptr;
+	NodePtr blockExpr = AllocASTNode(
+		&(BlockExpr){
+			.type = AllocTypeFromExpr(*nested, nestedBinary->lineNumber),
+			.block = (NodePtr){.ptr = blockStmt, .type = Node_BlockStatement},
+		},
+		sizeof(BlockExpr), Node_BlockExpression);
 
-		NodePtr returnStmt = AllocASTNode(
-			&(ReturnStmt){
-				.lineNumber = nestedBinary->lineNumber,
-				.expr = CopyASTNode(nestedBinary->left),
-			},
-			sizeof(ReturnStmt), Node_Return);
-		ArrayAdd(&blockStmt->statements, &returnStmt);
+	NodePtr exprStmt = AllocASTNode(
+		&(ExpressionStmt){
+			.lineNumber = nestedBinary->lineNumber,
+			.expr = *nested,
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
+	ArrayAdd(&blockStmt->statements, &exprStmt);
 
-		*nested = blockExpr;
-	}
+	NodePtr returnStmt = AllocASTNode(
+		&(ReturnStmt){
+			.lineNumber = nestedBinary->lineNumber,
+			.expr = CopyASTNode(nestedBinary->left),
+		},
+		sizeof(ReturnStmt), Node_Return);
+	ArrayAdd(&blockStmt->statements, &returnStmt);
+
+	*nested = blockExpr;
 }
 
 static void VisitExpression(NodePtr* node, bool parentIsExprStmt)

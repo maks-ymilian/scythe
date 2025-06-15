@@ -59,15 +59,14 @@ struct type2 { any a; }
 	type1 t;
 	type1 func() { return type1{}; }
 
-	// todo
-	// (type1{} = type1{}) = type1{};
+//<!>Left operand of assignment must be a variable<!> (type1{} = type1{}) = type1{};
 	t = type1{};
-//<!>Cannot convert an aggregate type to a non-aggregate type<!> ++0 = type1{};
-//<!>Cannot convert an aggregate type to a non-aggregate type<!> true = type1{};
+//<!>Left operand of assignment must be a variable<!> ++0 = type1{};
+//<!>Left operand of assignment must be a variable<!> true = type1{};
 	type1[]{}[0] = type1{};
 	func() = type1{};
 	type1{} = type1{};
-//<!>Cannot convert an aggregate type to a non-aggregate type<!> sizeof(0) = type1{};
+//<!>Left operand of assignment must be a variable<!> sizeof(0) = type1{};
 }
 
 //<!>External functions cannot have any parameters of an aggregate type<!> external void func(any b, type1 a, ...);
@@ -76,3 +75,16 @@ struct type2 { any a; }
 //<!>External functions cannot return an aggregate type<!> external any[] func();
 //<!>External variable declarations cannot be of an aggregate type<!> external type1 a;
 //<!>External variable declarations cannot be of an aggregate type<!> external any[] a;
+
+@init
+{
+	type1 t;
+	t = t;
+	t = t = t;
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> if (t = t){}
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> while (t = t){}
+	for (t = t;;){}
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> for (;t = t;){}
+	for (;;t = t){}
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> return t = t;
+}

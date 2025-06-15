@@ -152,14 +152,21 @@ struct s { any a; }
 
 @init
 {
+//<!>Cannot convert type "float" to "bool" <!> if (1){}
+//<!>Cannot convert type "float" to "bool" <!> while (1){}
+//<!>Cannot convert type "float" to "bool" <!> for (;1;){}
+
 	int a; a = 0;
 	any func() { return 0; }
 	s yeah;
 
-	// todo
-	// (yeah = yeah) = yeah;
-	// (a = a) = a;
-	// (0 + 0) = 0;
+//<!>Left operand of assignment must be a variable<!> (yeah = yeah) = yeah;
+//<!>Left operand of assignment must be a variable<!> (a = a) = a;
+//<!>Left operand of assignment must be a variable<!> (0 + 0) = 0;
+//<!>Left operand of assignment must be a variable<!> if ((yeah = yeah) = yeah){}
+//<!>Left operand of assignment must be a variable<!> if ((a = a) = a){}
+//<!>Left operand of assignment must be a variable<!> if ((0 + 0) = 0){}
+	a = a = a;
 //<!>Left operand of assignment must be a variable<!> (++0) = 0;
 //<!>Left operand of assignment must be a variable<!> false = 0;
 	a[0] = 0;
@@ -167,10 +174,13 @@ struct s { any a; }
 	any { return 0; } = 0;
 //<!>Left operand of assignment must be a variable<!> sizeof(0) = 0;
 
-	// todo
-	// (yeah += yeah) += yeah;
-	// (a += a) += a;
-	// (0 + 0) += 0;
+//<!>Cannot use operator "+=" on aggregate types<!> (yeah += yeah) += yeah;
+//<!>Left operand of assignment must be a variable<!> (a += a) += a;
+//<!>Left operand of assignment must be a variable<!> (0 + 0) += 0;
+//<!>Cannot use operator "+=" on aggregate types<!> if ((yeah += yeah) += yeah){}
+//<!>Left operand of assignment must be a variable<!> if ((a += a) += a){}
+//<!>Left operand of assignment must be a variable<!> if ((0 + 0) += 0){}
+	a += a += a;
 //<!>Left operand of assignment must be a variable<!> (++0) += 0;
 //<!>Left operand of assignment must be a variable<!> false += 0;
 	a[0] += 0;
