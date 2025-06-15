@@ -56,7 +56,10 @@ static void VisitExpression(const NodePtr* node)
 	}
 	case Node_Literal:
 	{
+		LiteralExpr* literal = node->ptr;
 		printf("Literal");
+		if (literal->type == Literal_Number)
+			printf(":%s", literal->number);
 		break;
 	}
 	case Node_SizeOf:
