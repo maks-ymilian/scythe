@@ -580,6 +580,8 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 
 	switch (current.type)
 	{
+	case Node_Import:
+		return ERROR_RESULT("Cannot reference import by itself", memberAccess->lineNumber, currentFilePath);
 	case Node_FunctionDeclaration:
 	{
 		memberAccess->funcReference = current.ptr;

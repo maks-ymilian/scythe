@@ -311,3 +311,12 @@ void scope()
 //<!>Modifier statements are only allowed in global scope<!> internal:
 //<!>Input statements are only allowed in global scope<!> input yea;
 }
+
+@init
+{
+//<!>Cannot reference import by itself<!> jsfx;
+//<!>Cannot reference import by itself<!> math;
+//<!>Cannot reference import by itself<!> imported;
+//<!>Cannot reference import by itself<!> imported_public;
+//<!>Unknown identifier "imported_private"<!> imported_private;
+}
