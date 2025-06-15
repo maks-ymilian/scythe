@@ -792,7 +792,8 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 	{
 		SizeOfExpr* sizeOf = node->ptr;
 		bool isType = false;
-		PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
+		if (sizeOf->type.expr.ptr)
+			PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
 		if (isType)
 		{
 			FreeASTNode(sizeOf->expr);
