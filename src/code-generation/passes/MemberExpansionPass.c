@@ -40,7 +40,7 @@ static Result CheckTypeConversion(StructTypeInfo from, StructTypeInfo to, const 
 		from.pointerType != to.pointerType &&
 		from.pointerType && to.pointerType)
 		return ERROR_RESULT(
-			"Different pointer types are only compatible with each other if at least one of the types is \"any*\"",
+			"Different pointer types are only compatible with each other if at least one of the types is \"any\"",
 			lineNumber, currentFilePath);
 
 	if (from.effectiveType != to.effectiveType)
@@ -385,7 +385,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	StructTypeInfo leftType = GetStructTypeInfoFromExpr(binary->left);
 	StructTypeInfo rightType = GetStructTypeInfoFromExpr(binary->right);
-	PROPAGATE_ERROR(CheckTypeConversion(leftType, rightType, binary->lineNumber));
+	PROPAGATE_ERROR(CheckTypeConversion(rightType, leftType, binary->lineNumber));
 
 	// special case for adding to pointer variables
 	if (binary->operatorType == Binary_Add ||
@@ -426,12 +426,9 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
-	if (binary->left.type != Node_MemberAccess &&
-		binary->left.type != Node_Subscript &&
-		binary->left.type != Node_FunctionCall) // slider()
-		return ERROR_RESULT("Left operand of aggregate type assignment must be a variable",
-			binary->lineNumber,
-			currentFilePath);
+	ASSERT(binary->left.type == Node_MemberAccess ||
+		   binary->left.type == Node_Subscript ||
+		   binary->left.type == Node_FunctionCall);
 
 	ForEachStructMember(type,
 		GenerateStructMemberAssignment,
