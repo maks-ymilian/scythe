@@ -373,7 +373,7 @@ static Result GenerateProgramNode(
 	FreeArray(&tokens);
 
 	thisProgramNode->dependencies = AllocateArray(sizeof(ProgramDependency));
-	AddBuiltInDependencies(&thisProgramNode->ast, &thisProgramNode->dependencies, programNodes); // todo try redefining the built in libraraies
+	AddBuiltInDependencies(&thisProgramNode->ast, &thisProgramNode->dependencies, programNodes);
 
 	PROPAGATE_ERROR(CheckForModuleNameConflict(thisProgramNode->moduleName, programNodes, containingLineNumber, containingPath));
 	ArrayAdd(programNodes, &thisProgramNode);
