@@ -3,6 +3,7 @@
 	// todo test named strings string functions and escape characters
 	bool AAA_test_strings = 
 		str.length("\n") == 1 &&
+		str.length("\0") == 1 &&
 		str.length("\"") == 1 &&
 		str.length("hfnc\nk47hck") == 11 &&
 		str.length("hfnck47hck") == 10 &&

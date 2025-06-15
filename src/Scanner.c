@@ -67,57 +67,42 @@ static Result ScanIdentifier(void)
 	return SUCCESS_RESULT;
 }
 
-static Result ScanCharLiteral(void)
+static bool AllowedInStringLiteral(unsigned char c)
 {
-	const size_t start = pointer;
-
-	if (source[pointer] != '\'')
-		return NOT_FOUND_RESULT;
-
-	++pointer;
-	while (true)
-	{
-		if (IsEOF(0))
-			return ERROR_RESULT("Char literal is never closed", currentLine, currentFile);
-
-		if (source[pointer] == '\'')
-			break;
-
-		if (source[pointer] == '\\')
-			++pointer;
-
-		++pointer;
-	}
-
-	AddTokenSubstring(Token_CharLiteral, start + 1, pointer);
-
-	pointer++;
-	return SUCCESS_RESULT;
+	return c == '	' || // horizontal tab
+		   (c >= ' ' && c <= '~') || // printable ascii
+		   c >= 128; // utf-8 bytes
 }
 
-static Result ScanStringLiteral(void)
+static Result ScanStringLiteral(bool charLiteral)
 {
 	const size_t start = pointer;
 
-	if (source[pointer] != '"')
+	const char delimiter = charLiteral ? '\'' : '"';
+
+	if (source[pointer] != delimiter)
 		return NOT_FOUND_RESULT;
 
+	bool escape = false;
 	++pointer;
 	while (true)
 	{
 		if (IsEOF(0))
-			return ERROR_RESULT("String literal is never closed", currentLine, currentFile);
+			return ERROR_RESULT(charLiteral ? "Char literal is never closed" : "String literal is never closed", currentLine, currentFile);
 
-		if (source[pointer] == '"')
+		if (!AllowedInStringLiteral((unsigned char)source[pointer]))
+			return ERROR_RESULT(charLiteral ? "Invalid character in char literal" : "Invalid character in string literal", currentLine, currentFile);
+
+		if (source[pointer] == delimiter && !escape)
 			break;
 
-		if (source[pointer] == '\\')
-			++pointer;
+		bool isEscapeChar = source[pointer] == '\\';
+		escape = escape ? false : isEscapeChar;
 
 		++pointer;
 	}
 
-	AddTokenSubstring(Token_StringLiteral, start + 1, pointer);
+	AddTokenSubstring(charLiteral ? Token_CharLiteral : Token_StringLiteral, start + 1, pointer);
 
 	pointer++;
 	return SUCCESS_RESULT;
@@ -183,8 +168,8 @@ static Result ScanToken(void)
 	PROPAGATE_FOUND(ScanKeyword());
 	PROPAGATE_FOUND(ScanNumberLiteral());
 	PROPAGATE_FOUND(ScanIdentifier());
-	PROPAGATE_FOUND(ScanStringLiteral());
-	PROPAGATE_FOUND(ScanCharLiteral());
+	PROPAGATE_FOUND(ScanStringLiteral(false));
+	PROPAGATE_FOUND(ScanStringLiteral(true));
 
 	return ERROR_RESULT("Unexpected character", currentLine, currentFile);
 }
@@ -220,23 +205,26 @@ Result Scan(const char* path, const char* sourceCode, size_t sourceCodeLength, A
 			continue;
 		}
 
-		if (memcmp(source + pointer, "//", 2) == 0)
+		if (!IsEOF(1))
 		{
-			insideLineComment = true;
-			pointer += 2;
-			continue;
-		}
-		else if (memcmp(source + pointer, "/*", 2) == 0)
-		{
-			insideMultilineComment = true;
-			pointer += 2;
-			continue;
-		}
-		else if (memcmp(source + pointer, "*/", 2) == 0 && insideMultilineComment)
-		{
-			insideMultilineComment = false;
-			pointer += 2;
-			continue;
+			if (memcmp(source + pointer, "//", 2) == 0)
+			{
+				insideLineComment = true;
+				pointer += 2;
+				continue;
+			}
+			else if (memcmp(source + pointer, "/*", 2) == 0)
+			{
+				insideMultilineComment = true;
+				pointer += 2;
+				continue;
+			}
+			else if (memcmp(source + pointer, "*/", 2) == 0 && insideMultilineComment)
+			{
+				insideMultilineComment = false;
+				pointer += 2;
+				continue;
+			}
 		}
 
 		if (insideLineComment || insideMultilineComment)

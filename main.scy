@@ -1,7 +1,6 @@
 // todo:
 	// int conversion breaks pass by reference
 	// function call 40 param limit
-	// control characters in strings
 	// in parser the error line numbers are sometimes on the next line like "Expected ";""
 	// check if built in function overloads are correct
 
