@@ -1,0 +1,34 @@
+// this is a translation of the default JSFX file you get when you create a new effect
+
+input gain_db [
+	default_value: 0,
+	min: -150,
+	max: 12,
+	increment: 1,
+	description: "gain (dB)",
+];
+
+float last_gain;
+@init
+{
+	last_gain = 10 ^ (gain_db.value / 20);
+}
+
+float next_gain;
+@slider
+{
+	next_gain = 10 ^ (gain_db.value / 20);
+}
+
+float d_gain;
+@block
+{
+	d_gain = (next_gain - last_gain) / jsfx.samples_block;
+}
+
+@sample
+{
+	jsfx.spl0 *= last_gain;
+	jsfx.spl1 *= last_gain;
+	last_gain += d_gain;
+}
