@@ -5,6 +5,7 @@ any set(any r, any g, any b) as gfx_set;
 any set(any r, any g, any b, any a) as gfx_set;
 any set(any r, any g, any b, any a, any mode) as gfx_set;
 any set(any r, any g, any b, any a, any mode, any dest) as gfx_set;
+any set(any r, any g, any b, any a, any mode, any dest, any alpha_pixel) as gfx_set;
 
 any line_to(any x, any y) as gfx_lineto;
 any line_to(any x, any y, any aa) as gfx_lineto;
@@ -25,6 +26,7 @@ any draw_string(any str, any flags, any right) as gfx_drawstr;
 any draw_string(any str, any flags, any right, any bottom) as gfx_drawstr;
 
 any measure_string(any str, any w, any h) as gfx_measurestr;
+any measure_char(any character, any w, any h) as gfx_measurechar;
 
 any set_font(any idx) as gfx_setfont;
 any set_font(any idx, any fontface) as gfx_setfont;
@@ -95,10 +97,16 @@ any show_menu(any str) as gfx_showmenu;
 any set_cursor(any resource_id) as gfx_setcursor;
 any set_cursor(any resource_id, any name) as gfx_setcursor;
 
+any get_bg_color() as gfx_getsyscol;
+
+any get_drop_file(any idx) as gfx_getdropfile;
+any get_drop_file(any idx, any str) as gfx_getdropfile;
+
 any r as gfx_r;
 any g as gfx_g;
 any b as gfx_b;
 any a as gfx_a;
+any alpha_pixel as gfx_a2;
 
 any w as gfx_w;
 any h as gfx_h;

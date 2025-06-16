@@ -26,3 +26,7 @@ any print(any str, any format, ...) as sprintf;
 
 any match(any needle, any haystack, ...) as match;
 any match_i(any needle, any haystack, ...) as matchi;
+
+any insert(any str, any srcstr, any pos) as str_insert;
+any delete_sub(any str, any pos, any len) as str_delsub;
+any set_length(any str, any len) as str_setlen;

@@ -22,6 +22,7 @@
 	gfx.set(0,0,0,0);
 	gfx.set(0,0,0,0,0);
 	gfx.set(0,0,0,0,0,0);
+	gfx.set(0,0,0,0,0,0,0);
 
 	gfx.line_to(0,0);
 	gfx.line_to(0,0,false);
@@ -42,6 +43,7 @@
 	gfx.draw_string(0,0,0,0);
 
 	gfx.measure_string(0,0,0);
+	gfx.measure_char(0,0,0);
 
 	gfx.set_font(0);
 	gfx.set_font(0,0);
@@ -240,6 +242,7 @@
 	gfx.g;
 	gfx.b;
 	gfx.a;
+	gfx.alpha_pixel;
 
 	gfx.w;
 	gfx.h;
@@ -286,6 +289,15 @@
 
 	midi.ext_use_bus;
 	midi.ext_bus;
+
+	gfx.get_bg_color();
+
+	gfx.get_drop_file(0);
+	gfx.get_drop_file(0,0);
+
+	str.insert(0,0,0);
+	str.delete_sub(0,0,0);
+	str.set_length(0,0);
 
 	float pos = 999;
 	jsfx.get_host_placement(pos);
