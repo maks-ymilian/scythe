@@ -1,28 +1,28 @@
 public external:
-int length(string str) as strlen;
+any length(any str) as strlen;
 
-string copy(string str, string srcstr) as strcpy;
-string copy(string str, string srcstr, int maxlen) as strncpy;
+any copy(any str, any srcstr) as strcpy;
+any copy(any str, any srcstr, any maxlen) as strncpy;
 
-string concatenate(string str, string srcstr) as strcat;
-string concatenate(string str, string srcstr, int maxlen) as strncat;
+any concatenate(any str, any srcstr) as strcat;
+any concatenate(any str, any srcstr, any maxlen) as strncat;
 
-int compare(string str, string str2) as strcmp;
-int compare(string str, string str2, int maxlen) as strncmp;
+any compare(any str, any str2) as strcmp;
+any compare(any str, any str2, any maxlen) as strncmp;
 
-int compare_i(string str, string str2) as stricmp;
-int compare_i(string str, string str2, int maxlen) as strnicmp;
+any compare_i(any str, any str2) as stricmp;
+any compare_i(any str, any str2, any maxlen) as strnicmp;
 
-string copy_from(string str, string srcstr, int offset) as strcpy_from;
-string copy_substring(string str, string srcstr, int offset, int maxlen) as strcpy_substr;
-string copy_from_slider(string str, any sliderOrIndex) as strcpy_fromslider;
+any copy_from(any str, any srcstr, any offset) as strcpy_from;
+any copy_substring(any str, any srcstr, any offset, any maxlen) as strcpy_substr;
+any copy_from_slider(any str, any sliderOrIndex) as strcpy_fromslider;
 
-any get_char(string str, int offset) as str_getchar;
-any get_char(string str, int offset, char type) as str_getchar;
-void set_char(string str, float offset, any value) as str_setchar;
-void set_char(string str, float offset, any value, char type) as str_setchar;
+any get_char(any str, any offset) as str_getchar;
+any get_char(any str, any offset, any type) as str_getchar;
+any set_char(any str, any offset, any value) as str_setchar;
+any set_char(any str, any offset, any value, any type) as str_setchar;
 
-void print(string str, string format, ...) as sprintf;
+any print(any str, any format, ...) as sprintf;
 
-bool match(string needle, string haystack, ...) as match;
-bool match_i(string needle, string haystack, ...) as matchi;
+any match(any needle, any haystack, ...) as match;
+any match_i(any needle, any haystack, ...) as matchi;

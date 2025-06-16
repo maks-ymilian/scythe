@@ -1,6 +1,6 @@
 public external:
-int time() as time;
-int time(int v) as time;
+any time() as time;
+any time(any v) as time;
 
-float time_precise() as time_precise;
-float time_precise(float v) as time_precise;
+any time_precise() as time_precise;
+any time_precise(any v) as time_precise;

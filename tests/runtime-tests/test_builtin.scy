@@ -286,4 +286,8 @@
 
 	midi.ext_use_bus;
 	midi.ext_bus;
+
+	float pos = 999;
+	jsfx.get_host_placement(pos);
+	bool AAA_test_builtin = pos != 999;
 }

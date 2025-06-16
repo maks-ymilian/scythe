@@ -1,35 +1,35 @@
 public external:
-float sin(float angle) as sin;
-float cos(float angle) as cos;
-float tan(float angle) as tan;
-float asin(float x) as asin;
-float acos(float x) as acos;
-float atan(float x) as atan;
-float atan2(float x, float y) as atan2;
-float sqr(float x) as sqr;
-float sqrt(float x) as sqrt;
-float pow(float x, float y) as pow;
-float exp(float x) as exp;
-float log(float x) as log;
-float log10(float x) as log10;
-float abs(float x) as abs;
-float min(float x, float y) as min;
-float max(float x, float y) as max;
-int sign(float x) as sign;
-float rand(float x) as rand;
-int floor(float x) as floor;
-int ceil(float x) as ceil;
-float invsqrt(float x) as invsqrt;
+any sin(any angle) as sin;
+any cos(any angle) as cos;
+any tan(any angle) as tan;
+any asin(any x) as asin;
+any acos(any x) as acos;
+any atan(any x) as atan;
+any atan2(any x, any y) as atan2;
+any sqr(any x) as sqr;
+any sqrt(any x) as sqrt;
+any pow(any x, any y) as pow;
+any exp(any x) as exp;
+any log(any x) as log;
+any log10(any x) as log10;
+any abs(any x) as abs;
+any min(any x, any y) as min;
+any max(any x, any y) as max;
+any sign(any x) as sign;
+any rand(any x) as rand;
+any floor(any x) as floor;
+any ceil(any x) as ceil;
+any invsqrt(any x) as invsqrt;
 
-void mdct(float* buf, int size) as mdct;
-void imdct(float* buf, int size) as imdct;
-void fft(float* buf, int size) as fft;
-void ifft(float* buf, int size) as ifft;
-void fft_real(float* buf, int size) as fft_real;
-void ifft_real(float* buf, int size) as ifft_real;
-void fft_permute(float* buf, int size) as fft_permute;
-void fft_ipermute(float* buf, int size) as fft_ipermute;
-void convolve_complex(float* dest, float* src, int size) as convolve_c;
+any mdct(any buf, any size) as mdct;
+any imdct(any buf, any size) as imdct;
+any fft(any buf, any size) as fft;
+any ifft(any buf, any size) as ifft;
+any fft_real(any buf, any size) as fft_real;
+any ifft_real(any buf, any size) as ifft_real;
+any fft_permute(any buf, any size) as fft_permute;
+any fft_ipermute(any buf, any size) as fft_ipermute;
+any convolve_complex(any dest, any src, any size) as convolve_c;
 
 internal:
 float lerp(float a, float b, float t)

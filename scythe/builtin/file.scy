@@ -1,13 +1,13 @@
 public external:
-int open(any file) as file_open;
-void close(any handle) as file_close;
-void rewind(any handle) as file_rewind;
+any open(any file) as file_open;
+any close(any handle) as file_close;
+any rewind(any handle) as file_rewind;
 
-void from_variable(any handle, any variable) as file_var;
-int from_buffer(any handle, any* offset, int length) as file_mem;
-void from_string(any handle, string str) as file_string;
+any from_variable(any handle, any variable) as file_var;
+any from_buffer(any handle, any offset, any length) as file_mem;
+any from_string(any handle, any str) as file_string;
 
-int available(any handle) as file_avail;
+any available(any handle) as file_avail;
 
-void riff(any handle, int nch, int samplrate) as file_riff;
-bool text(any handle) as file_text;
+any riff(any handle, any nch, any samplrate) as file_riff;
+any text(any handle) as file_text;

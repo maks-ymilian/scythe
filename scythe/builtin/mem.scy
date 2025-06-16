@@ -1,9 +1,9 @@
 public external:
-void free(any* top) as freembuf;
-void copy(any* dest, any* source, int length) as memcpy;
-void set(any* dest, any value, int length) as memset;
-void set_values(any* buf, any value, ...) as mem_set_values;
-void get_values(any* buf, any value, ...) as mem_get_values;
-void multiply_sum(any* buf1, any* buf2, int length) as mem_multiply_sum;
-any insert_shuffle(any* buf, int len, any value) as mem_insert_shuffle;
-int top() as __memtop;
+any free(any top) as freembuf;
+any copy(any dest, any source, any length) as memcpy;
+any set(any dest, any value, any length) as memset;
+any set_values(any buf, any value, ...) as mem_set_values;
+any get_values(any buf, any value, ...) as mem_get_values;
+any multiply_sum(any buf1, any buf2, any length) as mem_multiply_sum;
+any insert_shuffle(any buf, any len, any value) as mem_insert_shuffle;
+any top() as __memtop;

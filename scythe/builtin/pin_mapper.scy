@@ -1,7 +1,7 @@
 public external:
-int get_host_num_channels() as get_host_numchan;
-void set_host_num_channels(int numchan) as set_host_numchan;
-int get_pin_mapping(int inout, int pin, int startchan, int chanmask) as get_pin_mapping;
-void set_pin_mapping(int inout, int pin, int startchan, int chanmask, int mapping) as set_pin_mapping;
-int get_flags() as get_pinmapper_flags;
-void set_flags(int flags) as set_pinmapper_flags;
+any get_host_num_channels() as get_host_numchan;
+any set_host_num_channels(any numchan) as set_host_numchan;
+any get_pin_mapping(any inout, any pin, any startchan, any chanmask) as get_pin_mapping;
+any set_pin_mapping(any inout, any pin, any startchan, any chanmask, any mapping) as set_pin_mapping;
+any get_flags() as get_pinmapper_flags;
+any set_flags(any flags) as set_pinmapper_flags;

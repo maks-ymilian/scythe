@@ -1,127 +1,127 @@
 public external:
-void set(float r) as gfx_set;
-void set(float r, float g) as gfx_set;
-void set(float r, float g, float b) as gfx_set;
-void set(float r, float g, float b, float a) as gfx_set;
-void set(float r, float g, float b, float a, int mode) as gfx_set;
-void set(float r, float g, float b, float a, int mode, int dest) as gfx_set;
+any set(any r) as gfx_set;
+any set(any r, any g) as gfx_set;
+any set(any r, any g, any b) as gfx_set;
+any set(any r, any g, any b, any a) as gfx_set;
+any set(any r, any g, any b, any a, any mode) as gfx_set;
+any set(any r, any g, any b, any a, any mode, any dest) as gfx_set;
 
-void line_to(int x, int y) as gfx_lineto;
-void line_to(int x, int y, bool aa) as gfx_lineto;
+any line_to(any x, any y) as gfx_lineto;
+any line_to(any x, any y, any aa) as gfx_lineto;
 
-void line(int x, int y, int x2, int y2) as gfx_line;
-void line(int x, int y, int x2, int y2, bool aa) as gfx_line;
+any line(any x, any y, any x2, any y2) as gfx_line;
+any line(any x, any y, any x2, any y2, any aa) as gfx_line;
 
-void rect_to(int x, int y) as gfx_rectto;
-void rect(int x, int y, int w, int h) as gfx_rect;
-void set_pixel(float r, float g, float b) as gfx_setpixel;
-void get_pixel(float r, float g, float b) as gfx_getpixel;
-void draw_number(float n, int ndigits) as gfx_drawnumber;
-void draw_char(char c) as gfx_drawchar;
+any rect_to(any x, any y) as gfx_rectto;
+any rect(any x, any y, any w, any h) as gfx_rect;
+any set_pixel(any r, any g, any b) as gfx_setpixel;
+any get_pixel(any r, any g, any b) as gfx_getpixel;
+any draw_number(any n, any ndigits) as gfx_drawnumber;
+any draw_char(any c) as gfx_drawchar;
 
-void draw_string(string str) as gfx_drawstr;
-void draw_string(string str, int flags) as gfx_drawstr;
-void draw_string(string str, int flags, int right) as gfx_drawstr;
-void draw_string(string str, int flags, int right, int bottom) as gfx_drawstr;
+any draw_string(any str) as gfx_drawstr;
+any draw_string(any str, any flags) as gfx_drawstr;
+any draw_string(any str, any flags, any right) as gfx_drawstr;
+any draw_string(any str, any flags, any right, any bottom) as gfx_drawstr;
 
-void measure_string(string str, int w, int h) as gfx_measurestr;
+any measure_string(any str, any w, any h) as gfx_measurestr;
 
-void set_font(int idx) as gfx_setfont;
-void set_font(int idx, string fontface) as gfx_setfont;
-void set_font(int idx, string fontface, int sz) as gfx_setfont;
-void set_font(int idx, string fontface, int sz, char flags) as gfx_setfont;
+any set_font(any idx) as gfx_setfont;
+any set_font(any idx, any fontface) as gfx_setfont;
+any set_font(any idx, any fontface, any sz) as gfx_setfont;
+any set_font(any idx, any fontface, any sz, any flags) as gfx_setfont;
 
-int get_font() as gfx_getfont;
-void print(string str, ...) as gfx_printf;
-void blur_to(int x, int y) as gfx_blurto;
+any get_font() as gfx_getfont;
+any print(any str, ...) as gfx_printf;
+any blur_to(any x, any y) as gfx_blurto;
 
-void blit(int source, float scale, float rotation) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx, int desty) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw, int desth) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw, int desth, int rotxoffs) as gfx_blit;
-void blit(int source, float scale, float rotation, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw, int desth, int rotxoffs, int rotyoffs) as gfx_blit;
+any blit(any source, any scale, any rotation) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any rotxoffs) as gfx_blit;
+any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any rotxoffs, any rotyoffs) as gfx_blit;
 
-void blit_ext(int source, int* coordinatelist, float rotation) as gfx_blitext;
-void get_image_dimensions(int image, int w, int h) as gfx_getimgdim;
-void set_image_dimensions(int image, int w, int h) as gfx_setimgdim;
-int load_image(int image, string filename) as gfx_loadimg;
+any blit_ext(any source, any coordinatelist, any rotation) as gfx_blitext;
+any get_image_dimensions(any image, any w, any h) as gfx_getimgdim;
+any set_image_dimensions(any image, any w, any h) as gfx_setimgdim;
+any load_image(any image, any filename) as gfx_loadimg;
 
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx, float dadx) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx, float dadx, float drdy) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx, float dadx, float drdy, float dgdy) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx, float dadx, float drdy, float dgdy, float dbdy) as gfx_gradrect;
-void rect_gradient(int x, int y, int w, int h, int r, int g, int b, int a, float drdx, float dgdx, float dbdx, float dadx, float drdy, float dgdy, float dbdy, float dady) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy) as gfx_gradrect;
+any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy, any dady) as gfx_gradrect;
 
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b) as gfx_muladdrect;
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b, float mul_a) as gfx_muladdrect;
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b, float mul_a, float add_r) as gfx_muladdrect;
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b, float mul_a, float add_r, float add_g) as gfx_muladdrect;
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b, float mul_a, float add_r, float add_g, float add_b) as gfx_muladdrect;
-void multiply_add_rect(int x, int y, int w, int h, float mul_r, float mul_g, float mul_b, float mul_a, float add_r, float add_g, float add_b, float add_a) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b) as gfx_muladdrect;
+any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b, any add_a) as gfx_muladdrect;
 
-void delta_blit(int srcimg, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw, int desth, float dsdx, float dtdx, float dsdy, float dtdy, float dsdxdy, float dtdxdy) as gfx_deltablit;
-void delta_blit(int srcimg, int srcx, int srcy, int srcw, int srch, int destx, int desty, int destw, int desth, float dsdx, float dtdx, float dsdy, float dtdy, float dsdxdy, float dtdxdy, bool usecliprect) as gfx_deltablit;
+any delta_blit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy) as gfx_deltablit;
+any delta_blit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy, any usecliprect) as gfx_deltablit;
 
-void transform_blit(int srcimg, int destx, int desty, int destw, int desth, int div_w, int div_h, float* table) as gfx_transformblit;
+any transform_blit(any srcimg, any destx, any desty, any destw, any desth, any div_w, any div_h, any table) as gfx_transformblit;
 
-void circle(int x, int y, float r) as gfx_circle;
-void circle(int x, int y, float r, bool fill) as gfx_circle;
-void circle(int x, int y, float r, bool fill, bool antialias) as gfx_circle;
+any circle(any x, any y, any r) as gfx_circle;
+any circle(any x, any y, any r, any fill) as gfx_circle;
+any circle(any x, any y, any r, any fill, any antialias) as gfx_circle;
 
-void round_rect(int x, int y, int w, int h, float radius) as gfx_roundrect;
-void round_rect(int x, int y, int w, int h, float radius, bool antialias) as gfx_roundrect;
+any round_rect(any x, any y, any w, any h, any radius) as gfx_roundrect;
+any round_rect(any x, any y, any w, any h, any radius, any antialias) as gfx_roundrect;
 
-void arc(int x, int y, float r, float ang1, float ang2) as gfx_arc;
-void arc(int x, int y, float r, float ang1, float ang2, bool antialias) as gfx_arc;
+any arc(any x, any y, any r, any ang1, any ang2) as gfx_arc;
+any arc(any x, any y, any r, any ang1, any ang2, any antialias) as gfx_arc;
 
-void triangle(int x1, int y1, int x2, int y2, int x3, int y3, ...) as gfx_triangle;
+any triangle(any x1, any y1, any x2, any y2, any x3, any y3, ...) as gfx_triangle;
 
-int get_char() as gfx_getchar;
-int get_char(char c) as gfx_getchar;
-int get_char(char c, char unicodechar) as gfx_getchar;
+any get_char() as gfx_getchar;
+any get_char(any c) as gfx_getchar;
+any get_char(any c, any unicodechar) as gfx_getchar;
 
-int show_menu(string str) as gfx_showmenu;
+any show_menu(any str) as gfx_showmenu;
 
-void set_cursor(int resource_id) as gfx_setcursor;
-void set_cursor(int resource_id, string name) as gfx_setcursor;
+any set_cursor(any resource_id) as gfx_setcursor;
+any set_cursor(any resource_id, any name) as gfx_setcursor;
 
-float r as gfx_r;
-float g as gfx_g;
-float b as gfx_b;
-float a as gfx_a;
+any r as gfx_r;
+any g as gfx_g;
+any b as gfx_b;
+any a as gfx_a;
 
-int w as gfx_w;
-int h as gfx_h;
-int x as gfx_x;
-int y as gfx_y;
+any w as gfx_w;
+any h as gfx_h;
+any x as gfx_x;
+any y as gfx_y;
 
-int mode as gfx_mode;
-int clear as gfx_clear;
-int destination as gfx_dest;
-float text_height as gfx_texth;
+any mode as gfx_mode;
+any clear as gfx_clear;
+any destination as gfx_dest;
+any text_height as gfx_texth;
 
-float ext_retina as gfx_ext_retina;
-int ext_flags as gfx_ext_flags;
+any ext_retina as gfx_ext_retina;
+any ext_flags as gfx_ext_flags;
 
-int mouse_x as mouse_x;
-int mouse_y as mouse_y;
-int mouse_wheel_vertical as mouse_wheel;
-int mouse_wheel_horizontal as mouse_hwheel;
+any mouse_x as mouse_x;
+any mouse_y as mouse_y;
+any mouse_wheel_vertical as mouse_wheel;
+any mouse_wheel_horizontal as mouse_hwheel;
 
-int input_state as mouse_cap;
+any input_state as mouse_cap;
 
 internal:
-void set_position(int newX, int newY)
+void set_position(any newX, any newY)
 {
 	x = newX;
 	y = newY;
