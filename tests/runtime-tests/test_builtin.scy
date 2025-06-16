@@ -1,0 +1,289 @@
+@init
+{
+	atomic.set_if_equal(0,0,0);
+	atomic.exchange(0,0);
+	atomic.add(0,0);
+	atomic.set(0,0);
+	atomic.get(0);
+
+	file.open(0);
+	file.close(0);
+	file.rewind(0);
+	file.from_variable(0,0);
+	file.from_buffer(0,0,0);
+	file.from_string(0,0);
+	file.available(0);
+	file.riff(0,0,0);
+	file.text(0);
+
+	gfx.set(0);
+	gfx.set(0,0);
+	gfx.set(0,0,0);
+	gfx.set(0,0,0,0);
+	gfx.set(0,0,0,0,0);
+	gfx.set(0,0,0,0,0,0);
+
+	gfx.line_to(0,0);
+	gfx.line_to(0,0,false);
+
+	gfx.line(0,0,0,0);
+	gfx.line(0,0,0,0,false);
+
+	gfx.rect_to(0,0);
+	gfx.rect(0,0,0,0);
+	gfx.set_pixel(0,0,0);
+	gfx.get_pixel(0,0,0);
+	gfx.draw_number(0,0);
+	gfx.draw_char(0);
+
+	gfx.draw_string(0);
+	gfx.draw_string(0,0);
+	gfx.draw_string(0,0,0);
+	gfx.draw_string(0,0,0,0);
+
+	gfx.measure_string(0,0,0);
+
+	gfx.set_font(0);
+	gfx.set_font(0,0);
+	gfx.set_font(0,0,0);
+	gfx.set_font(0,0,0,0);
+
+	gfx.get_font();
+	gfx.print(0);
+	gfx.print(0,0,0,0,0,0,0,0,0,0,0,);
+	gfx.blur_to(0,0);
+
+	gfx.blit(0,0,0);
+	gfx.blit(0,0,0,0);
+	gfx.blit(0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.blit(0,0,0,0,0,0,0,0,0,0,0,0,0);
+
+	gfx.blit_ext(0,0,0);
+	gfx.get_image_dimensions(0,0,0);
+	gfx.set_image_dimensions(0,0,0);
+	gfx.load_image(0,0);
+
+	gfx.rect_gradient(0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+
+	gfx.multiply_add_rect(0,0,0,0,0,0,0);
+	gfx.multiply_add_rect(0,0,0,0,0,0,0,0);
+	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0);
+	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0);
+	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0,0);
+	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0,0,0);
+
+	gfx.delta_blit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.delta_blit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,false);
+
+	gfx.transform_blit(0,0,0,0,0,0,0,0);
+
+	gfx.circle(0,0,0);
+	gfx.circle(0,0,0,false);
+	gfx.circle(0,0,0,false,false);
+
+	gfx.round_rect(0,0,0,0,0);
+	gfx.round_rect(0,0,0,0,0,false);
+
+	gfx.arc(0,0,0,0,0);
+	gfx.arc(0,0,0,0,0,false);
+
+	gfx.triangle(0,0,0,0,0,0);
+	gfx.triangle(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,);
+
+	gfx.get_char();
+	gfx.get_char(0);
+	gfx.get_char(0,0);
+
+	gfx.show_menu(0);
+
+	gfx.set_cursor(0);
+	gfx.set_cursor(0,0);
+
+	jsfx.spl(0);
+
+	jsfx.export_buffer_to_project(0,0,0,0,0);
+	jsfx.export_buffer_to_project(0,0,0,0,0,0);
+	jsfx.export_buffer_to_project(0,0,0,0,0,0,0);
+	jsfx.export_buffer_to_project(0,0,0,0,0,0,0,0);
+
+	jsfx.get_host_placement();
+	jsfx.get_host_placement(0);
+	jsfx.get_host_placement(0,0);
+
+	math.sin(0);
+	math.cos(0);
+	math.tan(0);
+	math.asin(0);
+	math.acos(0);
+	math.atan(0);
+	math.atan2(0,0);
+	math.sqr(0);
+	math.sqrt(0);
+	math.pow(0,0);
+	math.exp(0);
+	math.log(0);
+	math.log10(0);
+	math.abs(0);
+	math.min(0,0);
+	math.max(0,0);
+	math.sign(0);
+	math.rand(0);
+	math.floor(0);
+	math.ceil(0);
+	math.invsqrt(0);
+	math.mdct(0,0);
+	math.imdct(0,0);
+	math.fft(0,0);
+	math.ifft(0,0);
+	math.fft_real(0,0);
+	math.ifft_real(0,0);
+	math.fft_permute(0,0);
+	math.fft_ipermute(0,0);
+	math.convolve_complex(0,0,0);
+
+	mem.free(0);
+	mem.copy(0,0,0);
+	mem.set(0,0,0);
+	mem.set_values(0,0);
+	mem.set_values(0,0,0,0,0,0,0,0,0,0,0,);
+	mem.get_values(0,0);
+	mem.get_values(0,0,0,0,0,0,0,0,0,0,0,);
+	mem.multiply_sum(0,0,0);
+	mem.insert_shuffle(0,0,0);
+	mem.top();
+
+	midi.send(0,0,0);
+	midi.send(0,0,0,0);
+	midi.send_buffer(0,0,0);
+	midi.send_string(0,0);
+	midi.recieve(0,0,0);
+	midi.recieve(0,0,0,0);
+	midi.recieve_buffer(0,0,0);
+	midi.recieve_string(0,0);
+
+	pin_mapper.get_host_num_channels();
+	pin_mapper.set_host_num_channels(0);
+	pin_mapper.get_pin_mapping(0,0,0,0);
+	pin_mapper.set_pin_mapping(0,0,0,0,0);
+	pin_mapper.get_flags();
+	pin_mapper.set_flags(0);
+
+	slider.change(0);
+
+	slider.automate(0);
+	slider.automate(0,false);
+
+	slider.show(0,0);
+
+	slider.slider(0);
+	slider.next_change(0, 0);
+
+	stack.push(0);
+	stack.pop();
+	stack.pop(0);
+	stack.peek(0);
+	stack.exchange(0);
+
+	str.length(0);
+
+	str.copy(0,0);
+	str.copy(0,0,0);
+
+	str.concatenate(0,0);
+	str.concatenate(0,0,0);
+
+	str.compare(0,0);
+	str.compare(0,0,0);
+
+	str.compare_i(0,0);
+	str.compare_i(0,0,0);
+
+	str.copy_from(0,0,0);
+	str.copy_substring(0,0,0,0);
+	str.copy_from_slider(0,0);
+
+	str.get_char(0,0);
+	str.get_char(0,0,0);
+	str.set_char(0,0,0);
+	str.set_char(0,0,0,0);
+
+	str.print(0,0);
+	str.print(0,0,0,0,0,0,0,0,0,0,0,0,);
+
+	str.match(0,0);
+	str.match(0,0,0,0,0,0,0,0,0,0,0,0,);
+	str.match_i(0,0);
+	str.match_i(0,0,0,0,0,0,0,0,0,0,0,0,);
+
+	time.time();
+	time.time(0);
+
+	time.time_precise();
+	time.time_precise(0);
+
+	gfx.r;
+	gfx.g;
+	gfx.b;
+	gfx.a;
+
+	gfx.w;
+	gfx.h;
+	gfx.x;
+	gfx.y;
+
+	gfx.mode;
+	gfx.clear;
+	gfx.destination;
+	gfx.text_height;
+
+	gfx.ext_retina;
+	gfx.ext_flags;
+
+	gfx.mouse_x;
+	gfx.mouse_y;
+	gfx.mouse_wheel_vertical;
+	gfx.mouse_wheel_horizontal;
+
+	gfx.input_state;
+
+	jsfx.trigger;
+
+	jsfx.sample_rate;
+	jsfx.num_channels;
+	jsfx.samples_block;
+	jsfx.tempo;
+	jsfx.play_state;
+	jsfx.play_position;
+	jsfx.beat_position;
+
+	jsfx.timesig_num;
+	jsfx.timesig_denom;
+
+	jsfx.ext_no_init;
+	jsfx.ext_no_denormal;
+	jsfx.ext_tail_size;
+	jsfx.ext_gain_reduction_meter;
+
+	jsfx.pdc_delay;
+	jsfx.pdc_from_channel;
+	jsfx.pdc_to_channel;
+	jsfx.pdc_midi;
+
+	midi.ext_use_bus;
+	midi.ext_bus;
+}

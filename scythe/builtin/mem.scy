@@ -2,8 +2,8 @@ public external:
 void free(any* top) as freembuf;
 void copy(any* dest, any* source, int length) as memcpy;
 void set(any* dest, any value, int length) as memset;
-void set_values(any* buf, ...) as mem_set_values;
-void get_values(any* buf, ...) as mem_get_values;
+void set_values(any* buf, any value, ...) as mem_set_values;
+void get_values(any* buf, any value, ...) as mem_get_values;
 void multiply_sum(any* buf1, any* buf2, int length) as mem_multiply_sum;
 any insert_shuffle(any* buf, int len, any value) as mem_insert_shuffle;
 int top() as __memtop;

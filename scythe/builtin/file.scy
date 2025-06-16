@@ -10,4 +10,4 @@ void from_string(any handle, string str) as file_string;
 int available(any handle) as file_avail;
 
 void riff(any handle, int nch, int samplrate) as file_riff;
-bool text(any handle, bool istext) as file_text;
+bool text(any handle) as file_text;
