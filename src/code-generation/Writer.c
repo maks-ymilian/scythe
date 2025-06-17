@@ -343,8 +343,16 @@ static void VisitBlock(const BlockStmt* block, const bool semicolon)
 {
 	WriteString("(\n", sections);
 	PushIndent(sections);
+	bool hasStatements = false;
 	for (size_t i = 0; i < block->statements.length; ++i)
-		VisitStatement(block->statements.array[i]);
+	{
+		NodePtr* node = block->statements.array[i];
+		VisitStatement(node);
+		if (node->ptr)
+			hasStatements = true;
+	}
+	if (!hasStatements)
+		WriteString("0;\n", sections);
 	PopIndent(sections);
 	WriteChar(')', sections);
 	if (semicolon) WriteString(";\n", sections);
