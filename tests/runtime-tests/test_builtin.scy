@@ -299,8 +299,20 @@
 	str.delete_sub(0,0,0);
 	str.set_length(0,0);
 
-	float pos = 999;
-	jsfx.get_host_placement(pos);
-	bool AAA_test_builtin = pos != 999;
+	bool AAA_test_builtin = bool {
+		int callCount = 0;
+		int compound()
+		{
+			callCount++;
+			return 1;
+		}
+		compound() += 1;
+		if (callCount != 2)
+			return false;
+
+		float pos = 999;
+		jsfx.get_host_placement(pos);
+		return pos != 999;
+	};
 	stack.push(AAA_test_builtin);
 }
