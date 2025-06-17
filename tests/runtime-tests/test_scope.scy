@@ -8,4 +8,5 @@ int num = 4;
     }
 
 	bool AAA_test_scope = num == 5;
+	stack.push(AAA_test_scope);
 }

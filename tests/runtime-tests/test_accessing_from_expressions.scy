@@ -64,4 +64,5 @@ bool test()
 @init
 {
 	bool AAA_test_accessing_from_expressions = test();
+	stack.push(AAA_test_accessing_from_expressions);
 }

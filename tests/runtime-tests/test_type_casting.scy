@@ -7,4 +7,5 @@
 		bool {any {1}} == true &&
 		bool {any {0}} == false
 	};
+	stack.push(AAA_test_type_casting);
 }

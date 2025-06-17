@@ -51,4 +51,5 @@ struct Params
 
 	int value = 42069;
 	bool AAA_test_large_params = testParams(Params { Params {._40 = value}}) == value;
+	stack.push(AAA_test_large_params);
 }

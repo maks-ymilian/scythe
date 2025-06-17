@@ -71,4 +71,5 @@ struct TestValues
 	}
 
 	bool AAA_test_struct_nesting_returning = test_the_values(ret, testValues);
+	stack.push(AAA_test_struct_nesting_returning);
 }

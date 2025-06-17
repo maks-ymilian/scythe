@@ -132,4 +132,5 @@ bool test()
 @init
 {
 	bool AAA_test_linked_list = test();
+	stack.push(AAA_test_linked_list);
 }

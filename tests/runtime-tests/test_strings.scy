@@ -8,4 +8,5 @@
 		str.length("hfnc\nk47hck") == 11 &&
 		str.length("hfnck47hck") == 10 &&
 		str.length("") == 0;
+	stack.push(AAA_test_strings);
 }

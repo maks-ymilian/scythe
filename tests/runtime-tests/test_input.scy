@@ -17,4 +17,5 @@ input input3 [
 		input1.sliderNumber == 1 &&
 		input2.sliderNumber == 2 &&
 		input3.sliderNumber == 3;
+	stack.push(AAA_test_input);
 }

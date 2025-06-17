@@ -141,4 +141,5 @@ bool test()
 @init
 {
 	bool AAA_test_struct_assignment_passing_chained = test();
+	stack.push(AAA_test_struct_assignment_passing_chained);
 }

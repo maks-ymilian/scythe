@@ -42,4 +42,5 @@ external void func(int a, int b, int c, int d, ...);
 	}
 
 	bool AAA_test_function_overloading_variadic = passed;
+	stack.push(AAA_test_function_overloading_variadic);
 }

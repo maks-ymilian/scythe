@@ -32,4 +32,5 @@ bool Compare(Test a, Test b)
 		array[index].a == example.a &&
 		array[index].b == example.b &&
 		array[index].c == example.c;
+	stack.push(AAA_test_array_index_conversion);
 }

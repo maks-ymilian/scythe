@@ -19,3 +19,4 @@ import "test_input.scy"
 import "test_builtin.scy"
 
 any AAA__________ = 7777777777777777777;
+@init { stack.push(AAA__________); }

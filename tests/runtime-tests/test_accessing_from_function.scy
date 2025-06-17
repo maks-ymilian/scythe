@@ -46,4 +46,5 @@ struct Level1
 		get().l2.l3.arr[0] == 69 &&
 		get1()[0] == 699 &&
 		get2()[0].l2.l3.arr[0] == 69420;
+	stack.push(AAA_test_accessing_from_function);
 }

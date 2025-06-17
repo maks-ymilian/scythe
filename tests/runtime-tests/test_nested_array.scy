@@ -230,4 +230,5 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 		matrices[2].rows[6].array[4] == 5455 &&
 		matrices[2].rows[6].array[5] == 5692 &&
 		matrices[2].rows[6].array[6] == 5929;
+	stack.push(AAA_test_nested_array);
 }

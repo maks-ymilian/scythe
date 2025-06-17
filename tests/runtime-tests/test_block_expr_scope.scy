@@ -7,4 +7,5 @@
 	};
 
 	bool AAA_test_block_expr_scope = ret == 6 && outside == 58;
+	stack.push(AAA_test_block_expr_scope);
 }

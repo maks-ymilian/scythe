@@ -302,4 +302,5 @@
 	float pos = 999;
 	jsfx.get_host_placement(pos);
 	bool AAA_test_builtin = pos != 999;
+	stack.push(AAA_test_builtin);
 }
