@@ -283,6 +283,8 @@ typedef struct
 	VarDeclStmt* globalReturn;
 	bool variadic;
 	ModifierState modifiers;
+	Array dependencies;
+	int useCount;
 	int uniqueName;
 } FuncDeclStmt;
 
