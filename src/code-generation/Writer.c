@@ -54,15 +54,6 @@ static const int binaryPrecedence[] = {
 	[Binary_BoolAnd] = 8,
 
 	[Binary_Assignment] = 7,
-	[Binary_MultiplyAssign] = 6,
-	[Binary_DivideAssign] = 6,
-	[Binary_ModuloAssign] = 5,
-	[Binary_ExponentAssign] = 4,
-	[Binary_AddAssign] = 3,
-	[Binary_SubtractAssign] = 3,
-	[Binary_BitOrAssign] = 2,
-	[Binary_BitAndAssign] = 1,
-	[Binary_XORAssign] = 0,
 };
 
 static void WriteUInt64(uint64_t integer, MemoryStream* stream)
@@ -191,16 +182,6 @@ static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 	case Binary_RightShift: operator= ">>"; break;
 
 	case Binary_Assignment: operator= "="; break;
-	case Binary_AddAssign: operator= "+="; break;
-	case Binary_SubtractAssign: operator= "-="; break;
-	case Binary_MultiplyAssign: operator= "*="; break;
-	case Binary_DivideAssign: operator= "/="; break;
-	case Binary_ModuloAssign: operator= "%="; break;
-	case Binary_ExponentAssign: operator= "^="; break;
-	case Binary_BitAndAssign: operator= "&="; break;
-	case Binary_BitOrAssign: operator= "|="; break;
-	case Binary_XORAssign: operator= "~="; break;
-
 	default: INVALID_VALUE(binary->operatorType);
 	}
 

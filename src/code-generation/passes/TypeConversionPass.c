@@ -225,32 +225,6 @@ static Result VisitBinaryExpression(NodePtr* node)
 			binary->lineNumber));
 		break;
 	}
-
-		// compound assignment
-	case Binary_AddAssign:
-	case Binary_SubtractAssign:
-	case Binary_MultiplyAssign:
-	case Binary_DivideAssign:
-	case Binary_ModuloAssign:
-	case Binary_ExponentAssign:
-	case Binary_BitAndAssign:
-	case Binary_BitOrAssign:
-	case Binary_XORAssign:
-	{
-		binary->right = AllocASTNode(
-			&(BinaryExpr){
-				.lineNumber = binary->lineNumber,
-				.operatorType = getCompoundAssignmentOperator[binary->operatorType],
-				.right = binary->right,
-				.left = CopyASTNode(binary->left),
-			},
-			sizeof(BinaryExpr), Node_Binary);
-		binary->operatorType = Binary_Assignment;
-
-		PROPAGATE_ERROR(VisitBinaryExpression(node));
-		break;
-	}
-
 	default: INVALID_VALUE(binary->operatorType);
 	}
 
@@ -267,26 +241,6 @@ static Result VisitUnaryExpression(NodePtr* node)
 
 	switch (unary->operatorType)
 	{
-	case Unary_Decrement:
-	case Unary_Increment:
-	{
-		*node = AllocASTNode(
-			&(BinaryExpr){
-				.lineNumber = unary->lineNumber,
-				.operatorType =
-					unary->operatorType == Unary_Increment
-						? Binary_AddAssign
-						: Binary_SubtractAssign,
-				.left = unary->expression,
-				.right = AllocUInt64Integer(1, unary->lineNumber),
-			},
-			sizeof(BinaryExpr), Node_Binary);
-		unary->expression = NULL_NODE;
-		FreeASTNode((NodePtr){.ptr = unary, .type = Node_Unary});
-
-		PROPAGATE_ERROR(VisitBinaryExpression(node));
-		break;
-	}
 	case Unary_Minus:
 	case Unary_Plus:
 	{

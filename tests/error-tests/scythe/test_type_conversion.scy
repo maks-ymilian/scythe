@@ -174,10 +174,10 @@ struct s { any a; }
 	any { return 0; } = 0;
 //<!>Left operand of assignment must be a variable<!> sizeof(0) = 0;
 
-//<!>Cannot use operator "+=" on aggregate types<!> (yeah += yeah) += yeah;
+//<!>Cannot use operator "+" on aggregate types<!> (yeah += yeah) += yeah;
 //<!>Left operand of assignment must be a variable<!> (a += a) += a;
 //<!>Left operand of assignment must be a variable<!> (0 + 0) += 0;
-//<!>Cannot use operator "+=" on aggregate types<!> if ((yeah += yeah) += yeah){}
+//<!>Cannot use operator "+" on aggregate types<!> if ((yeah += yeah) += yeah){}
 //<!>Left operand of assignment must be a variable<!> if ((a += a) += a){}
 //<!>Left operand of assignment must be a variable<!> if ((0 + 0) += 0){}
 	a += a += a;

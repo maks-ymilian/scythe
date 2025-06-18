@@ -411,13 +411,6 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 				AllocSizeInteger(CountStructMembers(rightType.pointerType), binary->lineNumber),
 				binary->lineNumber);
 	}
-	else if ((binary->operatorType == Binary_AddAssign ||
-				 binary->operatorType == Binary_SubtractAssign) &&
-			 leftType.isPointer && leftType.pointerType && !rightType.isPointer)
-		binary->right = AllocMultiply(
-			binary->right,
-			AllocSizeInteger(CountStructMembers(leftType.pointerType), binary->lineNumber),
-			binary->lineNumber);
 
 	if (leftType.effectiveType == NULL && rightType.effectiveType == NULL)
 		return SUCCESS_RESULT;
@@ -511,37 +504,6 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 	return SUCCESS_RESULT;
 }
 
-static Result VisitUnaryExpression(NodePtr* node, NodePtr* containingStatement)
-{
-	ASSERT(node->type == Node_Unary);
-	UnaryExpr* unary = node->ptr;
-
-	PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
-
-	if (unary->operatorType == Unary_Increment ||
-		unary->operatorType == Unary_Decrement)
-	{
-		StructTypeInfo typeInfo = GetStructTypeInfoFromExpr(unary->expression);
-		if (typeInfo.isPointer && typeInfo.pointerType)
-		{
-			NodePtr old = *node;
-			*node = AllocASTNode(
-				&(BinaryExpr){
-					.lineNumber = unary->lineNumber,
-					.operatorType = unary->operatorType == Unary_Increment ? Binary_AddAssign : Binary_SubtractAssign,
-					.left = unary->expression,
-					.right = AllocSizeInteger(CountStructMembers(typeInfo.pointerType), unary->lineNumber),
-				},
-				sizeof(BinaryExpr), Node_Binary);
-
-			unary->expression = NULL_NODE;
-			FreeASTNode(old);
-		}
-	}
-
-	return SUCCESS_RESULT;
-}
-
 static Result VisitSizeOfExpression(NodePtr* node, NodePtr* containingStatement)
 {
 	ASSERT(node->type == Node_SizeOf);
@@ -574,8 +536,11 @@ static Result VisitExpression(NodePtr* node, NodePtr* containingStatement)
 		PROPAGATE_ERROR(VisitBinaryExpression(node, containingStatement));
 		break;
 	case Node_Unary:
-		PROPAGATE_ERROR(VisitUnaryExpression(node, containingStatement));
+	{
+		UnaryExpr* unary = node->ptr;
+		PROPAGATE_ERROR(VisitExpression(&unary->expression, containingStatement));
 		break;
+	}
 	case Node_FunctionCall:
 		PROPAGATE_ERROR(VisitFunctionCallArguments(node->ptr, containingStatement));
 		break;

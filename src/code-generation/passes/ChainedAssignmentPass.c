@@ -5,17 +5,68 @@
 static void VisitExpression(NodePtr* node, bool parentIsExprStmt);
 static void VisitStatement(NodePtr* node);
 
+static void ConvertIncrement(NodePtr* node)
+{
+	ASSERT(node->type == Node_Unary);
+	UnaryExpr* unary = node->ptr;
+
+	if (unary->operatorType != Unary_Decrement &&
+		unary->operatorType != Unary_Increment)
+		return;
+
+	*node = AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = unary->lineNumber,
+			.operatorType =
+				unary->operatorType == Unary_Increment
+					? Binary_AddAssign
+					: Binary_SubtractAssign,
+			.left = unary->expression,
+			.right = AllocUInt64Integer(1, unary->lineNumber),
+		},
+		sizeof(BinaryExpr), Node_Binary);
+	unary->expression = NULL_NODE;
+	FreeASTNode((NodePtr){.ptr = unary, .type = Node_Unary});
+}
+
+static void ConvertCompoundAssignment(NodePtr* node)
+{
+	ASSERT(node->type == Node_Binary);
+	BinaryExpr* binary = node->ptr;
+
+	if (binary->operatorType != Binary_AddAssign &&
+		binary->operatorType != Binary_SubtractAssign &&
+		binary->operatorType != Binary_MultiplyAssign &&
+		binary->operatorType != Binary_DivideAssign &&
+		binary->operatorType != Binary_ModuloAssign &&
+		binary->operatorType != Binary_ExponentAssign &&
+		binary->operatorType != Binary_BitAndAssign &&
+		binary->operatorType != Binary_BitOrAssign &&
+		binary->operatorType != Binary_XORAssign)
+		return;
+
+	binary->right = AllocASTNode(
+		&(BinaryExpr){
+			.lineNumber = binary->lineNumber,
+			.operatorType = getCompoundAssignmentOperator[binary->operatorType],
+			.right = binary->right,
+			.left = CopyASTNode(binary->left),
+		},
+		sizeof(BinaryExpr), Node_Binary);
+	binary->operatorType = Binary_Assignment;
+}
+
 static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 {
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 
+	VisitExpression(&binary->left, false);
+	VisitExpression(&binary->right, false);
+
 	if (binary->left.type == Node_Binary &&
 		((BinaryExpr*)binary->left.ptr)->operatorType == Binary_Assignment)
 		return;
-
-	VisitExpression(&binary->left, false);
-	VisitExpression(&binary->right, false);
 
 	NodePtr* nested = NULL;
 	if (parentIsExprStmt)
@@ -78,13 +129,20 @@ static void VisitExpression(NodePtr* node, bool parentIsExprStmt)
 		break;
 	case Node_Binary:
 	{
+		ConvertCompoundAssignment(node);
 		VisitBinaryExpression(node, parentIsExprStmt);
 		break;
 	}
 	case Node_Unary:
 	{
-		UnaryExpr* unary = node->ptr;
-		VisitExpression(&unary->expression, false);
+		ConvertIncrement(node);
+		if (node->type == Node_Unary)
+		{
+			UnaryExpr* unary = node->ptr;
+			VisitExpression(&unary->expression, false);
+		}
+		else
+			VisitExpression(node, false);
 		break;
 	}
 	case Node_FunctionCall:
