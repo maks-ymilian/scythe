@@ -618,22 +618,48 @@ static VarDeclStmt* GetMemberAtIndex(StructDeclStmt* type, size_t index)
 	return varDecl;
 }
 
+typedef struct
+{
+	NodePtr expr;
+	NodePtr block;
+	size_t memberCount;
+} GenerateStructMemberExprData;
+
+static void GenerateStructMemberExpr(VarDeclStmt* member, size_t index, void* data)
+{
+	const GenerateStructMemberExprData* d = data;
+	NodePtr stmt = AllocASTNode(
+		&(ExpressionStmt){
+			.expr = AllocStructMemberAssignmentExpr(d->expr, member, index, d->memberCount),
+		},
+		sizeof(ExpressionStmt), Node_ExpressionStatement);
+
+	ASSERT(d->block.type == Node_BlockStatement);
+	BlockStmt* block = d->block.ptr;
+	ArrayAdd(&block->statements, &stmt);
+}
+
 static Result VisitExpressionStatement(NodePtr* node)
 {
-	// todo a statement that does something could actually be removed e.g a[funcCall()].n;
-
 	ASSERT(node->type == Node_ExpressionStatement);
 	ExpressionStmt* exprStmt = node->ptr;
 
 	if (exprStmt->expr.type == Node_MemberAccess)
 	{
-		MemberAccessExpr* memberAccess = exprStmt->expr.ptr;
-		if (memberAccess->start.ptr == NULL ||
-			(memberAccess->start.type == Node_Subscript &&
-				GetStructTypeInfoFromExpr(exprStmt->expr).effectiveType))
+		StructTypeInfo typeInfo = GetStructTypeInfoFromExpr(exprStmt->expr);
+		if (typeInfo.effectiveType)
 		{
+			NodePtr block = AllocBlockStmt(exprStmt->lineNumber);
+			ForEachStructMember(typeInfo.effectiveType,
+				GenerateStructMemberExpr,
+				&(GenerateStructMemberExprData){
+					.block = block,
+					.expr = exprStmt->expr,
+					.memberCount = CountStructMembers(typeInfo.effectiveType),
+				},
+				NULL);
 			FreeASTNode(*node);
-			*node = NULL_NODE;
+			*node = block;
 			return SUCCESS_RESULT;
 		}
 	}

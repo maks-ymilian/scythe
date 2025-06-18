@@ -38,6 +38,15 @@ bool test_equality1(Level1 value1, Level1 value2)
 
 @init
 {
+	{
+		int funcCall() {return 1;}
+
+		Level1[] arr;
+		arr;
+		arr[funcCall()].x;
+		arr[funcCall()];
+	}
+
 	Level1 value = Level1 {
 		.x = "hiidfsj",
 		.y = -352,
