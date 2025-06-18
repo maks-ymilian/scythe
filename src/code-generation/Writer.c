@@ -441,6 +441,8 @@ static void VisitStatement(const NodePtr* node)
 
 static void WriteSection(const SectionStmt* section)
 {
+	const size_t start = StreamGetPosition(sections);
+
 	const char* sectionText = NULL;
 	switch (section->sectionType)
 	{
@@ -475,12 +477,17 @@ static void WriteSection(const SectionStmt* section)
 
 	WriteChar('\n', sections);
 
+	const size_t statementsPos = StreamGetPosition(sections);
+
 	ASSERT(section->block.type == Node_BlockStatement);
 	const BlockStmt* block = section->block.ptr;
 	for (size_t i = 0; i < block->statements.length; ++i)
 		VisitStatement(block->statements.array[i]);
 
-	WriteChar('\n', sections);
+	if (statementsPos == StreamGetPosition(sections))
+		StreamRewind(sections, StreamGetPosition(sections) - start);
+	else
+		WriteChar('\n', sections);
 }
 
 static void WriteSlider(const InputStmt* slider)
@@ -529,12 +536,16 @@ static void WriteSlider(const InputStmt* slider)
 
 static void WriteModule(const ModuleNode* module)
 {
+	const size_t start = StreamGetPosition(sections);
+
 	if (module->statements.length != 0)
 	{
 		WriteString("// Module: ", sections);
 		WriteString(module->moduleName, sections);
 		WriteChar('\n', sections);
 	}
+
+	const size_t statementsPos = StreamGetPosition(sections);
 
 	for (size_t i = 0; i < module->statements.length; ++i)
 	{
@@ -553,6 +564,9 @@ static void WriteModule(const ModuleNode* module)
 		default: INVALID_VALUE(stmt->type);
 		}
 	}
+
+	if (statementsPos == StreamGetPosition(sections))
+		StreamRewind(sections, StreamGetPosition(sections) - start);
 }
 
 void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
