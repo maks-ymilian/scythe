@@ -232,7 +232,8 @@ NodePtr CopyASTNode(const NodePtr node)
 		ptr = copy.ptr;
 
 		ptr->block = CopyASTNode(ptr->block);
-		ptr->type.expr = CopyASTNode(ptr->type.expr);
+		if (ptr->type.expr.ptr)
+			ptr->type.expr = CopyASTNode(ptr->type.expr);
 
 		return copy;
 	}
@@ -397,7 +398,8 @@ NodePtr CopyASTNode(const NodePtr node)
 
 		ptr->expr = CopyASTNode(ptr->expr);
 		ptr->trueStmt = CopyASTNode(ptr->trueStmt);
-		ptr->falseStmt = CopyASTNode(ptr->falseStmt);
+		if (ptr->falseStmt.ptr)
+			ptr->falseStmt = CopyASTNode(ptr->falseStmt);
 
 		return copy;
 	}

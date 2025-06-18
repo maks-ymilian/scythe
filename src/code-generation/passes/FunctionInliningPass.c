@@ -1,10 +1,10 @@
-#include "RemoveUnusedPass.h"
+#include "FunctionInliningPass.h"
 
 #include "data-structures/Map.h"
 
-static Map pointerToReference;
+#include <string.h>
 
-static void VisitStatement(NodePtr* node);
+static Map pointerToReference;
 
 static void AddReference(void* pointer, NodePtr* reference)
 {
@@ -24,73 +24,71 @@ static NodePtr* GetReference(void* pointer)
 	return *reference;
 }
 
-static void ProcessFuncDecl(FuncDeclStmt* funcDecl)
+static FuncDeclStmt* GetFuncDecl(FuncCallExpr* funcCall)
 {
-	if (funcDecl->useCount != 0)
-		return;
-
-	for (size_t i = 0; i < funcDecl->dependencies.length; ++i)
-	{
-		NodePtr* node = funcDecl->dependencies.array[i];
-		ASSERT(node->type == Node_FunctionDeclaration);
-		FuncDeclStmt* f = node->ptr;
-
-		--f->useCount;
-		ProcessFuncDecl(f);
-	}
-
-	NodePtr* node = GetReference(funcDecl);
-	*node = NULL_NODE;
+	ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
+	MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
+	ASSERT(memberAccess->funcReference);
+	return memberAccess->funcReference;
 }
 
-static void VisitExpression(const NodePtr node)
+static void VisitExpression(NodePtr* node)
 {
-	switch (node.type)
+	switch (node->type)
 	{
 	case Node_Literal:
 	case Node_Null:
 		break;
+	case Node_FunctionCall:
+	{
+		FuncCallExpr* funcCall = node->ptr;
+		VisitExpression(&funcCall->baseExpr);
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
+			VisitExpression(funcCall->arguments.array[i]);
+
+		if (!GetFuncDecl(funcCall)->isBlockExpression)
+			break;
+		ASSERT(GetFuncDecl(funcCall)->parameters.length == 0);
+
+		*node = AllocASTNode(
+			&(BlockExpr){
+				.block = GetFuncDecl(funcCall)->block,
+			},
+			sizeof(BlockExpr), Node_BlockExpression);
+
+		NodePtr* funcDeclNode = GetReference(GetFuncDecl(funcCall));
+		GetFuncDecl(funcCall)->block = NULL_NODE;
+		FreeASTNode(*funcDeclNode);
+		*funcDeclNode = NULL_NODE;
+		break;
+	}
 	case Node_MemberAccess:
 	{
-		MemberAccessExpr* memberAccess = node.ptr;
-		VisitExpression(memberAccess->start);
+		MemberAccessExpr* memberAccess = node->ptr;
+		VisitExpression(&memberAccess->start);
 		break;
 	}
 	case Node_Binary:
 	{
-		BinaryExpr* binary = node.ptr;
-		VisitExpression(binary->left);
-		VisitExpression(binary->right);
+		BinaryExpr* binary = node->ptr;
+		VisitExpression(&binary->left);
+		VisitExpression(&binary->right);
 		break;
 	}
 	case Node_Unary:
 	{
-		UnaryExpr* unary = node.ptr;
-		VisitExpression(unary->expression);
-		break;
-	}
-	case Node_FunctionCall:
-	{
-		FuncCallExpr* funcCall = node.ptr;
-		VisitExpression(funcCall->baseExpr);
-		for (size_t i = 0; i < funcCall->arguments.length; ++i)
-			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
+		UnaryExpr* unary = node->ptr;
+		VisitExpression(&unary->expression);
 		break;
 	}
 	case Node_Subscript:
 	{
-		SubscriptExpr* subscript = node.ptr;
-		VisitExpression(subscript->baseExpr);
-		VisitExpression(subscript->indexExpr);
+		SubscriptExpr* subscript = node->ptr;
+		VisitExpression(&subscript->baseExpr);
+		VisitExpression(&subscript->indexExpr);
 		break;
 	}
-	case Node_BlockExpression:
-	{
-		BlockExpr* block = node.ptr;
-		VisitStatement(&block->block);
-		break;
-	}
-	default: INVALID_VALUE(node.type);
+	default: INVALID_VALUE(node->type);
 	}
 }
 
@@ -105,13 +103,13 @@ static void VisitStatement(NodePtr* node)
 	case Node_ExpressionStatement:
 	{
 		ExpressionStmt* exprStmt = node->ptr;
-		VisitExpression(exprStmt->expr);
+		VisitExpression(&exprStmt->expr);
 		break;
 	}
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
-		VisitExpression(varDecl->initializer);
+		VisitExpression(&varDecl->initializer);
 		break;
 	}
 	case Node_FunctionDeclaration:
@@ -121,7 +119,6 @@ static void VisitStatement(NodePtr* node)
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 			VisitStatement(funcDecl->parameters.array[i]);
 		VisitStatement(&funcDecl->block);
-		ProcessFuncDecl(funcDecl);
 		break;
 	}
 	case Node_Input:
@@ -141,7 +138,7 @@ static void VisitStatement(NodePtr* node)
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;
-		VisitExpression(ifStmt->expr);
+		VisitExpression(&ifStmt->expr);
 		VisitStatement(&ifStmt->falseStmt);
 		VisitStatement(&ifStmt->trueStmt);
 		break;
@@ -156,7 +153,7 @@ static void VisitStatement(NodePtr* node)
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node->ptr;
-		VisitExpression(whileStmt->expr);
+		VisitExpression(&whileStmt->expr);
 		VisitStatement(&whileStmt->stmt);
 		break;
 	}
@@ -164,7 +161,7 @@ static void VisitStatement(NodePtr* node)
 	}
 }
 
-void RemoveUnusedPass(const AST* ast)
+void FunctionInliningPass(const AST* ast)
 {
 	pointerToReference = AllocateMap(sizeof(NodePtr*));
 

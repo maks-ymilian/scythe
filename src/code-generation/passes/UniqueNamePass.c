@@ -5,6 +5,59 @@
 static int uniqueNameCounter = 0;
 static Map names;
 
+static void VisitStatement(const NodePtr node);
+
+static void VisitExpression(const NodePtr node)
+{
+	switch (node.type)
+	{
+	case Node_Literal:
+	case Node_Null:
+		break;
+	case Node_MemberAccess:
+	{
+		MemberAccessExpr* memberAccess = node.ptr;
+		VisitExpression(memberAccess->start);
+		break;
+	}
+	case Node_Binary:
+	{
+		BinaryExpr* binary = node.ptr;
+		VisitExpression(binary->left);
+		VisitExpression(binary->right);
+		break;
+	}
+	case Node_Unary:
+	{
+		UnaryExpr* unary = node.ptr;
+		VisitExpression(unary->expression);
+		break;
+	}
+	case Node_FunctionCall:
+	{
+		FuncCallExpr* funcCall = node.ptr;
+		VisitExpression(funcCall->baseExpr);
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
+			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
+		break;
+	}
+	case Node_Subscript:
+	{
+		SubscriptExpr* subscript = node.ptr;
+		VisitExpression(subscript->baseExpr);
+		VisitExpression(subscript->indexExpr);
+		break;
+	}
+	case Node_BlockExpression:
+	{
+		BlockExpr* block = node.ptr;
+		VisitStatement(block->block);
+		break;
+	}
+	default: INVALID_VALUE(node.type);
+	}
+}
+
 static void VisitStatement(const NodePtr node)
 {
 	switch (node.type)
@@ -14,10 +67,15 @@ static void VisitStatement(const NodePtr node)
 	case Node_Null:
 		break;
 	case Node_ExpressionStatement:
+	{
+		ExpressionStmt* exprStmt = node.ptr;
+		VisitExpression(exprStmt->expr);
 		break;
+	}
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node.ptr;
+		VisitExpression(varDecl->initializer);
 		bool exists = !MapAdd(&names, varDecl->name, NULL);
 		if (exists)
 			varDecl->uniqueName = ++uniqueNameCounter;
@@ -58,6 +116,7 @@ static void VisitStatement(const NodePtr node)
 	case Node_If:
 	{
 		const IfStmt* ifStmt = node.ptr;
+		VisitExpression(ifStmt->expr);
 		VisitStatement(ifStmt->falseStmt);
 		VisitStatement(ifStmt->trueStmt);
 		break;
@@ -72,6 +131,7 @@ static void VisitStatement(const NodePtr node)
 	case Node_While:
 	{
 		const WhileStmt* whileStmt = node.ptr;
+		VisitExpression(whileStmt->expr);
 		VisitStatement(whileStmt->stmt);
 		break;
 	}

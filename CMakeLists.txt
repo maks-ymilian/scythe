@@ -70,6 +70,7 @@ set(SOURCES
 	"src/code-generation/passes/FunctionCallAccessPass.c"
 	"src/code-generation/passes/RemoveUnusedPass.c"
 	"src/code-generation/passes/CountUsesAndDependenciesPass.c"
+	"src/code-generation/passes/FunctionInliningPass.c"
 )
 
 option(ASAN_OPTIONS "" OFF)

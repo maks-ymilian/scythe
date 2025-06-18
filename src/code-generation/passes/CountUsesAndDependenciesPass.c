@@ -2,6 +2,8 @@
 
 static FuncDeclStmt* currentFunc;
 
+static void VisitStatement(NodePtr* node);
+
 static void AddDependency(FuncDeclStmt* funcDecl, NodePtr dependency)
 {
 	if (!funcDecl->dependencies.array)
@@ -60,6 +62,12 @@ static void VisitExpression(const NodePtr node)
 		SubscriptExpr* subscript = node.ptr;
 		VisitExpression(subscript->baseExpr);
 		VisitExpression(subscript->indexExpr);
+		break;
+	}
+	case Node_BlockExpression:
+	{
+		BlockExpr* block = node.ptr;
+		VisitStatement(&block->block);
 		break;
 	}
 	default: INVALID_VALUE(node.type);

@@ -56,6 +56,8 @@ static const int binaryPrecedence[] = {
 	[Binary_Assignment] = 7,
 };
 
+static void VisitBlock(const BlockStmt* block, const bool semicolon);
+
 static void WriteUInt64(uint64_t integer, MemoryStream* stream)
 {
 	char string[INT64_MAX_CHARS + 1];
@@ -258,8 +260,6 @@ static char* GetName(const MemberAccessExpr* identifier, bool external)
 		return external && identifier->funcReference->externalName
 				   ? identifier->funcReference->externalName
 				   : identifier->funcReference->name;
-	if (identifier->typeReference != NULL)
-		return identifier->typeReference->name;
 	if (identifier->varReference != NULL)
 		return external && identifier->varReference->externalName
 				   ? identifier->varReference->externalName
@@ -277,6 +277,11 @@ static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
 	}
 }
 
+static void VisitBlockExpression(const BlockExpr* blockExpr)
+{
+	VisitBlock(blockExpr->block.ptr, false);
+}
+
 static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 {
 	switch (node.type)
@@ -287,6 +292,7 @@ static void VisitExpression(const NodePtr node, const NodePtr* parentExpr)
 	case Node_Literal: VisitLiteralExpression(node.ptr); break;
 	case Node_FunctionCall: VisitFunctionCall(node.ptr); break;
 	case Node_Subscript: VisitSubscriptExpression(node.ptr); break;
+	case Node_BlockExpression: VisitBlockExpression(node.ptr); break;
 	default: INVALID_VALUE(node.type);
 	}
 }

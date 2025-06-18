@@ -42,6 +42,7 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 				.oldParameters = AllocateArray(sizeof(NodePtr)),
 				.block = blockExpr->block,
 				.globalReturn = NULL,
+				.isBlockExpression = true,
 				.uniqueName = -1,
 			},
 			sizeof(FuncDeclStmt), Node_FunctionDeclaration);

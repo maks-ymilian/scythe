@@ -2,6 +2,9 @@
 
 #include "Common.h"
 
+static void VisitStatement(const NodePtr* node);
+static void VisitExpression(NodePtr* node);
+
 static void VisitBlock(NodePtr node)
 {
 	if (node.ptr == NULL)
@@ -25,9 +28,30 @@ static void VisitBlock(NodePtr node)
 			*node = NULL_NODE;
 			break;
 		}
+		case Node_ExpressionStatement:
+		{
+			ExpressionStmt* exprStmt = node->ptr;
+			if (exprStmt->expr.type != Node_BlockExpression)
+			{
+				VisitExpression(&exprStmt->expr);
+				break;
+			}
+
+			BlockExpr* blockExpr = exprStmt->expr.ptr;
+			ASSERT(blockExpr->block.type == Node_BlockStatement);
+			BlockStmt* innerBlock = blockExpr->block.ptr;
+			for (size_t j = 0; j < innerBlock->statements.length; ++j)
+				ArrayInsert(&block->statements, innerBlock->statements.array[j], i + j + 1);
+			ArrayClear(&innerBlock->statements);
+			FreeASTNode(*node);
+			*node = NULL_NODE;
+			break;
+		}
 		case Node_If:
 		{
 			IfStmt* ifStmt = node->ptr;
+
+			VisitExpression(&ifStmt->expr);
 
 			ASSERT(ifStmt->trueStmt.type == Node_BlockStatement);
 			BlockStmt* trueBlock = ifStmt->trueStmt.ptr;
@@ -60,12 +84,15 @@ static void VisitBlock(NodePtr node)
 		case Node_While:
 		{
 			WhileStmt* whileStmt = node->ptr;
+			VisitExpression(&whileStmt->expr);
 			VisitBlock(whileStmt->stmt);
 			break;
 		}
 		case Node_FunctionDeclaration:
 		{
 			FuncDeclStmt* funcDecl = node->ptr;
+			for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+				VisitStatement(funcDecl->parameters.array[i]);
 			VisitBlock(funcDecl->block);
 			break;
 		}
@@ -76,10 +103,18 @@ static void VisitBlock(NodePtr node)
 			break;
 		}
 		case Node_Return:
-		case Node_LoopControl:
-		case Node_ExpressionStatement:
+		{
+			ReturnStmt* returnStmt = node->ptr;
+			VisitExpression(&returnStmt->expr);
+			break;
+		}
 		case Node_VariableDeclaration:
+		{
+			VisitStatement(node);
+			break;
+		}
 		case Node_Import:
+		case Node_LoopControl:
 		case Node_Null:
 			break;
 		default: INVALID_VALUE(node->type);
@@ -87,25 +122,75 @@ static void VisitBlock(NodePtr node)
 	}
 }
 
-static void VisitGlobalStatement(const NodePtr* node)
+static void VisitExpression(NodePtr* node)
 {
 	switch (node->type)
 	{
-	case Node_VariableDeclaration:
+	case Node_Literal:
+	case Node_Null:
+		break;
+	case Node_MemberAccess:
+	{
+		MemberAccessExpr* memberAccess = node->ptr;
+		VisitExpression(&memberAccess->start);
+		break;
+	}
+	case Node_Binary:
+	{
+		BinaryExpr* binary = node->ptr;
+		VisitExpression(&binary->left);
+		VisitExpression(&binary->right);
+		break;
+	}
+	case Node_Unary:
+	{
+		UnaryExpr* unary = node->ptr;
+		VisitExpression(&unary->expression);
+		break;
+	}
+	case Node_FunctionCall:
+	{
+		FuncCallExpr* funcCall = node->ptr;
+		VisitExpression(&funcCall->baseExpr);
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
+			VisitExpression(funcCall->arguments.array[i]);
+		break;
+	}
+	case Node_Subscript:
+	{
+		SubscriptExpr* subscript = node->ptr;
+		VisitExpression(&subscript->baseExpr);
+		VisitExpression(&subscript->indexExpr);
+		break;
+	}
+	case Node_BlockExpression:
+	{
+		BlockExpr* block = node->ptr;
+		VisitBlock(block->block);
+		break;
+	}
+	default: INVALID_VALUE(node->type);
+	}
+}
+
+static void VisitStatement(const NodePtr* node)
+{
+	switch (node->type)
+	{
 	case Node_Import:
 	case Node_Input:
 	case Node_Null:
 		break;
+	case Node_VariableDeclaration:
+	{
+		VarDeclStmt* varDecl = node->ptr;
+		VisitExpression(&varDecl->initializer);
+		break;
+	}
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
 		VisitBlock(section->block);
-		break;
-	}
-	case Node_FunctionDeclaration:
-	{
-		FuncDeclStmt* funcDecl = node->ptr;
-		VisitBlock(funcDecl->block);
 		break;
 	}
 	default: INVALID_VALUE(node->type);
@@ -122,6 +207,6 @@ void BlockRemoverPass(const AST* ast)
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			VisitGlobalStatement(module->statements.array[i]);
+			VisitStatement(module->statements.array[i]);
 	}
 }

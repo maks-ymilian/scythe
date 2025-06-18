@@ -285,6 +285,7 @@ typedef struct
 	ModifierState modifiers;
 	Array dependencies;
 	int useCount;
+	bool isBlockExpression;
 	int uniqueName;
 } FuncDeclStmt;
 
