@@ -369,22 +369,35 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 	VisitBlock(funcDecl->block.ptr, true);
 }
 
-static void VisitIfStatement(const IfStmt* ifStmt)
+static void VisitIfStatement(const IfStmt* ifStmt, bool semicolon)
 {
 	VisitExpression(ifStmt->expr, NULL);
-	WriteString(" ?\n", sections);
+	WriteString(" ? ", sections);
+
+	if (!ifStmt->falseStmt.ptr)
+		WriteChar('\n', sections);
 
 	ASSERT(ifStmt->trueStmt.type == Node_BlockStatement);
 	VisitBlock(ifStmt->trueStmt.ptr, false);
 
-	if (ifStmt->falseStmt.ptr != NULL)
+	if (ifStmt->falseStmt.ptr)
 	{
 		WriteString(" : ", sections);
+
 		ASSERT(ifStmt->falseStmt.type == Node_BlockStatement);
-		VisitBlock(ifStmt->falseStmt.ptr, false);
+		BlockStmt* block = ifStmt->falseStmt.ptr;
+		if (block->statements.length == 1 &&
+			((NodePtr*)block->statements.array[0])->type == Node_If)
+		{
+			IfStmt* ifStmt = ((NodePtr*)block->statements.array[0])->ptr;
+			VisitIfStatement(ifStmt, false);
+		}
+		else
+			VisitBlock(ifStmt->falseStmt.ptr, false);
 	}
 
-	WriteString(";\n", sections);
+	if (semicolon)
+		WriteString(";\n", sections);
 }
 
 static void VisitWhileStatement(const WhileStmt* whileStmt)
@@ -425,7 +438,7 @@ static void VisitStatement(const NodePtr* node)
 	}
 	case Node_If:
 	{
-		VisitIfStatement(node->ptr);
+		VisitIfStatement(node->ptr, true);
 		break;
 	}
 	case Node_While:
