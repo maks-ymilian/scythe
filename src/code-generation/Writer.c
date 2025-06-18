@@ -270,7 +270,7 @@ static char* GetName(const MemberAccessExpr* identifier, bool external)
 static void VisitMemberAccessExpression(const MemberAccessExpr* identifier)
 {
 	WriteString(GetName(identifier, IsExternal(identifier)), sections);
-	if (!IsExternal(identifier))
+	if (!IsExternal(identifier) && GetUniqueName(identifier) != -1)
 	{
 		WriteChar('_', sections);
 		WriteUniqueName(GetUniqueName(identifier), sections);
@@ -346,8 +346,11 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 
 	WriteString("function ", sections);
 	WriteString(funcDecl->name, sections);
-	WriteChar('_', sections);
-	WriteUniqueName(funcDecl->uniqueName, sections);
+	if (funcDecl->uniqueName != -1)
+	{
+		WriteChar('_', sections);
+		WriteUniqueName(funcDecl->uniqueName, sections);
+	}
 
 	WriteChar('(', sections);
 	for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -357,8 +360,11 @@ static void VisitFunctionDeclaration(const FuncDeclStmt* funcDecl)
 		ASSERT(node->type == Node_VariableDeclaration);
 		const VarDeclStmt* varDecl = node->ptr;
 		WriteString(varDecl->name, sections);
-		WriteChar('_', sections);
-		WriteUniqueName(varDecl->uniqueName, sections);
+		if (varDecl->uniqueName != -1)
+		{
+			WriteChar('_', sections);
+			WriteUniqueName(varDecl->uniqueName, sections);
+		}
 
 		if (i < funcDecl->parameters.length - 1)
 			WriteString(", ", sections);
@@ -511,8 +517,11 @@ static void WriteSlider(const InputStmt* slider)
 
 	ASSERT(slider->varDecl.type == Node_VariableDeclaration);
 	WriteString(slider->name, descriptionLines);
-	WriteChar('_', descriptionLines);
-	WriteUniqueName(((VarDeclStmt*)slider->varDecl.ptr)->uniqueName, descriptionLines);
+	if (((VarDeclStmt*)slider->varDecl.ptr)->uniqueName != -1)
+	{
+		WriteChar('_', descriptionLines);
+		WriteUniqueName(((VarDeclStmt*)slider->varDecl.ptr)->uniqueName, descriptionLines);
+	}
 	WriteChar('=', descriptionLines);
 	WriteString(slider->defaultValue, descriptionLines);
 

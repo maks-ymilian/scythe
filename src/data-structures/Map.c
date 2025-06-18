@@ -166,7 +166,8 @@ static Node* AllocateNode(const Map* map, const char* key, const void* value)
 	memcpy(node->key, key, keyLength + 1);
 
 	node->value = malloc(map->sizeOfValueType);
-	memcpy(node->value, value, map->sizeOfValueType);
+	if (value != 0)
+		memcpy(node->value, value, map->sizeOfValueType);
 
 	node->next = NULL;
 

@@ -1,6 +1,9 @@
 #include "UniqueNamePass.h"
 
+#include "data-structures/Map.h"
+
 static int uniqueNameCounter = 0;
+static Map names;
 
 static void VisitStatement(const NodePtr node)
 {
@@ -15,13 +18,17 @@ static void VisitStatement(const NodePtr node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node.ptr;
-		varDecl->uniqueName = ++uniqueNameCounter;
+		bool exists = !MapAdd(&names, varDecl->name, NULL);
+		if (exists)
+			varDecl->uniqueName = ++uniqueNameCounter;
 		break;
 	}
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node.ptr;
-		funcDecl->uniqueName = ++uniqueNameCounter;
+		bool exists = !MapAdd(&names, funcDecl->name, NULL);
+		if (exists)
+			funcDecl->uniqueName = ++uniqueNameCounter;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
 			const NodePtr* node = funcDecl->parameters.array[i];
@@ -74,6 +81,8 @@ static void VisitStatement(const NodePtr node)
 
 void UniqueNamePass(const AST* ast)
 {
+	names = AllocateMap(0);
+
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
 		const NodePtr* node = ast->nodes.array[i];
@@ -84,4 +93,6 @@ void UniqueNamePass(const AST* ast)
 		for (size_t i = 0; i < module->statements.length; ++i)
 			VisitStatement(*((NodePtr*)module->statements.array[i]));
 	}
+
+	FreeMap(&names);
 }
