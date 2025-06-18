@@ -119,7 +119,7 @@ float maxover;
 	overdb = rundb;
 	averatio = runratio;
 
-	if (allin)
+	if (allin != 0)
 		cratio = 12 + averatio;
 	else
 		cratio = ratio;
