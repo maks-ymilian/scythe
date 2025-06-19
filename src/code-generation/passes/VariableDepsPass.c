@@ -91,7 +91,8 @@ static void EnvMerge(Env* dest, const Env* env)
 
 static void EnvSetDep(Env* env, const VarDeclStmt* var, NodePtr dep)
 {
-	char* key = AllocateString1Str1Int("%s%d", var->name, var->uniqueName);
+	char key[64];
+	snprintf(key, sizeof(key), "%p", (void*)var);
 	Array* deps = MapGet(env, key);
 	if (deps)
 	{
@@ -105,14 +106,13 @@ static void EnvSetDep(Env* env, const VarDeclStmt* var, NodePtr dep)
 		bool result = MapAdd(env, key, &deps);
 		ASSERT(result);
 	}
-	free(key);
 }
 
 static Array* EnvGetDeps(Env* env, const VarDeclStmt* var)
 {
-	char* key = AllocateString1Str1Int("%s%d", var->name, var->uniqueName);
+	char key[64];
+	snprintf(key, sizeof(key), "%p", (void*)var);
 	Array* deps = MapGet(env, key);
-	free(key);
 	ASSERT(deps);
 	ASSERT(deps->length > 0);
 	return deps;

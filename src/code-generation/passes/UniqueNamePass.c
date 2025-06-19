@@ -2,10 +2,18 @@
 
 #include "data-structures/Map.h"
 
-static int uniqueNameCounter = 0;
+static int uniqueNameCounter;
 static Map names;
+static Map pointers;
 
 static void VisitStatement(const NodePtr node);
+
+static bool AddPointer(void* ptr)
+{
+	char key[64];
+	snprintf(key, sizeof(key), "%p", ptr);
+	return MapAdd(&pointers, key, 0);
+}
 
 static void VisitExpression(const NodePtr node)
 {
@@ -17,7 +25,12 @@ static void VisitExpression(const NodePtr node)
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = node.ptr;
-		VisitExpression(memberAccess->start);
+		if (memberAccess->varReference &&
+			!memberAccess->varReference->modifiers.externalValue &&
+			memberAccess->varReference->uniqueName == -1 &&
+			AddPointer(memberAccess->varReference) &&
+			!MapAdd(&names, memberAccess->varReference->name, NULL))
+			memberAccess->varReference->uniqueName = ++uniqueNameCounter;
 		break;
 	}
 	case Node_Binary:
@@ -36,7 +49,6 @@ static void VisitExpression(const NodePtr node)
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node.ptr;
-		VisitExpression(funcCall->baseExpr);
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 			VisitExpression(*(NodePtr*)funcCall->arguments.array[i]);
 		break;
@@ -76,17 +88,19 @@ static void VisitStatement(const NodePtr node)
 	{
 		VarDeclStmt* varDecl = node.ptr;
 		VisitExpression(varDecl->initializer);
-		bool exists = !MapAdd(&names, varDecl->name, NULL);
-		if (exists)
-			varDecl->uniqueName = ++uniqueNameCounter;
 		break;
 	}
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node.ptr;
-		bool exists = !MapAdd(&names, funcDecl->name, NULL);
-		if (exists)
+		if (funcDecl->modifiers.externalValue)
+			break;
+
+		if (funcDecl->uniqueName == -1 &&
+			AddPointer(funcDecl) &&
+			!MapAdd(&names, funcDecl->name, NULL))
 			funcDecl->uniqueName = ++uniqueNameCounter;
+
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
 			const NodePtr* node = funcDecl->parameters.array[i];
@@ -100,7 +114,11 @@ static void VisitStatement(const NodePtr node)
 	{
 		InputStmt* input = node.ptr;
 		ASSERT(input->varDecl.type == Node_VariableDeclaration);
-		VisitStatement(input->varDecl);
+		VarDeclStmt* varDecl = input->varDecl.ptr;
+		if (varDecl->uniqueName == -1 &&
+			AddPointer(varDecl) &&
+			!MapAdd(&names, varDecl->name, NULL))
+			varDecl->uniqueName = ++uniqueNameCounter;
 		break;
 	}
 	case Node_BlockStatement:
@@ -142,6 +160,7 @@ static void VisitStatement(const NodePtr node)
 void UniqueNamePass(const AST* ast)
 {
 	names = AllocateMap(0);
+	pointers = AllocateMap(0);
 
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -155,4 +174,5 @@ void UniqueNamePass(const AST* ast)
 	}
 
 	FreeMap(&names);
+	FreeMap(&pointers);
 }
