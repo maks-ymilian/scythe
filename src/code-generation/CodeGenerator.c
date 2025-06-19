@@ -15,8 +15,9 @@
 #include "passes/ChainedAssignmentPass.h"
 #include "passes/FunctionCallAccessPass.h"
 #include "passes/RemoveUnusedPass.h"
-#include "passes/CountUsesAndDependenciesPass.h"
 #include "passes/FunctionInliningPass.h"
+#include "passes/FunctionDepsPass.h"
+#include "passes/VariableDepsPass.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
@@ -31,11 +32,12 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
 	GlobalSectionPass(syntaxTree);
 
-	FunctionInliningPass(syntaxTree);
-	CountUsesAndDependenciesPass(syntaxTree);
-	RemoveUnusedPass(syntaxTree);
-
 	UniqueNamePass(syntaxTree);
+
+	FunctionInliningPass(syntaxTree);
+	FunctionDepsPass(syntaxTree);
+	VariableDepsPass(syntaxTree);
+	RemoveUnusedPass(syntaxTree);
 
 	BlockRemoverPass(syntaxTree);
 	WriteOutput(syntaxTree, outputCode, outputLength);

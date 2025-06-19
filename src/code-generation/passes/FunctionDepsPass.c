@@ -1,4 +1,4 @@
-#include "CountUsesAndDependenciesPass.h"
+#include "FunctionDepsPass.h"
 
 static FuncDeclStmt* currentFunc;
 
@@ -30,10 +30,6 @@ static void VisitExpression(const NodePtr node)
 			if (currentFunc)
 				AddDependency(currentFunc, (NodePtr){.ptr = memberAccess->funcReference, .type = Node_FunctionDeclaration});
 		}
-		else if (memberAccess->varReference)
-			;
-		else
-			UNREACHABLE();
 		break;
 	}
 	case Node_Binary:
@@ -144,7 +140,7 @@ static void VisitStatement(NodePtr* node)
 	}
 }
 
-void CountUsesAndDependenciesPass(const AST* ast)
+void FunctionDepsPass(const AST* ast)
 {
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{

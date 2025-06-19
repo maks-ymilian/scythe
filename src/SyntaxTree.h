@@ -184,6 +184,8 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr expr;
+	int useCount;
+	bool doNotOptimize;
 } ExpressionStmt;
 
 typedef struct
@@ -267,6 +269,8 @@ typedef struct
 	NodePtr initializer;
 	Array instantiatedVariables;
 	ModifierState modifiers;
+	int useCount;
+	bool doNotOptimize;
 	int uniqueName;
 } VarDeclStmt;
 
@@ -307,6 +311,7 @@ typedef struct
 	StructDeclStmt* typeReference;
 	VarDeclStmt* varReference;
 	VarDeclStmt* parentReference;
+	Array deps;
 } MemberAccessExpr;
 
 typedef struct
