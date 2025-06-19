@@ -6,6 +6,8 @@ option(USE_DEBUG "" OFF)
 if (USE_DEBUG)
 	message(STATUS "Using debug options")
 	add_compile_options(
+		-O0 -g
+		
 		-Werror -Wall -Wextra -pedantic-errors
 
 		-Wmissing-prototypes
@@ -23,16 +25,10 @@ if (USE_DEBUG)
 	)
 
 	option(USE_SANITIZERS "" OFF)
-	option(USE_SANITIZERS_EX "" OFF)
-	if (USE_SANITIZERS OR USE_SANITIZERS_EX)
+	if (USE_SANITIZERS)
 		message(STATUS "Using sanitizers")
-		add_compile_options(-O0 -g -fsanitize=address,undefined)
-		add_link_options(-fsanitize=address,undefined)
-		if (USE_SANITIZERS_EX)
-			message(STATUS "Using more sanitizers")
 			add_compile_options(-fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
 			add_link_options(-fsanitize=address,undefined,leak,pointer-compare,pointer-subtract)
-		endif ()
 	endif ()
 endif ()
 
