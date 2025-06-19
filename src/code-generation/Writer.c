@@ -199,6 +199,12 @@ static void VisitBinaryExpression(BinaryExpr* binary, const NodePtr* parentExpr)
 		if (binaryPrecedence[binary->operatorType] > binaryPrecedence[parent->operatorType])
 			writeBrackets = false;
 	}
+	else if (parentExpr->type == Node_Subscript)
+	{
+		SubscriptExpr* subscript = parentExpr->ptr;
+		if (binary == subscript->indexExpr.ptr)
+			writeBrackets = false;
+	}
 
 	NodePtr binaryNode = (NodePtr){.ptr = binary, .type = Node_Binary};
 
