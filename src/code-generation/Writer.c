@@ -610,7 +610,7 @@ void WriteOutput(const AST* ast, char** outBuffer, size_t* outLength)
 	sections = AllocateMemoryStream();
 	descriptionLines = AllocateMemoryStream();
 
-	WriteString("tabsize: ", descriptionLines);
+	WriteString("tabsize:", descriptionLines);
 	WriteUInt64(INDENT_WIDTH, descriptionLines);
 	WriteChar('\n', descriptionLines);
 
