@@ -289,13 +289,16 @@ static Env VisitStatement(NodePtr node, Env* env, bool replace)
 		SectionStmt* section = node.ptr;
 		ASSERT(section->block.type == Node_BlockStatement);
 		new = VisitStatement(section->block, &new, true);
+		// sections other than @init must be visited twice because they can run multiple times
+		if (section->sectionType != Section_Init)
+			new = VisitStatement(section->block, &new, true);
 		break;
 	}
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node.ptr;
 		Env beforeEnv = EnvCopy(&new);
-		// while loops must be called twice because they can run multiple times
+		// while loops must be visited twice because they can run multiple times
 		new = VisitExpression(whileStmt->expr, &new, true);
 		new = VisitStatement(whileStmt->stmt, &new, true);
 		new = VisitExpression(whileStmt->expr, &new, true);
