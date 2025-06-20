@@ -87,6 +87,10 @@ static void VisitStatement(const NodePtr node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node.ptr;
+		if (varDecl->uniqueName == -1 &&
+			AddPointer(varDecl) &&
+			!MapAdd(&names, varDecl->name, NULL))
+			varDecl->uniqueName = ++uniqueNameCounter;
 		VisitExpression(varDecl->initializer);
 		break;
 	}
