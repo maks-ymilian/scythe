@@ -1,5 +1,7 @@
 int num = 4;
 
+external bool AAA_test_scope;
+
 @init
 {
     int num = 5;
@@ -7,6 +9,5 @@ int num = 4;
         int num = 6;
     }
 
-	bool AAA_test_scope = num == 5;
-	stack.push(AAA_test_scope);
+	AAA_test_scope = num == 5;
 }

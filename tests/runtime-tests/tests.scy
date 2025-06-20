@@ -18,5 +18,5 @@ import "test_strings.scy"
 import "test_input.scy"
 import "test_builtin.scy"
 
-any AAA__________ = 7777777777777777777;
-@init { stack.push(AAA__________); }
+external any AAA__________;
+@init { AAA__________ = 7777777777777777777; }

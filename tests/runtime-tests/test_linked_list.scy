@@ -129,8 +129,5 @@ bool test()
 	return true;
 }
 
-@init
-{
-	bool AAA_test_linked_list = test();
-	stack.push(AAA_test_linked_list);
-}
+external bool AAA_test_linked_list;
+@init { AAA_test_linked_list = test(); }

@@ -17,6 +17,8 @@ struct Level1
 	Level2 l2;
 }
 
+external bool AAA_test_accessing_from_function;
+
 @init
 {
 	10[0] = 69;
@@ -41,10 +43,9 @@ struct Level1
 		return value;
 	}
 
-	bool AAA_test_accessing_from_function =
+	AAA_test_accessing_from_function =
 		get().l2.l3.arr.ptr == 10 &&
 		get().l2.l3.arr[0] == 69 &&
 		get1()[0] == 699 &&
 		get2()[0].l2.l3.arr[0] == 69420;
-	stack.push(AAA_test_accessing_from_function);
 }

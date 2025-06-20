@@ -36,6 +36,8 @@ bool test_equality1(Level1 value1, Level1 value2)
 		test_equality2(value1.l2, value2.l2);
 }
 
+external bool AAA_test_struct_assignment;
+
 @init
 {
 	{
@@ -77,6 +79,5 @@ bool test_equality1(Level1 value1, Level1 value2)
 		!test_equality2(value4.l2, value5.l2) &&
 		!test_equality1(value4, value5);
 
-	bool AAA_test_struct_assignment = test1 && test2;
-	stack.push(AAA_test_struct_assignment);
+	AAA_test_struct_assignment = test1 && test2;
 }

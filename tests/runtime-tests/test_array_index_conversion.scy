@@ -13,6 +13,8 @@ bool Compare(Test a, Test b)
 		a.c == b.c;
 }
 
+external bool AAA_test_array_index_conversion;
+
 @init
 {
 	float index = 69;
@@ -25,12 +27,11 @@ bool Compare(Test a, Test b)
 	Test[] array;
 	array[index] = example;
 	index += 0.4;
-	bool AAA_test_array_index_conversion =
+	AAA_test_array_index_conversion =
 		// MemberExpansionPass.c:431
 		Compare(example, array[index]) &&
 		// MemberExpansionPass.c:355
 		array[index].a == example.a &&
 		array[index].b == example.b &&
 		array[index].c == example.c;
-	stack.push(AAA_test_array_index_conversion);
 }

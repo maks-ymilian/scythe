@@ -1,6 +1,8 @@
+external bool AAA_test_postfix_increment;
+
 @init
 {
-	bool AAA_test_postfix_increment = bool {
+	AAA_test_postfix_increment = bool {
 		int a = 5;
 		int b = a++;
 		int c = a;
@@ -23,5 +25,4 @@
 			a-- == 3 &&
 			a == 2;
 	};
-	stack.push(AAA_test_postfix_increment);
 }

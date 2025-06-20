@@ -12,6 +12,8 @@ void func(int a, int b, int c)
 
 external void func(int a, int b, int c, int d, ...);
 
+external bool AAA_test_function_overloading_variadic;
+
 @init
 {
 	bool passed = true;
@@ -41,6 +43,5 @@ external void func(int a, int b, int c, int d, ...);
 		if (callingLocation != 4) passed = false;
 	}
 
-	bool AAA_test_function_overloading_variadic = passed;
-	stack.push(AAA_test_function_overloading_variadic);
+	AAA_test_function_overloading_variadic = passed;
 }

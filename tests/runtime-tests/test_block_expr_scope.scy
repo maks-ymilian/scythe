@@ -1,3 +1,5 @@
+external bool AAA_test_block_expr_scope;
+
 @init
 {
 	int outside = 5;
@@ -6,6 +8,5 @@
 		return 6;
 	};
 
-	bool AAA_test_block_expr_scope = ret == 6 && outside == 58;
-	stack.push(AAA_test_block_expr_scope);
+	AAA_test_block_expr_scope = ret == 6 && outside == 58;
 }

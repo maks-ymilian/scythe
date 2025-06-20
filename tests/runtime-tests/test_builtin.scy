@@ -1,3 +1,5 @@
+external bool AAA_test_builtin;
+
 @init
 {
 	atomic.set_if_equal(0,0,0);
@@ -299,7 +301,7 @@
 	str.delete_sub(0,0,0);
 	str.set_length(0,0);
 
-	bool AAA_test_builtin = bool {
+	AAA_test_builtin = bool {
 		int callCount = 0;
 		int compound()
 		{
@@ -314,5 +316,4 @@
 		jsfx.get_host_placement(pos);
 		return pos != 999;
 	};
-	stack.push(AAA_test_builtin);
 }

@@ -61,8 +61,5 @@ bool test()
 	return true;
 }
 
-@init
-{
-	bool AAA_test_accessing_from_expressions = test();
-	stack.push(AAA_test_accessing_from_expressions);
-}
+external bool AAA_test_accessing_from_expressions;
+@init { AAA_test_accessing_from_expressions = test(); }
