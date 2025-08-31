@@ -222,6 +222,11 @@ NodePtr CopyASTNode(const NodePtr node)
 		}
 		ptr->identifiers = identifiers;
 
+		Array deps = AllocateArray(sizeof(NodePtr));
+		for (size_t i = 0; i < ptr->deps.length; ++i)
+			ArrayAdd(&deps, ptr->deps.array[i]);
+		ptr->deps = deps;
+
 		return copy;
 	}
 	case Node_BlockExpression:
