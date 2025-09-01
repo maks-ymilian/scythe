@@ -19,6 +19,7 @@
 #include "passes/FunctionInliningPass.h"
 #include "passes/FunctionDepsPass.h"
 #include "passes/VariableDepsPass.h"
+#include "passes/CopyPropagationPass.h"
 
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
@@ -34,6 +35,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	GlobalSectionPass(syntaxTree);
 
 	FunctionInliningPass(syntaxTree);
+	CopyPropagationPass(syntaxTree);
 	FunctionDepsPass(syntaxTree);
 	VariableDepsPass(syntaxTree);
 	MarkUnusedPass(syntaxTree);
