@@ -135,6 +135,9 @@ static void VisitExpression(NodePtr node, Env* env)
 		MemberAccessExpr* memberAccess = node.ptr;
 		ASSERT(memberAccess->varReference);
 
+		if (memberAccess->varReference->inputStmt)
+			break;
+
 		// for each dep that is in the env but not in the memberAccess, +1 the assignments uses counter
 		Array* envDeps = EnvGetDeps(env, memberAccess->varReference);
 		for (size_t i = 0; i < envDeps->length; ++i)
@@ -336,7 +339,7 @@ void VariableDepsPass(const AST* ast)
 		for (size_t i = 0; i < module->statements.length; ++i)
 		{
 			NodePtr* node = module->statements.array[i];
-			if (node->type == Node_Null || node->type == Node_Import)
+			if (node->type == Node_Null || node->type == Node_Import || node->type == Node_Input)
 				continue;
 			ASSERT(node->type == Node_Section);
 			SectionStmt* section = node->ptr;
