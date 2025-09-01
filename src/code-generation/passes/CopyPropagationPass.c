@@ -6,6 +6,8 @@
 
 typedef Map CopyAssignments;
 
+static FuncDeclStmt* currentFunction;
+
 static void VisitStatement(NodePtr* node, CopyAssignments* map, bool modifyAST);
 
 static CopyAssignments AllocCopyAssignments()
@@ -106,7 +108,7 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST)
 			break;
 
 		VarDeclStmt* value = GetCopyAssignmentValue(map, memberAccess->varReference);
-		if (value)
+		if (value && !(value->functionParamOf && value->functionParamOf != currentFunction))
 			memberAccess->varReference = value;
 		break;
 	}
@@ -136,9 +138,17 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST)
 		ASSERT(baseExpr->funcReference);
 
 		FuncDeclStmt* funcDecl = baseExpr->funcReference;
+		currentFunction = funcDecl;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			VisitStatement(funcDecl->parameters.array[i], map, modifyAST);
+		{
+			NodePtr* node = funcDecl->parameters.array[i];
+			ASSERT(node->type == Node_VariableDeclaration);
+			VarDeclStmt* varDecl = node->ptr;
+			varDecl->functionParamOf = funcDecl;
+			VisitStatement(node, map, modifyAST);
+		}
 		VisitStatement(&funcDecl->block, map, modifyAST);
+		currentFunction = NULL;
 		break;
 	}
 	case Node_Subscript:

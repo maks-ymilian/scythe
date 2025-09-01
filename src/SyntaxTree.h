@@ -262,6 +262,8 @@ typedef struct
 	uint64_t sliderNumber;
 } InputStmt;
 
+typedef struct FuncDeclStmt FuncDeclStmt;
+
 typedef struct
 {
 	int lineNumber;
@@ -273,6 +275,7 @@ typedef struct
 	Array instantiatedVariables;
 	ModifierState modifiers;
 	SectionStmt* section;
+	FuncDeclStmt* functionParamOf;
 	int useCount;
 	bool doNotOptimize;
 	bool unused;
@@ -280,7 +283,7 @@ typedef struct
 	int uniqueName;
 } VarDeclStmt;
 
-typedef struct
+struct FuncDeclStmt
 {
 	int lineNumber;
 	Type type;
@@ -298,7 +301,7 @@ typedef struct
 	bool isBlockExpression;
 	bool unused;
 	int uniqueName;
-} FuncDeclStmt;
+};
 
 typedef struct
 {
