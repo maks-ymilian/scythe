@@ -64,6 +64,7 @@ set(SOURCES
 	"src/code-generation/passes/Printer.c"
 	"src/code-generation/passes/ChainedAssignmentPass.c"
 	"src/code-generation/passes/FunctionCallAccessPass.c"
+	"src/code-generation/passes/MarkUnusedPass.c"
 	"src/code-generation/passes/RemoveUnusedPass.c"
 	"src/code-generation/passes/FunctionInliningPass.c"
 	"src/code-generation/passes/FunctionDepsPass.c"

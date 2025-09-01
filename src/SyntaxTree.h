@@ -186,6 +186,8 @@ typedef struct
 	NodePtr expr;
 	int useCount;
 	bool doNotOptimize;
+	bool unused;
+	bool keepRight;
 } ExpressionStmt;
 
 typedef struct
@@ -271,6 +273,8 @@ typedef struct
 	ModifierState modifiers;
 	int useCount;
 	bool doNotOptimize;
+	bool unused;
+	bool keepRight;
 	int uniqueName;
 } VarDeclStmt;
 
@@ -290,6 +294,7 @@ typedef struct
 	Array dependencies;
 	int useCount;
 	bool isBlockExpression;
+	bool unused;
 	int uniqueName;
 } FuncDeclStmt;
 

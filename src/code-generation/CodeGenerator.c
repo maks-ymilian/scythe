@@ -14,6 +14,7 @@
 #include "passes/UniqueNamePass.h"
 #include "passes/ChainedAssignmentPass.h"
 #include "passes/FunctionCallAccessPass.h"
+#include "passes/MarkUnusedPass.h"
 #include "passes/RemoveUnusedPass.h"
 #include "passes/FunctionInliningPass.h"
 #include "passes/FunctionDepsPass.h"
@@ -35,6 +36,7 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	FunctionInliningPass(syntaxTree);
 	FunctionDepsPass(syntaxTree);
 	VariableDepsPass(syntaxTree);
+	MarkUnusedPass(syntaxTree);
 	RemoveUnusedPass(syntaxTree);
 
 	UniqueNamePass(syntaxTree);
