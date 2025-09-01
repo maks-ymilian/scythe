@@ -6,6 +6,8 @@
 
 typedef Map Env;
 
+static SectionStmt* currentSection;
+
 static Env VisitStatement(NodePtr node, Env* env);
 
 static Env EnvAlloc(void)
@@ -91,14 +93,15 @@ static void EnvMerge(Env* dest, const Env* env)
 	}
 }
 
-static void EnvSetDep(Env* env, const VarDeclStmt* var, NodePtr dep)
+static void EnvSetDep(Env* env, const VarDeclStmt* var, NodePtr dep, bool add)
 {
 	char key[64];
 	snprintf(key, sizeof(key), "%p", (void*)var);
 	Array* deps = MapGet(env, key);
 	if (deps)
 	{
-		ArrayClear(deps);
+		if (!add)
+			ArrayClear(deps);
 		ArrayAdd(deps, &dep);
 	}
 	else
@@ -227,6 +230,7 @@ static Env VisitStatement(NodePtr node, Env* env)
 	case Node_ExpressionStatement:
 	{
 		ExpressionStmt* exprStmt = node.ptr;
+		exprStmt->section = currentSection;
 
 		if (exprStmt->expr.type == Node_Binary &&
 			((BinaryExpr*)exprStmt->expr.ptr)->operatorType == Binary_Assignment &&
@@ -236,7 +240,29 @@ static Env VisitStatement(NodePtr node, Env* env)
 			MemberAccessExpr* memberAccess = binary->left.ptr;
 			ASSERT(memberAccess->varReference);
 			VisitExpression(binary->right, env);
-			EnvSetDep(env, memberAccess->varReference, node);
+
+			bool lastDepIsInDifferentSection = false;
+			Array* deps = EnvGetDeps(env, memberAccess->varReference);
+			for (size_t i = 0; i < deps->length; ++i)
+			{
+				NodePtr* dep = deps->array[i];
+				SectionStmt* section = NULL;
+				if (dep->type == Node_ExpressionStatement)
+					section = ((ExpressionStmt*)dep->ptr)->section;
+				else if (dep->type == Node_VariableDeclaration)
+					section = ((VarDeclStmt*)dep->ptr)->section;
+				else
+					UNREACHABLE();
+				ASSERT(section);
+
+				if (section != exprStmt->section)
+				{
+					lastDepIsInDifferentSection = true;
+					break;
+				}
+			}
+
+			EnvSetDep(env, memberAccess->varReference, node, lastDepIsInDifferentSection);
 		}
 		else
 			VisitExpression(exprStmt->expr, env);
@@ -245,8 +271,9 @@ static Env VisitStatement(NodePtr node, Env* env)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node.ptr;
+		varDecl->section = currentSection;
 		VisitExpression(varDecl->initializer, env);
-		EnvSetDep(env, varDecl, node);
+		EnvSetDep(env, varDecl, node, false);
 		break;
 	}
 	case Node_Input:
@@ -273,16 +300,6 @@ static Env VisitStatement(NodePtr node, Env* env)
 		// when exiting an if, merge the two envs from the two branches
 		EnvMerge(env, &otherEnv);
 		EnvFree(&otherEnv);
-		break;
-	}
-	case Node_Section:
-	{
-		SectionStmt* section = node.ptr;
-		ASSERT(section->block.type == Node_BlockStatement);
-		VisitStatement(section->block, env);
-		// sections other than @init must be visited twice because they can run multiple times
-		if (section->sectionType != Section_Init)
-			VisitStatement(section->block, env);
 		break;
 	}
 	case Node_While:
@@ -317,7 +334,20 @@ void VariableDepsPass(const AST* ast)
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			VisitStatement(*(NodePtr*)module->statements.array[i], &env);
+		{
+			NodePtr* node = module->statements.array[i];
+			if (node->type == Node_Null || node->type == Node_Import)
+				continue;
+			ASSERT(node->type == Node_Section);
+			SectionStmt* section = node->ptr;
+			currentSection = section;
+
+			ASSERT(section->block.type == Node_BlockStatement);
+			VisitStatement(section->block, &env);
+			// sections other than @init must be visited twice because they can run multiple times
+			if (section->sectionType != Section_Init)
+				VisitStatement(section->block, &env);
+		}
 	}
 	EnvFree(&env);
 }

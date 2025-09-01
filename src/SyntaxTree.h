@@ -180,10 +180,31 @@ typedef struct
 	NodePtr block;
 } BlockExpr;
 
+typedef enum
+{
+	Section_Init,
+	Section_Slider,
+	Section_Block,
+	Section_Sample,
+	Section_Serialize,
+	Section_GFX,
+} SectionType;
+
+typedef struct
+{
+	SectionType sectionType;
+	int lineNumber;
+	NodePtr block;
+	NodePtr propertyList;
+	char* width;
+	char* height;
+} SectionStmt;
+
 typedef struct
 {
 	int lineNumber;
 	NodePtr expr;
+	SectionStmt* section;
 	int useCount;
 	bool doNotOptimize;
 	bool unused;
@@ -206,26 +227,6 @@ typedef struct
 	ModifierState modifiers;
 	bool builtIn;
 } ImportStmt;
-
-typedef enum
-{
-	Section_Init,
-	Section_Slider,
-	Section_Block,
-	Section_Sample,
-	Section_Serialize,
-	Section_GFX,
-} SectionType;
-
-typedef struct
-{
-	SectionType sectionType;
-	int lineNumber;
-	NodePtr block;
-	NodePtr propertyList;
-	char* width;
-	char* height;
-} SectionStmt;
 
 typedef enum
 {
@@ -271,6 +272,7 @@ typedef struct
 	NodePtr initializer;
 	Array instantiatedVariables;
 	ModifierState modifiers;
+	SectionStmt* section;
 	int useCount;
 	bool doNotOptimize;
 	bool unused;
