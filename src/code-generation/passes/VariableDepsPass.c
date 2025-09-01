@@ -6,6 +6,8 @@
 
 typedef Map Env;
 
+static Env VisitStatement(NodePtr node, Env* env);
+
 static Env EnvAlloc(void)
 {
 	return AllocateMap(sizeof(Array));
@@ -118,17 +120,8 @@ static Array* EnvGetDeps(Env* env, const VarDeclStmt* var)
 	return deps;
 }
 
-static Env VisitStatement(NodePtr node, Env* env, bool modify);
-
-static Env VisitExpression(NodePtr node, Env* env, bool modify)
+static void VisitExpression(NodePtr node, Env* env)
 {
-	Env copy;
-	if (!modify)
-	{
-		env = &copy;
-		*env = EnvCopy(env);
-	}
-
 	switch (node.type)
 	{
 	case Node_Literal:
@@ -179,21 +172,21 @@ static Env VisitExpression(NodePtr node, Env* env, bool modify)
 		BinaryExpr* binary = node.ptr;
 		if (binary->operatorType == Binary_Assignment)
 			ASSERT(binary->left.type != Node_MemberAccess);
-		VisitExpression(binary->left, env, true);
-		VisitExpression(binary->right, env, true);
+		VisitExpression(binary->left, env);
+		VisitExpression(binary->right, env);
 		break;
 	}
 	case Node_Unary:
 	{
 		UnaryExpr* unary = node.ptr;
-		VisitExpression(unary->expression, env, true);
+		VisitExpression(unary->expression, env);
 		break;
 	}
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node.ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
-			VisitExpression(*(NodePtr*)funcCall->arguments.array[i], env, true);
+			VisitExpression(*(NodePtr*)funcCall->arguments.array[i], env);
 
 		// this pass should walk in the way of the control flow,
 		// dont enter function declarations, enter functions through function calls
@@ -201,38 +194,29 @@ static Env VisitExpression(NodePtr node, Env* env, bool modify)
 		MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
 		ASSERT(memberAccess->funcReference);
 		for (size_t i = 0; i < memberAccess->funcReference->parameters.length; ++i)
-			VisitStatement(*(NodePtr*)memberAccess->funcReference->parameters.array[i], env, true);
-		VisitStatement(memberAccess->funcReference->block, env, true);
+			VisitStatement(*(NodePtr*)memberAccess->funcReference->parameters.array[i], env);
+		VisitStatement(memberAccess->funcReference->block, env);
 		break;
 	}
 	case Node_Subscript:
 	{
 		SubscriptExpr* subscript = node.ptr;
-		VisitExpression(subscript->baseExpr, env, true);
-		VisitExpression(subscript->indexExpr, env, true);
+		VisitExpression(subscript->baseExpr, env);
+		VisitExpression(subscript->indexExpr, env);
 		break;
 	}
 	case Node_BlockExpression:
 	{
 		BlockExpr* block = node.ptr;
-		VisitStatement(block->block, env, true);
+		VisitStatement(block->block, env);
 		break;
 	}
 	default: INVALID_VALUE(node.type);
 	}
-
-	return *env;
 }
 
-static Env VisitStatement(NodePtr node, Env* env, bool modify)
+static Env VisitStatement(NodePtr node, Env* env)
 {
-	Env copy;
-	if (!modify)
-	{
-		copy = EnvCopy(env);
-		env = &copy;
-	}
-
 	switch (node.type)
 	{
 	case Node_Import:
@@ -251,40 +235,41 @@ static Env VisitStatement(NodePtr node, Env* env, bool modify)
 			BinaryExpr* binary = exprStmt->expr.ptr;
 			MemberAccessExpr* memberAccess = binary->left.ptr;
 			ASSERT(memberAccess->varReference);
-			VisitExpression(binary->right, env, true);
+			VisitExpression(binary->right, env);
 			EnvSetDep(env, memberAccess->varReference, node);
 		}
 		else
-			VisitExpression(exprStmt->expr, env, true);
+			VisitExpression(exprStmt->expr, env);
 		break;
 	}
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node.ptr;
-		VisitExpression(varDecl->initializer, env, true);
+		VisitExpression(varDecl->initializer, env);
 		EnvSetDep(env, varDecl, node);
 		break;
 	}
 	case Node_Input:
 	{
 		InputStmt* input = node.ptr;
-		VisitStatement(input->varDecl, env, true);
+		VisitStatement(input->varDecl, env);
 		break;
 	}
 	case Node_BlockStatement:
 	{
 		BlockStmt* block = node.ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
-			VisitStatement(*(NodePtr*)block->statements.array[i], env, true);
+			VisitStatement(*(NodePtr*)block->statements.array[i], env);
 		break;
 	}
 	case Node_If:
 	{
 		IfStmt* ifStmt = node.ptr;
-		VisitExpression(ifStmt->expr, env, true);
+		VisitExpression(ifStmt->expr, env);
 
-		Env otherEnv = VisitStatement(ifStmt->trueStmt, env, false);
-		VisitStatement(ifStmt->falseStmt, env, true);
+		Env otherEnv = EnvCopy(env);
+		VisitStatement(ifStmt->trueStmt, &otherEnv);
+		VisitStatement(ifStmt->falseStmt, env);
 		// when exiting an if, merge the two envs from the two branches
 		EnvMerge(env, &otherEnv);
 		EnvFree(&otherEnv);
@@ -294,10 +279,10 @@ static Env VisitStatement(NodePtr node, Env* env, bool modify)
 	{
 		SectionStmt* section = node.ptr;
 		ASSERT(section->block.type == Node_BlockStatement);
-		VisitStatement(section->block, env, true);
+		VisitStatement(section->block, env);
 		// sections other than @init must be visited twice because they can run multiple times
 		if (section->sectionType != Section_Init)
-			VisitStatement(section->block, env, true);
+			VisitStatement(section->block, env);
 		break;
 	}
 	case Node_While:
@@ -305,10 +290,10 @@ static Env VisitStatement(NodePtr node, Env* env, bool modify)
 		WhileStmt* whileStmt = node.ptr;
 		Env beforeEnv = EnvCopy(env);
 		// while loops must be visited twice because they can run multiple times
-		VisitExpression(whileStmt->expr, env, true);
-		VisitStatement(whileStmt->stmt, env, true);
-		VisitExpression(whileStmt->expr, env, true);
-		VisitStatement(whileStmt->stmt, env, true);
+		VisitExpression(whileStmt->expr, env);
+		VisitStatement(whileStmt->stmt, env);
+		VisitExpression(whileStmt->expr, env);
+		VisitStatement(whileStmt->stmt, env);
 
 		// merge it with the env from before the while loop
 		EnvMerge(env, &beforeEnv);
@@ -332,7 +317,7 @@ void VariableDepsPass(const AST* ast)
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			VisitStatement(*(NodePtr*)module->statements.array[i], &env, true);
+			VisitStatement(*(NodePtr*)module->statements.array[i], &env);
 	}
 	EnvFree(&env);
 }
