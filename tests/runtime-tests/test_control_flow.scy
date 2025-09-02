@@ -81,5 +81,4 @@ external bool AAA_test_control_flow;
 		funcTest(3, 5.2) == 6 &&
 		funcTest(1, 5.2) == 5 &&
 		funcTest(3, 6) == 2;
-	stack.push(AAA_test_control_flow);
 }
