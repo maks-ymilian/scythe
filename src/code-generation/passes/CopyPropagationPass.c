@@ -116,6 +116,25 @@ static bool ExprIsConstant(NodePtr expr)
 	}
 }
 
+static void ProcessAssignment(VarDeclStmt* assignmentLeft, NodePtr assignmentRight, CopyAssignments* map)
+{
+	ASSERT(assignmentLeft);
+	DeleteAllPairsWithVar(map, assignmentLeft);
+
+	if (assignmentRight.type == Node_MemberAccess && assignmentLeft != ((MemberAccessExpr*)assignmentRight.ptr)->varReference)
+	{
+		MemberAccessExpr* memberAccess = assignmentRight.ptr;
+		ASSERT(memberAccess->varReference);
+		bool success = AddCopyAssignment(map, assignmentLeft, (NodePtr){.ptr = memberAccess->varReference, .type = Node_VariableDeclaration});
+		ASSERT(success);
+	}
+	else if (assignmentRight.ptr && ExprIsConstant(assignmentRight))
+	{
+		bool success = AddCopyAssignment(map, assignmentLeft, assignmentRight);
+		ASSERT(success);
+	}
+}
+
 static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST, bool modifyMap)
 {
 	switch (node->type)
@@ -206,48 +225,6 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 	}
 }
 
-static void ProcessAssignment(NodePtr node, CopyAssignments* map)
-{
-	VarDeclStmt* assignmentLeft = NULL;
-	NodePtr assignmentRight = NULL_NODE;
-
-	if (node.type == Node_VariableDeclaration)
-	{
-		VarDeclStmt* varDecl = node.ptr;
-		assignmentLeft = varDecl;
-		assignmentRight = varDecl->initializer;
-	}
-	else if (node.type == Node_Binary)
-	{
-		BinaryExpr* binary = node.ptr;
-
-		ASSERT(binary->left.type == Node_MemberAccess);
-		MemberAccessExpr* left = binary->left.ptr;
-		ASSERT(left->varReference);
-		assignmentLeft = left->varReference;
-
-		assignmentRight = binary->right;
-	}
-	else
-		UNREACHABLE();
-
-	ASSERT(assignmentLeft);
-	DeleteAllPairsWithVar(map, assignmentLeft);
-
-	if (assignmentRight.type == Node_MemberAccess && assignmentLeft != ((MemberAccessExpr*)assignmentRight.ptr)->varReference)
-	{
-		MemberAccessExpr* memberAccess = assignmentRight.ptr;
-		ASSERT(memberAccess->varReference);
-		bool success = AddCopyAssignment(map, assignmentLeft, (NodePtr){.ptr = memberAccess->varReference, .type = Node_VariableDeclaration});
-		ASSERT(success);
-	}
-	else if (assignmentRight.ptr && ExprIsConstant(assignmentRight))
-	{
-		bool success = AddCopyAssignment(map, assignmentLeft, assignmentRight);
-		ASSERT(success);
-	}
-}
-
 static void VisitStatement(NodePtr* node, CopyAssignments* map, bool modifyAST, bool modifyMap)
 {
 	switch (node->type)
@@ -267,7 +244,12 @@ static void VisitStatement(NodePtr* node, CopyAssignments* map, bool modifyAST, 
 			BinaryExpr* binary = exprStmt->expr.ptr;
 			VisitExpression(&binary->right, map, modifyAST, modifyMap);
 			if (modifyMap)
-				ProcessAssignment((NodePtr){.ptr = binary, .type = Node_Binary}, map);
+			{
+				ASSERT(binary->left.type == Node_MemberAccess);
+				MemberAccessExpr* left = binary->left.ptr;
+				ASSERT(left->varReference);
+				ProcessAssignment(left->varReference, binary->right, map);
+			}
 		}
 		else
 			VisitExpression(&exprStmt->expr, map, modifyAST, modifyMap);
@@ -278,7 +260,7 @@ static void VisitStatement(NodePtr* node, CopyAssignments* map, bool modifyAST, 
 		VarDeclStmt* varDecl = node->ptr;
 		VisitExpression(&varDecl->initializer, map, modifyAST, modifyMap);
 		if (modifyMap)
-			ProcessAssignment(*node, map);
+			ProcessAssignment(varDecl, varDecl->initializer, map);
 		break;
 	}
 	case Node_Input:
