@@ -167,6 +167,33 @@ static void VisitExpression(NodePtr* node)
 	{
 		BlockExpr* block = node->ptr;
 		VisitBlock(block->block);
+
+		ASSERT(block->block.type == Node_BlockStatement);
+		BlockStmt* blockStmt = block->block.ptr;
+
+		int statementCount = 0;
+		size_t statementIndex = 0;
+		for (size_t i = 0; i < blockStmt->statements.length; ++i)
+		{
+			NodePtr* node = blockStmt->statements.array[i];
+			if (node->ptr)
+			{
+				++statementCount;
+				statementIndex = i;
+			}
+		}
+
+		if (statementCount == 1)
+		{
+			NodePtr* statementNode = blockStmt->statements.array[statementIndex];
+			if (statementNode->type == Node_ExpressionStatement)
+			{
+				ExpressionStmt* exprStmt = statementNode->ptr;
+				ArrayClear(&blockStmt->statements);
+				FreeASTNode(*node);
+				*node = exprStmt->expr;
+			}
+		}
 		break;
 	}
 	default: INVALID_VALUE(node->type);
