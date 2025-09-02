@@ -183,8 +183,6 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node->ptr;
-		for (size_t i = 0; i < funcCall->arguments.length; ++i)
-			VisitExpression(funcCall->arguments.array[i], map, modifyAST, modifyMap);
 
 		ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
 		MemberAccessExpr* baseExpr = funcCall->baseExpr.ptr;
@@ -193,6 +191,20 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 		CopyAssignments funcMap = AllocCopyAssignments();
 
 		FuncDeclStmt* funcDecl = baseExpr->funcReference;
+
+		for (size_t i = 0; i < funcCall->arguments.length; ++i)
+		{
+			NodePtr* node = funcCall->arguments.array[i];
+			if (funcDecl->modifiers.externalValue && node->type == Node_MemberAccess)
+			{
+				MemberAccessExpr* memberAccess = node->ptr;
+				ASSERT(memberAccess->varReference);
+				ProcessAssignment(memberAccess->varReference, NULL_NODE, map);
+			}
+			else
+				VisitExpression(node, map, modifyAST, modifyMap);
+		}
+		
 		currentFunction = funcDecl;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
