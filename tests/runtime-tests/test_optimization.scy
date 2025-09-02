@@ -1,0 +1,133 @@
+/*
+---------------- copy propagation -----------------
+
+for each node
+	for each expression
+		if it is a variable that exists in acp as the first item
+		replace it with the second item
+
+	if it is an assignment
+		delete any pairs in acp that include this assignment's variable
+	
+	if it is a copy assignment and isn't a self assignment x = x
+		add to acp <assignment variable, value>, but if value already exists in acp as the first item, use the second item as value
+
+                    acp: list of variable pairs representing assignments
+{
+                    acp: empty
+	int a;
+                    acp: empty
+	int b = a;
+                    acp: <b,a>
+	int c = b + 1;
+                    acp: <b,a>
+	int d = b;
+                    acp: <b,a> <d,a>
+	b = d + c;
+                    acp: <d,a>
+	b = d;
+                    acp: <d,a> <b,a>
+}
+*/
+
+external bool AAA_test_optimization;
+external bool importantBool8392;
+@init
+{
+	AAA_test_optimization = bool {
+		{
+			int x = 0;
+			int x1 = x;
+			x = -1;
+			if (x1 != 0)
+				return false;
+		}
+		{
+			int x = 0;
+			int value = 0;
+			void setX()
+			{
+				x = value;
+			}
+
+			setX();
+			int x1 = x;
+			value = -1;
+			setX();
+			if (x1 != 0 || x != -1)
+				return false;
+		}
+		{
+			int var1;
+			void func(){ var1++; }
+			int var2 = var1;
+			func();
+			int var3 = var1;
+			func();
+			int var4 = var1;
+			if (var2 != 0 || var3 != 1 || var4 != 2)
+				return false;
+		}
+		{
+			int x = 0;
+			int y = 1;
+			if (false)
+				y = x;
+			int z = 2;
+			if (false)
+				z = x;
+			else
+				z = x;
+			int w = 3;
+			while (false)
+				w = x;
+			if (y != 1 || z != 0 || w != 3)
+				return false;
+		}
+		{
+			int x = 39;
+			int y = x;
+			for (int i = 0; i < 2; ++i)
+			{
+				importantBool8392 = y == 69;
+				y = 69;
+			}
+			if (!importantBool8392)
+				return false;
+		}
+		{
+			int x = 935;
+			int pos = x;
+			jsfx.get_host_placement(pos);
+			if (x != 935 || pos == x)
+				return false;
+		}
+		return true;
+	};
+}
+
+external bool AAA_test_optimization_1;
+int x = 43589;
+int y = x;
+@sample
+{
+	AAA_test_optimization_1 = y == 59;
+	y = 59;
+}
+
+external bool AAA_test_optimization_2;
+int c;
+int v;
+@slider
+{
+	c = 588;
+	v = 699;
+}
+@init
+{
+	v = c;
+}
+@slider
+{
+	AAA_test_optimization_2 = v == 699;
+}
