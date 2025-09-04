@@ -308,7 +308,7 @@ external bool AAA_test_builtin;
 			callCount++;
 			return 1;
 		}
-		compound() += 1;
+		compound() + compound();
 		if (callCount != 2)
 			return false;
 

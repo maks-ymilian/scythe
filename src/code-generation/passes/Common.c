@@ -215,6 +215,11 @@ PrimitiveTypeInfo GetPrimitiveTypeInfoFromExpr(NodePtr node)
 		ASSERT(funcDecl);
 		return GetPrimitiveTypeInfoFromType(funcDecl->type);
 	}
+	case Node_BlockExpression:
+	{
+		BlockExpr* blockExpr = node.ptr;
+		return GetPrimitiveTypeInfoFromType(blockExpr->type);
+	}
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = node.ptr;

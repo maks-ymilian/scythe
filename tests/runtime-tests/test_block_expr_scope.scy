@@ -8,5 +8,11 @@ external bool AAA_test_block_expr_scope;
 		return 6;
 	};
 
-	AAA_test_block_expr_scope = ret == 6 && outside == 58;
+	stack.push(int {
+		int h = 5;
+		return h;
+	} + 5);
+	int h = stack.pop();
+
+	AAA_test_block_expr_scope = ret == 6 && outside == 58 && h == 10;
 }

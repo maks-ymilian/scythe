@@ -214,9 +214,21 @@ static Result VisitBinaryExpression(NodePtr* node)
 	case Binary_Assignment:
 	{
 		if (binary->left.type != Node_MemberAccess &&
-			binary->left.type != Node_Subscript &&
-			binary->left.type != Node_FunctionCall) // slider()
-			return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
+			binary->left.type != Node_Subscript)
+		{
+			if (binary->left.type == Node_FunctionCall)
+			{
+				FuncCallExpr* funcCall = binary->left.ptr;
+				ASSERT(funcCall->baseExpr.type == Node_MemberAccess);
+				MemberAccessExpr* memberAccess = funcCall->baseExpr.ptr;
+				FuncDeclStmt* funcDecl = memberAccess->funcReference;
+				ASSERT(funcDecl);
+				if (funcDecl->isBlockExpression || !funcDecl->modifiers.externalValue)
+					goto leftOperand;
+			}
+			else
+				goto leftOperand;
+		}
 
 		PROPAGATE_ERROR(ConvertExpression(
 			&binary->right,
@@ -224,6 +236,8 @@ static Result VisitBinaryExpression(NodePtr* node)
 			leftType,
 			binary->lineNumber));
 		break;
+leftOperand:
+		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 	}
 	default: INVALID_VALUE(binary->operatorType);
 	}
