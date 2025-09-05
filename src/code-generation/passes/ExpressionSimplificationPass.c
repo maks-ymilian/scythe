@@ -21,16 +21,16 @@ static uint64_t PowerOf10(int x)
 {
 	switch (x)
 	{
-	case 0:  return 1;
-	case 1:  return 10;
-	case 2:  return 100;
-	case 3:  return 1000;
-	case 4:  return 10000;
-	case 5:  return 100000;
-	case 6:  return 1000000;
-	case 7:  return 10000000;
-	case 8:  return 100000000;
-	case 9:  return 1000000000;
+	case 0: return 1;
+	case 1: return 10;
+	case 2: return 100;
+	case 3: return 1000;
+	case 4: return 10000;
+	case 5: return 100000;
+	case 6: return 1000000;
+	case 7: return 10000000;
+	case 8: return 100000000;
+	case 9: return 1000000000;
 	case 10: return 10000000000;
 	case 11: return 100000000000;
 	case 12: return 1000000000000;
@@ -57,7 +57,8 @@ static NodePtr AllocNumber(ConstantInfo info, int lineNumber)
 				.lineNumber = lineNumber,
 				.operatorType = Unary_Minus,
 				.expression = AllocNumber(info, lineNumber),
-			}, sizeof(UnaryExpr), Node_Unary);
+			},
+			sizeof(UnaryExpr), Node_Unary);
 	}
 	else
 		return AllocUInt64Integer(info.intValue, lineNumber);
@@ -152,7 +153,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 					*node = binary->left;
 					return false;
 				}
-				else 
+				else
 					return false;
 			}
 			else

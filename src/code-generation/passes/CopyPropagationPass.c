@@ -202,7 +202,7 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 			else
 				VisitExpression(node, map, modifyAST, modifyMap);
 		}
-		
+
 		CopyAssignments funcMap = AllocCopyAssignments();
 
 		currentFunction = funcDecl;

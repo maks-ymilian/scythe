@@ -72,7 +72,7 @@ static void VisitStatement(NodePtr* node)
 				if (exprStmt->keepRight)
 					exprStmt->expr = binary->right;
 				else
-					*node = NULL_NODE; 
+					*node = NULL_NODE;
 			}
 		}
 
@@ -90,11 +90,12 @@ static void VisitStatement(NodePtr* node)
 				*node = AllocASTNode(
 					&(ExpressionStmt){
 						.expr = varDecl->initializer,
-					}, sizeof(ExpressionStmt), Node_ExpressionStatement);
+					},
+					sizeof(ExpressionStmt), Node_ExpressionStatement);
 				VisitStatement(node);
 			}
 			else
-				*node = NULL_NODE; 
+				*node = NULL_NODE;
 
 			return;
 		}

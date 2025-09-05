@@ -236,7 +236,7 @@ static Result VisitBinaryExpression(NodePtr* node)
 			leftType,
 			binary->lineNumber));
 		break;
-leftOperand:
+	leftOperand:
 		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 	}
 	default: INVALID_VALUE(binary->operatorType);
