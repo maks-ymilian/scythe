@@ -1,71 +1,83 @@
 struct type1 { any a; }
 struct type2 { any a; }
 
+type1 t1;
+type2 t2;
+type1[] t1Arr;
+type2[] t2Arr;
+type1* t1p;
+type2* t2p;
+any any1;
+any* anyp;
+any[] anyArr;
+int[] intArr;
+float[] floatArr;
+
 @init
 {
-//<!>Cannot convert a non-aggregate type to an aggregate type<!> type1{} = any{};
-//<!>Cannot convert an aggregate type to a non-aggregate type<!> any{} = type1{};
-//<!>Cannot convert a non-aggregate type to an aggregate type<!> any[]{} = any{};
-//<!>Cannot convert an aggregate type to a non-aggregate type<!> any{} = any[]{};
+//<!>Cannot convert a non-aggregate type to an aggregate type<!> t1 = any{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> any1 = type1{};
+//<!>Cannot convert a non-aggregate type to an aggregate type<!> anyArr = any{};
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> any1 = any[]{};
 
-	type1{} = type1{};
-//<!>Cannot convert between incompatible aggregate types<!> type1{} = type2{};
-//<!>Cannot convert between incompatible aggregate types<!> type2{} = type1{};
-	type2{} = type2{};
+	t1 = type1{};
+//<!>Cannot convert between incompatible aggregate types<!> t1 = type2{};
+//<!>Cannot convert between incompatible aggregate types<!> t2 = type1{};
+	t2 = type2{};
 
-	any[]{} = int[]{};
-	int[]{} = any[]{};
-	any[]{} = any[]{};
-	int[]{} = int[]{};
+	anyArr = int[]{};
+	intArr = any[]{};
+	anyArr = any[]{};
+	intArr = int[]{};
 
-//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> float[]{} = int[]{};
-//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> int[]{} = float[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> floatArr = int[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> intArr = float[]{};
 	
-//<!>Cannot convert between incompatible aggregate types<!> type1[]{} = type1{};
-//<!>Cannot convert between incompatible aggregate types<!> type1{} = type1[]{};
+//<!>Cannot convert between incompatible aggregate types<!> t1Arr = type1{};
+//<!>Cannot convert between incompatible aggregate types<!> t1 = type1[]{};
 
-	type1*{} = type1*{};
-//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> type2*{} = type1*{};
-//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> type1*{} = type2*{};
-	type2*{} = type2*{};
+	t1p = type1*{};
+//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> t2p = type1*{};
+//<!>Different pointer types are only compatible with each other if at least one of the types is "any"<!> t1p = type2*{};
+	t2p = type2*{};
 
-	type2*{} = any{type1*{}};
-	type1*{} = any{type2*{}};
-	type2*{} = any*{type1*{}};
-	type1*{} = any*{type2*{}};
+	t2p = any{type1*{}};
+	t1p = any{type2*{}};
+	t2p = any*{type1*{}};
+	t1p = any*{type2*{}};
 
-	type1*{} = any*{};
-	any*{} = any*{};
-	any*{} = type1*{};
+	t1p = any*{};
+	anyp = any*{};
+	anyp = type1*{};
 
-	type1[]{} = type1[]{};
-//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> type2[]{} = type1[]{};
-//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> type1[]{} = type2[]{};
-	type2[]{} = type2[]{};
+	t1Arr = type1[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> t2Arr = type1[]{};
+//<!>Different array types are only compatible with each other if at least one of the types is "any[]"<!> t1Arr = type2[]{};
+	t2Arr = type2[]{};
 
-	type2[]{} = any[]{type1[]{}};
-	type1[]{} = any[]{type2[]{}};
+	t2Arr = any[]{type1[]{}};
+	t1Arr = any[]{type2[]{}};
 
-	type1[]{} = any[]{};
-	any[]{} = any[]{};
-	any[]{} = type1[]{};
+	t1Arr = any[]{};
+	anyArr = any[]{};
+	anyArr = type1[]{};
 }
 
 @init
 {
 //<!>Cannot use operator "+" on aggregate types<!> type1{} + type1{};
-//<!>Cannot use operator "+=" on aggregate types<!> type1{} += type1{};
+//<!>Left operand of assignment must be a variable<!> type1{} += type1{};
 
 	type1 t;
 	type1 func() { return type1{}; }
 
-//<!>Left operand of assignment must be a variable<!> (type1{} = type1{}) = type1{};
+//<!>Left operand of assignment must be a variable<!> (t1 = type1{}) = type1{};
 	t = type1{};
 //<!>Left operand of assignment must be a variable<!> ++0 = type1{};
 //<!>Left operand of assignment must be a variable<!> true = type1{};
 	type1[]{}[0] = type1{};
-	func() = type1{};
-	type1{} = type1{};
+//<!>Left operand of assignment must be a variable<!> func() = type1{};
+	t1 = type1{};
 //<!>Left operand of assignment must be a variable<!> sizeof(0) = type1{};
 }
 

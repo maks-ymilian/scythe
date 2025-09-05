@@ -1,64 +1,74 @@
 struct s { any a; }
 
+any any1;
+float float1;
+int int1;
+bool bool1;
+any* anyp;
+float* floatp;
+int* intp;
+bool* boolp;
+s* sp;
+
 @init
 {
-	any{} = any{};
-	any{} = float{};
-	any{} = int{};
-	any{} = bool{};
-//<!>Cannot convert type "void" to "any"<!> any{} = void{};
+	any1 = any{};
+	any1 = float{};
+	any1 = int{};
+	any1 = bool{};
+//<!>Cannot convert type "void" to "any"<!> any1 = void{};
 
-	float{} = any{};
-	float{} = float{};
-	float{} = int{};
-//<!>Cannot convert type "bool" to "float"<!> float{} = bool{};
-//<!>Cannot convert type "void" to "float"<!> float{} = void{};
+	float1 = any{};
+	float1 = float{};
+	float1 = int{};
+//<!>Cannot convert type "bool" to "float"<!> float1 = bool{};
+//<!>Cannot convert type "void" to "float"<!> float1 = void{};
 
-	int{} = any{};
-	int{} = float{};
-	int{} = int{};
-//<!>Cannot convert type "bool" to "int"<!> int{} = bool{};
-//<!>Cannot convert type "void" to "int"<!> int{} = void{};
+	int1 = any{};
+	int1 = float{};
+	int1 = int{};
+//<!>Cannot convert type "bool" to "int"<!> int1 = bool{};
+//<!>Cannot convert type "void" to "int"<!> int1 = void{};
 
-	bool{} = any{};
-//<!>Cannot convert type "float" to "bool<!> bool{} = float{};
-//<!>Cannot convert type "int" to "bool<!> bool{} = int{};
-	bool{} = bool{};
-//<!>Cannot convert type "void" to "bool"<!> bool{} = void{};
+	bool1 = any{};
+//<!>Cannot convert type "float" to "bool<!> bool1 = float{};
+//<!>Cannot convert type "int" to "bool<!> bool1 = int{};
+	bool1 = bool{};
+//<!>Cannot convert type "void" to "bool"<!> bool1 = void{};
 
-//<!>Cannot convert type "any" to "void"<!> void{} = any{};
-//<!>Cannot convert type "float" to "void"<!> void{} = float{};
-//<!>Cannot convert type "int" to "void"<!> void{} = int{};
-//<!>Cannot convert type "bool" to "void"<!> void{} = bool{};
-//<!>Cannot convert type "void" to "void"<!> void{} = void{};
+//<!>Left operand of assignment must be a variable<!> void{} = any{};
+//<!>Left operand of assignment must be a variable<!> void{} = float{};
+//<!>Left operand of assignment must be a variable<!> void{} = int{};
+//<!>Left operand of assignment must be a variable<!> void{} = bool{};
+//<!>Left operand of assignment must be a variable<!> void{} = void{};
 
-	any*{} = any*{};
-	any*{} = float*{};
-	any*{} = int*{};
-	any*{} = bool*{};
-//<!>"void" is not allowed here<!> any*{} = void*{};
-	any*{} = s*{};
+	anyp = any*{};
+	anyp = float*{};
+	anyp = int*{};
+	anyp = bool*{};
+//<!>"void" is not allowed here<!> anyp = void*{};
+	anyp = s*{};
 
-	float*{} = any*{};
-	float*{} = float*{};
-	float*{} = int*{};
-	float*{} = bool*{};
-//<!>"void" is not allowed here<!> float*{} = void*{};
-	float*{} = s*{};
+	floatp = any*{};
+	floatp = float*{};
+	floatp = int*{};
+	floatp = bool*{};
+//<!>"void" is not allowed here<!> floatp = void*{};
+	floatp = s*{};
 
-	int*{} = any*{};
-	int*{} = float*{};
-	int*{} = int*{};
-	int*{} = bool*{};
-//<!>"void" is not allowed here<!> int*{} = void*{};
-	int*{} = s*{};
+	intp = any*{};
+	intp = float*{};
+	intp = int*{};
+	intp = bool*{};
+//<!>"void" is not allowed here<!> intp = void*{};
+	intp = s*{};
 
-	bool*{} = any*{};
-	bool*{} = float*{};
-	bool*{} = int*{};
-	bool*{} = bool*{};
-//<!>"void" is not allowed here<!> bool*{} = void*{};
-	bool*{} = s*{};
+	boolp = any*{};
+	boolp = float*{};
+	boolp = int*{};
+	boolp = bool*{};
+//<!>"void" is not allowed here<!> boolp = void*{};
+	boolp = s*{};
 
 //<!>"void" is not allowed here<!> void*{} = any*{};
 //<!>"void" is not allowed here<!> void*{} = float*{};
@@ -67,12 +77,12 @@ struct s { any a; }
 //<!>"void" is not allowed here<!> void*{} = void*{};
 //<!>"void" is not allowed here<!> void*{} = s*{};
 
-	s*{} = any*{};
-	s*{} = float*{};
-	s*{} = int*{};
-	s*{} = bool*{};
-//<!>"void" is not allowed here<!> s*{} = void*{};
-	s*{} = s*{};
+	sp = any*{};
+	sp = float*{};
+	sp = int*{};
+	sp = bool*{};
+//<!>"void" is not allowed here<!> sp = void*{};
+	sp = s*{};
 }
 
 @init
@@ -150,6 +160,8 @@ struct s { any a; }
 	s*{} == s*{};
 }
 
+external any extfunc();
+
 @init
 {
 //<!>Cannot convert type "float" to "bool" <!> if (1){}
@@ -163,15 +175,16 @@ struct s { any a; }
 //<!>Left operand of assignment must be a variable<!> (yeah = yeah) = yeah;
 //<!>Left operand of assignment must be a variable<!> (a = a) = a;
 //<!>Left operand of assignment must be a variable<!> (0 + 0) = 0;
-//<!>Left operand of assignment must be a variable<!> if ((yeah = yeah) = yeah){}
+//<!>Cannot convert an aggregate type to a non-aggregate type<!> if ((yeah = yeah) = yeah){}
 //<!>Left operand of assignment must be a variable<!> if ((a = a) = a){}
 //<!>Left operand of assignment must be a variable<!> if ((0 + 0) = 0){}
 	a = a = a;
 //<!>Left operand of assignment must be a variable<!> (++0) = 0;
 //<!>Left operand of assignment must be a variable<!> false = 0;
 	a[0] = 0;
-	func() = 0;
-	any { return 0; } = 0;
+//<!>Left operand of assignment must be a variable<!> func() = 0;
+	extfunc() = 0;
+//<!>Left operand of assignment must be a variable<!> any { return 0; } = 0;
 //<!>Left operand of assignment must be a variable<!> sizeof(0) = 0;
 
 //<!>Cannot use operator "+" on aggregate types<!> (yeah += yeah) += yeah;
@@ -184,7 +197,8 @@ struct s { any a; }
 //<!>Left operand of assignment must be a variable<!> (++0) += 0;
 //<!>Left operand of assignment must be a variable<!> false += 0;
 	a[0] += 0;
-	func() += 0;
-	any { return 0; } += 0;
+//<!>Left operand of assignment must be a variable<!> func() += 0;
+	extfunc() += 0;
+//<!>Left operand of assignment must be a variable<!> any { return 0; } += 0;
 //<!>Left operand of assignment must be a variable<!> sizeof(0) += 0;
 }

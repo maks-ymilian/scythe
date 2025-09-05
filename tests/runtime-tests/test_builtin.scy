@@ -301,6 +301,8 @@ external bool AAA_test_builtin;
 	str.delete_sub(0,0,0);
 	str.set_length(0,0);
 
+	slider.slider(1) = 1;
+
 	AAA_test_builtin = bool {
 		int callCount = 0;
 		int compound()
