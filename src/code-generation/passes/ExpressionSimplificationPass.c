@@ -255,42 +255,6 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		{
 			return false;
 		}
-		case Binary_AddAssign:
-		{
-			return false;
-		}
-		case Binary_SubtractAssign:
-		{
-			return false;
-		}
-		case Binary_MultiplyAssign:
-		{
-			return false;
-		}
-		case Binary_DivideAssign:
-		{
-			return false;
-		}
-		case Binary_ModuloAssign:
-		{
-			return false;
-		}
-		case Binary_ExponentAssign:
-		{
-			return false;
-		}
-		case Binary_BitAndAssign:
-		{
-			return false;
-		}
-		case Binary_BitOrAssign:
-		{
-			return false;
-		}
-		case Binary_XORAssign:
-		{
-			return false;
-		}
 		default: INVALID_VALUE(binary->operatorType);
 		}
 	}
