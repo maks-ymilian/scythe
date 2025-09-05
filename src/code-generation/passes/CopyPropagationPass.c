@@ -188,8 +188,6 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 		MemberAccessExpr* baseExpr = funcCall->baseExpr.ptr;
 		ASSERT(baseExpr->funcReference);
 
-		CopyAssignments funcMap = AllocCopyAssignments();
-
 		FuncDeclStmt* funcDecl = baseExpr->funcReference;
 
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
@@ -205,6 +203,8 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 				VisitExpression(node, map, modifyAST, modifyMap);
 		}
 		
+		CopyAssignments funcMap = AllocCopyAssignments();
+
 		currentFunction = funcDecl;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
 		{
@@ -217,7 +217,19 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 		VisitStatement(&funcDecl->block, &funcMap, modifyAST, modifyMap);
 		currentFunction = NULL;
 
-		MergeCopyAssignments(map, &funcMap);
+		FreeCopyAssignments(&funcMap);
+
+		currentFunction = funcDecl;
+		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
+		{
+			NodePtr* node = funcDecl->parameters.array[i];
+			ASSERT(node->type == Node_VariableDeclaration);
+			VarDeclStmt* varDecl = node->ptr;
+			varDecl->functionParamOf = funcDecl;
+			VisitStatement(node, map, false, modifyMap);
+		}
+		VisitStatement(&funcDecl->block, map, false, modifyMap);
+		currentFunction = NULL;
 		break;
 	}
 	case Node_Subscript:
