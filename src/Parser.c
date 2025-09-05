@@ -73,7 +73,7 @@ static Result StringToUInt64(const char* string, size_t stringLength, int base, 
 
 	for (size_t i = 0; i < stringLength; ++i)
 		if (!IsDigitBase(string[i], base))
-			return ERROR_RESULT(AllocateString2Int("Invalid integer literal %d %d", string[i], base), lineNumber, currentFile);
+			goto invalidInteger;
 
 	if (stringLength > UINT64_MAX_CHARS)
 		goto invalidInteger;

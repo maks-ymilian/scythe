@@ -70,6 +70,7 @@ set(SOURCES
 	"src/code-generation/passes/FunctionDepsPass.c"
 	"src/code-generation/passes/VariableDepsPass.c"
 	"src/code-generation/passes/CopyPropagationPass.c"
+	"src/code-generation/passes/ExpressionSimplificationPass.c"
 )
 
 option(ASAN_OPTIONS "" OFF)
