@@ -693,10 +693,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 		if (type.effectiveType == NULL)
 			continue;
 
-		if (funcDecl->modifiers.externalValue)
-			return ERROR_RESULT("External functions cannot have any parameters of an aggregate type",
-				funcDecl->lineNumber,
-				currentFilePath);
+		ASSERT(!funcDecl->modifiers.externalValue);
 
 		if (varDecl->initializer.ptr != NULL)
 			PROPAGATE_ERROR(CheckTypeConversion(

@@ -1289,7 +1289,17 @@ static Result VisitStatement(NodePtr* node)
 
 		PushScope();
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			PROPAGATE_ERROR(VisitVariableDeclaration(funcDecl->parameters.array[i], isPublicAPI));
+		{
+			NodePtr* node = funcDecl->parameters.array[i];
+			PROPAGATE_ERROR(VisitVariableDeclaration(node, isPublicAPI));
+
+			if (funcDecl->modifiers.externalValue)
+			{
+				StructTypeInfo structType = GetStructTypeInfoFromType(((VarDeclStmt*)node->ptr)->type);
+				if (structType.effectiveType || GetPrimitiveTypeInfoFromType(((VarDeclStmt*)node->ptr)->type).effectiveType != Primitive_Any)
+					return ERROR_RESULT("All parameters in an external function must be of type \"any\"", funcDecl->lineNumber, currentFilePath);
+			}
+		}
 
 		if (funcDecl->block.ptr != NULL)
 		{

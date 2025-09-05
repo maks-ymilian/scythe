@@ -81,8 +81,8 @@ float[] floatArr;
 //<!>Left operand of assignment must be a variable<!> sizeof(0) = type1{};
 }
 
-//<!>External functions cannot have any parameters of an aggregate type<!> external void func(any b, type1 a, ...);
-//<!>External functions cannot have any parameters of an aggregate type<!> external void func(any b, any[] a, ...);
+//<!>All parameters in an external function must be of type "any"<!> external void func(any b, type1 a, ...);
+//<!>All parameters in an external function must be of type "any"<!> external void func(any b, any[] a, ...);
 //<!>External functions cannot return an aggregate type<!> external type1 func();
 //<!>External functions cannot return an aggregate type<!> external any[] func();
 //<!>External variable declarations cannot be of an aggregate type<!> external type1 a;

@@ -226,6 +226,9 @@ input samples2 [
 
 //<!>Properties are only allowed in an "@gfx" section<!> @init [] {}
 
+//<!>All parameters in an external function must be of type "any"<!> external void extparamany(any b, any a, int c);
+external void extparamany(any b, any a, ...);
+
 internal:
 	void extblock1() {}
 //<!>External functions cannot have code blocks<!> external void extblock() {}

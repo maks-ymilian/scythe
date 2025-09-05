@@ -10,7 +10,7 @@ void func(int a, int b, int c)
 	callingLocation = 2;
 }
 
-external void func(int a, int b, int c, int d, ...);
+external void func(any a, any b, any c, any d, ...);
 
 external bool AAA_test_function_overloading_variadic;
 
