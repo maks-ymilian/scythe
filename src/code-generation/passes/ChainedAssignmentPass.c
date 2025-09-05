@@ -2,8 +2,10 @@
 
 #include "Common.h"
 
-static void VisitExpression(NodePtr* node, bool parentIsExprStmt);
-static void VisitStatement(NodePtr* node);
+static const char* currentFilePath = NULL;
+
+static Result VisitExpression(NodePtr* node, bool parentIsExprStmt);
+static Result VisitStatement(NodePtr* node);
 
 static void ConvertIncrement(NodePtr* node)
 {
@@ -29,7 +31,7 @@ static void ConvertIncrement(NodePtr* node)
 	FreeASTNode((NodePtr){.ptr = unary, .type = Node_Unary});
 }
 
-static void ConvertCompoundAssignment(NodePtr* node)
+static Result ConvertCompoundAssignment(NodePtr* node)
 {
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
@@ -43,7 +45,10 @@ static void ConvertCompoundAssignment(NodePtr* node)
 		binary->operatorType != Binary_BitAndAssign &&
 		binary->operatorType != Binary_BitOrAssign &&
 		binary->operatorType != Binary_XORAssign)
-		return;
+		return SUCCESS_RESULT;
+
+	if (binary->left.type == Node_BlockExpression)
+		return ERROR_RESULT("Left operand of assignment must be a variable", binary->lineNumber, currentFilePath);
 
 	binary->right = AllocASTNode(
 		&(BinaryExpr){
@@ -54,28 +59,30 @@ static void ConvertCompoundAssignment(NodePtr* node)
 		},
 		sizeof(BinaryExpr), Node_Binary);
 	binary->operatorType = Binary_Assignment;
+
+	return SUCCESS_RESULT;
 }
 
-static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
+static Result VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 {
 	ASSERT(node->type == Node_Binary);
 	BinaryExpr* binary = node->ptr;
 
-	VisitExpression(&binary->left, false);
-	VisitExpression(&binary->right, false);
+	PROPAGATE_ERROR(VisitExpression(&binary->left, false));
+	PROPAGATE_ERROR(VisitExpression(&binary->right, false));
 
 	if (binary->left.type == Node_Binary &&
 		((BinaryExpr*)binary->left.ptr)->operatorType == Binary_Assignment)
-		return;
+		return SUCCESS_RESULT;
 
 	NodePtr* nested = NULL;
 	if (parentIsExprStmt)
 	{
 		if (binary->operatorType != Binary_Assignment)
-			return;
+			return SUCCESS_RESULT;
 
 		if (binary->right.type != Node_Binary)
-			return;
+			return SUCCESS_RESULT;
 
 		nested = &binary->right;
 	}
@@ -85,7 +92,7 @@ static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 	ASSERT(nested->type == Node_Binary);
 	BinaryExpr* nestedBinary = nested->ptr;
 	if (nestedBinary->operatorType != Binary_Assignment)
-		return;
+		return SUCCESS_RESULT;
 
 	BlockStmt* blockStmt = AllocASTNode(
 		&(BlockStmt){
@@ -118,9 +125,11 @@ static void VisitBinaryExpression(NodePtr* node, bool parentIsExprStmt)
 	ArrayAdd(&blockStmt->statements, &returnStmt);
 
 	*nested = blockExpr;
+
+	return SUCCESS_RESULT;
 }
 
-static void VisitExpression(NodePtr* node, bool parentIsExprStmt)
+static Result VisitExpression(NodePtr* node, bool parentIsExprStmt)
 {
 	switch (node->type)
 	{
@@ -129,8 +138,8 @@ static void VisitExpression(NodePtr* node, bool parentIsExprStmt)
 		break;
 	case Node_Binary:
 	{
-		ConvertCompoundAssignment(node);
-		VisitBinaryExpression(node, parentIsExprStmt);
+		PROPAGATE_ERROR(ConvertCompoundAssignment(node));
+		PROPAGATE_ERROR(VisitBinaryExpression(node, parentIsExprStmt));
 		break;
 	}
 	case Node_Unary:
@@ -139,49 +148,51 @@ static void VisitExpression(NodePtr* node, bool parentIsExprStmt)
 		if (node->type == Node_Unary)
 		{
 			UnaryExpr* unary = node->ptr;
-			VisitExpression(&unary->expression, false);
+			PROPAGATE_ERROR(VisitExpression(&unary->expression, false));
 		}
 		else
-			VisitExpression(node, false);
+			PROPAGATE_ERROR(VisitExpression(node, false));
 		break;
 	}
 	case Node_FunctionCall:
 	{
 		FuncCallExpr* funcCall = node->ptr;
 		for (size_t i = 0; i < funcCall->arguments.length; i++)
-			VisitExpression(funcCall->arguments.array[i], false);
+			PROPAGATE_ERROR(VisitExpression(funcCall->arguments.array[i], false));
 		break;
 	}
 	case Node_MemberAccess:
 	{
 		MemberAccessExpr* memberAccess = node->ptr;
-		VisitExpression(&memberAccess->start, false);
+		PROPAGATE_ERROR(VisitExpression(&memberAccess->start, false));
 		break;
 	}
 	case Node_Subscript:
 	{
 		SubscriptExpr* subscript = node->ptr;
-		VisitExpression(&subscript->baseExpr, false);
-		VisitExpression(&subscript->indexExpr, false);
+		PROPAGATE_ERROR(VisitExpression(&subscript->baseExpr, false));
+		PROPAGATE_ERROR(VisitExpression(&subscript->indexExpr, false));
 		break;
 	}
 	case Node_SizeOf:
 	{
 		SizeOfExpr* sizeOf = node->ptr;
-		VisitExpression(&sizeOf->expr, false);
+		PROPAGATE_ERROR(VisitExpression(&sizeOf->expr, false));
 		break;
 	}
 	case Node_BlockExpression:
 	{
 		BlockExpr* block = node->ptr;
-		VisitStatement(&block->block);
+		PROPAGATE_ERROR(VisitStatement(&block->block));
 		break;
 	}
 	default: INVALID_VALUE(node->type);
 	}
+
+	return SUCCESS_RESULT;
 }
 
-static void VisitStatement(NodePtr* node)
+static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
 	{
@@ -194,71 +205,73 @@ static void VisitStatement(NodePtr* node)
 	case Node_VariableDeclaration:
 	{
 		VarDeclStmt* varDecl = node->ptr;
-		VisitExpression(&varDecl->initializer, false);
+		PROPAGATE_ERROR(VisitExpression(&varDecl->initializer, false));
 		break;
 	}
 	case Node_ExpressionStatement:
 	{
 		ExpressionStmt* exprStmt = node->ptr;
-		VisitExpression(&exprStmt->expr, true);
+		PROPAGATE_ERROR(VisitExpression(&exprStmt->expr, true));
 		break;
 	}
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
-			VisitStatement(funcDecl->parameters.array[i]);
-		VisitStatement(&funcDecl->block);
+			PROPAGATE_ERROR(VisitStatement(funcDecl->parameters.array[i]));
+		PROPAGATE_ERROR(VisitStatement(&funcDecl->block));
 		break;
 	}
 	case Node_BlockStatement:
 	{
 		const BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
-			VisitStatement(block->statements.array[i]);
+			PROPAGATE_ERROR(VisitStatement(block->statements.array[i]));
 		break;
 	}
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;
-		VisitStatement(&ifStmt->trueStmt);
-		VisitStatement(&ifStmt->falseStmt);
-		VisitExpression(&ifStmt->expr, false);
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->trueStmt));
+		PROPAGATE_ERROR(VisitStatement(&ifStmt->falseStmt));
+		PROPAGATE_ERROR(VisitExpression(&ifStmt->expr, false));
 		break;
 	}
 	case Node_Return:
 	{
 		ReturnStmt* returnStmt = node->ptr;
-		VisitExpression(&returnStmt->expr, false);
+		PROPAGATE_ERROR(VisitExpression(&returnStmt->expr, false));
 		break;
 	}
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
-		VisitStatement(&section->block);
+		PROPAGATE_ERROR(VisitStatement(&section->block));
 		break;
 	}
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node->ptr;
-		VisitExpression(&whileStmt->expr, false);
-		VisitStatement(&whileStmt->stmt);
+		PROPAGATE_ERROR(VisitExpression(&whileStmt->expr, false));
+		PROPAGATE_ERROR(VisitStatement(&whileStmt->stmt));
 		break;
 	}
 	case Node_For:
 	{
 		ForStmt* forStmt = node->ptr;
-		VisitStatement(&forStmt->initialization);
-		VisitExpression(&forStmt->condition, false);
-		VisitExpression(&forStmt->increment, false);
-		VisitStatement(&forStmt->stmt);
+		PROPAGATE_ERROR(VisitStatement(&forStmt->initialization));
+		PROPAGATE_ERROR(VisitExpression(&forStmt->condition, false));
+		PROPAGATE_ERROR(VisitExpression(&forStmt->increment, false));
+		PROPAGATE_ERROR(VisitStatement(&forStmt->stmt));
 		break;
 	}
 	default: INVALID_VALUE(node->type);
 	}
+
+	return SUCCESS_RESULT;
 }
 
-void ChainedAssignmentPass(const AST* ast)
+Result ChainedAssignmentPass(const AST* ast)
 {
 	for (size_t i = 0; i < ast->nodes.length; ++i)
 	{
@@ -267,7 +280,11 @@ void ChainedAssignmentPass(const AST* ast)
 		ASSERT(node->type == Node_Module);
 		const ModuleNode* module = node->ptr;
 
+		currentFilePath = module->path;
+
 		for (size_t i = 0; i < module->statements.length; ++i)
-			VisitStatement(module->statements.array[i]);
+			PROPAGATE_ERROR(VisitStatement(module->statements.array[i]));
 	}
+
+	return SUCCESS_RESULT;
 }

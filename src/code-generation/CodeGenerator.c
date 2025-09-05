@@ -25,7 +25,7 @@
 Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLength)
 {
 	PROPAGATE_ERROR(ResolverPass(syntaxTree));
-	ChainedAssignmentPass(syntaxTree);
+	PROPAGATE_ERROR(ChainedAssignmentPass(syntaxTree));
 	FunctionCallAccessPass(syntaxTree);
 	BlockExpressionPass(syntaxTree);
 	ForLoopPass(syntaxTree);

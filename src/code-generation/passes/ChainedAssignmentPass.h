@@ -1,5 +1,6 @@
 #pragma once
 
 #include "SyntaxTree.h"
+#include "Result.h"
 
-void ChainedAssignmentPass(const AST* ast);
+Result ChainedAssignmentPass(const AST* ast);
