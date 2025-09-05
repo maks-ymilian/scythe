@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "StringUtils.h"
 
@@ -75,15 +76,16 @@ static Result StringToUInt64(const char* string, size_t stringLength, int base, 
 		if (!IsDigitBase(string[i], base))
 			goto invalidInteger;
 
-	if (stringLength > UINT64_MAX_CHARS)
+	if (stringLength > 64)
 		goto invalidInteger;
 
-	char stringCopy[UINT64_MAX_CHARS + 1];
+	char stringCopy[64 + 1];
 	memcpy(stringCopy, string, stringLength);
 	stringCopy[stringLength] = '\0';
+	errno = 0;
 	*out = strtoull(stringCopy, NULL, base);
 
-	if (*out == UINT64_MAX)
+	if (errno == ERANGE && *out == UINT64_MAX)
 		goto invalidInteger;
 
 	if (*out == 0)
@@ -119,17 +121,24 @@ static Result EvaluateNumberLiteral(
 		double floatValue;
 		int consumedChars;
 		if (sscanf(string, "%lf%n", &floatValue, &consumedChars) != 1)
-			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
+			goto invalidFloat;
 
 		if (fpclassify(floatValue) != FP_NORMAL && fpclassify(floatValue) != FP_ZERO)
-			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
+			goto invalidFloat;
 
 		ASSERT(consumedChars >= 0);
 		if ((size_t)consumedChars != stringLength)
-			return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
+			goto invalidFloat;
+
+		for (size_t i = 0; i < stringLength; ++i)
+			if (!IsDigitBase(string[i], 10) && (string[i] != '.' || i == stringLength - 1))
+				goto invalidFloat;
 
 		*outString = AllocateStringLength(string, stringLength);
 		return SUCCESS_RESULT;
+
+	invalidFloat:
+		return ERROR_RESULT("Invalid float literal", lineNumber, currentFile);
 	}
 
 	int base = 10;

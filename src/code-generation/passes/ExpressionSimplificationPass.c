@@ -86,11 +86,12 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		case Literal_Number:
 		{
 			size_t length = strlen(literal->number);
-			ASSERT(length <= 20);
 
 			for (size_t i = 0; i < length; ++i)
 				if (literal->number[i] == '.')
 					return false;
+
+			ASSERT(length <= 20);
 
 			uint64_t num = 0;
 			for (size_t i = 0; i < length; ++i)
