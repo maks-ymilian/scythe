@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include <ctype.h>
+#include <string.h>
 
 typedef struct
 {
@@ -21,26 +22,26 @@ static uint64_t PowerOf10(int x)
 {
 	switch (x)
 	{
-	case 0: return 1;
-	case 1: return 10;
-	case 2: return 100;
-	case 3: return 1000;
-	case 4: return 10000;
-	case 5: return 100000;
-	case 6: return 1000000;
-	case 7: return 10000000;
-	case 8: return 100000000;
-	case 9: return 1000000000;
-	case 10: return 10000000000;
-	case 11: return 100000000000;
-	case 12: return 1000000000000;
-	case 13: return 10000000000000;
-	case 14: return 100000000000000;
-	case 15: return 1000000000000000;
-	case 16: return 10000000000000000;
-	case 17: return 100000000000000000;
-	case 18: return 1000000000000000000;
-	case 19: return 10000000000000000000;
+	case 0: return 1ULL;
+	case 1: return 10ULL;
+	case 2: return 100ULL;
+	case 3: return 1000ULL;
+	case 4: return 10000ULL;
+	case 5: return 100000ULL;
+	case 6: return 1000000ULL;
+	case 7: return 10000000ULL;
+	case 8: return 100000000ULL;
+	case 9: return 1000000000ULL;
+	case 10: return 10000000000ULL;
+	case 11: return 100000000000ULL;
+	case 12: return 1000000000000ULL;
+	case 13: return 10000000000000ULL;
+	case 14: return 100000000000000ULL;
+	case 15: return 1000000000000000ULL;
+	case 16: return 10000000000000000ULL;
+	case 17: return 100000000000000000ULL;
+	case 18: return 1000000000000000000ULL;
+	case 19: return 10000000000000000000ULL;
 	default: INVALID_VALUE(x);
 	}
 }
@@ -96,7 +97,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			{
 				ASSERT(isdigit(literal->number[i]));
 				int digit = literal->number[i] - '0';
-				num += digit * PowerOf10((length - 1) - i);
+				num += (uint64_t)digit * PowerOf10((int)(length - 1) - (int)i);
 			}
 			*info = (ConstantInfo){.isInt = true, .intValue = num};
 			return true;
@@ -135,26 +136,21 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		{
 		case Binary_BoolAnd:
 		{
-			if (leftInfo.isInt)
+			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
-				if (left && right)
-				{
-					*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue && rightInfo.intValue};
-					*node = AllocNumber(*info, binary->lineNumber);
-					return true;
-				}
-				else if (left && !right && leftInfo.intValue)
-				{
-					*node = binary->right;
-					return false;
-				}
-				else if (!left && right && rightInfo.intValue)
-				{
-					*node = binary->left;
-					return false;
-				}
-				else
-					return false;
+				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue && rightInfo.intValue};
+				*node = AllocNumber(*info, binary->lineNumber);
+				return true;
+			}
+			else if (left && !right && leftInfo.isInt && leftInfo.intValue)
+			{
+				*node = binary->right;
+				return false;
+			}
+			else if (!left && right && rightInfo.isInt && rightInfo.intValue)
+			{
+				*node = binary->left;
+				return false;
 			}
 			else
 				return false;
@@ -165,32 +161,22 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		}
 		case Binary_IsEqual:
 		{
-			if (leftInfo.isInt)
+			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
-				if (left && right)
-				{
-					*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue == rightInfo.intValue && leftInfo.isNegative == rightInfo.isNegative};
-					*node = AllocNumber(*info, binary->lineNumber);
-					return true;
-				}
-				else
-					return false;
+				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue == rightInfo.intValue && leftInfo.isNegative == rightInfo.isNegative};
+				*node = AllocNumber(*info, binary->lineNumber);
+				return true;
 			}
 			else
 				return false;
 		}
 		case Binary_NotEqual:
 		{
-			if (leftInfo.isInt)
+			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
-				if (left && right)
-				{
-					*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue != rightInfo.intValue || leftInfo.isNegative != rightInfo.isNegative};
-					*node = AllocNumber(*info, binary->lineNumber);
-					return true;
-				}
-				else
-					return false;
+				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue != rightInfo.intValue || leftInfo.isNegative != rightInfo.isNegative};
+				*node = AllocNumber(*info, binary->lineNumber);
+				return true;
 			}
 			else
 				return false;
@@ -218,16 +204,11 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		}
 		case Binary_BitOr:
 		{
-			if (leftInfo.isInt)
+			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
-				if (left && right)
-				{
-					*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue | rightInfo.intValue, .isNegative = leftInfo.isNegative | rightInfo.isNegative};
-					*node = AllocNumber(*info, binary->lineNumber);
-					return true;
-				}
-				else
-					return false;
+				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue | rightInfo.intValue, .isNegative = leftInfo.isNegative | rightInfo.isNegative};
+				*node = AllocNumber(*info, binary->lineNumber);
+				return true;
 			}
 			else
 				return false;
@@ -331,7 +312,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			}
 			else
 			{
-				*info = (ConstantInfo){.isInt = true, .intValue = !unaryInfo.floatValue};
+				*info = (ConstantInfo){.isInt = true, .intValue = !(bool)unaryInfo.floatValue};
 				*node = AllocNumber(*info, unary->lineNumber);
 			}
 			return true;

@@ -10,12 +10,12 @@ static FuncDeclStmt* currentFunction;
 
 static void VisitStatement(NodePtr* node, CopyAssignments* map, bool modifyAST, bool modifyMap);
 
-static CopyAssignments AllocCopyAssignments()
+static CopyAssignments AllocCopyAssignments(void)
 {
 	return AllocateMap(sizeof(NodePtr));
 }
 
-static CopyAssignments FreeCopyAssignments(const CopyAssignments* map)
+static void FreeCopyAssignments(const CopyAssignments* map)
 {
 	FreeMap(map);
 }
@@ -59,7 +59,7 @@ static void MergeCopyAssignments(CopyAssignments* map1, const CopyAssignments* m
 static NodePtr GetCopyAssignmentValue(const CopyAssignments* map, const VarDeclStmt* key)
 {
 	char keyStr[64];
-	snprintf(keyStr, sizeof(keyStr), "%p", (void*)key);
+	snprintf(keyStr, sizeof(keyStr), "%p", (const void*)key);
 	NodePtr* value = MapGet(map, keyStr);
 	if (!value)
 		return NULL_NODE;
@@ -69,14 +69,14 @@ static NodePtr GetCopyAssignmentValue(const CopyAssignments* map, const VarDeclS
 static bool AddCopyAssignment(CopyAssignments* map, const VarDeclStmt* key, NodePtr value)
 {
 	char keyStr[64];
-	snprintf(keyStr, sizeof(keyStr), "%p", (void*)key);
+	snprintf(keyStr, sizeof(keyStr), "%p", (const void*)key);
 	return MapAdd(map, keyStr, &value);
 }
 
 static void DeleteAllPairsWithVar(CopyAssignments* map, const VarDeclStmt* var)
 {
 	char keyStr[64];
-	snprintf(keyStr, sizeof(keyStr), "%p", (void*)var);
+	snprintf(keyStr, sizeof(keyStr), "%p", (const void*)var);
 
 	Array deleteKeys = AllocateArray(sizeof(char*));
 	for (MAP_ITERATE(i, map))
