@@ -333,14 +333,10 @@ void CopyPropagationPass(const AST* ast)
 				continue;
 
 			CopyAssignments map = AllocCopyAssignments();
-
 			ASSERT(node->type == Node_Section);
 			SectionStmt* section = node->ptr;
 			ASSERT(section->block.type == Node_BlockStatement);
-			if (section->sectionType != Section_Init)
-				VisitStatement(&section->block, &map, false, true);
 			VisitStatement(&section->block, &map, true, true);
-
 			FreeCopyAssignments(&map);
 		}
 	}
