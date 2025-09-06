@@ -4,25 +4,10 @@ Read the [official JSFX documentation](https://www.reaper.fm/sdk/js/js.php) alon
 
 A Scythe `.scy` file is composed of the following (all of which are optional):
 - [Sections](#sections)
-- [Global Declarations](#global-declarations)
+- [Declarations](#declarations)
 - [Input Statements](#input-statements)
 - [Description Statement](#description-statement)
 - [Import Statements](#import-statements)
-
-### todo
-- code blocks and what is allowed in them
-    - loops, control flow
-    - if statements
-    - block expressions
-    - variable declarations
-    - function declarations
-- types of literals, number literals
-- type system, structs and primitive, array types, pointer types
-- comments
-- operators and precedence
-- [Scythe interoperability with JSFX](todo)
-- property list
-- sizeof
 
 # Sections
 Sections are the entry point for code execution. These correspond directly to [JSFX's sections](https://www.reaper.fm/sdk/js/js.php#sec_init).
@@ -58,7 +43,7 @@ The [built-in variable](todo) `jsfx.ext_no_init` can be set to `1` to make it ru
 }
 ```
 
-# Global Declarations
+# Declarations
 variables, functions, structs
 
 these will be put in an `@init` section in the compiled output
@@ -75,3 +60,55 @@ the description statement corresponds to the description lines in jsfx
 
 # Import Statements
 [how to use multiple files](todo)
+
+### todo
+- index
+    - list every document
+- basics
+    - file structure
+        - sections
+            - code blocks>
+            - property lists>
+        - declarations
+            - functions variables>
+            - structs>
+        - input statements
+            - property lists>
+        - desc statement
+            - property lists>
+        - import statements>
+    - types of literals
+        - number literal
+        - bool literal
+        - string / char literal
+        - block expressions>
+    - operators
+        - binary including precedence
+        - unary
+        - subscript, dereferencing
+        - sizeof>
+    - comments
+    - property lists
+- code blocks
+    - variables
+    - functions
+    - if statements
+    - loops, control flow
+    - block expressions
+- type system
+    - types of types
+        - primitive types
+        - struct types
+        - array types
+        - pointer types
+    - struct definition
+    - sizeof
+- module system
+    - import statements
+    - declaration modifiers
+        - public / private
+        - external / internal>
+    - built in library>
+- scythe interoperability with JSFX
+    - external / internal
+    - built in library
