@@ -75,8 +75,11 @@ To compile to a JSFX plugin, run the compiler from the command line:
 To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list and can be found by searching the text in the first `desc:` line of the file, or, if that line is missing, the file name.
 
 # Documentation & Examples
-todo
+Documentation can be found [here](docs/index.md).
+
+Examples can be found [here](scythe/examples/).
 
 # Planned features
 - Support for JSFX's named strings
 - Enums - with support for JSFX's enum sliders
+- Ternary operator
