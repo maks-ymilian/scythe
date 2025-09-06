@@ -26,8 +26,9 @@ todo code example before and after
 [REAPER](https://www.reaper.fm/) is required to run JSFX effects.
 
 To compile to a JSFX plugin, run the compiler from the command line:
+
 `scythe <source_file> [output_file]`
-- <source_file> - Path to your main `.scy` Scythe source file
-- [output_file] - Path where the generated `.jsfx` file should be saved (optional). If omitted, it will generate the output in the current directory with a default name.
+- `<source_file>` - Path to your main `.scy` Scythe source file
+- `[output_file]` - Path where the generated `.jsfx` file should be saved (optional). If omitted, it will generate the output in the current directory with a default name.
 
 To use JSFX a plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list and can be found by searching the text in the first `desc:` line of the file, or, if that line is missing, the file name.
