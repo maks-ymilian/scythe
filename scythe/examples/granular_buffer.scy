@@ -1,17 +1,6 @@
 desc [
 	name: "granular buffer",
 	description: "variable size circular buffer with adjustable play speed",
-
-	in_pins: [
-		pin: "left input",
-		pin: "right input",
-	],
-	out_pins: [
-		pin: "left output",
-		pin: "right output",
-	],
-
-	options: [ gfx: [ hz: 60, ], ],
 ];
 
 public input playSpeed [
@@ -47,15 +36,15 @@ float play;
 		.ptr = 0,
 		.length = samples.value,
 	};
+	mem.set(0, 0, buffer.length * sizeof(Sample));
+
 	write = 0;
 	play = 0;
-
-	mem.set(0, 0, buffer.length * sizeof(Sample));
 }
 
 @sample
 {
-	// prevent extreme lag
+	// prevent infinite loop
 	if (buffer.length <= 0)
 		return;
 
