@@ -416,6 +416,7 @@ static Result VisitStatement(const NodePtr* node)
 	{
 	case Node_Import:
 	case Node_Input:
+	case Node_Desc:
 	case Node_Null:
 		break;
 	case Node_FunctionDeclaration:

@@ -226,6 +226,42 @@ input samples2 [
 
 //<!>Properties are only allowed in an "@gfx" section<!> @init [] {}
 
+desc [
+//<!>Cannot specify description without specifying a name first<!> description: "description of the effect",
+	tags: "instrument",
+
+//<!>Expected property list<!> in_pins: 0,
+	in_pins: [],
+//<!>Cannot set property twice<!> in_pins: [ pin: "left", pin: "right", ],
+	out_pins: [
+		pin: "left",
+		pin: "right",
+//<!>Invalid property type<!> tags: 1,
+	],
+//<!>Cannot set property twice<!> out_pins:[],
+//<!>Cannot set property twice<!> out_pins: [ pin: "left", pin: "right", ],
+
+//<!>Expected property list<!> options: "",
+
+//<!>Invalid property type<!> min: 1,
+
+	options: [
+		all_keyboard: true,
+		max_memory: 38,
+		no_meter: true,
+//<!>Expected property list<!> gfx: "",
+//<!>Invalid property type<!> name: "",
+		gfx: [
+//<!>Invalid property type<!> no_meter: true,
+//<!>Cannot set property twice<!> idle_mode: always, idle_mode: when_closed,
+//<!>Unknown idle mode type<!> idle_mode: whatever,
+//<!>Expected idle mode type<!> idle_mode: "",
+			hz: 60,
+		],
+	],
+];
+//<!>Only one description statement is allowed in a plugin<!> desc [];
+
 //<!>All parameters in an external function must be of type "any"<!> external void extparamany(any b, any a, int c);
 external void extparamany(any b, any a, ...);
 
@@ -313,6 +349,13 @@ void scope()
 {
 //<!>Modifier statements are only allowed in global scope<!> internal:
 //<!>Input statements are only allowed in global scope<!> input yea;
+//<!>Description statements are only allowed in global scope<!> desc [];
+}
+@init
+{
+//<!>Modifier statements are only allowed in global scope<!> internal:
+//<!>Input statements are only allowed in global scope<!> input yea;
+//<!>Description statements are only allowed in global scope<!> desc [];
 }
 
 @init

@@ -298,6 +298,11 @@ static void VisitStatement(const NodePtr* node)
 		Print("InputStmt\n");
 		break;
 	}
+	case Node_Desc:
+	{
+		Print("DescStmt\n");
+		break;
+	}
 	case Node_Modifier:
 	{
 		Print("ModifierStmt\n");

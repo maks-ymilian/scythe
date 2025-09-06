@@ -40,6 +40,7 @@ typedef enum
 	Node_Return,
 
 	Node_Input,
+	Node_Desc,
 	Node_Property,
 	Node_PropertyList,
 
@@ -242,6 +243,31 @@ typedef enum
 	PropertyBoolean_False = false,
 } PropertyBoolean;
 
+typedef enum
+{
+	IdleMode_NotSet,
+	IdleMode_WhenClosed,
+	IdleMode_Always,
+} GFXIdleMode;
+
+typedef struct
+{
+	int lineNumber;
+	NodePtr propertyList;
+	char* name;
+	char* description;
+	char* tags;
+	Array inPins;
+	Array outPins;
+	bool inPinsNone;
+	bool outPinsNone;
+	PropertyBoolean allKeyboard;
+	char* maxMemory;
+	PropertyBoolean noMeter;
+	GFXIdleMode idleMode;
+	char* gfxHZ;
+} DescStmt;
+
 typedef struct
 {
 	int lineNumber;
@@ -402,6 +428,18 @@ typedef enum
 	PropertyType_Type,
 	PropertyType_Width,
 	PropertyType_Height,
+	PropertyType_Name,
+	PropertyType_Tags,
+	PropertyType_Pin,
+	PropertyType_InPins,
+	PropertyType_OutPins,
+	PropertyType_Options,
+	PropertyType_AllKeyboard,
+	PropertyType_MaxMemory,
+	PropertyType_NoMeter,
+	PropertyType_GFX,
+	PropertyType_IdleMode,
+	PropertyType_HZ,
 } PropertyType;
 
 typedef struct

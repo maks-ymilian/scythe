@@ -339,7 +339,7 @@ void VariableDepsPass(const AST* ast)
 		for (size_t i = 0; i < module->statements.length; ++i)
 		{
 			NodePtr* node = module->statements.array[i];
-			if (node->type == Node_Null || node->type == Node_Import || node->type == Node_Input)
+			if (node->type == Node_Null || node->type == Node_Import || node->type == Node_Input || node->type == Node_Desc)
 				continue;
 			ASSERT(node->type == Node_Section);
 			SectionStmt* section = node->ptr;

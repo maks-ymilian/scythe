@@ -73,6 +73,7 @@ static void VisitModule(ModuleNode* module)
 		{
 		case Node_Import:
 		case Node_Input:
+		case Node_Desc:
 		case Node_Null:
 			break;
 		case Node_FunctionDeclaration:

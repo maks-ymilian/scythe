@@ -32,6 +32,7 @@ static void VisitStatement(const NodePtr* node)
 	case Node_LoopControl:
 	case Node_Import:
 	case Node_Input:
+	case Node_Desc:
 	case Node_Null:
 		break;
 	case Node_FunctionDeclaration:

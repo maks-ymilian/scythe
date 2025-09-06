@@ -1602,6 +1602,30 @@ static Result StringToPropertyType(const char* string, size_t stringSize, Proper
 		*out = PropertyType_Width;
 	else if (strncmp(string, "height", stringSize) == 0)
 		*out = PropertyType_Height;
+	else if (strncmp(string, "name", stringSize) == 0)
+		*out = PropertyType_Name;
+	else if (strncmp(string, "tags", stringSize) == 0)
+		*out = PropertyType_Tags;
+	else if (strncmp(string, "pin", stringSize) == 0)
+		*out = PropertyType_Pin;
+	else if (strncmp(string, "in_pins", stringSize) == 0)
+		*out = PropertyType_InPins;
+	else if (strncmp(string, "out_pins", stringSize) == 0)
+		*out = PropertyType_OutPins;
+	else if (strncmp(string, "options", stringSize) == 0)
+		*out = PropertyType_Options;
+	else if (strncmp(string, "all_keyboard", stringSize) == 0)
+		*out = PropertyType_AllKeyboard;
+	else if (strncmp(string, "max_memory", stringSize) == 0)
+		*out = PropertyType_MaxMemory;
+	else if (strncmp(string, "no_meter", stringSize) == 0)
+		*out = PropertyType_NoMeter;
+	else if (strncmp(string, "gfx", stringSize) == 0)
+		*out = PropertyType_GFX;
+	else if (strncmp(string, "idle_mode", stringSize) == 0)
+		*out = PropertyType_IdleMode;
+	else if (strncmp(string, "hz", stringSize) == 0)
+		*out = PropertyType_HZ;
 	else
 		return ERROR_RESULT_LINE("Invalid property type");
 
@@ -1830,6 +1854,27 @@ static Result ParseModifierStatement(NodePtr* out)
 	return SUCCESS_RESULT;
 }
 
+static Result ParseDescStatement(NodePtr* out)
+{
+	Token* keyword = MatchOne(Token_Desc);
+	if (!keyword)
+		return NOT_FOUND_RESULT;
+
+	NodePtr list = NULL_NODE;
+	PROPAGATE_ERROR(ParsePropertyList(&list));
+
+	if (!MatchOne(Token_Semicolon))
+		return ERROR_RESULT_LINE("Expected \";\"");
+
+	*out = AllocASTNode(
+		&(DescStmt){
+			.lineNumber = keyword->lineNumber,
+			.propertyList = list,
+		},
+		sizeof(DescStmt), Node_Desc);
+	return SUCCESS_RESULT;
+}
+
 static Result ParseStatement(NodePtr* out)
 {
 	PROPAGATE_FOUND(ParseIfStatement(out));
@@ -1837,6 +1882,7 @@ static Result ParseStatement(NodePtr* out)
 	PROPAGATE_FOUND(ParseWhileStatement(out));
 	PROPAGATE_FOUND(ParseForStatement(out));
 	PROPAGATE_FOUND(ParseSectionStatement(out));
+	PROPAGATE_FOUND(ParseDescStatement(out));
 	PROPAGATE_FOUND(ParseBlockStatement(out));
 	PROPAGATE_FOUND(ParseReturnStatement(out));
 	PROPAGATE_FOUND(ParseModifierStatement(out));
@@ -1875,7 +1921,8 @@ static Result ParseProgram(AST* out)
 			stmt.type != Node_VariableDeclaration &&
 			stmt.type != Node_Modifier &&
 			stmt.type != Node_Import &&
-			stmt.type != Node_Input)
+			stmt.type != Node_Input &&
+			stmt.type != Node_Desc)
 			return ERROR_RESULT_LINE(
 				"Expected section statement, variable declaration, struct declaration, or function declaration");
 

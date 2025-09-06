@@ -34,6 +34,8 @@ static ModifierState currentModifierState;
 
 static uint64_t sliderNumber;
 
+static bool foundDescStatement;
+
 static Result VisitStatement(NodePtr* node);
 static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr* resolveFuncCall);
 static Result ResolveType(Type* type, bool voidAllowed, bool isPublicAPI, bool* outIsType);
@@ -1255,6 +1257,210 @@ static Result SetSectionProperties(SectionStmt* section)
 	return SUCCESS_RESULT;
 }
 
+static Result SetIdleModeProperty(NodePtr value, void* destination, int lineNumber)
+{
+	ASSERT(destination);
+
+	GFXIdleMode* idleMode = destination;
+	if (*idleMode != IdleMode_NotSet)
+		return ERROR_RESULT("Cannot set property twice", lineNumber, currentFilePath);
+
+	if (value.type != Node_MemberAccess)
+		goto invalidValue;
+	MemberAccessExpr* memberAccess = value.ptr;
+
+	if (memberAccess->identifiers.length != 1 ||
+		memberAccess->start.ptr)
+		goto invalidValue;
+
+	char* string = *(char**)memberAccess->identifiers.array[0];
+	ASSERT(string);
+	if (strcmp(string, "when_closed") == 0)
+		*idleMode = IdleMode_WhenClosed;
+	else if (strcmp(string, "always") == 0)
+		*idleMode = IdleMode_Always;
+	else
+		return ERROR_RESULT(
+			AllocateString1Str("Unknown idle mode type \"%s\"", string),
+			lineNumber, currentFilePath);
+
+	return SUCCESS_RESULT;
+
+invalidValue:
+	return ERROR_RESULT("Expected idle mode type", lineNumber, currentFilePath);
+}
+
+static Result SetGFXProperties(DescStmt* desc, PropertyListNode* properties)
+{
+	for (size_t i = 0; i < properties->list.length; ++i)
+	{
+		NodePtr* node = properties->list.array[i];
+		ASSERT(node->type = Node_Property);
+
+		PropertyNode* property = node->ptr;
+		switch (property->type)
+		{
+		case PropertyType_HZ:
+			PROPAGATE_ERROR(SetNumberProperty(property->value, &desc->gfxHZ, property->lineNumber));
+			break;
+		case PropertyType_IdleMode:
+			PROPAGATE_ERROR(SetIdleModeProperty(property->value, &desc->idleMode, property->lineNumber));
+			break;
+		default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result SetOptionsProperties(DescStmt* desc, PropertyListNode* properties)
+{
+	for (size_t i = 0; i < properties->list.length; ++i)
+	{
+		NodePtr* node = properties->list.array[i];
+		ASSERT(node->type = Node_Property);
+
+		PropertyNode* property = node->ptr;
+		switch (property->type)
+		{
+		case PropertyType_AllKeyboard:
+			PROPAGATE_ERROR(SetBooleanProperty(property->value, &desc->allKeyboard, property->lineNumber));
+			break;
+		case PropertyType_MaxMemory:
+			PROPAGATE_ERROR(SetNumberProperty(property->value, &desc->maxMemory, property->lineNumber));
+			break;
+		case PropertyType_NoMeter:
+			PROPAGATE_ERROR(SetBooleanProperty(property->value, &desc->noMeter, property->lineNumber));
+			break;
+		case PropertyType_GFX:
+		{
+			if (property->value.type != Node_PropertyList)
+				return ERROR_RESULT("Expected property list", property->lineNumber, currentFilePath);
+
+			PropertyListNode* properties = property->value.ptr;
+			PROPAGATE_ERROR(SetGFXProperties(desc, properties));
+			break;
+		}
+		default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result SetPinsProperties(DescStmt* desc, PropertyListNode* properties, bool in)
+{
+	if (properties->list.length == 0)
+	{
+		if (in)
+			desc->inPinsNone = true;
+		else
+			desc->outPinsNone = true;
+	}
+	else
+	{
+		Array* pins = NULL;
+		if (in)
+			pins = &desc->inPins;
+		else
+			pins = &desc->outPins;
+		*pins = AllocateArray(sizeof(char*));
+		for (size_t i = 0; i < properties->list.length; ++i)
+		{
+			NodePtr* node = properties->list.array[i];
+			ASSERT(node->type = Node_Property);
+
+			PropertyNode* property = node->ptr;
+			if (property->type != PropertyType_Pin)
+				return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+
+			char* string = NULL;
+			PROPAGATE_ERROR(SetStringProperty(property->value, &string, property->lineNumber));
+			ArrayAdd(pins, &string);
+		}
+	}
+
+	return SUCCESS_RESULT;
+}
+
+static Result SetDescProperties(DescStmt* desc)
+{
+	// initialize all to not set
+	desc->name = NULL;
+	desc->description = NULL;
+	desc->tags = NULL;
+	desc->inPins = (Array){.array = NULL};
+	desc->outPins = (Array){.array = NULL};
+	desc->inPinsNone = false;
+	desc->outPinsNone = false;
+	desc->allKeyboard = PropertyBoolean_NotSet;
+	desc->maxMemory = NULL;
+	desc->noMeter = PropertyBoolean_NotSet;
+	desc->idleMode = IdleMode_NotSet;
+	desc->gfxHZ = NULL;
+
+	// set properties
+	if (desc->propertyList.ptr)
+	{
+		ASSERT(desc->propertyList.type == Node_PropertyList);
+		PropertyListNode* properties = desc->propertyList.ptr;
+		for (size_t i = 0; i < properties->list.length; ++i)
+		{
+			NodePtr* node = properties->list.array[i];
+			ASSERT(node->type = Node_Property);
+
+			PropertyNode* property = node->ptr;
+			switch (property->type)
+			{
+			case PropertyType_Name:
+				PROPAGATE_ERROR(SetStringProperty(property->value, &desc->name, property->lineNumber));
+				break;
+			case PropertyType_Description:
+				PROPAGATE_ERROR(SetStringProperty(property->value, &desc->description, property->lineNumber));
+				break;
+			case PropertyType_Tags:
+				PROPAGATE_ERROR(SetStringProperty(property->value, &desc->tags, property->lineNumber));
+				break;
+			case PropertyType_InPins:
+			case PropertyType_OutPins:
+			{
+				if (property->value.type != Node_PropertyList)
+					return ERROR_RESULT("Expected property list", property->lineNumber, currentFilePath);
+
+				if (property->type == PropertyType_InPins
+						? (desc->inPinsNone || desc->inPins.array)
+						: (desc->outPinsNone || desc->outPins.array))
+					return ERROR_RESULT("Cannot set property twice", property->lineNumber, currentFilePath);
+
+				PropertyListNode* properties = property->value.ptr;
+				PROPAGATE_ERROR(SetPinsProperties(desc, properties, property->type == PropertyType_InPins));
+				break;
+			}
+			case PropertyType_Options:
+			{
+				if (property->value.type != Node_PropertyList)
+					return ERROR_RESULT("Expected property list", property->lineNumber, currentFilePath);
+
+				PropertyListNode* properties = property->value.ptr;
+				PROPAGATE_ERROR(SetOptionsProperties(desc, properties));
+				break;
+			}
+			default: return ERROR_RESULT("Invalid property type", property->lineNumber, currentFilePath);
+			}
+		}
+	}
+
+	if (desc->inPinsNone)
+		ASSERT(!desc->inPins.array);
+	if (desc->outPinsNone)
+		ASSERT(!desc->outPins.array);
+
+	if (desc->description && !desc->name)
+		return ERROR_RESULT("Cannot specify description without specifying a name first", desc->lineNumber, currentFilePath);
+
+	return SUCCESS_RESULT;
+}
+
 static Result VisitStatement(NodePtr* node)
 {
 	switch (node->type)
@@ -1486,6 +1692,20 @@ static Result VisitStatement(NodePtr* node)
 		input->sliderNumber = ++sliderNumber;
 		return SUCCESS_RESULT;
 	}
+	case Node_Desc:
+	{
+		DescStmt* desc = node->ptr;
+
+		if (currentScope->parent)
+			return ERROR_RESULT("Description statements are only allowed in global scope", desc->lineNumber, currentFilePath);
+
+		if (foundDescStatement)
+			return ERROR_RESULT("Only one description statement is allowed in a plugin", desc->lineNumber, currentFilePath);
+
+		PROPAGATE_ERROR(SetDescProperties(desc));
+		foundDescStatement = true;
+		return SUCCESS_RESULT;
+	}
 	case Node_LoopControl:
 	case Node_Null:
 		return SUCCESS_RESULT;
@@ -1513,6 +1733,8 @@ static Result VisitModule(ModuleNode* module)
 
 Result ResolverPass(const AST* ast)
 {
+	foundDescStatement = false;
+
 	structTypeToArrayStruct = AllocateMap(sizeof(StructDeclStmt*));
 
 	modules = AllocateMap(sizeof(Map));

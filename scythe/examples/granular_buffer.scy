@@ -1,0 +1,79 @@
+desc [
+	name: "granular buffer",
+	description: "variable size circular buffer with adjustable play speed",
+
+	in_pins: [
+		pin: "left input",
+		pin: "right input",
+	],
+	out_pins: [
+		pin: "left output",
+		pin: "right output",
+	],
+
+	options: [ gfx: [ hz: 60, ], ],
+];
+
+public input playSpeed [
+	default_value: 1,
+	min: -2,
+	max: 2,
+];
+
+public input samples [
+	default_value: 1000,
+	min: 1,
+	max: 48000,
+	increment: 1,
+	shape: [
+		type: log,
+		midpoint: 1000,
+	],
+];
+
+struct Sample
+{
+	float l;
+	float r;
+}
+
+Sample[] buffer;
+float write;
+float play;
+
+@slider
+{
+	buffer = Sample[] {
+		.ptr = 0,
+		.length = samples.value,
+	};
+	write = 0;
+	play = 0;
+
+	mem.set(0, 0, buffer.length * sizeof(Sample));
+}
+
+@sample
+{
+	// prevent extreme lag
+	if (buffer.length <= 0)
+		return;
+
+	// keep pointers in range
+	while (play >= buffer.length) play -= buffer.length;
+	while (write >= buffer.length) write -= buffer.length;
+	while (play < buffer.ptr) play += buffer.length;
+	while (write < buffer.ptr) write += buffer.length;
+
+	// write
+	buffer[write] = Sample {
+		.l = jsfx.spl0,
+		.r = jsfx.spl1,
+	};
+	++write;
+
+	// play
+	jsfx.spl0 = buffer[play].l;
+	jsfx.spl1 = buffer[play].r;
+	play += playSpeed.value;
+}

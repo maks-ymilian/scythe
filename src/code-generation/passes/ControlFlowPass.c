@@ -438,6 +438,7 @@ static Result VisitGlobalStatement(const NodePtr* node)
 	case Node_VariableDeclaration:
 	case Node_Import:
 	case Node_Input:
+	case Node_Desc:
 	case Node_Null:
 		break;
 	case Node_Section:

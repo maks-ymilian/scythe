@@ -690,6 +690,23 @@ void FreeASTNode(const NodePtr node)
 		FreeASTNode(ptr->propertyList);
 		break;
 	}
+	case Node_Desc:
+	{
+		DescStmt* ptr = node.ptr;
+		free(ptr->description);
+		free(ptr->tags);
+		free(ptr->maxMemory);
+		free(ptr->gfxHZ);
+		FreeASTNode(ptr->propertyList);
+
+		for (size_t i = 0; i < ptr->inPins.length; ++i)
+			free(*(char**)ptr->inPins.array[i]);
+		for (size_t i = 0; i < ptr->outPins.length; ++i)
+			free(*(char**)ptr->outPins.array[i]);
+		FreeArray(&ptr->inPins);
+		FreeArray(&ptr->outPins);
+		break;
+	}
 	case Node_PropertyList:
 	{
 		PropertyListNode* ptr = node.ptr;
