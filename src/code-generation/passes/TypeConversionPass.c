@@ -296,7 +296,7 @@ static Result VisitSubscriptExpression(SubscriptExpr* subscript)
 	PROPAGATE_ERROR(ConvertExpression(
 		&subscript->indexExpr,
 		indexType,
-		NonPointerType(Primitive_Int),
+		NonPointerType(Primitive_Float),
 		subscript->lineNumber));
 
 	return SUCCESS_RESULT;
