@@ -109,6 +109,6 @@ the description statement corresponds to the description lines in jsfx
         - public / private
         - external / internal>
     - built in library>
-- scythe interoperability with JSFX
+- interfacing with JSFX
     - external / internal
     - built in library
