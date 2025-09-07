@@ -69,8 +69,7 @@ static Result ScanIdentifier(void)
 
 static bool AllowedInStringLiteral(unsigned char c)
 {
-	return c == '	' || // horizontal tab
-		   (c >= ' ' && c <= '~') || // printable ascii
+	return (c >= ' ' && c <= '~') || // printable ascii
 		   c >= 128; // utf-8 bytes
 }
 
