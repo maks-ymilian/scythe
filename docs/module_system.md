@@ -1,8 +1,8 @@
 # module system
-## import statements
+# import statements
 
-## declaration modifiers
-### public / private
-### external / internal>
+# declaration modifiers
+## public / private
+## external / internal>
 
-## built in library>
+# built in library>

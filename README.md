@@ -1,26 +1,30 @@
 # Scythe
-Scythe is a programming language that compiles to [REAPER](https://www.reaper.fm/)'s JSFX.
-JSFX makes writing audio effects and instruments for the digital audio workstation [REAPER](https://www.reaper.fm/) fast and immediate.
-Scythe uses C-like syntax and aims to make JSFX plugins easier to write, read, and maintain.
+Scythe is a programming language that compiles to [REAPER](https://www.reaper.fm/)'s JSFX, the language used for writing audio effects and instruments that you can instantly hear and tweak in real time.
 
-### Features
+Scythe makes it easier to read and write code, especially for more complicated projects.\
+It adds many features to JSFX, including:
+- C-like syntax
 - Structs
-- Better scoping
+- Block scope
 - A simple type system, including integer, boolean, pointer, array, and struct types
 - Better control flow, including return, break, and continue statements
 - For loops
 - Variable declaration is enforced before use
 - Nested functions
-- Namespaces
 - Access to all built in JSFX functions
 - Full GFX support
 - Can be used with libraries written in JSFX
-- \+ more
 
 # Example
 An audio buffer with adjustable play speed, written in Scythe:
 ```c
-input speed [default_value: 1, min: -2, max: 2];
+desc [name: "readme example"];
+
+input speed [
+	default_value: 1,
+	min: -2,
+	max: 2,
+];
 
 struct Sample
 {
@@ -47,6 +51,7 @@ float read;
 ```
 Compiled JSFX output:
 ```c
+desc:readme example
 slider1:speed=1<-2,2,0>speed
 
 @init
@@ -75,11 +80,10 @@ To compile to a JSFX plugin, run the compiler from the command line:
 To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list and can be found by searching the text in the first `desc:` line of the file, or, if that line is missing, the file name.
 
 # Documentation & Examples
-Documentation can be found [here](docs/index.md).
-
+Documentation can be found [here](docs/README.md).\
 Examples can be found [here](scythe/examples/).
 
 # Planned features
 - Support for JSFX's named strings
-- Enums - with support for JSFX's enum sliders
+- Enums, with support for JSFX's enum sliders
 - Ternary operator

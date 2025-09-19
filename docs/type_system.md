@@ -1,10 +1,13 @@
 # Type System
-## types of types
-###  primitive types
-### struct types
-### array types
-### pointer types
+# types of types
+## primitive types
+## aggregate types
+## void
 
-## struct definition
-## type casting > block expressions
-## sizeof
+## struct types
+## array types
+## pointer types
+
+# struct definition
+# type casting > block expressions
+# sizeof
