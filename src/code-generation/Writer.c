@@ -574,15 +574,8 @@ static void WriteSlider(const InputStmt* slider)
 static void WriteDesc(const DescStmt* desc)
 {
 	WriteString("desc:", descriptionLines);
-	WriteString(desc->name ? desc->name : DEFAULT_NAME, descriptionLines);
+	WriteString(desc->description ? desc->description : DEFAULT_NAME, descriptionLines);
 	WriteChar('\n', descriptionLines);
-
-	if (desc->description)
-	{
-		WriteString("desc:", descriptionLines);
-		WriteString(desc->description, descriptionLines);
-		WriteChar('\n', descriptionLines);
-	}
 
 	if (desc->tags)
 	{

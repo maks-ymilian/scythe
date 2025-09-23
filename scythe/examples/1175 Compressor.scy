@@ -25,7 +25,6 @@
 //THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 desc [
-	name: "1175 Compressor",
 	description: "1175 FAST Attack Compressor with Program-Dependent Release [Stillwell]",
 	tags: "dynamics compressor",
 	in_pins: [

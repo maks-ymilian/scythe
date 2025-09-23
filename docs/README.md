@@ -8,7 +8,7 @@ Since Scythe is built on top of JSFX, it is recommended to be familiar with writ
 A Scythe `.scy` file is composed of a series of file-scope top-level statements (all of which are optional). The list of possible statements can be found [here](statements.md#file-scope-statements).\
 For example, this file contains a [description statement](), [input statement](), [struct definition](), three [variable declarations](), and a [section statement]().
 ```c
-desc [name: "readme example"];
+desc [description: "readme example"];
 
 input speed [
 	default: 1,

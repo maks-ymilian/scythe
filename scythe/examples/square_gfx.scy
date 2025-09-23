@@ -1,5 +1,5 @@
 desc [
-	name: "square gfx test",
+	description: "square gfx test",
 
 	in_pins: [],
 	out_pins: [],

@@ -322,7 +322,6 @@ The description statement corresponds to the [description lines in JSFX](https:/
 Description statements are composed of the `desc` keyword followed by a [property list]():
 ```c
 desc [
-	name: "granular buffer",
 	description: "variable size circular buffer with adjustable play speed",
 	in_pins: [pin: "left", pin: "right"],
 	out_pins: [pin: "left", pin: "right"],

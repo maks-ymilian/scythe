@@ -18,7 +18,6 @@ It adds many features to JSFX, including:
 # Example
 An audio buffer with adjustable play speed, written in Scythe:
 ```c
-desc [name: "readme example"];
 input speed [default: 1, min: -2, max: 2];
 
 struct Sample
@@ -72,7 +71,7 @@ To compile to a JSFX plugin, run the compiler from the command line:
 - `<source_file>` - Path to your main `.scy` Scythe source file
 - `[output_file]` - Path where the generated `.jsfx` file should be saved (optional). If omitted, it will generate the output in the current directory with a default name.
 
-To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list and can be found by searching the text in the first `desc:` line of the file, or, if that line is missing, the file name.
+To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list.
 
 # Documentation & Examples
 Documentation can be found [here](docs/README.md).\

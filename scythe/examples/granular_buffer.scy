@@ -1,5 +1,4 @@
 desc [
-	name: "granular buffer",
 	description: "variable size circular buffer with adjustable play speed",
 ];
 

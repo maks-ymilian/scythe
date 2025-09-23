@@ -254,7 +254,6 @@ typedef struct
 {
 	int lineNumber;
 	NodePtr propertyList;
-	char* name;
 	char* description;
 	char* tags;
 	Array inPins;

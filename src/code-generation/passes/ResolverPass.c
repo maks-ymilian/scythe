@@ -1386,7 +1386,6 @@ static Result SetPinsProperties(DescStmt* desc, PropertyListNode* properties, bo
 static Result SetDescProperties(DescStmt* desc)
 {
 	// initialize all to not set
-	desc->name = NULL;
 	desc->description = NULL;
 	desc->tags = NULL;
 	desc->inPins = (Array){.array = NULL};
@@ -1412,9 +1411,6 @@ static Result SetDescProperties(DescStmt* desc)
 			PropertyNode* property = node->ptr;
 			switch (property->type)
 			{
-			case PropertyType_Name:
-				PROPAGATE_ERROR(SetStringProperty(property->value, &desc->name, property->lineNumber));
-				break;
 			case PropertyType_Description:
 				PROPAGATE_ERROR(SetStringProperty(property->value, &desc->description, property->lineNumber));
 				break;
@@ -1454,9 +1450,6 @@ static Result SetDescProperties(DescStmt* desc)
 		ASSERT(!desc->inPins.array);
 	if (desc->outPinsNone)
 		ASSERT(!desc->outPins.array);
-
-	if (desc->description && !desc->name)
-		return ERROR_RESULT("Cannot specify description without specifying a name first", desc->lineNumber, currentFilePath);
 
 	return SUCCESS_RESULT;
 }
