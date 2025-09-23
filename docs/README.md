@@ -52,7 +52,7 @@ Scythe uses the same comment syntax as C:
 Comments can appear anywhere in `.scy` files.
 
 ## Index
-- [Language Constructs]()
+- [Statements]()
 - [Operators and Expressions]()
 - [Type System]()
 - [Module System]() - compiling with multiple `.scy` source files

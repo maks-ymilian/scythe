@@ -84,6 +84,7 @@ Documentation can be found [here](docs/README.md).\
 Examples can be found [here](scythe/examples/).
 
 # Planned features
+- Double pointers
 - Support for JSFX's named strings
 - Enums, with support for JSFX's enum sliders
 - Ternary operator
