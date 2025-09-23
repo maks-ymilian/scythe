@@ -554,7 +554,7 @@ static void WriteSlider(const InputStmt* slider)
 		WriteChar('=', sliders);
 		WriteString(slider->midpoint, sliders);
 	}
-	else if (slider->shape == SliderShape_Exponential)
+	else if (slider->shape == SliderShape_Polynomial)
 	{
 		WriteString(":sqr", sliders);
 		if (slider->linear_automation)

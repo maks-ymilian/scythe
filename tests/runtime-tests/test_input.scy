@@ -1,10 +1,10 @@
 input input1;
 input input2 [
-	default_value: 69.420,
+	default: 69.420,
 	max: 10,
 ];
 input input3 [
-	default_value: 69.420,
+	default: 69.420,
 	max: 100
 ];
 

@@ -19,12 +19,7 @@ It adds many features to JSFX, including:
 An audio buffer with adjustable play speed, written in Scythe:
 ```c
 desc [name: "readme example"];
-
-input speed [
-	default_value: 1,
-	min: -2,
-	max: 2,
-];
+input speed [default: 1, min: -2, max: 2];
 
 struct Sample
 {

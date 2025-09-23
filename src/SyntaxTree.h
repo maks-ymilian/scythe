@@ -233,7 +233,7 @@ typedef enum
 {
 	SliderShape_NotSet,
 	SliderShape_Logarithmic,
-	SliderShape_Exponential,
+	SliderShape_Polynomial,
 } SliderShape;
 
 typedef enum
@@ -415,7 +415,7 @@ typedef struct
 
 typedef enum
 {
-	PropertyType_DefaultValue,
+	PropertyType_Default,
 	PropertyType_Min,
 	PropertyType_Max,
 	PropertyType_Increment,

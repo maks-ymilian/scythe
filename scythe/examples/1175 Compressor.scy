@@ -38,12 +38,12 @@ desc [
 	],
 ];
 
-input thresh      [ default_value: 0,   min: -60, max: 0,    increment: 0.1, description: "Threshold (dB)", ];
-input ratio_enum  [ default_value: 5,   min: 0,   max: 9,    increment: 1,   description: "Ratio", ];
-input makeup      [ default_value: 0,   min: -20, max: 20,   increment: 0.1, description: "Gain (dB)", ];
-input attack      [ default_value: 20,  min: 20,  max: 2000, increment: 10,  description: "Attack (uS)", ];
-input release     [ default_value: 250, min: 20,  max: 1000, increment: 1,   description: "Release (mS)", ];
-input mix_percent [ default_value: 100, min: 0,   max: 100,  increment: 0.1, description: "Mix (%)", ];
+input thresh      [ default: 0,   min: -60, max: 0,    inc: 0.1, name: "Threshold (dB)", ];
+input ratio_enum  [ default: 5,   min: 0,   max: 9,    inc: 1,   name: "Ratio", ];
+input makeup      [ default: 0,   min: -20, max: 20,   inc: 0.1, name: "Gain (dB)", ];
+input attack      [ default: 20,  min: 20,  max: 2000, inc: 10,  name: "Attack (uS)", ];
+input release     [ default: 250, min: 20,  max: 1000, inc: 1,   name: "Release (mS)", ];
+input mix_percent [ default: 100, min: 0,   max: 100,  inc: 0.1, name: "Mix (%)", ];
 
 float LOG_TO_DB = 8.6858896380650365530225783783321; // 20 / ln(10)
 float DB_TO_LOG = 0.11512925464970228420089957273422; // ln(10) / 20 

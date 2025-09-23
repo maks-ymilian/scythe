@@ -1576,13 +1576,13 @@ moreThanOne:
 
 static Result StringToPropertyType(const char* string, size_t stringSize, PropertyType* out)
 {
-	if (strncmp(string, "default_value", stringSize) == 0)
-		*out = PropertyType_DefaultValue;
+	if (strncmp(string, "default", stringSize) == 0)
+		*out = PropertyType_Default;
 	else if (strncmp(string, "min", stringSize) == 0)
 		*out = PropertyType_Min;
 	else if (strncmp(string, "max", stringSize) == 0)
 		*out = PropertyType_Max;
-	else if (strncmp(string, "increment", stringSize) == 0)
+	else if (strncmp(string, "inc", stringSize) == 0)
 		*out = PropertyType_Increment;
 	else if (strncmp(string, "description", stringSize) == 0)
 		*out = PropertyType_Description;

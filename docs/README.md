@@ -11,7 +11,7 @@ For example, this file contains a [description statement](), [input statement]()
 desc [name: "readme example"];
 
 input speed [
-	default_value: 1,
+	default: 1,
 	min: -2,
 	max: 2,
 ];

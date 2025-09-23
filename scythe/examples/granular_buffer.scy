@@ -4,16 +4,16 @@ desc [
 ];
 
 public input playSpeed [
-	default_value: 1,
+	default: 1,
 	min: -2,
 	max: 2,
 ];
 
 public input samples [
-	default_value: 1000,
+	default: 1000,
 	min: 1,
 	max: 48000,
-	increment: 1,
+	inc: 1,
 	shape: [
 		type: log,
 		midpoint: 1000,

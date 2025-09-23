@@ -1,11 +1,11 @@
 // this is a translation of the default JSFX file you get when you create a new effect
 
 input gain_db [
-	default_value: 0,
+	default: 0,
 	min: -150,
 	max: 12,
-	increment: 1,
-	description: "gain (dB)",
+	inc: 1,
+	name: "gain (dB)",
 ];
 
 float last_gain;

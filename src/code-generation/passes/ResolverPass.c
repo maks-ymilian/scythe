@@ -1081,8 +1081,8 @@ static Result SetShapeTypeProperty(NodePtr value, void* destination, int lineNum
 	ASSERT(string);
 	if (strcmp(string, "log") == 0)
 		*shape = SliderShape_Logarithmic;
-	else if (strcmp(string, "exp") == 0)
-		*shape = SliderShape_Exponential;
+	else if (strcmp(string, "poly") == 0)
+		*shape = SliderShape_Polynomial;
 	else
 		return ERROR_RESULT(
 			AllocateString1Str("Unknown slider shape type \"%s\"", string),
@@ -1150,7 +1150,7 @@ static Result SetInputProperties(InputStmt* slider)
 			PropertyNode* property = node->ptr;
 			switch (property->type)
 			{
-			case PropertyType_DefaultValue:
+			case PropertyType_Default:
 				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->defaultValue, property->lineNumber));
 				break;
 			case PropertyType_Min:
@@ -1162,7 +1162,7 @@ static Result SetInputProperties(InputStmt* slider)
 			case PropertyType_Increment:
 				PROPAGATE_ERROR(SetNumberProperty(property->value, &slider->increment, property->lineNumber));
 				break;
-			case PropertyType_Description:
+			case PropertyType_Name:
 				PROPAGATE_ERROR(SetStringProperty(property->value, &slider->description, property->lineNumber));
 				break;
 			case PropertyType_Hidden:
@@ -1195,14 +1195,14 @@ static Result SetInputProperties(InputStmt* slider)
 	else if (slider->shape == SliderShape_Logarithmic)
 	{
 		if (slider->exponent)
-			return ERROR_RESULT("Cannot set \"exponent\" property if shape type is logarithmic", slider->lineNumber, currentFilePath);
+			return ERROR_RESULT("Cannot set \"exponent\" property if shape type is \"log\"", slider->lineNumber, currentFilePath);
 		if (!slider->midpoint)
-			return ERROR_RESULT("Must set \"midpoint\" property if shape type is logarithmic", slider->lineNumber, currentFilePath);
+			return ERROR_RESULT("Must set \"midpoint\" property if shape type is \"log\"", slider->lineNumber, currentFilePath);
 	}
-	else if (slider->shape == SliderShape_Exponential)
+	else if (slider->shape == SliderShape_Polynomial)
 	{
 		if (slider->midpoint)
-			return ERROR_RESULT("Cannot set \"midpoint\" property if shape type is exponential", slider->lineNumber, currentFilePath);
+			return ERROR_RESULT("Cannot set \"midpoint\" property if shape type is \"poly\"", slider->lineNumber, currentFilePath);
 	}
 	else
 		UNREACHABLE();
