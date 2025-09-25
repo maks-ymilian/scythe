@@ -12,7 +12,7 @@ void func(int a, int b, int c)
 
 external void func(any a, any b, any c, any d, ...);
 
-external bool AAA_test_function_overloading_variadic;
+external any AAA_test_function_overloading_variadic;
 
 @init
 {

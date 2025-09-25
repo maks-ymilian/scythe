@@ -1,4 +1,4 @@
-external bool AAA_test_postfix_increment;
+external any AAA_test_postfix_increment;
 
 @init
 {

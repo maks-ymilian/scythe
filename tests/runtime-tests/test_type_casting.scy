@@ -1,4 +1,4 @@
-external bool AAA_test_type_casting;
+external any AAA_test_type_casting;
 
 @init
 {

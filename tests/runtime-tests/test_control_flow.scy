@@ -68,7 +68,7 @@ int test_loops(int value)
 	return result;
 }
 
-external bool AAA_test_control_flow;
+external any AAA_test_control_flow;
 
 @init
 {

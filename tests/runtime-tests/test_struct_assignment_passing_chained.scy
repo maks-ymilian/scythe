@@ -138,5 +138,5 @@ bool test()
 		test_equality(ret, value9);
 }
 
-external bool AAA_test_struct_assignment_passing_chained;
+external any AAA_test_struct_assignment_passing_chained;
 @init { AAA_test_struct_assignment_passing_chained = test(); }

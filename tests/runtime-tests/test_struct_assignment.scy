@@ -36,7 +36,7 @@ bool test_equality1(Level1 value1, Level1 value2)
 		test_equality2(value1.l2, value2.l2);
 }
 
-external bool AAA_test_struct_assignment;
+external any AAA_test_struct_assignment;
 
 @init
 {

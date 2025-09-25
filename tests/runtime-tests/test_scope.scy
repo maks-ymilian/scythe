@@ -1,6 +1,6 @@
 int num = 4;
 
-external bool AAA_test_scope;
+external any AAA_test_scope;
 
 @init
 {

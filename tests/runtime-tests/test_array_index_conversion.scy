@@ -13,7 +13,7 @@ bool Compare(Test a, Test b)
 		a.c == b.c;
 }
 
-external bool AAA_test_array_index_conversion;
+external any AAA_test_array_index_conversion;
 
 @init
 {

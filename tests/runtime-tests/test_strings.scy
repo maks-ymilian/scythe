@@ -1,4 +1,4 @@
-external bool AAA_test_strings;
+external any AAA_test_strings;
 
 @init
 {

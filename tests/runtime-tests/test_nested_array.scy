@@ -48,7 +48,7 @@ void Multiply(Matrix a, Matrix b, Matrix* c)
 	}
 }
 
-external bool AAA_test_nested_array;
+external any AAA_test_nested_array;
 
 @init
 {

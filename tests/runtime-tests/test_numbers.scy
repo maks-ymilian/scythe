@@ -1,4 +1,4 @@
-external bool AAA_test_numbers;
+external any AAA_test_numbers;
 @init
 {
 	AAA_test_numbers =

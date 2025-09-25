@@ -1,4 +1,4 @@
-external bool AAA_test_builtin;
+external any AAA_test_builtin;
 
 @init
 {

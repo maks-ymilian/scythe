@@ -30,8 +30,8 @@ for each node
 }
 */
 
-external bool AAA_test_optimization;
-external bool importantBool8392;
+external any AAA_test_optimization;
+external any importantBool8392;
 @init
 {
 	AAA_test_optimization = bool {
@@ -106,7 +106,7 @@ external bool importantBool8392;
 	};
 }
 
-external bool AAA_test_optimization_1;
+external any AAA_test_optimization_1;
 int x = 43589;
 int y = x;
 @sample
@@ -115,7 +115,7 @@ int y = x;
 	y = 59;
 }
 
-external bool AAA_test_optimization_2;
+external any AAA_test_optimization_2;
 int c;
 int v;
 @slider

@@ -17,7 +17,7 @@ struct Level1
 	Level2 l2;
 }
 
-external bool AAA_test_accessing_from_function;
+external any AAA_test_accessing_from_function;
 
 @init
 {

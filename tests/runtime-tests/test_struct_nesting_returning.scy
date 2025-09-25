@@ -40,7 +40,7 @@ struct TestValues
 	string str2;
 }
 
-external bool AAA_test_struct_nesting_returning;
+external any AAA_test_struct_nesting_returning;
 
 @init
 {

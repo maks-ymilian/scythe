@@ -42,7 +42,7 @@ struct Params
 	int _40;
 }
 
-external bool AAA_test_large_params;
+external any AAA_test_large_params;
 
 @init
 {

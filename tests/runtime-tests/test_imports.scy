@@ -1,4 +1,4 @@
 import "test_imports/test.scy"
 
-external bool AAA_test_imports;
+external any AAA_test_imports;
 @init { AAA_test_imports = deep.func() + deep.func(0) + deep.func(0, 0,) == test.expected; }

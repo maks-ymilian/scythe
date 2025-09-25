@@ -1,4 +1,4 @@
-external bool AAA_test_block_expr_scope;
+external any AAA_test_block_expr_scope;
 
 @init
 {

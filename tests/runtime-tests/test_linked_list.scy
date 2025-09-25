@@ -129,5 +129,5 @@ bool test()
 	return true;
 }
 
-external bool AAA_test_linked_list;
+external any AAA_test_linked_list;
 @init { AAA_test_linked_list = test(); }

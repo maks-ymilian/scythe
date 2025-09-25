@@ -8,7 +8,7 @@ input input3 [
 	max: 100
 ];
 
-external bool AAA_test_input;
+external any AAA_test_input;
 
 @init
 {
