@@ -19,6 +19,7 @@ import "test_input.scy"
 import "test_builtin.scy"
 import "test_optimization.scy"
 import "test_numbers.scy"
+import "test_any_array.scy"
 
 external any AAA__________;
 @init { AAA__________ = 7777777777777777777; }

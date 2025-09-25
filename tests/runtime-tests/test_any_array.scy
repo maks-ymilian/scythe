@@ -1,0 +1,23 @@
+struct Foo
+{
+	int a;
+	int b;
+	int c;
+}
+
+any[] AllocateArray(any* ptr, int length)
+{
+	return any[] {.ptr = ptr, .length = length};
+}
+
+external any AAA_test_any_array;
+@init
+{
+	Foo[] array1 = AllocateArray(100, 10);
+	int[] array2 = AllocateArray(690, 69);
+	AAA_test_any_array =
+		array1.ptr == 100 &&
+		array1.length == 10 &&
+		array2.ptr == 690 &&
+		array2.length == 69;
+}
