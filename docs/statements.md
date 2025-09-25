@@ -143,22 +143,6 @@ void foo(int a, int b, int c) {} // overload b
 }
 ```
 
-## External Functions
-If the function definition has the [`external`]() modifier,
-- it must not have a block statement
-- it can be a variadic function (optional)
-```solidity
-external void foo();
-```
-For more information, see [todo]().
-
-Variadic functions have an ellipsis at the end of the parameter list:
-```solidity
-external void foo(...);
-external void bar(any baz, ...);
-```
-Variadic functions were added to support certain functions in the built-in JSFX library. These functions can be found in the [built-in Scythe library]().
-
 # Structs
 Structs are used to define custom [types]().
 
@@ -182,15 +166,40 @@ Once a struct has been defined, it can be used as a type, and struct members can
 }
 ```
 
+Structs can have struct members:
+```c
+struct Foo
+{
+	int y;
+}
+
+struct Bar
+{
+	int x;
+	Bar bar;
+}
+```
+
 [Block expressions]() can be used as struct initializers:
 ```c
+struct Foo
+{
+	int y;
+}
+
+struct Bar
+{
+	int x;
+	Bar bar;
+}
+
 @init
 {
-	Foo var1 = Foo {
-		.bar = "hello",
-		.baz = 1234,
+	Bar var1 = Bar {
+		.x = 10,
+		.bar.y = 20,
 	};
-	Foo var2 = Foo {};
+	Bar var2 = Bar {};
 }
 ```
 

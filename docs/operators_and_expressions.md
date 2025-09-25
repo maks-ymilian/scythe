@@ -147,12 +147,16 @@ int baz = int {};
 
 These initializers can be used as [type casts]():
 ```c
-float bar = int {5.2};
+float bar = int {5.2}; // bar will be 5
 ```
 
 ## `sizeof x` operator
-The `sizeof x` operator returns an integer value of the number of members in `x`. `x` can be a type or an expression. If `x` is an expression, it uses the type of the expression.\
-If `x` is a [primitive type](), then `sizeof x` will always be `1`.
+The `sizeof x` operator returns an [`int`]() value of the number of [memory slots]() `x` takes up.\
+If `x` is a [primitive type](), then this will always be `1`.\
+If `x` is an [aggregate type](), then this will be the total number of [primitive type]() members in `x`.
+
+`x` can be a type or an expression. If `x` is an expression, it uses the type of the expression.
+
 ```c
 struct Vector3
 {
@@ -160,6 +164,13 @@ struct Vector3
     float y;
     float z;
 }
+
+struct Foo
+{
+    any foo;
+    Vector3 vector;
+}
+
 @init
 {
     Vector3 v;
@@ -167,5 +178,6 @@ struct Vector3
     sizeof(Vector3); // 3
     sizeof(v); // 3
     sizeof(int); // 1
+    sizeof(Foo); // 4
 }
 ```
