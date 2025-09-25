@@ -710,8 +710,7 @@ static Result VisitFunctionDeclaration(NodePtr* node)
 	StructDeclStmt* type = GetStructTypeInfoFromType(funcDecl->type).effectiveType;
 	if (type != NULL)
 	{
-		if (funcDecl->modifiers.externalValue)
-			return ERROR_RESULT("External functions cannot return an aggregate type", funcDecl->lineNumber, currentFilePath);
+		ASSERT(!funcDecl->modifiers.externalValue);
 
 		BlockStmt* block = AllocBlockStmt(funcDecl->lineNumber).ptr;
 
@@ -828,11 +827,7 @@ static Result VisitVariableDeclaration(NodePtr* node)
 		return SUCCESS_RESULT;
 	}
 
-	if (varDecl->modifiers.externalValue)
-		return ERROR_RESULT(
-			"External variable declarations cannot be of an aggregate type",
-			varDecl->lineNumber,
-			currentFilePath);
+	ASSERT(!varDecl->modifiers.externalValue);
 
 	BlockStmt* block = AllocBlockStmt(varDecl->lineNumber).ptr;
 	InstantiateMembers(type, &varDecl->instantiatedVariables, &block->statements, block->statements.length);

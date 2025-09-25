@@ -83,10 +83,12 @@ float[] floatArr;
 
 //<!>All parameters in an external function must be of type "any"<!> external void func(any b, type1 a, ...);
 //<!>All parameters in an external function must be of type "any"<!> external void func(any b, any[] a, ...);
-//<!>External functions cannot return an aggregate type<!> external type1 func();
-//<!>External functions cannot return an aggregate type<!> external any[] func();
-//<!>External variable declarations cannot be of an aggregate type<!> external type1 a;
-//<!>External variable declarations cannot be of an aggregate type<!> external any[] a;
+//<!>The return type of an external function must be of type "void" or "any"<!> external float func();
+//<!>The return type of an external function must be of type "void" or "any"<!> external type1 func();
+//<!>The return type of an external function must be of type "void" or "any"<!> external any[] func();
+//<!>External variables must be of type "any"<!> external float a;
+//<!>External variables must be of type "any"<!> external type1 a;
+//<!>External variables must be of type "any"<!> external any[] a;
 
 @init
 {

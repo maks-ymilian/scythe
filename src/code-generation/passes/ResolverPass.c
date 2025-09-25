@@ -982,7 +982,7 @@ static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
 	{
 		StructTypeInfo structType = GetStructTypeInfoFromType(varDecl->type);
 		if (structType.effectiveType || GetPrimitiveTypeInfoFromType(varDecl->type).effectiveType != Primitive_Any)
-			return ERROR_RESULT("External variables must be of type \"any\"", varDecl->lineNumber, currentFilePath); // todo
+			return ERROR_RESULT("External variables must be of type \"any\"", varDecl->lineNumber, currentFilePath);
 	}
 
 	return SUCCESS_RESULT;

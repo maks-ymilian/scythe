@@ -183,27 +183,30 @@ def def;
 
 //<!>External variables cannot have initializers<!> external int ext = 234;
 //<!>Only external variables can have external names<!> int ext as a;
+//<!>External variables must be of type "any"<!> external float ext;
+//<!>External variables must be of type "any"<!> external int[] ext;
+//<!>External variables must be of type "any"<!> external def ext;
 
 input samples [
-	description: "desc",
-//<!>Cannot set property twice<!> description: "desc",
+	name: "desc",
+//<!>Cannot set property twice<!> name: "desc",
 	shape: [
 		type: log,
 //<!>Cannot set property twice<!> type: log,
 		midpoint: 1000,
 		linear_automation: true,
 //<!>Cannot set property twice<!> linear_automation: true,
-//<!>Cannot set "exponent" property if shape type is logarithmic<!> exponent: 1,
+//<!>Cannot set "exponent" property if shape type is "log"<!> exponent: 1,
 	],
 ];
 input samples1 [
 //<!>Expected number value<!> min: true,
-//<!>Expected string value<!> description: true,
+//<!>Expected string value<!> name: true,
 	shape: [
 //<!>Expected slider shape type<!> type: true,
 //<!>Unknown slider shape type<!> type: whatever,
-//<!>Cannot set "midpoint" property if shape type is exponential<!> midpoint: 1,
-		type: exp,
+//<!>Cannot set "midpoint" property if shape type is "poly"<!> midpoint: 1,
+		type: poly,
 //<!>Expected boolean value<!> linear_automation: 1,
 //<!>Invalid property type<!> min: 1,
 	],
@@ -217,7 +220,7 @@ input samples2 [
 //<!>Cannot set "exponent" property if shape type is not set<!> exponent: 0,
 	],
 ];
-//<!>Must set "midpoint" property if shape type is logarithmic<!> input samples3 [ shape: [ type: log ] ];
+//<!>Must set "midpoint" property if shape type is "log"<!> input samples3 [ shape: [ type: log ] ];
 
 @gfx [ width: 50,
 //<!>Cannot set property twice<!> width: 50,
@@ -227,7 +230,7 @@ input samples2 [
 //<!>Properties are only allowed in an "@gfx" section<!> @init [] {}
 
 desc [
-//<!>Cannot specify description without specifying a name first<!> description: "description of the effect",
+	description: "description of the effect",
 	tags: "instrument",
 
 //<!>Expected property list<!> in_pins: 0,
@@ -264,6 +267,12 @@ desc [
 
 //<!>All parameters in an external function must be of type "any"<!> external void extparamany(any b, any a, int c);
 external void extparamany(any b, any a, ...);
+
+//<!>The return type of an external function must be of type "void" or "any"<!> external int funcfunc();
+//<!>The return type of an external function must be of type "void" or "any"<!> external float[] funcfunc();
+//<!>The return type of an external function must be of type "void" or "any"<!> external def funcfunc();
+external any funcfunc1();
+external void funcfunc2();
 
 internal:
 	void extblock1() {}
