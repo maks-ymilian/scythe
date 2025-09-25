@@ -66,8 +66,9 @@ read += speed;
 [REAPER](https://www.reaper.fm/) is required to run JSFX effects.
 
 To compile to a JSFX plugin, run the compiler from the command line:
-
-`scythe <source_file> [output_file]`
+```
+scythe <source_file> [output_file]
+```
 - `<source_file>` - Path to your main `.scy` Scythe source file
 - `[output_file]` - Path where the generated `.jsfx` file should be saved (optional). If omitted, it will generate the output in the current directory with a default name.
 

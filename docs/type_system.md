@@ -1,17 +1,17 @@
 # Type System
-Types can be used in [variable declarations](), [function]() and [block expression]() return types, [structs](), and in the [`sizeof` operator]().
+Types can be used in [variable declarations](statements.md#variables), [function](statements.md#functions) and [block expression](operators_and_expressions.md#block-expressions) return types, [structs](statements.md#structs), and in the [`sizeof` operator](operators_and_expressions.md#sizeof-x-operator).
 
 # Types of Types
 Types can be separated into two categories:
-- [Primitive types]()
-- [Aggregate types]()
+- [Primitive types](#primitive-types)
+- [Aggregate types](#aggregate-types)
 
 ## Primitive Types
-Since all values are doubles in JSFX, the underlying data will always be floating point, regardless of the type you choose. However, some types will restrict what values they will accept to mimic data types, like `int` and `bool`.
+Since all values are doubles in JSFX, the underlying data will always be floating point, regardless of the type you choose. However, some types will restrict what values they will accept to mimic data types, like [`int`](#int) and [`bool`](#bool).
 
-You can choose to use these types and their restrictions or avoid them by using the `any` type for everything, but be careful when using `any` with other types, as it lets you store invalid values.
+You can choose to use these types and their restrictions or avoid them by using the [`any`](#any) type for everything, but be careful when using [`any`](#any) with other types, as it lets you store invalid values.
 
-All primitive types can convert to each other, except `bool`, which can't convert to any other type.
+All primitive types can convert to each other, except [`bool`](#bool), which can't convert to any other type.
 
 ### `float`
 `float` holds a floating point value.
@@ -26,15 +26,15 @@ Converting a `float` to an `int` will floor the value at runtime:
     int foo = 6.9; // foo will equal 6
 }
 ```
-Converting an `any` to an `int` does not floor the value.
+Converting an [`any`](#any) to an `int` does not floor the value.
 
 ### `bool`
 `bool` holds `true` and `false` values.
 
-`bool` cannot convert to or from any other type, except `any`.
+`bool` cannot convert to or from any other type, except [`any`](#any).
 
 ### `string` and `char`
-`string` and `char` are aliases for `int`. This is because [in JSFX, strings are integer values](https://www.reaper.fm/sdk/js/strings.php#js_strings).
+`string` and `char` are aliases for [`int`](#int). This is because [in JSFX, strings are integer values](https://www.reaper.fm/sdk/js/strings.php#js_strings).
 
 ### `any`
 `any` can convert to all primitive types and all primitive types can convert to `any`.
@@ -51,7 +51,7 @@ Converting an `any` to an `int` does not floor the value.
 ### Pointer Types
 Appending `*` to the end of any type makes it a pointer type.
 
-Pointer types are identical to `int`, except that they can be dereferenced into their underlying types using the [dereference, arrow, and subscript operators]():
+Pointer types are identical to [`int`](#int), except that they can be dereferenced into their underlying types using the [dereference, arrow, and subscript operators](operators_and_expressions.md#subscript-operator-xy):
 ```c
 struct Foo
 {
@@ -71,10 +71,10 @@ struct Foo
 Double pointer types are not supported, however this is a planned feature.
 
 ## Aggregate Types
-Aggregate types are types that can contain one or more members. They can either be [struct types]() or [array types](). An aggregate type can contain aggregate type members, so a struct type can contain struct members. An aggregate type cannot be converted to any other aggregate type.
+Aggregate types are types that can contain one or more members. They can either be [struct types](#struct-types) or [array types](#array-types). An aggregate type can contain aggregate type members, so a struct type can contain struct members. An aggregate type cannot be converted to any other aggregate type.
 
 ### Struct Types
-[Structs]() allow you to define custom types with multiple members.
+[Structs](statements.md#structs) allow you to define custom types with multiple members.
 
 ### Array Types
 Appending `[]` to the end of any non-array and non-pointer type makes it an array type e.g. `Foo[]`
@@ -83,7 +83,7 @@ Array types contain two members:
 | Name | Type |
 |---|---|
 | `ptr` | The pointer type corresponding to the array's underlying type<br> e.g. for `int[]` the `ptr` member would be `int*` |
-| `length` | `int` |
+| `length` | [`int`](#int) |
 
 Array types have a special property where `any[]` can convert to any other array type:
 ```c
@@ -117,13 +117,13 @@ struct Foo {any a; any b; any c}
     sizeof(Foo[]); // 2
 }
 ```
-For more information, see [`sizeof`]()
+For more information, see [`sizeof`](operators_and_expressions.md#sizeof-x-operator)
 
 ## `void`
-`void` is a special type used only in [function]() and [block expression]() return types. It is used to indicate that the function does not return a value.
+`void` is a special type used only in [function](statements.md#functions) and [block expression](operators_and_expressions.md#block-expressions) return types. It is used to indicate that the function does not return a value.
 
 # Type Casting
-[Object initializers]() can be used to mimic type casting:
+[Object initializers](operators_and_expressions.md#object-initializers-and-type-casting) can be used to mimic type casting:
 ```c
 float bar = int {5.2}; // bar will be 5
 ````
