@@ -967,10 +967,6 @@ static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
 	{
 		if (varDecl->initializer.ptr)
 			return ERROR_RESULT("External variables cannot have initializers", varDecl->lineNumber, currentFilePath);
-
-		StructTypeInfo structType = GetStructTypeInfoFromType(varDecl->type);
-		if (structType.effectiveType || GetPrimitiveTypeInfoFromType(varDecl->type).effectiveType != Primitive_Any)
-			return ERROR_RESULT("External variables must be of type \"any\"", varDecl->lineNumber, currentFilePath); // todo
 	}
 	else
 	{
@@ -981,6 +977,13 @@ static Result VisitVariableDeclaration(NodePtr* node, bool isPublicAPI)
 	PROPAGATE_ERROR(ResolveExpression(&varDecl->initializer, true, NULL));
 	PROPAGATE_ERROR(ResolveType(&varDecl->type, false, varDecl->modifiers.publicValue || isPublicAPI, NULL));
 	PROPAGATE_ERROR(RegisterDeclaration(varDecl->name, node, varDecl->lineNumber));
+
+	if (varDecl->modifiers.externalValue)
+	{
+		StructTypeInfo structType = GetStructTypeInfoFromType(varDecl->type);
+		if (structType.effectiveType || GetPrimitiveTypeInfoFromType(varDecl->type).effectiveType != Primitive_Any)
+			return ERROR_RESULT("External variables must be of type \"any\"", varDecl->lineNumber, currentFilePath); // todo
+	}
 
 	return SUCCESS_RESULT;
 }
@@ -1477,12 +1480,6 @@ static Result VisitStatement(NodePtr* node)
 		{
 			if (funcDecl->block.ptr)
 				return ERROR_RESULT("External functions cannot have code blocks", funcDecl->lineNumber, currentFilePath);
-
-			StructTypeInfo structType = GetStructTypeInfoFromType(funcDecl->type);
-			if (structType.effectiveType ||
-				(GetPrimitiveTypeInfoFromType(funcDecl->type).effectiveType != Primitive_Any &&
-					GetPrimitiveTypeInfoFromType(funcDecl->type).effectiveType != Primitive_Void))
-				return ERROR_RESULT("The return type of an external function must be of type \"void\" or \"any\"", funcDecl->lineNumber, currentFilePath); // todo
 		}
 		else
 		{
@@ -1496,6 +1493,15 @@ static Result VisitStatement(NodePtr* node)
 
 		bool isPublicAPI = funcDecl->modifiers.publicValue;
 		PROPAGATE_ERROR(ResolveType(&funcDecl->type, true, isPublicAPI, NULL));
+
+		if (funcDecl->modifiers.externalValue)
+		{
+			StructTypeInfo structType = GetStructTypeInfoFromType(funcDecl->type);
+			if (structType.effectiveType ||
+				(GetPrimitiveTypeInfoFromType(funcDecl->type).effectiveType != Primitive_Any &&
+					GetPrimitiveTypeInfoFromType(funcDecl->type).effectiveType != Primitive_Void))
+				return ERROR_RESULT("The return type of an external function must be of type \"void\" or \"any\"", funcDecl->lineNumber, currentFilePath); // todo
+		}
 
 		PushScope();
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)
@@ -1686,6 +1692,8 @@ static Result VisitStatement(NodePtr* node)
 				.modifiers = (ModifierState){
 					.publicSpecified = true,
 					.publicValue = input->modifiers.publicValue,
+					.externalSpecified = true,
+					.externalValue = false,
 				},
 				.uniqueName = -1,
 				.inputStmt = input,
