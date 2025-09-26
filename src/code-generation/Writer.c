@@ -327,7 +327,6 @@ static void VisitVariableDeclaration(VarDeclStmt* varDecl)
 					.funcReference = NULL,
 					.typeReference = NULL,
 					.varReference = varDecl,
-					.parentReference = NULL,
 				},
 				Node_MemberAccess},
 		},

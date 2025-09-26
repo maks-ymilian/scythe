@@ -61,5 +61,25 @@ bool test()
 	return true;
 }
 
+struct V
+{
+	float x;
+}
+
+struct A
+{
+	V v3;
+	V v1;
+	V v2;
+}
+
+bool otherTest()
+{
+	A[] b1;
+	A b = A {.v1.x = 1};
+	b1[0] = A {.v1.x = 1};
+	return b.v1.x == b1[0].v1.x;
+}
+
 external any AAA_test_accessing_from_expressions;
-@init { AAA_test_accessing_from_expressions = test(); }
+@init { AAA_test_accessing_from_expressions = test() && otherTest(); }

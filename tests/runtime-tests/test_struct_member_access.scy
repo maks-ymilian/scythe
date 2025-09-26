@@ -1,6 +1,10 @@
-struct L3
+struct L4
 {
 	any y;
+}
+struct L3
+{
+	L4 l;
 }
 
 struct L2
@@ -24,63 +28,63 @@ external any AAA_test_struct_member_access;
 	{
 		L1 v = L1 {
 			.x = 4,
-			.l.l.y = 5,
-			.l1.l.y = 6,
+			.l.l.l.y = 5,
+			.l1.l.l.y = 6,
 		};
 
 		L1 v1 = L1 { // for the instantiated members store this same array
 			.x = 1,
-			.l.l.y = 2,
-			.l1.l.y = 3, // store the purple as an array in resolver
+			.l.l.l.y = 2,
+			.l1.l.l.y = 3, // store the purple as an array in resolver
 		};
 
-		v.l1.l.y = v1.l.l.y;
+		v.l1.l.l.y = v1.l.l.l.y;
 
 		if (v.x == v1.x ||
-			v.l1.l.y != v1.l.l.y ||
-			v.l.l.y == v1.l1.l.y)
+			v.l1.l.l.y != v1.l.l.l.y ||
+			v.l.l.l.y == v1.l1.l.l.y)
 			AAA_test_struct_member_access = false;
 	}
 
 	{
 		L1 v = L1 {
 			.x = 4,
-			.l.l.y = 5,
-			.l1.l.y = 6,
+			.l.l.l.y = 5,
+			.l1.l.l.y = 6,
 		};
 
 		L1 v1 = L1 {
 			.x = 1,
-			.l.l.y = 2,
-			.l1.l.y = 3,
+			.l.l.l.y = 2,
+			.l1.l.l.y = 3,
 		};
 
 		v.l1 = v1.l;
 
 		if (v.x == v1.x ||
-			v.l1.l.y != v1.l.l.y ||
-			v.l.l.y == v1.l1.l.y)
+			v.l1.l.l.y != v1.l.l.l.y ||
+			v.l.l.l.y == v1.l1.l.l.y)
 			AAA_test_struct_member_access = false;
 	}
 
 	{
 		L1 v = L1 {
 			.x = 4,
-			.l.l.y = 5,
-			.l1.l.y = 6,
+			.l.l.l.y = 5,
+			.l1.l.l.y = 6,
 		};
 
 		L1 v1 = L1 {
 			.x = 1,
-			.l.l.y = 2,
-			.l1.l.y = 3,
+			.l.l.l.y = 2,
+			.l1.l.l.y = 3,
 		};
 
 		v.l1.l = v1.l.l;
 
 		if (v.x == v1.x ||
-			v.l1.l.y != v1.l.l.y ||
-			v.l.l.y == v1.l1.l.y)
+			v.l1.l.l.y != v1.l.l.l.y ||
+			v.l.l.l.y == v1.l1.l.l.y)
 			AAA_test_struct_member_access = false;
 	}
 }

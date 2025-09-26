@@ -51,7 +51,8 @@ static void VisitMemberAccess(NodePtr* node)
 		ArrayAdd(&blockStmt->statements, &returnStmt);
 
 		memberAccess->start = NULL_NODE;
-		memberAccess->parentReference = varDecl.ptr;
+		memberAccess->varParentReference = varDecl.ptr;
+
 		*node = blockExpr;
 	}
 }

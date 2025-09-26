@@ -12,16 +12,43 @@ static const char* currentFilePath = NULL;
 
 static Result VisitExpression(NodePtr* node, NodePtr* containingStatement);
 
-static VarDeclStmt* FindInstantiated(const char* name, const VarDeclStmt* aggregateVarDecl)
+static bool SamePath(Array* parentRefs1, Array* parentRefs2)
 {
-	ASSERT(aggregateVarDecl != NULL);
-	for (size_t i = 0; i < aggregateVarDecl->instantiatedVariables.length; ++i)
+	int i = (int)parentRefs1->length - 1;
+	int i1 = (int)parentRefs2->length - 1;
+	for (; i >= 0 && i1 >= 0; --i, --i1)
+		if (*(VarDeclStmt**)parentRefs1->array[i] != *(VarDeclStmt**)parentRefs2->array[i1])
+			return false;
+	return true;
+}
+
+static VarDeclStmt* FindInstantiated(Array* parentRefs, VarDeclStmt* member, VarDeclStmt* structVar)
+{
+	ASSERT(structVar);
+	ASSERT(parentRefs);
+	ASSERT(member);
+
+	bool arrayType = GetStructTypeInfoFromType(structVar->type).effectiveType->isArrayType;
+
+	for (size_t i = 0; i < structVar->instantiatedVariables.length; ++i)
 	{
-		VarDeclStmt** varDecl = aggregateVarDecl->instantiatedVariables.array[i];
-		if (strcmp((*varDecl)->name, name) == 0)
-			return *varDecl;
+		VarDeclStmt* varDecl = *(VarDeclStmt**)structVar->instantiatedVariables.array[i];
+		ASSERT(varDecl->instantiatedFrom);
+		if (arrayType)
+		{
+			if (strcmp(varDecl->instantiatedFrom->name, member->name) != 0)
+				continue;
+		}
+		else
+		{
+			if (varDecl->instantiatedFrom != member)
+				continue;
+		}
+
+		if (SamePath(&varDecl->parentRefs, parentRefs))
+			return varDecl;
 	}
-	return NULL;
+	UNREACHABLE();
 }
 
 static Result CheckTypeConversion(StructTypeInfo from, StructTypeInfo to, const int lineNumber)
@@ -82,18 +109,23 @@ static Result CheckTypeConversion(StructTypeInfo from, StructTypeInfo to, const 
 	return SUCCESS_RESULT;
 }
 
-typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, void* data);
+typedef void (*StructMemberFunc)(VarDeclStmt* varDecl, size_t index, Array* parentRefs, void* data);
 static size_t ForEachStructMember(
 	StructDeclStmt* type,
 	const StructMemberFunc func,
 	void* data,
-	size_t* currentIndex)
+	size_t* currentIndex,
+	Array* parentRefs)
 {
 	ASSERT(type != NULL);
 
 	size_t index = 0;
 	if (currentIndex == NULL)
 		currentIndex = &index;
+
+	size_t parentRefsLength;
+	if (parentRefs)
+		parentRefsLength = parentRefs->length;
 
 	for (size_t i = 0; i < type->members.length; i++)
 	{
@@ -105,12 +137,21 @@ static size_t ForEachStructMember(
 		if (memberType == NULL)
 		{
 			if (func != NULL)
-				func(varDecl, *currentIndex, data);
+				func(varDecl, *currentIndex, parentRefs, data);
 			(*currentIndex)++;
 		}
 		else
-			ForEachStructMember(memberType, func, data, currentIndex);
+		{
+			if (parentRefs)
+				ArrayAdd(parentRefs, &varDecl);
+
+			ForEachStructMember(memberType, func, data, currentIndex, parentRefs);
+		}
 	}
+
+	if (parentRefs)
+		for (size_t i = 0; i < parentRefs->length - parentRefsLength; ++i)
+			ArrayRemove(parentRefs, parentRefs->length - 1);
 
 	return *currentIndex;
 }
@@ -143,33 +184,40 @@ typedef struct
 {
 	VarDeclStmt* member;
 	size_t* returnValue;
+	Array* parentRefs;
 } GetIndexOfMemberData;
 
-static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, size_t index, void* data)
+static void GetIndexOfMemberInternal(VarDeclStmt* varDecl, size_t index, Array* parentRefs, void* data)
 {
 	const GetIndexOfMemberData* d = data;
-	if (d->member == varDecl)
+
+	if (d->member == varDecl && SamePath(d->parentRefs, parentRefs))
 		*d->returnValue = index;
 }
 
-static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member)
+static size_t GetIndexOfMember(StructDeclStmt* type, VarDeclStmt* member, Array* parentRefs)
 {
-	size_t index = 0;
+	size_t index = SIZE_MAX;
 
+	Array currentParentRefs = AllocateArray(sizeof(VarDeclStmt*));
 	ForEachStructMember(type,
 		GetIndexOfMemberInternal,
 		&(GetIndexOfMemberData){
 			.member = member,
 			.returnValue = &index,
+			.parentRefs = parentRefs,
 		},
-		NULL);
+		NULL,
+		&currentParentRefs);
+	FreeArray(&currentParentRefs);
 
+	ASSERT(index != SIZE_MAX);
 	return index;
 }
 
 static size_t CountStructMembers(StructDeclStmt* type)
 {
-	return ForEachStructMember(type, NULL, NULL, NULL);
+	return ForEachStructMember(type, NULL, NULL, NULL, NULL);
 }
 
 typedef struct
@@ -194,7 +242,7 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 
 	subscript->indexExpr = AllocStructOffsetCalculation(
 		AllocIntConversion(subscript->indexExpr, subscript->lineNumber),
-		GetIndexOfMember(type, memberAccess->varReference),
+		GetIndexOfMember(type, memberAccess->varReference, &memberAccess->parentRefs),
 		CountStructMembers(type),
 		subscript->lineNumber);
 
@@ -210,7 +258,8 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	NodePtr node,
 	VarDeclStmt* member,
 	size_t index,
-	size_t memberCount)
+	size_t memberCount,
+	Array* parentRefs)
 {
 	switch (node.type)
 	{
@@ -234,11 +283,28 @@ static NodePtr AllocStructMemberAssignmentExpr(
 		}
 		else // its an identifier
 		{
-			VarDeclStmt* varDecl = memberAccess->parentReference != NULL
-									   ? memberAccess->parentReference
-									   : memberAccess->varReference;
-			VarDeclStmt* instance = FindInstantiated(member->name, varDecl);
-			ASSERT(instance != NULL);
+			VarDeclStmt* varDecl = memberAccess->varReference;
+			size_t added = 0;
+			if (memberAccess->varParentReference)
+			{
+				varDecl = memberAccess->varParentReference;
+
+				// merge parentRefs with memberAccess->parentRefs
+				ArrayInsert(parentRefs, &memberAccess->varReference, 0);
+				added = 1;
+				for (int i = (int)memberAccess->parentRefs.length - 1; i >= 0; --i)
+				{
+					ArrayInsert(parentRefs, memberAccess->parentRefs.array[i], 0);
+					++added;
+				}
+			}
+
+			VarDeclStmt* instance = FindInstantiated(parentRefs, member, varDecl);
+
+			// undo merging
+			for (size_t i = 0; i < added; ++i)
+				ArrayRemove(parentRefs, 0);
+
 			return AllocIdentifier(instance, -1);
 		}
 	}
@@ -255,8 +321,7 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			ASSERT(funcDecl != NULL);
 			ASSERT(funcDecl->globalReturn != NULL);
 
-			VarDeclStmt* instance = FindInstantiated(member->name, funcDecl->globalReturn);
-			ASSERT(instance != NULL);
+			VarDeclStmt* instance = FindInstantiated(parentRefs, member, funcDecl->globalReturn);
 			return AllocIdentifier(instance, -1);
 		}
 	}
@@ -276,11 +341,11 @@ static NodePtr AllocStructMemberAssignmentExpr(
 	}
 }
 
-static void ExpandArgument(VarDeclStmt* member, size_t index, void* data)
+static void ExpandArgument(VarDeclStmt* member, size_t index, Array* parentRefs, void* data)
 {
 	const ExpandArgumentData* d = data;
 
-	NodePtr expr = AllocStructMemberAssignmentExpr(d->argumentNode, member, index, d->memberCount);
+	NodePtr expr = AllocStructMemberAssignmentExpr(d->argumentNode, member, index, d->memberCount, parentRefs);
 	ArrayInsert(&d->funcCall->arguments, &expr, d->argumentIndex + index);
 }
 
@@ -332,14 +397,17 @@ static Result VisitFunctionCallArguments(FuncCallExpr* funcCall, NodePtr* contai
 
 		ArrayRemove(&funcCall->arguments, argIndex);
 
+		Array parentRefs = AllocateArray(sizeof(VarDeclStmt*));
 		argIndex += ForEachStructMember(argType.effectiveType, ExpandArgument,
 			&(ExpandArgumentData){
 				.argumentNode = argument,
 				.funcCall = funcCall,
 				.argumentIndex = argIndex,
-				.memberCount = ForEachStructMember(argType.effectiveType, NULL, NULL, NULL),
+				.memberCount = ForEachStructMember(argType.effectiveType, NULL, NULL, NULL, NULL),
 			},
-			NULL);
+			NULL,
+			&parentRefs);
+		FreeArray(&parentRefs);
 
 		// account for for loop increment
 		--argIndex;
@@ -356,12 +424,12 @@ typedef struct
 	size_t memberCount;
 } GenerateStructMemberAssignmentData;
 
-static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, void* data)
+static void GenerateStructMemberAssignment(VarDeclStmt* member, size_t index, Array* parentRefs, void* data)
 {
 	const GenerateStructMemberAssignmentData* d = data;
 	NodePtr statement = AllocAssignmentStatement(
-		AllocStructMemberAssignmentExpr(d->leftExpr, member, index, d->memberCount),
-		AllocStructMemberAssignmentExpr(d->rightExpr, member, index, d->memberCount),
+		AllocStructMemberAssignmentExpr(d->leftExpr, member, index, d->memberCount, parentRefs),
+		AllocStructMemberAssignmentExpr(d->rightExpr, member, index, d->memberCount, parentRefs),
 		-1);
 	ArrayAdd(d->statements, &statement);
 }
@@ -426,6 +494,7 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 
 	BlockStmt* block = AllocBlockStmt(-1).ptr;
 
+	Array parentRefs = AllocateArray(sizeof(VarDeclStmt*));
 	ForEachStructMember(type,
 		GenerateStructMemberAssignment,
 		&(GenerateStructMemberAssignmentData){
@@ -434,7 +503,9 @@ static Result VisitBinaryExpression(NodePtr* node, NodePtr* containingStatement)
 			.rightExpr = binary->right,
 			.memberCount = CountStructMembers(type),
 		},
-		NULL);
+		NULL,
+		&parentRefs);
+	FreeArray(&parentRefs);
 
 	// the pass that breaks up chained assignment and equality will take care of this
 	// all struct assignment expressions will be unchained in an expression statement
@@ -464,14 +535,13 @@ static void MakeMemberAccessesPointToInstantiated(NodePtr* node)
 	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
 
-	if (memberAccess->parentReference == NULL)
+	if (!memberAccess->varParentReference)
 		return;
 
 	// if its primitive type
 	if (GetStructTypeInfoFromExpr(*node).effectiveType == NULL)
 	{
-		VarDeclStmt* instantiated = FindInstantiated(memberAccess->varReference->name, memberAccess->parentReference);
-		ASSERT(instantiated != NULL);
+		VarDeclStmt* instantiated = FindInstantiated(&memberAccess->parentRefs, memberAccess->varReference, memberAccess->varParentReference);
 		NodePtr new = AllocIdentifier(instantiated, memberAccess->lineNumber);
 		FreeASTNode(*node);
 		*node = new;
@@ -564,14 +634,20 @@ typedef struct
 	size_t index;
 } InstantiateMemberData;
 
-static void InstantiateMember(VarDeclStmt* varDecl, size_t index, void* data)
+static void InstantiateMember(VarDeclStmt* varDecl, size_t index, Array* parentRefs, void* data)
 {
 	const InstantiateMemberData* d = data;
 
-	NodePtr copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration});
+	VarDeclStmt* copy = CopyASTNode((NodePtr){.ptr = varDecl, .type = Node_VariableDeclaration}).ptr;
 
-	ArrayInsert(d->destination, &copy, d->index + index);
-	ArrayAdd(d->instantiatedVariables, &copy.ptr);
+	copy->instantiatedFrom = varDecl;
+	ASSERT(!copy->parentRefs.array);
+	copy->parentRefs = AllocateArray(sizeof(VarDeclStmt*));
+	for (size_t i = 0; i < parentRefs->length; ++i)
+		ArrayAdd(&copy->parentRefs, parentRefs->array[i]);
+
+	ArrayInsert(d->destination, &(NodePtr){.ptr = copy, .type = Node_VariableDeclaration}, d->index + index);
+	ArrayAdd(d->instantiatedVariables, &copy);
 }
 
 static void InstantiateMembers(
@@ -580,6 +656,8 @@ static void InstantiateMembers(
 	Array* destination,
 	const size_t index)
 {
+	Array parentRefs = AllocateArray(sizeof(VarDeclStmt*));
+
 	ForEachStructMember(type,
 		InstantiateMember,
 		&(InstantiateMemberData){
@@ -587,7 +665,10 @@ static void InstantiateMembers(
 			.instantiatedVariables = instantiatedVariables,
 			.index = index,
 		},
-		NULL);
+		NULL,
+		&parentRefs);
+
+	FreeArray(&parentRefs);
 }
 
 typedef struct
@@ -596,8 +677,10 @@ typedef struct
 	VarDeclStmt** returnValue;
 } GetStructMemberAtIndexData;
 
-static void GetMemberAtIndexInternal(VarDeclStmt* varDecl, size_t index, void* data)
+static void GetMemberAtIndexInternal(VarDeclStmt* varDecl, size_t index, Array* parentRefs, void* data)
 {
+	(void)parentRefs;
+
 	const GetStructMemberAtIndexData* d = data;
 	if (index == d->index)
 		*d->returnValue = varDecl;
@@ -613,6 +696,7 @@ static VarDeclStmt* GetMemberAtIndex(StructDeclStmt* type, size_t index)
 			.index = index,
 			.returnValue = &varDecl,
 		},
+		NULL,
 		NULL);
 
 	return varDecl;
@@ -625,12 +709,12 @@ typedef struct
 	size_t memberCount;
 } GenerateStructMemberExprData;
 
-static void GenerateStructMemberExpr(VarDeclStmt* member, size_t index, void* data)
+static void GenerateStructMemberExpr(VarDeclStmt* member, size_t index, Array* parentRefs, void* data)
 {
 	const GenerateStructMemberExprData* d = data;
 	NodePtr stmt = AllocASTNode(
 		&(ExpressionStmt){
-			.expr = AllocStructMemberAssignmentExpr(d->expr, member, index, d->memberCount),
+			.expr = AllocStructMemberAssignmentExpr(d->expr, member, index, d->memberCount, parentRefs),
 		},
 		sizeof(ExpressionStmt), Node_ExpressionStatement);
 
@@ -650,6 +734,8 @@ static Result VisitExpressionStatement(NodePtr* node)
 		if (typeInfo.effectiveType)
 		{
 			NodePtr block = AllocBlockStmt(exprStmt->lineNumber);
+
+			Array parentRefs = AllocateArray(sizeof(VarDeclStmt*));
 			ForEachStructMember(typeInfo.effectiveType,
 				GenerateStructMemberExpr,
 				&(GenerateStructMemberExprData){
@@ -657,7 +743,10 @@ static Result VisitExpressionStatement(NodePtr* node)
 					.expr = exprStmt->expr,
 					.memberCount = CountStructMembers(typeInfo.effectiveType),
 				},
-				NULL);
+				NULL,
+				&parentRefs);
+			FreeArray(&parentRefs);
+
 			FreeASTNode(*node);
 			*node = block;
 			return SUCCESS_RESULT;
@@ -792,7 +881,6 @@ static Result VisitReturnStatement(NodePtr* node)
 				.funcReference = NULL,
 				.typeReference = NULL,
 				.varReference = globalReturn,
-				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess),
 		returnStmt->expr,

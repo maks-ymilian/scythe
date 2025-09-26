@@ -168,7 +168,6 @@ static void ChangeArrayTypeToStruct(Type* type)
 				.funcReference = NULL,
 				.typeReference = typeReference,
 				.varReference = NULL,
-				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess),
 	};
@@ -574,10 +573,18 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 		char* text = *(char**)memberAccess->identifiers.array[i];
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, resolveFuncCall, isPublicAPI, memberAccess->lineNumber));
 
-		// set varReference to the first one for now
-		if (current.type == Node_VariableDeclaration &&
-			memberAccess->varReference == NULL)
-			memberAccess->varReference = current.ptr;
+		if (current.type == Node_VariableDeclaration)
+		{
+			if (!memberAccess->varReference)
+				memberAccess->varReference = current.ptr;
+			else
+			{
+				ASSERT(memberAccess->varReference != current.ptr);
+				if (!memberAccess->parentRefs.array)
+					memberAccess->parentRefs = AllocateArray(sizeof(VarDeclStmt*));
+				ArrayAdd(&memberAccess->parentRefs, &current.ptr);
+			}
+		}
 	}
 
 	switch (current.type)
@@ -600,10 +607,16 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 			return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
 
 		ASSERT(memberAccess->varReference != NULL);
-		// if there is more identifiers after varReference then change it to parent
-		if (memberAccess->varReference != current.ptr)
+		if (memberAccess->parentRefs.length > 0)
 		{
-			memberAccess->parentReference = memberAccess->varReference;
+			ASSERT(*(VarDeclStmt**)memberAccess->parentRefs.array[memberAccess->parentRefs.length - 1] == current.ptr);
+			ArrayRemove(&memberAccess->parentRefs, memberAccess->parentRefs.length - 1);
+
+			if (memberAccess->start.ptr)
+				ArrayInsert(&memberAccess->parentRefs, &memberAccess->varReference, 0);
+			else
+				memberAccess->varParentReference = memberAccess->varReference;
+
 			memberAccess->varReference = current.ptr;
 		}
 		break;
@@ -796,13 +809,17 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 	{
 		SizeOfExpr* sizeOf = node->ptr;
 		bool isType = false;
+		bool resolved = false;
 		if (sizeOf->type.expr.ptr)
 			PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
 		else if (sizeOf->expr.type == Node_MemberAccess &&
 				 !((MemberAccessExpr*)sizeOf->expr.ptr)->start.ptr)
 		{
 			sizeOf->type.expr = sizeOf->expr;
+
 			PROPAGATE_ERROR(ResolveType(&sizeOf->type, false, false, &isType));
+			resolved = true;
+
 			if (!isType)
 				sizeOf->type.expr = NULL_NODE;
 			else
@@ -818,7 +835,8 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 		{
 			FreeASTNode(sizeOf->type.expr);
 			sizeOf->type = (Type){.expr = NULL_NODE};
-			PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true, NULL));
+			if (!resolved)
+				PROPAGATE_ERROR(ResolveExpression(&sizeOf->expr, true, NULL));
 		}
 		return SUCCESS_RESULT;
 	}
@@ -873,8 +891,14 @@ static Result ResolveExpression(NodePtr* node, bool checkForValue, FuncCallExpr*
 			{
 				MemberAccessExpr* memberAccess = subscript->baseExpr.ptr;
 
-				if (!memberAccess->parentReference)
-					memberAccess->parentReference = memberAccess->varReference;
+				if (!memberAccess->varParentReference && !memberAccess->start.ptr)
+					memberAccess->varParentReference = memberAccess->varReference;
+				else
+				{
+					if (!memberAccess->parentRefs.array)
+						memberAccess->parentRefs = AllocateArray(sizeof(VarDeclStmt*));
+					ArrayAdd(&memberAccess->parentRefs, &memberAccess->varReference);
+				}
 
 				memberAccess->varReference = GetPtrMember(type.effectiveType);
 				break;
