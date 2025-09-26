@@ -15,6 +15,7 @@ any line(any x, any y, any x2, any y2, any aa) as gfx_line;
 
 any rect_to(any x, any y) as gfx_rectto;
 any rect(any x, any y, any w, any h) as gfx_rect;
+any rect(any x, any y, any w, any h, any filled) as gfx_rect;
 any set_pixel(any r, any g, any b) as gfx_setpixel;
 any get_pixel(any r, any g, any b) as gfx_getpixel;
 any draw_number(any n, any ndigits) as gfx_drawnumber;
