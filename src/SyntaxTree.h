@@ -288,8 +288,9 @@ typedef struct
 } InputStmt;
 
 typedef struct FuncDeclStmt FuncDeclStmt;
+typedef struct VarDeclStmt VarDeclStmt;
 
-typedef struct
+struct VarDeclStmt
 {
 	int lineNumber;
 	Type type;
@@ -301,12 +302,14 @@ typedef struct
 	ModifierState modifiers;
 	SectionStmt* section;
 	FuncDeclStmt* functionParamOf;
+	Array parentRefs;
+	VarDeclStmt* instantiatedFrom;
 	int useCount;
 	bool doNotOptimize;
 	bool unused;
 	bool keepRight;
 	int uniqueName;
-} VarDeclStmt;
+};
 
 struct FuncDeclStmt
 {
@@ -345,7 +348,8 @@ typedef struct
 	FuncDeclStmt* funcReference;
 	StructDeclStmt* typeReference;
 	VarDeclStmt* varReference;
-	VarDeclStmt* parentReference;
+	Array parentRefs; // the members
+	VarDeclStmt* varParentReference; // the struct variable
 	Array deps;
 } MemberAccessExpr;
 

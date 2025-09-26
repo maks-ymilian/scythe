@@ -64,7 +64,6 @@ static void VisitExpression(NodePtr* expr, NodePtr* statement, int lineNumber)
 						.funcReference = funcDecl.ptr,
 						.typeReference = NULL,
 						.varReference = NULL,
-						.parentReference = NULL,
 					},
 					sizeof(MemberAccessExpr), Node_MemberAccess)},
 			sizeof(FuncCallExpr), Node_FunctionCall);

@@ -271,7 +271,6 @@ static Result ParseType(Type* out)
 					.funcReference = NULL,
 					.typeReference = NULL,
 					.varReference = NULL,
-					.parentReference = NULL,
 				},
 				sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
@@ -711,7 +710,6 @@ static Result ContinueParsePrimary(NodePtr* inout, bool alreadyParsedDot)
 				.funcReference = NULL,
 				.typeReference = NULL,
 				.varReference = NULL,
-				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}
@@ -766,7 +764,6 @@ static Result ParsePrimary(NodePtr* out)
 				.funcReference = NULL,
 				.typeReference = NULL,
 				.varReference = NULL,
-				.parentReference = NULL,
 			},
 			sizeof(MemberAccessExpr), Node_MemberAccess);
 	}

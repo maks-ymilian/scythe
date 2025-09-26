@@ -362,7 +362,6 @@ NodePtr AllocIdentifier(VarDeclStmt* varDecl, int lineNumber)
 			.funcReference = NULL,
 			.typeReference = NULL,
 			.varReference = varDecl,
-			.parentReference = NULL,
 		},
 		sizeof(MemberAccessExpr), Node_MemberAccess);
 }
