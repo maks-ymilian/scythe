@@ -85,6 +85,15 @@ Array types contain two members:
 | `ptr` | The pointer type corresponding to the array's underlying type<br> e.g. for `int[]` the `ptr` member would be `int*` |
 | `length` | [`int`](#int) |
 
+If the [subscript operator `x[y]`](operators_and_expressions.md#subscript-operator-xy) is used on an array type, it will use its `ptr` member as the index:
+```c
+int[] array;
+
+// these two lines are identical
+array[10] = 100;
+array.ptr[10] = 100;
+```
+
 Array types have a special property where `any[]` can convert to any other array type:
 ```c
 struct Foo

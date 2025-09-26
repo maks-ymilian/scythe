@@ -85,14 +85,7 @@ string* bar = 20;
 bar[2] = "hello"; // setting slot 22
 ```
 
-The subscript operator can also be used directly on an [array type](type_system.md#array-types). Doing this will implicitly use the [array type](type_system.md#array-types)'s `ptr` member.
-```c
-int[] array;
-
-// these two lines are identical
-array[10] = 100;
-array.ptr[10] = 100;
-```
+The subscript operator can also be used directly on an array type. (see [Array Types](type_system.md#array-types))
 
 If `x` is a [pointer](type_system.md#pointer-types) to or [array](type_system.md#array-types) of an [aggregate type](type_system.md#aggregate-types), the index `y` refers to the element at that position. This means that if `x` is a pointer to struct type, then each increment of `y` advances by the size of the struct, not just one memory slot. Therefore, accessing or setting memory on a pointer to struct type will access or set multiple memory slots at once, in the order the members were defined in.
 ```c

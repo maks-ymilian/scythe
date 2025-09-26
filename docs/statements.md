@@ -305,6 +305,12 @@ input bar [
 	inc: 1,
 ];
 ```
+Inputs contain two members:
+| Name | Type |
+|---|---|
+| `value` | [`float`](type_system.md/#float) |
+| `sliderNumber` | [`int`](type_system.md/#int) |
+
 The current value can be accessed or set using the `value` member e.g. `foo.value`
 
 The input statement's property list supports the following properties:
