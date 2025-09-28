@@ -156,7 +156,7 @@ struct Foo
 }
 ```
 
-Once a struct has been defined, it can be used as a type, and struct members can be set or accessed using the [member access operator](operators_and_expressions.md#member-access-operator-xy):
+Once a struct has been defined, it can be used as a [type](type_system.md). Struct members can be set or accessed using the [member access operator](operators_and_expressions.md#member-access-operator-xy). Any members not set will always default to `0` regardless of type.
 ```c
 @init
 {
@@ -176,7 +176,7 @@ struct Foo
 struct Bar
 {
 	int x;
-	Bar bar;
+	Foo foo;
 }
 ```
 
@@ -190,14 +190,14 @@ struct Foo
 struct Bar
 {
 	int x;
-	Bar bar;
+	Foo foo;
 }
 
 @init
 {
 	Bar var1 = Bar {
 		.x = 10,
-		.bar.y = 20,
+		.foo.y = 20,
 	};
 	Bar var2 = Bar {};
 }

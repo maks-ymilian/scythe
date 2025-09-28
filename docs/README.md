@@ -7,7 +7,7 @@ Since Scythe is built on top of JSFX, it is recommended to be familiar with writ
 - [Type System](type_system.md)
 - [Module System](module_system.md)
 - [Interfacing with JSFX](interfacing_with_jsfx.md)
-- [Built-in Library](scythe/builtin/README.md)
+- [Built-in Library](../scythe/builtin/)
 
 ## File Structure
 A Scythe `.scy` file is composed of a series of file-scope statements (all of which are optional). The list of possible file-scope statements can be found [here](statements.md#file-scope-statements).\
@@ -44,6 +44,16 @@ float read;
 	read += speed.value;
 }
 ```
+
+# Memory
+Aside from storing data in [variables](statements.md#variables), JSFX plugins can store data in their dedicated memory buffer. (see [JSFX Documentation](https://www.reaper.fm/sdk/js/basiccode.php#op_ram))
+
+Each JSFX plugin has a large memory buffer. This buffer can be accessed in Scythe by using the [subscript](operators_and_expressions.md#subscript-operator-xy) operator. Indexing into this buffer is not done in bytes, but in memory slots, and each memory slot holds a number value (one [primitive type](type_system.md#primitive-types) in Scythe).
+
+[Pointer types](type_system.md#pointer-types) can be used to store memory slots, and [array types](type_system.md#array-types) can be used to represent slices of memory.
+
+JSFX also has built-in functions that can be used to interact with memory: [JSFX Documentation](https://www.reaper.fm/sdk/js/advfunc.php#cat_mem)\
+See [Built-in Library](../scythe/builtin) for instructions on how to use these functions.
 
 # Comments
 Scythe uses the same comment syntax as C:

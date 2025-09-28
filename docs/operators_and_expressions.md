@@ -1,19 +1,21 @@
 # Operators and Expressions
 
 ## Literals
-### [`int`](type_system.md#int) Literal
-[`int`](type_system.md#int) literals can be written in base 10, hexadecimal, octal, or binary:
+### Number Literal
+Number literals can be written as integers or fractional numbers. They always evaluate to a [`float`](type_system.md#float) type, even if they are integer literals.
+
+#### Fractional Numbers
+Frational numbers must have a decimal point, and they can only be written in base 10: `6.9`.\
+They do not support infinity values, NaN values, or scientific notation.
+
+#### Integers
+Integers can be written in base 10, hexadecimal, octal, or binary:
 ```c
 123456 // base 10 (decimal)
 0x123abc // base 16 (hexadecimal)
 0o1234567 // base 8 (octal)
 0b101011 // base 2 (binary)
 ```
-The maximum value for an [`int`](type_system.md#int) literal is the 64-bit unsigned integer limit.
-
-### [`float`](type_system.md#float) Literal
-[`float`](type_system.md#float) literals must have a decimal point, and they can only be written in base 10: `6.9`. They do not support infinity values, NaN values, or scientific notation.
-The maximum value for a [`float`](type_system.md#float) literal is the double precision float limit.
 
 ### [`bool`](type_system.md#bool) Literal
 [`bool`](type_system.md#bool) literals are written using the `true` and `false` keywords. The value of `true` is `1` and the value of `false` is `0`.
@@ -52,8 +54,7 @@ The following table lists the input and output types for each operator. Inputs w
 | Operator | Input type | Output type |
 | - | - | - |
 | `x % y` `x << y` `x >> y` `x \| y` `x & y` `x ~ y` | [`int`](type_system.md#int) | [`int`](type_system.md#int) |
-| `x + y` `x - y` `x * y` `+x` `-x` | [`float`](type_system.md#float) | [`float`](type_system.md#float) |
-| `x / y` `x ^ y` | [`float`](type_system.md#float) | [`float`](type_system.md#float) (or [`int`](type_system.md#int) if both inputs are [`int`](type_system.md#int)) |
+| `x + y` `x - y` `x * y` `+x` `-x` `x / y` `x ^ y` | [`float`](type_system.md#float) | [`float`](type_system.md#float) |
 | `x < y` `x > y` `x <= y` `x >= y` | [`float`](type_system.md#float) | [`bool`](type_system.md#bool) |
 | `x \|\| y` `x && y` `!x` | [`bool`](type_system.md#bool) | [`bool`](type_system.md#bool) |
 | `x == y` `x != y` | Compatible types | [`bool`](type_system.md#bool) |
@@ -72,7 +73,9 @@ The member access operator can be used on:
 `x` - Can be any expression of a [primitive type](type_system.md#primitive-types) or [array type](type_system.md#array-types)\
 `y` - Can be any expression of a [primitive type](type_system.md#primitive-types)
 
-This operator corresponds to [JSFX's subscript operator](https://www.reaper.fm/sdk/js/basiccode.php#op_ram). In JSFX, each plugin has a large memory buffer that can be accessed by using the subscript operator. Indexing into this buffer is not done in bytes, but in memory slots, and each memory slot holds a number value. The memory slot being accessed is determined by the sum of `x` and `y`.
+This operator corresponds to [JSFX's subscript operator](https://www.reaper.fm/sdk/js/basiccode.php#op_ram).
+
+The subscript operator is used to read or write [memory slots](README.md#memory), and the memory slot being accessed is determined by the sum of `x` and `y`.
 
 Any integer can be used to access memory:
 ```c
@@ -87,7 +90,7 @@ bar[2] = "hello"; // setting slot 22
 
 The subscript operator can also be used directly on an array type. (see [Array Types](type_system.md#array-types))
 
-If `x` is a [pointer](type_system.md#pointer-types) to or [array](type_system.md#array-types) of an [aggregate type](type_system.md#aggregate-types), the index `y` refers to the element at that position. This means that if `x` is a pointer to struct type, then each increment of `y` advances by the size of the struct, not just one memory slot. Therefore, accessing or setting memory on a pointer to struct type will access or set multiple memory slots at once, in the order the members were defined in.
+If `x` is a [pointer](type_system.md#pointer-types) to or [array](type_system.md#array-types) of an [aggregate type](type_system.md#aggregate-types), the index `y` refers to the element at that position. This means that if `x` is a pointer to struct type, then each increment of `y` advances by the size of the struct, not just one [memory slot](README.md#memory). Therefore, accessing or setting memory on a pointer to struct type will access or set multiple [memory slots](README.md#memory) at once, in the order the members were defined in.
 ```c
 struct Foo
 {
@@ -131,7 +134,7 @@ ReturnType {
 ```
 
 ### Object Initializers and Type Casting
-Block expressions can also be used as object initializers:
+Block expressions can also be used as object initializers. (see [Structs](statements.md#structs))
 ```c
 Foo bar = Foo {
     .baz = 1,

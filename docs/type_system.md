@@ -51,7 +51,31 @@ Converting an [`any`](#any) to an `int` does not floor the value.
 ### Pointer Types
 Appending `*` to the end of any type makes it a pointer type.
 
-Pointer types are identical to [`int`](#int), except that they can be dereferenced into their underlying types using the [dereference, arrow, and subscript operators](operators_and_expressions.md#subscript-operator-xy):
+Pointer types store a number that points to a specific [memory slot](README.md#memory), and they are typically used with the [subscript operator](operators_and_expressions.md#subscript-operator-xy).
+
+Pointer types are identical to [`int`](#int), except for two distinctions:
+1. Addition and subtraction work differently:\
+When you add or subtract an integer to a pointer, the operation is scaled by the size of the type the pointer refers to.\
+If you have `Vec3* p;`, since `sizeof(Vec3)` is `3`, `p + 2` will actually advance the pointer by `6` [memory slots](README.md#memory), not `2`.\
+(see [`sizeof`](#sizeof))\
+\
+This rule also applies to using pointer types with the [subscript operator](operators_and_expressions.md#subscript-operator-xy).
+```c
+struct Vec3
+{
+	float x;
+	float y;
+	float z;
+}
+
+@init
+{
+	Vec3* p = 10;
+	Vec3* p1 = p + 2; // p1 points to memory slot 16
+}
+```
+
+2. They can be dereferenced into their underlying types using the [dereference, arrow, and subscript operators](operators_and_expressions.md#subscript-operator-xy):
 ```c
 struct Foo
 {
@@ -78,6 +102,8 @@ Aggregate types are types that can contain one or more members. They can either 
 
 ### Array Types
 Appending `[]` to the end of any non-array and non-pointer type makes it an array type e.g. `Foo[]`
+
+Array types are essentially [fat pointers](https://chatgpt.com/?prompt=fat+pointer+struct+in+c) representing a slice in [memory](README.md#memory).
 
 Array types contain two members:
 | Name | Type |
@@ -119,7 +145,7 @@ any[] AllocateArray(any* ptr, int length)
 ### `sizeof`
 `sizeof` can be used to get the number of members in an aggregate type:
 ```c
-struct Foo {any a; any b; any c}
+struct Foo {any a; any b; any c;}
 @init
 {
     sizeof(Foo); // 3
