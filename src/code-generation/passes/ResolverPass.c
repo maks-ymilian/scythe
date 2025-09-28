@@ -373,11 +373,16 @@ static bool FindFunctionOverload(const char* name, const Map* declarations, size
 	if (array == NULL)
 		return false;
 
+	bool functionNameExists = false;
+
 	ASSERT(array->length >= 1);
 	for (size_t i = 0; i < array->length; ++i)
 	{
 		NodePtr* node = array->array[i];
-		ASSERT(node->type == Node_FunctionDeclaration);
+		if (node->type != Node_FunctionDeclaration)
+			continue;
+
+		functionNameExists = true;
 		FuncDeclStmt* funcDecl = node->ptr;
 
 		if (CheckFunctionOverload(argCount, funcDecl->parameters.length, funcDecl->variadic))
@@ -389,7 +394,7 @@ static bool FindFunctionOverload(const char* name, const Map* declarations, size
 		}
 	}
 
-	return true;
+	return functionNameExists;
 }
 
 static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t argCount, bool* isAmbiguous, int lineNumber)
