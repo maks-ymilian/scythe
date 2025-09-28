@@ -189,11 +189,6 @@ static Result VisitBinaryExpression(NodePtr* node)
 	{
 		PROPAGATE_ERROR(ConvertExpression(&binary->left, leftType, NonPointerType(Primitive_Float), binary->lineNumber));
 		PROPAGATE_ERROR(ConvertExpression(&binary->right, rightType, NonPointerType(Primitive_Float), binary->lineNumber));
-
-		if (leftType.effectiveType == Primitive_Int && rightType.effectiveType == Primitive_Int &&
-			(binary->operatorType == Binary_Divide ||
-				binary->operatorType == Binary_Exponentiation))
-			*node = AllocIntConversion(*node, binary->lineNumber);
 		break;
 	}
 
