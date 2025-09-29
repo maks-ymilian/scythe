@@ -36,3 +36,21 @@ float lerp(float a, float b, float t)
 {
 	return a + (b - a) * t;
 }
+
+float round(float f)
+{
+	if (f - floor(f) >= 0.5)
+		return ceil(f);
+	else
+		return floor(f);
+}
+
+float clamp(float f, float min, float max)
+{
+	if (f < min)
+		return min;
+	if (f > max)
+		return max;
+
+	return f;
+}
