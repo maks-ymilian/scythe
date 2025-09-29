@@ -228,7 +228,7 @@ typedef struct
 	size_t memberCount;
 } ExpandArgumentData;
 
-static void CollapseSubscriptMemberAccess(NodePtr* node)
+static void CollapseSubscriptMemberAccess(NodePtr* node, Array* parentRefs)
 {
 	ASSERT(node->type == Node_MemberAccess);
 	MemberAccessExpr* memberAccess = node->ptr;
@@ -240,11 +240,33 @@ static void CollapseSubscriptMemberAccess(NodePtr* node)
 	StructDeclStmt* type = typeInfo.pointerType;
 	ASSERT(type);
 
+	size_t added = 0;
+	if (parentRefs)
+	{
+		if (!memberAccess->parentRefs.array)
+			memberAccess->parentRefs = AllocateArray(sizeof(VarDeclStmt*));
+
+		// merge parentRefs with memberAccess->parentRefs
+		for (size_t i = 0; i < parentRefs->length; ++i)
+		{
+			if (memberAccess->parentRefs.length > 0 &&
+				*(VarDeclStmt**)memberAccess->parentRefs.array[memberAccess->parentRefs.length - 1] == *(VarDeclStmt**)parentRefs->array[i])
+				continue;
+
+			ArrayAdd(&memberAccess->parentRefs, parentRefs->array[i]);
+			++added;
+		}
+	}
+
 	subscript->indexExpr = AllocStructOffsetCalculation(
 		AllocIntConversion(subscript->indexExpr, subscript->lineNumber),
 		GetIndexOfMember(type, memberAccess->varReference, &memberAccess->parentRefs),
 		CountStructMembers(type),
 		subscript->lineNumber);
+
+	// undo merging
+	for (size_t i = 0; i < added; ++i)
+		ArrayRemove(&memberAccess->parentRefs, memberAccess->parentRefs.length - 1);
 
 	subscript->typeBeforeCollapse = memberAccess->varReference->type;
 	subscript->typeBeforeCollapse.expr = CopyASTNode(subscript->typeBeforeCollapse.expr);
@@ -274,8 +296,19 @@ static NodePtr AllocStructMemberAssignmentExpr(
 				NodePtr new = CopyASTNode(node);
 				ASSERT(new.type == Node_MemberAccess);
 				MemberAccessExpr* memberAccess = new.ptr;
+
+				for (size_t i = 0; i < memberAccess->parentRefs.length; ++i)
+					ArrayInsert(parentRefs, memberAccess->parentRefs.array[i], i);
+				ArrayInsert(parentRefs, &memberAccess->varReference, memberAccess->parentRefs.length);
+
 				memberAccess->varReference = member;
-				CollapseSubscriptMemberAccess(&new);
+				size_t length = memberAccess->parentRefs.length;
+				CollapseSubscriptMemberAccess(&new, parentRefs);
+
+				for (size_t i = 0; i < length; ++i)
+					ArrayRemove(parentRefs, 0);
+				ArrayRemove(parentRefs, 0);
+
 				return new;
 			}
 			else
@@ -561,7 +594,7 @@ static Result VisitMemberAccess(NodePtr* node, NodePtr* containingStatement)
 		{
 			// only if its a primitive type
 			if (!GetStructTypeInfoFromType(memberAccess->varReference->type).effectiveType)
-				CollapseSubscriptMemberAccess(node);
+				CollapseSubscriptMemberAccess(node, NULL);
 			return SUCCESS_RESULT;
 		}
 		else

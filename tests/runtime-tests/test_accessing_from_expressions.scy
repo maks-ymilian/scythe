@@ -81,5 +81,42 @@ bool otherTest()
 	return b.v1.x == b1[0].v1.x;
 }
 
+struct Vec3
+{
+	float x;
+	float y;
+	float z;
+}
+
+struct Pos
+{
+	Vec3 pos;
+}
+
+struct Vertex
+{
+	Pos p;
+	Pos n;
+	Vec3 v;
+}
+
+bool otherOtherTest()
+{
+	Vertex[] vertices;
+	vertices[100].v = Vec3 {.x = 1, .y = 2, .z = 3};
+	vertices[100].p.pos = Vec3 {.x = 4, .y = 5, .z = 6};
+	vertices[100].n.pos = Vec3 {.x = 7, .y = 8, .z = 9};
+	return
+		vertices[100].v.x == 1 &&
+		vertices[100].v.y == 2 &&
+		vertices[100].v.z == 3 &&
+		vertices[100].p.pos.x == 4 &&
+		vertices[100].p.pos.y == 5 &&
+		vertices[100].p.pos.z == 6 &&
+		vertices[100].n.pos.x == 7 &&
+		vertices[100].n.pos.y == 8 &&
+		vertices[100].n.pos.z == 9;
+}
+
 external any AAA_test_accessing_from_expressions;
-@init { AAA_test_accessing_from_expressions = test() && otherTest(); }
+@init { AAA_test_accessing_from_expressions = test() && otherTest() && otherOtherTest(); }
