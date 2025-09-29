@@ -339,6 +339,8 @@ static Result GenerateProgramNode(
 			.path = absolutePath,
 			.moduleName = moduleName,
 		};
+
+		printf("Parsing: %s\n", absolutePath);
 	}
 
 	for (size_t i = 0; i < programNodes->length; ++i)
