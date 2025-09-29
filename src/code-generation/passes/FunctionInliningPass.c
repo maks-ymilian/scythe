@@ -46,7 +46,7 @@ static void VisitExpression(NodePtr* node)
 		for (size_t i = 0; i < funcCall->arguments.length; ++i)
 			VisitExpression(funcCall->arguments.array[i]);
 
-		if (!GetFuncDecl(funcCall)->isBlockExpression)
+		if (!GetFuncDecl(funcCall)->isBlockExpression || GetFuncDecl(funcCall)->useCount > 1)
 			break;
 		ASSERT(GetFuncDecl(funcCall)->parameters.length == 0);
 

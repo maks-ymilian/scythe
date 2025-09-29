@@ -35,10 +35,10 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
 	GlobalSectionPass(syntaxTree);
 
+	FunctionDepsPass(syntaxTree);
 	FunctionInliningPass(syntaxTree);
 	CopyPropagationPass(syntaxTree);
 	ExpressionSimplificationPass(syntaxTree);
-	FunctionDepsPass(syntaxTree);
 	VariableDepsPass(syntaxTree);
 	MarkUnusedPass(syntaxTree);
 	RemoveUnusedPass(syntaxTree);

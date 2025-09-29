@@ -325,6 +325,7 @@ struct FuncDeclStmt
 	bool variadic;
 	ModifierState modifiers;
 	Array dependencies;
+	int inlineCount;
 	int useCount;
 	bool isBlockExpression;
 	bool unused;

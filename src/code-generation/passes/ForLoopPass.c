@@ -1,13 +1,13 @@
 #include "ForLoopPass.h"
 
-static void VisitStatement(NodePtr* node);
+static void VisitStatement(NodePtr* node, ForStmt* currentFor);
 
 static void VisitForStatement(NodePtr* node)
 {
 	ASSERT(node->type == Node_For);
 	ForStmt* forStmt = node->ptr;
 
-	VisitStatement(&forStmt->stmt);
+	VisitStatement(&forStmt->stmt, forStmt);
 
 	if (forStmt->condition.ptr == NULL)
 	{
@@ -65,7 +65,7 @@ static void VisitForStatement(NodePtr* node)
 	FreeASTNode((NodePtr){.ptr = forStmt, .type = Node_For});
 }
 
-static void VisitStatement(NodePtr* node)
+static void VisitStatement(NodePtr* node, ForStmt* currentFor)
 {
 	switch (node->type)
 	{
@@ -73,12 +73,33 @@ static void VisitStatement(NodePtr* node)
 	case Node_VariableDeclaration:
 	case Node_StructDeclaration:
 	case Node_ExpressionStatement:
-	case Node_LoopControl:
 	case Node_Import:
 	case Node_Input:
 	case Node_Desc:
 	case Node_Null:
 		break;
+	case Node_LoopControl:
+	{
+		LoopControlStmt* loopControl = node->ptr;
+		if (loopControl->type == LoopControl_Continue && currentFor)
+		{
+			Array statements = AllocateArray(sizeof(NodePtr));
+
+			NodePtr increment = AllocASTNode(&(ExpressionStmt) {
+				.lineNumber = loopControl->lineNumber,
+				.expr = CopyASTNode(currentFor->increment),
+			}, sizeof(ExpressionStmt), Node_ExpressionStatement);
+			ArrayAdd(&statements, &increment);
+
+			ArrayAdd(&statements, node);
+
+			*node = AllocASTNode(&(BlockStmt) {
+				.lineNumber = loopControl->lineNumber,
+				.statements = statements
+			}, sizeof(BlockStmt), Node_BlockStatement);
+		}
+		break;
+	}
 	case Node_For:
 	{
 		VisitForStatement(node);
@@ -88,32 +109,32 @@ static void VisitStatement(NodePtr* node)
 	{
 		BlockStmt* block = node->ptr;
 		for (size_t i = 0; i < block->statements.length; ++i)
-			VisitStatement(block->statements.array[i]);
+			VisitStatement(block->statements.array[i], currentFor);
 		break;
 	}
 	case Node_FunctionDeclaration:
 	{
 		FuncDeclStmt* funcDecl = node->ptr;
-		VisitStatement(&funcDecl->block);
+		VisitStatement(&funcDecl->block, NULL);
 		break;
 	}
 	case Node_If:
 	{
 		IfStmt* ifStmt = node->ptr;
-		VisitStatement(&ifStmt->trueStmt);
-		VisitStatement(&ifStmt->falseStmt);
+		VisitStatement(&ifStmt->trueStmt, currentFor);
+		VisitStatement(&ifStmt->falseStmt, currentFor);
 		break;
 	}
 	case Node_Section:
 	{
 		SectionStmt* section = node->ptr;
-		VisitStatement(&section->block);
+		VisitStatement(&section->block, NULL);
 		break;
 	}
 	case Node_While:
 	{
 		WhileStmt* whileStmt = node->ptr;
-		VisitStatement(&whileStmt->stmt);
+		VisitStatement(&whileStmt->stmt, NULL);
 		break;
 	}
 	default: INVALID_VALUE(node->type);
@@ -130,6 +151,6 @@ void ForLoopPass(const AST* ast)
 		const ModuleNode* module = node->ptr;
 
 		for (size_t i = 0; i < module->statements.length; ++i)
-			VisitStatement(module->statements.array[i]);
+			VisitStatement(module->statements.array[i], NULL);
 	}
 }
