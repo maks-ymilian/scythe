@@ -118,5 +118,121 @@ bool otherOtherTest()
 		vertices[100].n.pos.z == 9;
 }
 
+struct Vec4
+{
+	float x;
+	float y;
+	float z;
+	float w;
+}
+
+struct Vertex4D
+{
+	Vec4 pos;
+	Vec3 normal;
+}
+
+struct Triangle4D
+{
+	Vertex4D v1;
+	Vertex4D v2;
+	Vertex4D v3;
+}
+
+Triangle4D TransformTriangle(Triangle4D t)
+{
+	return Triangle4D {
+		.v1.pos = t.v1.pos,
+		.v2.pos = t.v2.pos,
+		.v3.pos = t.v3.pos,
+		.v1.normal = t.v1.normal,
+		.v2.normal = t.v2.normal,
+		.v3.normal = t.v3.normal,
+	};
+}
+
+bool otherOtherOtherTest()
+{
+	Triangle4D t = Triangle4D {
+		.v1 = Vertex4D {
+			.pos.x = 1,
+			.pos.y = 2,
+			.pos.z = 3,
+			.pos.w = 4,
+			.normal.x = 5,
+			.normal.y = 6,
+			.normal.z = 7,
+		},
+		.v2 = Vertex4D {
+			.pos.x = 8,
+			.pos.y = 9,
+			.pos.z = 10,
+			.pos.w = 11,
+			.normal.x = 12,
+			.normal.y = 13,
+			.normal.z = 14,
+		},
+		.v3 = Vertex4D {
+			.pos.x = 15,
+			.pos.y = 16,
+			.pos.z = 17,
+			.pos.w = 18,
+			.normal.x = 19,
+			.normal.y = 20,
+			.normal.z = 21,
+		},
+	};
+
+	if (t.v1.pos.x    != 1  ||
+		t.v1.pos.y    != 2  ||
+		t.v1.pos.z    != 3  ||
+		t.v1.pos.w    != 4  ||
+		t.v1.normal.x != 5  ||
+		t.v1.normal.y != 6  ||
+		t.v1.normal.z != 7  ||
+		t.v2.pos.x    != 8  ||
+		t.v2.pos.y    != 9  ||
+		t.v2.pos.z    != 10 ||
+		t.v2.pos.w    != 11 ||
+		t.v2.normal.x != 12 ||
+		t.v2.normal.y != 13 ||
+		t.v2.normal.z != 14 ||
+		t.v3.pos.x    != 15 ||
+		t.v3.pos.y    != 16 ||
+		t.v3.pos.z    != 17 ||
+		t.v3.pos.w    != 18 ||
+		t.v3.normal.x != 19 ||
+		t.v3.normal.y != 20 ||
+		t.v3.normal.z != 21)
+		return false;
+
+	t = TransformTriangle(t);
+
+	if (t.v1.pos.x    != 1  ||
+		t.v1.pos.y    != 2  ||
+		t.v1.pos.z    != 3  ||
+		t.v1.pos.w    != 4  ||
+		t.v1.normal.x != 5  ||
+		t.v1.normal.y != 6  ||
+		t.v1.normal.z != 7  ||
+		t.v2.pos.x    != 8  ||
+		t.v2.pos.y    != 9  ||
+		t.v2.pos.z    != 10 ||
+		t.v2.pos.w    != 11 ||
+		t.v2.normal.x != 12 ||
+		t.v2.normal.y != 13 ||
+		t.v2.normal.z != 14 ||
+		t.v3.pos.x    != 15 ||
+		t.v3.pos.y    != 16 ||
+		t.v3.pos.z    != 17 ||
+		t.v3.pos.w    != 18 ||
+		t.v3.normal.x != 19 ||
+		t.v3.normal.y != 20 ||
+		t.v3.normal.z != 21)
+		return false;
+
+	return true;
+}
+
 external any AAA_test_accessing_from_expressions;
-@init { AAA_test_accessing_from_expressions = test() && otherTest() && otherOtherTest(); }
+@init { AAA_test_accessing_from_expressions = test() && otherTest() && otherOtherTest() && otherOtherOtherTest(); }

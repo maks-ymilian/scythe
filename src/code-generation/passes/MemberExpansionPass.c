@@ -146,12 +146,11 @@ static size_t ForEachStructMember(
 				ArrayAdd(parentRefs, &varDecl);
 
 			ForEachStructMember(memberType, func, data, currentIndex, parentRefs);
+
+			if (parentRefs)
+				ArrayRemove(parentRefs, parentRefs->length - 1);
 		}
 	}
-
-	if (parentRefs)
-		for (size_t i = 0; i < parentRefs->length - parentRefsLength; ++i)
-			ArrayRemove(parentRefs, parentRefs->length - 1);
 
 	return *currentIndex;
 }
@@ -323,13 +322,13 @@ static NodePtr AllocStructMemberAssignmentExpr(
 				varDecl = memberAccess->varParentReference;
 
 				// merge parentRefs with memberAccess->parentRefs
-				ArrayInsert(parentRefs, &memberAccess->varReference, 0);
-				added = 1;
-				for (int i = (int)memberAccess->parentRefs.length - 1; i >= 0; --i)
+				for (size_t i = 0; i < memberAccess->parentRefs.length; ++i)
 				{
-					ArrayInsert(parentRefs, memberAccess->parentRefs.array[i], 0);
+					ArrayInsert(parentRefs, memberAccess->parentRefs.array[i], added);
 					++added;
 				}
+				ArrayInsert(parentRefs, &memberAccess->varReference, added);
+				++added;
 			}
 
 			VarDeclStmt* instance = FindInstantiated(parentRefs, member, varDecl);
