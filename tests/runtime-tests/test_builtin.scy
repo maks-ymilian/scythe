@@ -158,7 +158,7 @@ external any AAA_test_builtin;
 	math.ifft_real(0,0);
 	math.fft_permute(0,0);
 	math.fft_ipermute(0,0);
-	math.convolve_complex(0,0,0);
+	math.convolve_c(0,0,0);
 
 	mem.free(0);
 	mem.copy(0,0,0);
