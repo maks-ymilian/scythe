@@ -217,7 +217,7 @@ static void VisitExpression(NodePtr* node, CopyAssignments* map, bool modifyAST,
 		VisitStatement(&funcDecl->block, &funcMap, modifyAST, modifyMap);
 		currentFunction = NULL;
 
-		FreeCopyAssignments(&funcMap);
+		// FreeCopyAssignments(&funcMap); todo
 
 		currentFunction = funcDecl;
 		for (size_t i = 0; i < funcDecl->parameters.length; ++i)

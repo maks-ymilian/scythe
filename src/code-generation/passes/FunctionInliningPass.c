@@ -58,7 +58,7 @@ static void VisitExpression(NodePtr* node)
 
 		NodePtr* funcDeclNode = GetReference(GetFuncDecl(funcCall));
 		GetFuncDecl(funcCall)->block = NULL_NODE;
-		FreeASTNode(*funcDeclNode);
+		// FreeASTNode(*funcDeclNode); todo
 		*funcDeclNode = NULL_NODE;
 		break;
 	}
