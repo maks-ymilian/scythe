@@ -85,18 +85,19 @@ static void VisitStatement(NodePtr* node, ForStmt* currentFor)
 		{
 			Array statements = AllocateArray(sizeof(NodePtr));
 
-			NodePtr increment = AllocASTNode(&(ExpressionStmt) {
-				.lineNumber = loopControl->lineNumber,
-				.expr = CopyASTNode(currentFor->increment),
-			}, sizeof(ExpressionStmt), Node_ExpressionStatement);
+			NodePtr increment = AllocASTNode(&(ExpressionStmt){
+												 .lineNumber = loopControl->lineNumber,
+												 .expr = CopyASTNode(currentFor->increment),
+											 },
+				sizeof(ExpressionStmt), Node_ExpressionStatement);
 			ArrayAdd(&statements, &increment);
 
 			ArrayAdd(&statements, node);
 
-			*node = AllocASTNode(&(BlockStmt) {
-				.lineNumber = loopControl->lineNumber,
-				.statements = statements
-			}, sizeof(BlockStmt), Node_BlockStatement);
+			*node = AllocASTNode(&(BlockStmt){
+									 .lineNumber = loopControl->lineNumber,
+									 .statements = statements},
+				sizeof(BlockStmt), Node_BlockStatement);
 		}
 		break;
 	}
