@@ -1,0 +1,361 @@
+public:
+struct Vec2
+{
+	float x;
+	float y;
+}
+
+struct Vec3
+{
+	float x;
+	float y;
+	float z;
+}
+
+struct Vec4
+{
+	float x;
+	float y;
+	float z;
+	float w;
+}
+
+struct Mat3
+{
+	float x1;
+	float x2;
+	float x3;
+
+	float y1;
+	float y2;
+	float y3;
+
+	float z1;
+	float z2;
+	float z3;
+}
+
+struct Mat4
+{
+	float x1;
+	float x2;
+	float x3;
+	float x4;
+
+	float y1;
+	float y2;
+	float y3;
+	float y4;
+
+	float z1;
+	float z2;
+	float z3;
+	float z4;
+
+	float w1;
+	float w2;
+	float w3;
+	float w4;
+}
+
+struct Bounds
+{
+	Vec2 min;
+	Vec2 max;
+}
+
+float PI = 3.14159265359;
+
+float Deg2Rad(float deg)
+{
+	return deg * (PI / 180.0);
+}
+
+float Dot3D(Vec3 a, Vec3 b)
+{
+	return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+float Dot2D(Vec2 a, Vec2 b)
+{
+	return a.x * b.x + a.y * b.y;
+}
+
+float Magnitude(Vec3 v)
+{
+	return math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+Vec3 Cross(Vec3 a, Vec3 b)
+{
+	return Vec3 {
+		.x = a.y * b.z - a.z * b.y,
+		.y = a.z * b.x - a.x * b.z,
+		.z = a.x * b.y - a.y * b.x,
+	};
+}
+
+Vec3 Normalize3D(Vec3 v)
+{
+	float magnitude = Magnitude(v);
+	return Vec3 {
+		.x = v.x / magnitude,
+		.y = v.y / magnitude,
+		.z = v.z / magnitude,
+	};
+}
+
+Vec3 Add3D(Vec3 a, Vec3 b)
+{
+	return Vec3 {
+		.x = a.x + b.x,
+		.y = a.y + b.y,
+		.z = a.z + b.z,
+	};
+}
+
+Vec3 Subtract3D(Vec3 a, Vec3 b)
+{
+	return Vec3 {
+		.x = a.x - b.x,
+		.y = a.y - b.y,
+		.z = a.z - b.z,
+	};
+}
+
+Vec3 Multiply3D(float a, Vec3 b)
+{
+	return Vec3 {
+		.x = b.x * a,
+		.y = b.y * a,
+		.z = b.z * a,
+	};
+}
+
+Vec3 Reflect3D(Vec3 d, Vec3 n)
+{
+	return Subtract3D(d, Multiply3D(2 * Dot3D(d, n), n));
+}
+
+Vec2 Subtract2D(Vec2 a, Vec2 b)
+{
+	return Vec2 {
+		.x = a.x - b.x,
+		.y = a.y - b.y,
+	};
+}
+
+Mat4 ProjectionMatrix(float fov, float aspect, float near, float far)
+{
+	return Mat4 {
+		.x1 = 1 / (aspect * math.tan(fov / 2)),
+		.y2 = 1 / (math.tan(fov / 2)),
+		.z3 = (far + near) / (near - far),
+		.z4 = (2 * far * near) / (near - far),
+		.w3 = -1,
+	};
+}
+
+Mat3 RotationMatrixEuler(Vec3 rot)
+{
+	float a = rot.z;
+	float b = rot.y;
+	float y = rot.x;
+
+	float ca = math.cos(a);
+	float cb = math.cos(b);
+	float cy = math.cos(y);
+	float sa = math.sin(a);
+	float sb = math.sin(b);
+	float sy = math.sin(y);
+
+	return Mat3 {
+		.x1 = ca * cb,
+		.x2 = ca * sb * sy - sa * cy,
+		.x3 = ca * sb * cy + sa * sy,
+		.y1 = sa * cb,
+		.y2 = sa * sb * sy + ca * cy,
+		.y3 = sa * sb * cy - ca * sy,
+		.z1 = -sb,
+		.z2 = cb * sy,
+		.z3 = cb * cy,
+	};
+}
+
+Mat4 ModelMatrix(Vec3 trans, Mat3 rot, Vec3 scale)
+{
+	return Mat4 {
+		.x1 = rot.x1 * scale.x,
+		.x2 = rot.x2 * scale.y,
+		.x3 = rot.x3 * scale.z,
+		.x4 = trans.x,
+
+		.y1 = rot.y1 * scale.x,
+		.y2 = rot.y2 * scale.y,
+		.y3 = rot.y3 * scale.z,
+		.y4 = trans.y,
+
+		.z1 = rot.z1 * scale.x,
+		.z2 = rot.z2 * scale.y,
+		.z3 = rot.z3 * scale.z,
+		.z4 = trans.z,
+
+		.w1 = 0,
+		.w2 = 0,
+		.w3 = 0,
+		.w4 = 1,
+	};
+}
+
+Mat3 Mat4ToMat3(Mat4 m)
+{
+	return Mat3 {
+		.x1 = m.x1,
+		.x2 = m.x2,
+		.x3 = m.x3,
+		.y1 = m.y1,
+		.y2 = m.y2,
+		.y3 = m.y3,
+		.z1 = m.z1,
+		.z2 = m.z2,
+		.z3 = m.z3,
+	};
+}
+
+Mat4 TransposeMat4(Mat4 m)
+{
+	return Mat4 {
+		.x1 = m.x1,
+		.x2 = m.y1,
+		.x3 = m.z1,
+		.x4 = m.w1,
+
+		.y1 = m.x2,
+		.y2 = m.y2,
+		.y3 = m.z2,
+		.y4 = m.w2,
+
+		.z1 = m.x3,
+		.z2 = m.y3,
+		.z3 = m.z3,
+		.z4 = m.w3,
+
+		.w1 = m.x4,
+		.w2 = m.y4,
+		.w3 = m.z4,
+		.w4 = m.w4,
+	};
+}
+
+Mat4 InverseMat4(Mat4 m)
+{
+	float a2323 = m.z3 * m.w4 - m.z4 * m.w3;
+	float a1323 = m.z2 * m.w4 - m.z4 * m.w2;
+	float a1223 = m.z2 * m.w3 - m.z3 * m.w2;
+	float a0323 = m.z1 * m.w4 - m.z4 * m.w1;
+	float a0223 = m.z1 * m.w3 - m.z3 * m.w1;
+	float a0123 = m.z1 * m.w2 - m.z2 * m.w1;
+	float a2313 = m.y3 * m.w4 - m.y4 * m.w3;
+	float a1313 = m.y2 * m.w4 - m.y4 * m.w2;
+	float a1213 = m.y2 * m.w3 - m.y3 * m.w2;
+	float a2312 = m.y3 * m.z4 - m.y4 * m.z3;
+	float a1312 = m.y2 * m.z4 - m.y4 * m.z2;
+	float a1212 = m.y2 * m.z3 - m.y3 * m.z2;
+	float a0313 = m.y1 * m.w4 - m.y4 * m.w1;
+	float a0213 = m.y1 * m.w3 - m.y3 * m.w1;
+	float a0312 = m.y1 * m.z4 - m.y4 * m.z1;
+	float a0212 = m.y1 * m.z3 - m.y3 * m.z1;
+	float a0113 = m.y1 * m.w2 - m.y2 * m.w1;
+	float a0112 = m.y1 * m.z2 - m.y2 * m.z1;
+
+	float det =
+		m.x1 * (m.y2 * a2323 - m.y3 * a1323 + m.y4 * a1223) -
+		m.x2 * (m.y1 * a2323 - m.y3 * a0323 + m.y4 * a0223) +
+		m.x3 * (m.y1 * a1323 - m.y2 * a0323 + m.y4 * a0123) -
+		m.x4 * (m.y1 * a1223 - m.y2 * a0223 + m.y3 * a0123);
+	det = 1 / det;
+
+	return Mat4 {
+	   .x1 = det *  (m.y2 * a2323 - m.y3 * a1323 + m.y4 * a1223),
+	   .x2 = det * -(m.x2 * a2323 - m.x3 * a1323 + m.x4 * a1223),
+	   .x3 = det *  (m.x2 * a2313 - m.x3 * a1313 + m.x4 * a1213),
+	   .x4 = det * -(m.x2 * a2312 - m.x3 * a1312 + m.x4 * a1212),
+
+	   .y1 = det * -(m.y1 * a2323 - m.y3 * a0323 + m.y4 * a0223),
+	   .y2 = det *  (m.x1 * a2323 - m.x3 * a0323 + m.x4 * a0223),
+	   .y3 = det * -(m.x1 * a2313 - m.x3 * a0313 + m.x4 * a0213),
+	   .y4 = det *  (m.x1 * a2312 - m.x3 * a0312 + m.x4 * a0212),
+
+	   .z1 = det *  (m.y1 * a1323 - m.y2 * a0323 + m.y4 * a0123),
+	   .z2 = det * -(m.x1 * a1323 - m.x2 * a0323 + m.x4 * a0123),
+	   .z3 = det *  (m.x1 * a1313 - m.x2 * a0313 + m.x4 * a0113),
+	   .z4 = det * -(m.x1 * a1312 - m.x2 * a0312 + m.x4 * a0112),
+
+	   .w1 = det * -(m.y1 * a1223 - m.y2 * a0223 + m.y3 * a0123),
+	   .w2 = det *  (m.x1 * a1223 - m.x2 * a0223 + m.x3 * a0123),
+	   .w3 = det * -(m.x1 * a1213 - m.x2 * a0213 + m.x3 * a0113),
+	   .w4 = det *  (m.x1 * a1212 - m.x2 * a0212 + m.x3 * a0112),
+	};
+}
+
+Vec4 MultiplyVec4Mat4(Vec4 v, Mat4 m)
+{
+	return Vec4 {
+		.x = m.x1 * v.x + m.x2 * v.y + m.x3 * v.z + m.x4 * v.w,
+		.y = m.y1 * v.x + m.y2 * v.y + m.y3 * v.z + m.y4 * v.w,
+		.z = m.z1 * v.x + m.z2 * v.y + m.z3 * v.z + m.z4 * v.w,
+		.w = m.w1 * v.x + m.w2 * v.y + m.w3 * v.z + m.w4 * v.w,
+	};
+}
+
+Vec3 MultiplyVec3Mat3(Vec3 v, Mat3 m)
+{
+	return Vec3 {
+		.x = m.x1 * v.x + m.x2 * v.y + m.x3 * v.z,
+		.y = m.y1 * v.x + m.y2 * v.y + m.y3 * v.z,
+		.z = m.z1 * v.x + m.z2 * v.y + m.z3 * v.z,
+	};
+}
+
+bool CheckWindingOrder(Vec2 v1, Vec2 v2, Vec2 v3)
+{
+	return (v2.x - v1.x) * (v3.y - v1.y) - (v2.y - v1.y) * (v3.x - v1.x) < 0;
+}
+
+bool PointInTriangle(Vec2 v1, Vec2 v2, Vec2 v3, Vec2 p)
+{
+	return
+		(v2.x - v1.x) * (p.y - v1.y) - (v2.y - v1.y) * (p.x - v1.x) <= 0 &&
+		(v3.x - v2.x) * (p.y - v2.y) - (v3.y - v2.y) * (p.x - v2.x) <= 0 &&
+		(v1.x - v3.x) * (p.y - v3.y) - (v1.y - v3.y) * (p.x - v3.x) <= 0;
+}
+
+Bounds GetTriangleBounds(Vec2 v1, Vec2 v2, Vec2 v3)
+{
+	return Bounds {
+		.min.x = math.floor(math.min(math.min(v1.x, v2.x), v3.x)),
+		.min.y = math.floor(math.min(math.min(v1.y, v2.y), v3.y)),
+		.max.x = math.ceil(math.max(math.max(v1.x, v2.x), v3.x)),
+		.max.y = math.ceil(math.max(math.max(v1.y, v2.y), v3.y)),
+	};
+}
+
+Vec3 GetBarycentricCoordinates(Vec2 v1, Vec2 v2, Vec2 v3, Vec2 p)
+{
+    Vec2 v0_ = Subtract2D(v2, v1);
+	Vec2 v1_ = Subtract2D(v3, v1);
+	Vec2 v2_ = Subtract2D(p, v1);
+
+	float d00 = Dot2D(v0_, v0_);
+	float d01 = Dot2D(v0_, v1_);
+	float d11 = Dot2D(v1_, v1_);
+	float d20 = Dot2D(v2_, v0_);
+	float d21 = Dot2D(v2_, v1_);
+	float denom = d00 * d11 - d01 * d01;
+
+	float v = (d11 * d20 - d01 * d21) / denom;
+	float w = (d00 * d21 - d01 * d20) / denom;
+	float u = 1 - v - w;
+
+	return Vec3 {.x = u, .y = v, .z = w};
+}

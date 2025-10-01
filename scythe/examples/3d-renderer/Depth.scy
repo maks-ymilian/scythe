@@ -1,0 +1,27 @@
+private:
+float[] depthBuffer;
+int depthWidth;
+
+public:
+int AllocDepthBuffer(float* ptr, int width, int height)
+{
+	depthWidth = width;
+	depthBuffer = float[] {.ptr = ptr, .length = width * height};
+	return depthBuffer.length;
+}
+
+void FillDepthBuffer(float value)
+{
+	mem.set(depthBuffer.ptr, value, depthBuffer.length);
+}
+
+float GetDepth(int x, int y)
+{
+	return depthBuffer[y * depthWidth + x];
+}
+
+void SetDepth(int x, int y, float depth)
+{
+	depthBuffer[y * depthWidth + x] = depth;
+}
+

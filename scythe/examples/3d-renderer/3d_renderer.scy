@@ -1,0 +1,326 @@
+import "Math.scy"
+import "Time.scy"
+import "Models.scy"
+import "Depth.scy"
+
+desc [
+	description: "3D Renderer",
+	in_pins: [pin: "none"],
+	out_pins: [pin: "none"],
+	options: [
+		gfx: [hz: 120],
+	],
+];
+
+input modelInput [name: "model", default: 2, min: 0, max: 2, inc: 1];
+input resolution [name: "3D resolution (%)", default: 90, min: 0, max: 100, inc: 1];
+input smooth [name: "smooth shading", default: 1, min: 0, max: 1, inc: 1];
+input showNormals [name: "show normals", default: 0, min: 0, max: 1, inc: 1];
+
+struct Color
+{
+	float r;
+	float g;
+	float b;
+}
+
+// this is equal to gfx.w and gfx.h if resolution slider is 100%, otherwise its smalller
+int width;
+int height;
+
+// this is equal to 1 if resolution slider is 100%, otherwise its bigger
+int pixelSize;
+
+// sets a pixel to a color
+// since resolution slider scales down the image, this function scales it back up
+void SetPixel(int x, int y, Color color)
+{
+	if (pixelSize == 1) // if max resolution
+	{
+		gfx.set_position(x * pixelSize, y * pixelSize);
+		gfx.set_pixel(color.r, color.g, color.b);
+	}
+	else
+	{
+		gfx.set(color.r, color.g, color.b);
+		gfx.rect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+	}
+}
+
+// adapt math functions to take a triangle parameter
+bool CheckWindingOrder(Models.Triangle3D t)
+{
+	return Math.CheckWindingOrder(
+		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
+		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
+		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
+	);
+}
+
+Math.Bounds GetTriangleBounds(Models.Triangle3D t)
+{
+	return Math.GetTriangleBounds(
+		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
+		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
+		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
+	);
+}
+
+bool PointInTriangle(Models.Triangle3D t, Math.Vec2 p)
+{
+	return Math.PointInTriangle(
+		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
+		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
+		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
+		p,
+	);
+}
+
+Math.Vec3 GetBarycentricCoordinates(Models.Triangle3D t, Math.Vec2 p)
+{
+	return Math.GetBarycentricCoordinates(
+		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
+		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
+		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
+		p,
+	);
+}
+
+// "fragment shader"
+// calculates the color of the current pixel using the position and normal of the current pixel
+Color ComputeFragmentColor(Math.Vec3 pos, Math.Vec3 normal)
+{
+	if (showNormals.value == 1)
+		return Color {.r = normal.x, .g = normal.y, .b = normal.z};
+
+	Math.Vec3 viewDir = Math.Normalize3D(Math.Subtract3D(Math.Vec3{}, pos));
+
+	Math.Vec3 lightDir = Math.Normalize3D(Math.Vec3 {.x = -1, .y = -1, .z = -1});
+
+	Math.Vec3 reflectDir = Math.Reflect3D(lightDir, normal);
+
+	float light = math.clamp(Math.Dot3D(normal, Math.Subtract3D(Math.Vec3{}, lightDir)), 0, 1);
+	light *= 0.9;
+	light += 0.1;
+
+	return Color {.r = light, .g = light, .b = light};
+}
+
+// draw a 2d triangle on the screen. the z values are kept for depth calculation
+void DrawTriangle(Models.Triangle3D t)
+{
+	// if triangle is facing away from the camera, dont render it
+	// if (!CheckWindingOrder(t))
+	// 	return;
+
+	// get bounding box of triangle and loop through each pixel in the bounding box
+	Math.Bounds bounds = GetTriangleBounds(t);
+	for (int x = bounds.min.x; x < bounds.max.x; ++x)
+	{
+		for (int y = bounds.min.y; y < bounds.max.y; ++y)
+		{
+			// if the pixel in the bounding box is not in the triangle, dont render it
+			// if (!PointInTriangle(t, Math.Vec2 {.x = x, .y = y}))
+			// 	continue;
+
+			// get 3 weighted values for how close this pixel is to each vertex of the triangle
+			Math.Vec3 barycentric = GetBarycentricCoordinates(t, Math.Vec2 {.x = x, .y = y});
+
+			// get position of the current pixel by interpolating the position of the 3 vertices
+			Math.Vec3 pixelPos = Math.Vec3 {
+				.x =
+					t.v1.x * barycentric.x + 
+					t.v2.x * barycentric.y +
+					t.v3.x * barycentric.z,
+				.y = 
+					t.v1.y * barycentric.x + 
+					t.v2.y * barycentric.y +
+					t.v3.y * barycentric.z,
+				.z = // map depth from -1 to 1 to 0 to 1
+					((t.v1.z + 1) / 2) * barycentric.x + 
+					((t.v2.z + 1) / 2) * barycentric.y +
+					((t.v3.z + 1) / 2) * barycentric.z,
+			};
+
+			// float depth = pixelPos.z;
+			// if (depth > Depth.GetDepth(x, y)) // if the current pixel is behind an already drawn pixel, dont render it
+			// 	continue;
+			// Depth.SetDepth(x, y, depth); // update depth for this pixel
+
+			Math.Vec3 normal = Math.Vec3 {
+				if (smooth.value == 1) // if smooth shading is on, calculate a normal for this pixel interpolated from 3 vertex normals
+				{
+					Math.Vec3 n1 = Math.Vec3 {.x = t.n1.x * barycentric.x, .y = t.n1.y * barycentric.x, .z = t.n1.z * barycentric.x};
+					Math.Vec3 n2 = Math.Vec3 {.x = t.n2.x * barycentric.y, .y = t.n2.y * barycentric.y, .z = t.n2.z * barycentric.y};
+					Math.Vec3 n3 = Math.Vec3 {.x = t.n3.x * barycentric.z, .y = t.n3.y * barycentric.z, .z = t.n3.z * barycentric.z};
+					return Math.Normalize3D(Math.Add3D(Math.Add3D(n1, n2), n3));
+				}
+				else // if smooth shading is off, use the average of all 3 vertex normals
+					return Math.Normalize3D(Math.Add3D(Math.Add3D(t.n1, t.n2), t.n3));
+			};
+
+			Color color = ComputeFragmentColor(pixelPos, normal);
+			SetPixel(x, y, color);
+		}
+	}
+}
+
+// transform vertices of triangle with matrix
+Models.Triangle4D TransformPositions(Models.Triangle4D t, Math.Mat4 m)
+{
+	return Models.Triangle4D {
+		.v1 = Math.MultiplyVec4Mat4(t.v1, m),
+		.v2 = Math.MultiplyVec4Mat4(t.v2, m),
+		.v3 = Math.MultiplyVec4Mat4(t.v3, m),
+		.n1 = t.n1,
+		.n2 = t.n2,
+		.n3 = t.n3,
+	};
+}
+
+// transform normals of triangle with matrix
+Models.Triangle4D TransformNormals(Models.Triangle4D t, Math.Mat4 m)
+{
+	// model matrix needs to be inverted, transposed, and cropped before being applied to normals
+	Math.Mat3 normalMatrix = Math.Mat4ToMat3(Math.TransposeMat4(Math.InverseMat4(m)));
+	return Models.Triangle4D {
+		.v1 = t.v1,
+		.v2 = t.v2,
+		.v3 = t.v3,
+		.n1 = Math.MultiplyVec3Mat3(t.n1, normalMatrix),
+		.n2 = Math.MultiplyVec3Mat3(t.n2, normalMatrix),
+		.n3 = Math.MultiplyVec3Mat3(t.n3, normalMatrix),
+	};
+}
+
+// allocate model depending on slider
+Models.Model model;
+int AllocModel(any* ptr)
+{
+	if (modelInput.value == 0) model = Models.Cube(ptr);
+	else if (modelInput.value == 1) model = Models.Torus(ptr);
+	else if (modelInput.value == 2) model = Models.Monkey(ptr);
+	else model = Models.Torus(ptr);
+	
+	return Models.GetModelSize(model);
+}
+
+// this is called every time the model changes, every time the resolution changes, and at start
+Math.Mat4 proj;
+void Init()
+{
+	// set pixel size based on resolution slider. pixel size 1 is maximum resolution
+	pixelSize = (1 - math.lerp(0.95, 1, resolution.value / 100)) * math.min(gfx.w, gfx.h);
+	if (pixelSize == 0) pixelSize = 1;
+
+	// scale screen size down if resolution is lowered.
+	// the final image will be scaled up to full screen size in the SetPixel function
+	width = int {gfx.w / pixelSize};
+	height = int {gfx.h / pixelSize};
+
+	// allocate projection matrix based on fov, aspect ratio, near plane, and far plane
+	proj = Math.ProjectionMatrix(Math.Deg2Rad(70), width / height, 0.1, 100);
+
+	// allocate depth buffer for new screen size and current model directly after it in memory
+	any* stackPtr = 0;
+	stackPtr += Depth.AllocDepthBuffer(stackPtr, width, height);
+	stackPtr += AllocModel(stackPtr);
+	mem.free(stackPtr); // tell reaper that memory at and after this point is not used
+}
+
+// call init every time a slider changes
+@slider
+{
+	Init();
+}
+
+Math.Vec3 currentRotation;
+int prevWidth;
+int prevHeight;
+@gfx [width: 512, height: 512]
+{
+	SetPixel(0, 0, Color {}); // force update because jsfx will hang on the previous frame if nothing is drawn that frame
+
+	// call init every time window is resized and on first frame
+	if (gfx.w != prevWidth || gfx.h != prevHeight)
+		Init();
+	prevWidth = gfx.w;
+	prevHeight = gfx.h;
+
+	Depth.FillDepthBuffer(1); // initialize whole depth buffer to far
+
+	float deltaTime = Time.ComputeDeltaTime(); // get the time since last frame
+
+	// make it spin
+	currentRotation.x += deltaTime * 0.5;
+	currentRotation.y += deltaTime * 2;
+	currentRotation.z += deltaTime * 0.5;
+
+	// model matrix can be used to position, rotate, and scale a model
+	Math.Mat4 modelMatrix = Math.ModelMatrix(
+		Math.Vec3 {.z = -3}, // position
+		Math.RotationMatrixEuler(currentRotation), // rotation
+		Math.Vec3 {.x = 1, .y = 1, .z = 1}, // scale
+	);
+
+	// loop through each triangle in the model, transform it, and draw it to the screen
+	for (int i = 0; i < model.triangles.length; ++i)
+	{
+		// get current triangle, starts off in object space
+		Models.Triangle4D object = Models.GetModelTriangle(model, i);
+
+		// transform triangle to world space (position, rotation, scaling)
+		Models.Triangle4D world = TransformPositions(object, modelMatrix);
+		world = TransformNormals(world, modelMatrix);
+
+		// transform triangle to clip space (projection)
+		// frustum clipping is supposed to happen here but is not needed for this demo
+		Models.Triangle4D clip = TransformPositions(world, proj);
+
+		// transform triangle to ndc space (homogeneous division)
+		Math.Vec3 DivideW(Math.Vec4 v)
+		{
+			v.x /= v.w;
+			v.y /= v.w;
+			v.z /= v.w;
+			return Math.Vec3 {.x = v.x, .y = v.y, .z = v.z};
+		}
+		Models.Triangle3D ndc = Models.Triangle3D {
+			.v1 = DivideW(clip.v1),
+			.v2 = DivideW(clip.v2),
+			.v3 = DivideW(clip.v3),
+			.n1 = clip.n1,
+			.n2 = clip.n2,
+			.n3 = clip.n3,
+		};
+
+		// transform triangle to screen space (pixels)
+		Math.Vec3 NDCToScreen(Math.Vec3 ndc)
+		{
+			return Math.Vec3 {
+				.x =  ndc.x * width / 2 + width / 2,
+				.y = -ndc.y * height / 2 + height / 2,
+				.z = ndc.z,
+			};
+		}
+		Models.Triangle3D screen = Models.Triangle3D {
+			.v1 = NDCToScreen(ndc.v1),
+			.v2 = NDCToScreen(ndc.v2),
+			.v3 = NDCToScreen(ndc.v3),
+			.n1 = ndc.n1,
+			.n2 = ndc.n2,
+			.n3 = ndc.n3,
+		};
+
+		DrawTriangle(screen);
+	}
+
+	// draw fps text
+	string fpsString = 0;
+	int fps = math.round(1 / deltaTime);
+	str.print(fpsString, "%.0f FPS\n", fps);
+	gfx.set_position(10, 10);
+	gfx.set(1, 1, 1);
+	gfx.set_font(1, "Arial", 30);
+	gfx.draw_string(fpsString);
+}

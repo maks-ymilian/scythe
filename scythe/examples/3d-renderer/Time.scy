@@ -1,0 +1,29 @@
+float previousTime = time.time_precise();
+// int[] lastFPS = int[] {.ptr = 100000, .length = 20};
+
+public:
+float ComputeDeltaTime()
+{
+	float deltaTime = time.time_precise() - previousTime;
+	previousTime = time.time_precise();
+	return deltaTime;
+}
+
+// void PushFPS(int fps)
+// {
+// 	for (int i = 0; i < lastFPS.length; ++i)
+// 	{
+// 		if (i == lastFPS.length - 1)
+// 			lastFPS[i] = fps;
+// 		else
+// 			lastFPS[i] = lastFPS[i + 1];
+// 	}
+// }
+//
+// float GetAverageFPS()
+// {
+// 	int sum = 0;
+// 	for (int i = 0; i < lastFPS.length; ++i)
+// 		sum += lastFPS[i];
+// 	return sum / lastFPS.length;
+// }
