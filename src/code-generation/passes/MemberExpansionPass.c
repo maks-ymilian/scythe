@@ -123,10 +123,6 @@ static size_t ForEachStructMember(
 	if (currentIndex == NULL)
 		currentIndex = &index;
 
-	size_t parentRefsLength;
-	if (parentRefs)
-		parentRefsLength = parentRefs->length;
-
 	for (size_t i = 0; i < type->members.length; i++)
 	{
 		const NodePtr* memberNode = type->members.array[i];
