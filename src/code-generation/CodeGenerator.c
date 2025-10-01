@@ -36,14 +36,16 @@ Result GenerateCode(const AST* syntaxTree, char** outputCode, size_t* outputLeng
 	PROPAGATE_ERROR(TypeConversionPass(syntaxTree));
 	GlobalSectionPass(syntaxTree);
 
-	printf("Optimizing...\n");
+	printf("Optimizing... [    ]\n");
 	FunctionDepsPass(syntaxTree);
 	FunctionInliningPass(syntaxTree);
 	CopyPropagationPass(syntaxTree);
+	printf("Optimizing... [##  ]\n");
 	ExpressionSimplificationPass(syntaxTree);
 	VariableDepsPass(syntaxTree);
 	MarkUnusedPass(syntaxTree);
 	RemoveUnusedPass(syntaxTree);
+	printf("Optimizing... [####]\n");
 
 	UniqueNamePass(syntaxTree);
 	BlockRemoverPass(syntaxTree);
