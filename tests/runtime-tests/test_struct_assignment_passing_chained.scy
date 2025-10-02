@@ -138,5 +138,44 @@ bool test()
 		test_equality(ret, value9);
 }
 
+struct Vec2
+{
+	float x;
+	float y;
+}
+
+struct Vec3
+{
+	float x;
+	float y;
+	float z;
+}
+
+struct Triangle
+{
+	Vec3 v1;
+	Vec3 v2;
+	Vec3 v3;
+}
+
+bool otherTest()
+{
+	bool help(Vec2 a, Vec2 b, Vec2 c)
+	{
+		return
+			a.x == 1 && a.y == 2 &&
+			b.x == 4 && b.y == 5 &&
+			c.x == 7 && c.y == 8;
+	}
+
+	Vec2 Vec3To2(Vec3 v) { return Vec2 {.x = v.x, .y = v.y}; }
+	Triangle t = Triangle {
+		.v1 = Vec3 {.x = 1, .y = 2, .z = 3},
+		.v2 = Vec3 {.x = 4, .y = 5, .z = 6},
+		.v3 = Vec3 {.x = 7, .y = 8, .z = 9},
+	};
+	return help(Vec3To2(t.v1), Vec3To2(t.v2), Vec3To2(t.v3));
+}
+
 external any AAA_test_struct_assignment_passing_chained;
-@init { AAA_test_struct_assignment_passing_chained = test(); }
+@init { AAA_test_struct_assignment_passing_chained = test() && otherTest(); }

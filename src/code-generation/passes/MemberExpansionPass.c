@@ -350,7 +350,19 @@ static NodePtr AllocStructMemberAssignmentExpr(
 			ASSERT(funcDecl->globalReturn != NULL);
 
 			VarDeclStmt* instance = FindInstantiated(parentRefs, member, funcDecl->globalReturn);
-			return AllocIdentifier(instance, -1);
+			return AllocASTNode( // force jsfx to evaluate the identifier right now by wrapping it in two minuses
+				&(UnaryExpr){
+					.lineNumber = funcCall->lineNumber,
+					.operatorType = Unary_Minus,
+					.expression = AllocASTNode(
+						&(UnaryExpr){
+							.lineNumber = funcCall->lineNumber,
+							.operatorType = Unary_Minus,
+							.expression = AllocIdentifier(instance, -1),
+						},
+						sizeof(UnaryExpr), Node_Unary),
+				},
+				sizeof(UnaryExpr), Node_Unary);
 		}
 	}
 	case Node_Subscript:
