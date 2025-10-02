@@ -17,9 +17,4 @@ desc [
     for (int x = 0; x < size * count; x += size)
 		for (int y = 0; y < size * count; y += size)
 			gfx.rect(x + spacing / 2, y + spacing / 2, size - spacing / 2, size - spacing / 2);
-
-	gfx.set_position(10, 10);
-	float result;
-	gfx.get_pixel(result, 0, 0);
 }
-
