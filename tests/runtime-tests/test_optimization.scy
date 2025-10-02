@@ -30,6 +30,8 @@ for each node
 }
 */
 
+input inp [];
+
 external any AAA_test_optimization;
 external any importantBool8392;
 @init
@@ -101,6 +103,10 @@ external any importantBool8392;
 			jsfx.get_host_placement(pos);
 			if (x != 935 || pos == x)
 				return false;
+		}
+		{
+			inp.value = 69.420;
+			return slider.slider(inp.sliderNumber) == 69.420;
 		}
 		return true;
 	};

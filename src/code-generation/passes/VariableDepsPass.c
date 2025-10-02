@@ -244,28 +244,31 @@ static Env VisitStatement(NodePtr node, Env* env)
 			ASSERT(memberAccess->varReference);
 			VisitExpression(binary->right, env);
 
-			bool lastDepIsInDifferentSection = false;
-			Array* deps = EnvGetDeps(env, memberAccess->varReference);
-			for (size_t i = 0; i < deps->length; ++i)
+			if (!memberAccess->varReference->inputStmt)
 			{
-				NodePtr* dep = deps->array[i];
-				SectionStmt* section = NULL;
-				if (dep->type == Node_ExpressionStatement)
-					section = ((ExpressionStmt*)dep->ptr)->section;
-				else if (dep->type == Node_VariableDeclaration)
-					section = ((VarDeclStmt*)dep->ptr)->section;
-				else
-					UNREACHABLE();
-				ASSERT(section);
-
-				if (section != exprStmt->section)
+				bool lastDepIsInDifferentSection = false;
+				Array* deps = EnvGetDeps(env, memberAccess->varReference);
+				for (size_t i = 0; i < deps->length; ++i)
 				{
-					lastDepIsInDifferentSection = true;
-					break;
-				}
-			}
+					NodePtr* dep = deps->array[i];
+					SectionStmt* section = NULL;
+					if (dep->type == Node_ExpressionStatement)
+						section = ((ExpressionStmt*)dep->ptr)->section;
+					else if (dep->type == Node_VariableDeclaration)
+						section = ((VarDeclStmt*)dep->ptr)->section;
+					else
+						UNREACHABLE();
+					ASSERT(section);
 
-			EnvSetDep(env, memberAccess->varReference, node, lastDepIsInDifferentSection);
+					if (section != exprStmt->section)
+					{
+						lastDepIsInDifferentSection = true;
+						break;
+					}
+				}
+
+				EnvSetDep(env, memberAccess->varReference, node, lastDepIsInDifferentSection);
+			}
 		}
 		else
 			VisitExpression(exprStmt->expr, env);

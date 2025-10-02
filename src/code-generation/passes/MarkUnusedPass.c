@@ -362,7 +362,7 @@ static void VisitStatement(NodePtr* node, bool endOfFunction)
 			BinaryExpr* binary = exprStmt->expr.ptr;
 			MemberAccessExpr* memberAccess = binary->left.ptr;
 			ASSERT(memberAccess->varReference);
-			if (memberAccess->varReference->modifiers.externalValue)
+			if (memberAccess->varReference->modifiers.externalValue || memberAccess->varReference->inputStmt)
 				exprStmt->doNotOptimize = true;
 
 			ProcessAssignment(*node);
