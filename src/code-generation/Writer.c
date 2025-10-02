@@ -232,7 +232,9 @@ static void VisitUnaryExpression(UnaryExpr* unary)
 	}
 
 	WriteString(operator, sections);
+	if (unary->expression.type == Node_Unary) WriteChar('(', sections);
 	VisitExpression(unary->expression, &(NodePtr){.ptr = unary, .type = Node_Unary});
+	if (unary->expression.type == Node_Unary) WriteChar(')', sections);
 }
 
 static void VisitSubscriptExpression(SubscriptExpr* subscript)
