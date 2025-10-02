@@ -319,15 +319,15 @@ Vec3 MultiplyVec3Mat3(Vec3 v, Mat3 m)
 
 bool CheckWindingOrder(Vec2 v1, Vec2 v2, Vec2 v3)
 {
-	return (v2.x - v1.x) * (v3.y - v1.y) - (v2.y - v1.y) * (v3.x - v1.x) < 0;
+	return (v2.x - v1.x) * (v3.y - v1.y) - (v2.y - v1.y) * (v3.x - v1.x) > 0;
 }
 
 bool PointInTriangle(Vec2 v1, Vec2 v2, Vec2 v3, Vec2 p)
 {
 	return
-		(v2.x - v1.x) * (p.y - v1.y) - (v2.y - v1.y) * (p.x - v1.x) <= 0 &&
-		(v3.x - v2.x) * (p.y - v2.y) - (v3.y - v2.y) * (p.x - v2.x) <= 0 &&
-		(v1.x - v3.x) * (p.y - v3.y) - (v1.y - v3.y) * (p.x - v3.x) <= 0;
+		(v3.x - v1.x) * (p.y - v1.y) - (v3.y - v1.y) * (p.x - v1.x) <= 0 &&
+		(v2.x - v3.x) * (p.y - v3.y) - (v2.y - v3.y) * (p.x - v3.x) <= 0 &&
+		(v1.x - v2.x) * (p.y - v2.y) - (v1.y - v2.y) * (p.x - v2.x) <= 0;
 }
 
 Bounds GetTriangleBounds(Vec2 v1, Vec2 v2, Vec2 v3)

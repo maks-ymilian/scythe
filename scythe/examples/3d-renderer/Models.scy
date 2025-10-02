@@ -19,28 +19,6 @@ struct Model
 	Triangle[] triangles;
 }
 
-struct Triangle3D
-{
-	Math.Vec3 v1;
-	Math.Vec3 v2;
-	Math.Vec3 v3;
-
-	Math.Vec3 n1;
-	Math.Vec3 n2;
-	Math.Vec3 n3;
-}
-
-struct Triangle4D
-{
-	Math.Vec4 v1;
-	Math.Vec4 v2;
-	Math.Vec4 v3;
-
-	Math.Vec3 n1;
-	Math.Vec3 n2;
-	Math.Vec3 n3;
-}
-
 // gets number of memory slots taken up by model
 int GetModelSize(Model model)
 {
@@ -48,25 +26,6 @@ int GetModelSize(Model model)
 		model.vertices.length * sizeof(*model.vertices.ptr) + 
 		model.normals.length * sizeof(*model.normals.ptr) + 
 		model.triangles.length * sizeof(*model.triangles.ptr);
-}
-
-// arranges data from model into a Triangle4D struct for ease of use
-Triangle4D GetModelTriangle(Model model, int triangle)
-{
-	Math.Vec3 v1 = model.vertices[model.triangles[triangle].v1];
-	Math.Vec3 v2 = model.vertices[model.triangles[triangle].v2];
-	Math.Vec3 v3 = model.vertices[model.triangles[triangle].v3];
-
-	Math.Vec3 n1 = model.normals[model.triangles[triangle].n1];
-	Math.Vec3 n2 = model.normals[model.triangles[triangle].n2];
-	Math.Vec3 n3 = model.normals[model.triangles[triangle].n3];
-
-	return Triangle4D {
-		.v1 = Math.Vec4 {.x = v1.x, .y = v1.y, .z = v1.z, .w = 1},
-		.v2 = Math.Vec4 {.x = v2.x, .y = v2.y, .z = v2.z, .w = 1},
-		.v3 = Math.Vec4 {.x = v3.x, .y = v3.y, .z = v3.z, .w = 1},
-		.n1 = n1, .n2 = n2, .n3 = n3,
-	};
 }
 
 // allocates a cube model in memory at ptr

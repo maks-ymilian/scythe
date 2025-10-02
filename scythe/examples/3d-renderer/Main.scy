@@ -13,15 +13,43 @@ desc [
 ];
 
 input modelInput [name: "model", default: 2, min: 0, max: 2, inc: 1];
-input resolution [name: "3D resolution (%)", default: 90, min: 0, max: 100, inc: 1];
+input resolution [name: "3D resolution (%)", default: 90, min: 0, max: 100, inc: 1, shape: [type: log, midpoint: 70]];
 input smooth [name: "smooth shading", default: 1, min: 0, max: 1, inc: 1];
 input showNormals [name: "show normals", default: 0, min: 0, max: 1, inc: 1];
+input stop [name: "stop", default: 0, min: 0, max: 1, inc: 1];
+
+input shininess [name: "shininess", default: 16, min: 1, max: 100, shape: [type: log, midpoint: 30]];
+input lightPower [name: "light power", default: 2, min: 0, max: 5];
+input ambientLight [name: "ambient light", default: 0.005, min: 0, max: 1, shape: [type: log, midpoint: 0.01]];
+input lightPos [name: "light position", default: 65, min: 0, max: 360];
 
 struct Color
 {
 	float r;
 	float g;
 	float b;
+}
+
+struct Triangle3D
+{
+	Math.Vec3 v1;
+	Math.Vec3 v2;
+	Math.Vec3 v3;
+
+	Math.Vec3 n1;
+	Math.Vec3 n2;
+	Math.Vec3 n3;
+}
+
+struct Triangle4D
+{
+	Math.Vec4 v1;
+	Math.Vec4 v2;
+	Math.Vec4 v3;
+
+	Math.Vec3 n1;
+	Math.Vec3 n2;
+	Math.Vec3 n3;
 }
 
 // this is equal to gfx.w and gfx.h if resolution slider is 100%, otherwise its smalller
@@ -35,6 +63,8 @@ int pixelSize;
 // since resolution slider scales down the image, this function scales it back up
 void SetPixel(int x, int y, Color color)
 {
+	y = height - y; // flip y
+
 	if (pixelSize == 1) // if max resolution
 	{
 		gfx.set_position(x * pixelSize, y * pixelSize);
@@ -47,105 +77,75 @@ void SetPixel(int x, int y, Color color)
 	}
 }
 
-// adapt math functions to take a triangle parameter
-bool CheckWindingOrder(Models.Triangle3D t)
-{
-	return Math.CheckWindingOrder(
-		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
-		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
-		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
-	);
-}
-
-Math.Bounds GetTriangleBounds(Models.Triangle3D t)
-{
-	return Math.GetTriangleBounds(
-		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
-		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
-		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
-	);
-}
-
-bool PointInTriangle(Models.Triangle3D t, Math.Vec2 p)
-{
-	return Math.PointInTriangle(
-		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
-		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
-		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
-		p,
-	);
-}
-
-Math.Vec3 GetBarycentricCoordinates(Models.Triangle3D t, Math.Vec2 p)
-{
-	return Math.GetBarycentricCoordinates(
-		Math.Vec2 {.x = t.v1.x, .y = t.v1.y},
-		Math.Vec2 {.x = t.v2.x, .y = t.v2.y},
-		Math.Vec2 {.x = t.v3.x, .y = t.v3.y},
-		p,
-	);
-}
-
 // "fragment shader"
-// calculates the color of the current pixel using the position and normal of the current pixel
+// calculates the color of the current pixel using the world position and normal of the current pixel
 Color ComputeFragmentColor(Math.Vec3 pos, Math.Vec3 normal)
 {
 	if (showNormals.value == 1)
 		return Color {.r = normal.x, .g = normal.y, .b = normal.z};
 
-	Math.Vec3 viewDir = Math.Normalize3D(Math.Subtract3D(Math.Vec3{}, pos));
+	float gamma = 2.2;
 
-	Math.Vec3 lightDir = Math.Normalize3D(Math.Vec3 {.x = -1, .y = -1, .z = -1});
+	Math.Vec3 lightPos = Math.Vec3 {
+		.x = 0,
+		.y = math.cos(Math.Deg2Rad(lightPos.value)) * 3,
+		.z = math.sin(Math.Deg2Rad(lightPos.value)) * 3 - 3,
+	};
 
-	Math.Vec3 reflectDir = Math.Reflect3D(lightDir, normal);
+	Math.Vec3 lightDir = Math.Subtract3D(lightPos, pos);
+	float distance = Math.Dot3D(lightDir, lightDir);
+	lightDir = Math.Normalize3D(lightDir);
 
-	float light = math.clamp(Math.Dot3D(normal, Math.Subtract3D(Math.Vec3{}, lightDir)), 0, 1);
-	light *= 0.9;
-	light += 0.1;
+	float diffuse = math.max(Math.Dot3D(lightDir, normal), 0);
 
-	return Color {.r = light, .g = light, .b = light};
+	// blinn phong
+	float specular = float {
+		Math.Vec3 viewDir = Math.Normalize3D(Math.Subtract3D(Math.Vec3 {}, pos));
+		Math.Vec3 halfDir = Math.Normalize3D(Math.Add3D(lightDir, viewDir));
+		float specAngle = math.max(Math.Dot3D(halfDir, normal), 0);
+		return math.pow(specAngle, shininess.value);
+	};
+
+	float color =
+		ambientLight.value +
+		diffuse * lightPower.value / distance +
+		specular * diffuse * lightPower.value / distance;
+
+	color = math.pow(color, 1 / gamma);
+
+	return Color {.r = color, .g = color, .b = color};
 }
 
 // draw a 2d triangle on the screen. the z values are kept for depth calculation
-void DrawTriangle(Models.Triangle3D t)
+void DrawTriangle(Triangle3D t, Triangle4D world)
 {
+	Math.Vec2 Vec3To2(Math.Vec3 v) { return Math.Vec2 {.x = v.x, .y = v.y}; }
+
 	// if triangle is facing away from the camera, dont render it
-	// if (!CheckWindingOrder(t))
-	// 	return;
+	if (!Math.CheckWindingOrder(Vec3To2(t.v1), Vec3To2(t.v2), Vec3To2(t.v3)))
+		return;
 
 	// get bounding box of triangle and loop through each pixel in the bounding box
-	Math.Bounds bounds = GetTriangleBounds(t);
+	Math.Bounds bounds = Math.GetTriangleBounds(Vec3To2(t.v1), Vec3To2(t.v2), Vec3To2(t.v3));
 	for (int x = bounds.min.x; x < bounds.max.x; ++x)
 	{
 		for (int y = bounds.min.y; y < bounds.max.y; ++y)
 		{
 			// if the pixel in the bounding box is not in the triangle, dont render it
-			// if (!PointInTriangle(t, Math.Vec2 {.x = x, .y = y}))
-			// 	continue;
+			if (!Math.PointInTriangle(Vec3To2(t.v1), Vec3To2(t.v2), Vec3To2(t.v3), Math.Vec2 {.x = x, .y = y}))
+				continue;
 
 			// get 3 weighted values for how close this pixel is to each vertex of the triangle
-			Math.Vec3 barycentric = GetBarycentricCoordinates(t, Math.Vec2 {.x = x, .y = y});
+			Math.Vec3 barycentric = Math.GetBarycentricCoordinates(Vec3To2(t.v1), Vec3To2(t.v2), Vec3To2(t.v3), Math.Vec2 {.x = x, .y = y});
 
-			// get position of the current pixel by interpolating the position of the 3 vertices
-			Math.Vec3 pixelPos = Math.Vec3 {
-				.x =
-					t.v1.x * barycentric.x + 
-					t.v2.x * barycentric.y +
-					t.v3.x * barycentric.z,
-				.y = 
-					t.v1.y * barycentric.x + 
-					t.v2.y * barycentric.y +
-					t.v3.y * barycentric.z,
-				.z = // map depth from -1 to 1 to 0 to 1
+			// get depth of the current pixel by interpolating the depth of the 3 vertices
+			float depth =
 					((t.v1.z + 1) / 2) * barycentric.x + 
 					((t.v2.z + 1) / 2) * barycentric.y +
-					((t.v3.z + 1) / 2) * barycentric.z,
-			};
-
-			// float depth = pixelPos.z;
-			// if (depth > Depth.GetDepth(x, y)) // if the current pixel is behind an already drawn pixel, dont render it
-			// 	continue;
-			// Depth.SetDepth(x, y, depth); // update depth for this pixel
+					((t.v3.z + 1) / 2) * barycentric.z;
+			if (depth > Depth.GetDepth(x, y)) // if the current pixel is behind an already drawn pixel, dont render it
+				continue;
+			Depth.SetDepth(x, y, depth); // update depth for this pixel
 
 			Math.Vec3 normal = Math.Vec3 {
 				if (smooth.value == 1) // if smooth shading is on, calculate a normal for this pixel interpolated from 3 vertex normals
@@ -159,16 +159,23 @@ void DrawTriangle(Models.Triangle3D t)
 					return Math.Normalize3D(Math.Add3D(Math.Add3D(t.n1, t.n2), t.n3));
 			};
 
-			Color color = ComputeFragmentColor(pixelPos, normal);
+			// get world pos of pixel
+			Math.Vec3 worldPos = Math.Vec3 {
+				.x = world.v1.x * barycentric.x + world.v2.x * barycentric.y + world.v3.x * barycentric.z,
+				.y = world.v1.y * barycentric.x + world.v2.y * barycentric.y + world.v3.y * barycentric.z,
+				.z = world.v1.z * barycentric.x + world.v2.z * barycentric.y + world.v3.z * barycentric.z,
+			};
+
+			Color color = ComputeFragmentColor(worldPos, normal);
 			SetPixel(x, y, color);
 		}
 	}
 }
 
 // transform vertices of triangle with matrix
-Models.Triangle4D TransformPositions(Models.Triangle4D t, Math.Mat4 m)
+Triangle4D TransformPositions(Triangle4D t, Math.Mat4 m)
 {
-	return Models.Triangle4D {
+	return Triangle4D {
 		.v1 = Math.MultiplyVec4Mat4(t.v1, m),
 		.v2 = Math.MultiplyVec4Mat4(t.v2, m),
 		.v3 = Math.MultiplyVec4Mat4(t.v3, m),
@@ -179,17 +186,36 @@ Models.Triangle4D TransformPositions(Models.Triangle4D t, Math.Mat4 m)
 }
 
 // transform normals of triangle with matrix
-Models.Triangle4D TransformNormals(Models.Triangle4D t, Math.Mat4 m)
+Triangle4D TransformNormals(Triangle4D t, Math.Mat4 m)
 {
 	// model matrix needs to be inverted, transposed, and cropped before being applied to normals
 	Math.Mat3 normalMatrix = Math.Mat4ToMat3(Math.TransposeMat4(Math.InverseMat4(m)));
-	return Models.Triangle4D {
+	return Triangle4D {
 		.v1 = t.v1,
 		.v2 = t.v2,
 		.v3 = t.v3,
 		.n1 = Math.MultiplyVec3Mat3(t.n1, normalMatrix),
 		.n2 = Math.MultiplyVec3Mat3(t.n2, normalMatrix),
 		.n3 = Math.MultiplyVec3Mat3(t.n3, normalMatrix),
+	};
+}
+
+// arranges data from model into a Triangle4D struct for ease of use
+Triangle4D GetModelTriangle(Models.Model model, int triangle)
+{
+	Math.Vec3 v1 = model.vertices[model.triangles[triangle].v1];
+	Math.Vec3 v2 = model.vertices[model.triangles[triangle].v2];
+	Math.Vec3 v3 = model.vertices[model.triangles[triangle].v3];
+
+	Math.Vec3 n1 = model.normals[model.triangles[triangle].n1];
+	Math.Vec3 n2 = model.normals[model.triangles[triangle].n2];
+	Math.Vec3 n3 = model.normals[model.triangles[triangle].n3];
+
+	return Triangle4D {
+		.v1 = Math.Vec4 {.x = v1.x, .y = v1.y, .z = v1.z, .w = 1},
+		.v2 = Math.Vec4 {.x = v2.x, .y = v2.y, .z = v2.z, .w = 1},
+		.v3 = Math.Vec4 {.x = v3.x, .y = v3.y, .z = v3.z, .w = 1},
+		.n1 = n1, .n2 = n2, .n3 = n3,
 	};
 }
 
@@ -252,9 +278,12 @@ int prevHeight;
 	float deltaTime = Time.ComputeDeltaTime(); // get the time since last frame
 
 	// make it spin
-	currentRotation.x += deltaTime * 0.5;
-	currentRotation.y += deltaTime * 2;
-	currentRotation.z += deltaTime * 0.5;
+	if (stop.value == 0)
+	{
+		currentRotation.x += deltaTime * 0.5;
+		currentRotation.y += deltaTime * 2;
+		currentRotation.z += deltaTime * 0.5;
+	}
 
 	// model matrix can be used to position, rotate, and scale a model
 	Math.Mat4 modelMatrix = Math.ModelMatrix(
@@ -267,15 +296,15 @@ int prevHeight;
 	for (int i = 0; i < model.triangles.length; ++i)
 	{
 		// get current triangle, starts off in object space
-		Models.Triangle4D object = Models.GetModelTriangle(model, i);
+		Triangle4D object = GetModelTriangle(model, i);
 
 		// transform triangle to world space (position, rotation, scaling)
-		Models.Triangle4D world = TransformPositions(object, modelMatrix);
+		Triangle4D world = TransformPositions(object, modelMatrix);
 		world = TransformNormals(world, modelMatrix);
 
 		// transform triangle to clip space (projection)
 		// frustum clipping is supposed to happen here but is not needed for this demo
-		Models.Triangle4D clip = TransformPositions(world, proj);
+		Triangle4D clip = TransformPositions(world, proj);
 
 		// transform triangle to ndc space (homogeneous division)
 		Math.Vec3 DivideW(Math.Vec4 v)
@@ -285,7 +314,7 @@ int prevHeight;
 			v.z /= v.w;
 			return Math.Vec3 {.x = v.x, .y = v.y, .z = v.z};
 		}
-		Models.Triangle3D ndc = Models.Triangle3D {
+		Triangle3D ndc = Triangle3D {
 			.v1 = DivideW(clip.v1),
 			.v2 = DivideW(clip.v2),
 			.v3 = DivideW(clip.v3),
@@ -298,12 +327,12 @@ int prevHeight;
 		Math.Vec3 NDCToScreen(Math.Vec3 ndc)
 		{
 			return Math.Vec3 {
-				.x =  ndc.x * width / 2 + width / 2,
-				.y = -ndc.y * height / 2 + height / 2,
+				.x = ndc.x * width / 2 + width / 2,
+				.y = ndc.y * height / 2 + height / 2,
 				.z = ndc.z,
 			};
 		}
-		Models.Triangle3D screen = Models.Triangle3D {
+		Triangle3D screen = Triangle3D {
 			.v1 = NDCToScreen(ndc.v1),
 			.v2 = NDCToScreen(ndc.v2),
 			.v3 = NDCToScreen(ndc.v3),
@@ -312,7 +341,7 @@ int prevHeight;
 			.n3 = ndc.n3,
 		};
 
-		DrawTriangle(screen);
+		DrawTriangle(screen, world);
 	}
 
 	// draw fps text
