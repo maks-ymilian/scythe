@@ -9,11 +9,10 @@ It adds many features to JSFX, including:
 - A simple type system, including integer, boolean, pointer, array, and struct types
 - Better control flow, including return, break, and continue statements
 - For loops
-- Variable declaration is enforced before use
+- Enforcing variable declaration before use
 - Nested functions
-- Access to all built in JSFX functions
-- Full GFX support
-- Can be used with libraries written in JSFX
+
+Scythe provides access to all built-in JSFX functions, meaning it has full GFX support. It can also be used with libraries written in JSFX.
 
 # Example
 An audio buffer with adjustable play speed, written in Scythe:
@@ -63,14 +62,16 @@ read += speed;
 ```
 
 # Usage
-[REAPER](https://www.reaper.fm/) is required to run JSFX effects.
+[REAPER](https://www.reaper.fm/) is needed to run JSFX effects.
 
-To compile to a JSFX plugin, run the compiler from the command line:
+First, [download the executable](https://github.com/maks-ymilian/scythe/releases) or [compile it yourself](#build-instructions).
+
+To compile to a JSFX plugin, open a terminal in the executable's directory and run
 ```
 scythe <source_file> [output_file]
 ```
 - `<source_file>` - Path to your main `.scy` Scythe source file
-- `[output_file]` - Path where the generated `.jsfx` file should be saved (optional). If omitted, it will generate the output in the current directory with a default name.
+- `[output_file]` (optional) - Path to where the generated `.jsfx` file should be saved. If omitted, it will generate the output in the current directory with a default name.
 
 To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list.
 
@@ -78,8 +79,25 @@ To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` direc
 Documentation can be found [here](docs/README.md).\
 Examples can be found [here](scythe/examples/).
 
-# Planned features
-- Double pointers
-- Support for JSFX's named strings
-- Enums, with support for JSFX's enum sliders
-- Ternary operator
+# Build Instructions
+## Windows
+Requirements
+- CMake
+- Visual Studio with "Desktop development with C++"
+1. `git clone` or download the repo
+2. Open a terminal in the repo and run
+```
+mkdir build && cd build && cmake .. && cmake --build . --config Release
+```
+This will generate a `scythe.exe` executable somewhere in the newly created `build` folder, usually in `build\Release`.
+
+## Linux
+Requirements
+- CMake
+- Make
+1. `git clone` or download the repo
+2. Open a terminal in the repo and run
+```
+mkdir build && cd build && cmake .. && cmake --build . --config Release
+```
+This will generate a `scythe` executable in the newly created `build` directory.
