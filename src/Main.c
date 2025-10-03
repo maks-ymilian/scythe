@@ -24,6 +24,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
+		fflush(stdout); // prevent stderr appearing before stdout
 		ASSERT(result.type == Result_Error);
 		ASSERT(result.errorMessage != NULL);
 		fprintf(stderr, "ERROR: %s", result.errorMessage);

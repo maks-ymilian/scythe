@@ -196,7 +196,19 @@ static void RunTest(const char* executable, const char* fileName, struct String 
 	struct String output = ReadFile(file);
 	pclose(file);
 
-	const size_t prefixLength = 7;
+	size_t prefixLength = sizeof("ERROR: ") - 1;
+	size_t lastLinePos = 0;
+	for (size_t i = 0; i < output.length; ++i)
+	{
+		if (output.ptr[i] == '\n' && i + prefixLength < output.length)
+		{
+			if (output.ptr[i + 1] == 'C') // ignore the extra line "Compilation failed." after the error
+				break;
+			lastLinePos = i + 1;
+		}
+	}
+
+	prefixLength += lastLinePos;
 	if (output.length - prefixLength < expectedMessage.length ||
 		memcmp(output.ptr + prefixLength, expectedMessage.ptr, expectedMessage.length) != 0)
 	{
