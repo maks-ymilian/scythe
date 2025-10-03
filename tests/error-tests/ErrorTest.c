@@ -186,7 +186,7 @@ error:
 
 static void RunTest(const char* executable, const char* fileName, struct String expectedMessage, size_t lineNumber)
 {
-	struct String command = AllocFormat("%s %s 2>&1", executable, fileName);
+	struct String command = AllocFormat("\"%s\" \"%s\" 2>&1", executable, fileName);
 	errno = 0;
 	FILE* file = popen(command.ptr, "r");
 	free(command.ptr);
