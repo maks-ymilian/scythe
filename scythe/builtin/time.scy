@@ -2,5 +2,5 @@ public external:
 any time() as time;
 any time(any v) as time;
 
-any time_precise() as time_precise;
-any time_precise(any v) as time_precise;
+any precise() as time_precise;
+any precise(any v) as time_precise;

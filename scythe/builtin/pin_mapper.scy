@@ -1,6 +1,6 @@
 public external:
-any get_host_num_channels() as get_host_numchan;
-any set_host_num_channels(any numchan) as set_host_numchan;
+any get_host_numchan() as get_host_numchan;
+any set_host_numchan(any numchan) as set_host_numchan;
 any get_pin_mapping(any inout, any pin, any startchan, any chanmask) as get_pin_mapping;
 any set_pin_mapping(any inout, any pin, any startchan, any chanmask, any mapping) as set_pin_mapping;
 any get_flags() as get_pinmapper_flags;

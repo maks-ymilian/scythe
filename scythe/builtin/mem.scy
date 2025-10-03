@@ -1,6 +1,6 @@
 public external:
-any free(any top) as freembuf;
-any copy(any dest, any source, any length) as memcpy;
+any freembuf(any top) as freembuf;
+any cpy(any dest, any source, any length) as memcpy;
 any set(any dest, any value, any length) as memset;
 any set_values(any buf, any value, ...) as mem_set_values;
 any get_values(any buf, any value, ...) as mem_get_values;

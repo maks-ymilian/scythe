@@ -1,11 +1,11 @@
-float previousTime = time.time_precise();
+float previousTime = time.precise();
 // int[] lastFPS = int[] {.ptr = 100000, .length = 20};
 
 public:
 float ComputeDeltaTime()
 {
-	float deltaTime = time.time_precise() - previousTime;
-	previousTime = time.time_precise();
+	float deltaTime = time.precise() - previousTime;
+	previousTime = time.precise();
 	return deltaTime;
 }
 

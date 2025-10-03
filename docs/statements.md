@@ -55,7 +55,7 @@ Sections behave like a [`void`](type_system.md#void) [function](#functions), so 
 
 ## `@init`
 `@init` runs on effect startup, sample-rate changes and playback start.
-The [built-in variable](../scythe/builtin/README.md) `jsfx.ext_no_init` can be set to `1` to make it run only on effect startup.
+The [built-in variable](../scythe/builtin/README.md) `jsfx.ext_noinit` can be set to `1` to make it run only on effect startup.
 
 ## `@gfx`
 `@gfx` can include an optional [property list](#property-lists) that requests the size of the window:

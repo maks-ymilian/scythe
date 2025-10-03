@@ -7,36 +7,36 @@ any set(any r, any g, any b, any a, any mode) as gfx_set;
 any set(any r, any g, any b, any a, any mode, any dest) as gfx_set;
 any set(any r, any g, any b, any a, any mode, any dest, any alpha_pixel) as gfx_set;
 
-any line_to(any x, any y) as gfx_lineto;
-any line_to(any x, any y, any aa) as gfx_lineto;
+any lineto(any x, any y) as gfx_lineto;
+any lineto(any x, any y, any aa) as gfx_lineto;
 
 any line(any x, any y, any x2, any y2) as gfx_line;
 any line(any x, any y, any x2, any y2, any aa) as gfx_line;
 
-any rect_to(any x, any y) as gfx_rectto;
+any rectto(any x, any y) as gfx_rectto;
 any rect(any x, any y, any w, any h) as gfx_rect;
 any rect(any x, any y, any w, any h, any filled) as gfx_rect;
-any set_pixel(any r, any g, any b) as gfx_setpixel;
-any get_pixel(any r, any g, any b) as gfx_getpixel;
-any draw_number(any n, any ndigits) as gfx_drawnumber;
-any draw_char(any c) as gfx_drawchar;
+any setpixel(any r, any g, any b) as gfx_setpixel;
+any getpixel(any r, any g, any b) as gfx_getpixel;
+any drawnumber(any n, any ndigits) as gfx_drawnumber;
+any drawchar(any c) as gfx_drawchar;
 
-any draw_string(any str) as gfx_drawstr;
-any draw_string(any str, any flags) as gfx_drawstr;
-any draw_string(any str, any flags, any right) as gfx_drawstr;
-any draw_string(any str, any flags, any right, any bottom) as gfx_drawstr;
+any drawstr(any str) as gfx_drawstr;
+any drawstr(any str, any flags) as gfx_drawstr;
+any drawstr(any str, any flags, any right) as gfx_drawstr;
+any drawstr(any str, any flags, any right, any bottom) as gfx_drawstr;
 
-any measure_string(any str, any w, any h) as gfx_measurestr;
-any measure_char(any character, any w, any h) as gfx_measurechar;
+any measurestr(any str, any w, any h) as gfx_measurestr;
+any measurechar(any character, any w, any h) as gfx_measurechar;
 
-any set_font(any idx) as gfx_setfont;
-any set_font(any idx, any fontface) as gfx_setfont;
-any set_font(any idx, any fontface, any sz) as gfx_setfont;
-any set_font(any idx, any fontface, any sz, any flags) as gfx_setfont;
+any setfont(any idx) as gfx_setfont;
+any setfont(any idx, any fontface) as gfx_setfont;
+any setfont(any idx, any fontface, any sz) as gfx_setfont;
+any setfont(any idx, any fontface, any sz, any flags) as gfx_setfont;
 
-any get_font() as gfx_getfont;
-any print(any str, ...) as gfx_printf;
-any blur_to(any x, any y) as gfx_blurto;
+any getfont() as gfx_getfont;
+any printf(any str, ...) as gfx_printf;
+any blurto(any x, any y) as gfx_blurto;
 
 any blit(any source, any scale, any rotation) as gfx_blit;
 any blit(any source, any scale, any rotation, any srcx) as gfx_blit;
@@ -50,64 +50,64 @@ any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any 
 any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any rotxoffs) as gfx_blit;
 any blit(any source, any scale, any rotation, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any rotxoffs, any rotyoffs) as gfx_blit;
 
-any blit_ext(any source, any coordinatelist, any rotation) as gfx_blitext;
-any get_image_dimensions(any image, any w, any h) as gfx_getimgdim;
-any set_image_dimensions(any image, any w, any h) as gfx_setimgdim;
-any load_image(any image, any filename) as gfx_loadimg;
+any blitext(any source, any coordinatelist, any rotation) as gfx_blitext;
+any getimgdim(any image, any w, any h) as gfx_getimgdim;
+any setimgdim(any image, any w, any h) as gfx_setimgdim;
+any loadimg(any image, any filename) as gfx_loadimg;
 
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy) as gfx_gradrect;
-any rect_gradient(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy, any dady) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy) as gfx_gradrect;
+any gradrect(any x, any y, any w, any h, any r, any g, any b, any a, any drdx, any dgdx, any dbdx, any dadx, any drdy, any dgdy, any dbdy, any dady) as gfx_gradrect;
 
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b) as gfx_muladdrect;
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a) as gfx_muladdrect;
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r) as gfx_muladdrect;
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g) as gfx_muladdrect;
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b) as gfx_muladdrect;
-any multiply_add_rect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b, any add_a) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b) as gfx_muladdrect;
+any muladdrect(any x, any y, any w, any h, any mul_r, any mul_g, any mul_b, any mul_a, any add_r, any add_g, any add_b, any add_a) as gfx_muladdrect;
 
-any delta_blit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy) as gfx_deltablit;
-any delta_blit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy, any usecliprect) as gfx_deltablit;
+any deltablit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy) as gfx_deltablit;
+any deltablit(any srcimg, any srcx, any srcy, any srcw, any srch, any destx, any desty, any destw, any desth, any dsdx, any dtdx, any dsdy, any dtdy, any dsdxdy, any dtdxdy, any usecliprect) as gfx_deltablit;
 
-any transform_blit(any srcimg, any destx, any desty, any destw, any desth, any div_w, any div_h, any table) as gfx_transformblit;
+any transformblit(any srcimg, any destx, any desty, any destw, any desth, any div_w, any div_h, any table) as gfx_transformblit;
 
 any circle(any x, any y, any r) as gfx_circle;
 any circle(any x, any y, any r, any fill) as gfx_circle;
 any circle(any x, any y, any r, any fill, any antialias) as gfx_circle;
 
-any round_rect(any x, any y, any w, any h, any radius) as gfx_roundrect;
-any round_rect(any x, any y, any w, any h, any radius, any antialias) as gfx_roundrect;
+any roundrect(any x, any y, any w, any h, any radius) as gfx_roundrect;
+any roundrect(any x, any y, any w, any h, any radius, any antialias) as gfx_roundrect;
 
 any arc(any x, any y, any r, any ang1, any ang2) as gfx_arc;
 any arc(any x, any y, any r, any ang1, any ang2, any antialias) as gfx_arc;
 
 any triangle(any x1, any y1, any x2, any y2, any x3, any y3, ...) as gfx_triangle;
 
-any get_char() as gfx_getchar;
-any get_char(any c) as gfx_getchar;
-any get_char(any c, any unicodechar) as gfx_getchar;
+any getchar() as gfx_getchar;
+any getchar(any c) as gfx_getchar;
+any getchar(any c, any unicodechar) as gfx_getchar;
 
-any show_menu(any str) as gfx_showmenu;
+any showmenu(any str) as gfx_showmenu;
 
-any set_cursor(any resource_id) as gfx_setcursor;
-any set_cursor(any resource_id, any name) as gfx_setcursor;
+any setcursor(any resource_id) as gfx_setcursor;
+any setcursor(any resource_id, any name) as gfx_setcursor;
 
-any get_bg_color() as gfx_getsyscol;
+any getsyscol() as gfx_getsyscol;
 
-any get_drop_file(any idx) as gfx_getdropfile;
-any get_drop_file(any idx, any str) as gfx_getdropfile;
+any getdropfile(any idx) as gfx_getdropfile;
+any getdropfile(any idx, any str) as gfx_getdropfile;
 
 any r as gfx_r;
 any g as gfx_g;
 any b as gfx_b;
 any a as gfx_a;
-any alpha_pixel as gfx_a2;
+any a2 as gfx_a2;
 
 any w as gfx_w;
 any h as gfx_h;
@@ -116,21 +116,21 @@ any y as gfx_y;
 
 any mode as gfx_mode;
 any clear as gfx_clear;
-any destination as gfx_dest;
-any text_height as gfx_texth;
+any dest as gfx_dest;
+any texth as gfx_texth;
 
 any ext_retina as gfx_ext_retina;
 any ext_flags as gfx_ext_flags;
 
 any mouse_x as mouse_x;
 any mouse_y as mouse_y;
-any mouse_wheel_vertical as mouse_wheel;
-any mouse_wheel_horizontal as mouse_hwheel;
+any mouse_wheel as mouse_wheel;
+any mouse_hwheel as mouse_hwheel;
 
-any input_state as mouse_cap;
+any mouse_cap as mouse_cap;
 
 internal:
-void set_position(any newX, any newY)
+void setpos(any newX, any newY)
 {
 	x = newX;
 	y = newY;

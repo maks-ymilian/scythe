@@ -67,8 +67,8 @@ void SetPixel(int x, int y, Color color)
 
 	if (pixelSize == 1) // if max resolution
 	{
-		gfx.set_position(x * pixelSize, y * pixelSize);
-		gfx.set_pixel(color.r, color.g, color.b);
+		gfx.setpos(x * pixelSize, y * pixelSize);
+		gfx.setpixel(color.r, color.g, color.b);
 	}
 	else
 	{
@@ -251,10 +251,10 @@ void Init()
 	any* stackPtr = 0;
 	stackPtr += Depth.AllocDepthBuffer(stackPtr, width, height);
 	stackPtr += AllocModel(stackPtr);
-	mem.free(stackPtr); // tell reaper that memory at and after this point is not used
+	mem.freembuf(stackPtr); // tell reaper that memory at and after this point is not used
 }
 
-// call init every time a slider changes
+// call init every time a slider changes and at startup
 @slider
 {
 	Init();
@@ -347,9 +347,9 @@ int prevHeight;
 	// draw fps text
 	string fpsString = 0;
 	int fps = math.round(1 / deltaTime);
-	str.print(fpsString, "%.0f FPS\n", fps);
-	gfx.set_position(10, 10);
+	str.sprintf(fpsString, "%.0f FPS\n", fps);
+	gfx.setpos(10, 10);
 	gfx.set(1, 1, 1);
-	gfx.set_font(1, "Arial", 30);
-	gfx.draw_string(fpsString);
+	gfx.setfont(1, "Arial", 30);
+	gfx.drawstr(fpsString);
 }

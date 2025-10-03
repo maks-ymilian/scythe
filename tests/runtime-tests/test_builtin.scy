@@ -2,8 +2,8 @@ external any AAA_test_builtin;
 
 @init
 {
-	atomic.set_if_equal(0,0,0);
-	atomic.exchange(0,0);
+	atomic.setifequal(0,0,0);
+	atomic.exch(0,0);
 	atomic.add(0,0);
 	atomic.set(0,0);
 	atomic.get(0);
@@ -11,10 +11,10 @@ external any AAA_test_builtin;
 	file.open(0);
 	file.close(0);
 	file.rewind(0);
-	file.from_variable(0,0);
-	file.from_buffer(0,0,0);
-	file.from_string(0,0);
-	file.available(0);
+	file.var(0,0);
+	file.mem(0,0,0);
+	file.str(0,0);
+	file.avail(0);
 	file.riff(0,0,0);
 	file.text(0);
 
@@ -26,36 +26,36 @@ external any AAA_test_builtin;
 	gfx.set(0,0,0,0,0,0);
 	gfx.set(0,0,0,0,0,0,0);
 
-	gfx.line_to(0,0);
-	gfx.line_to(0,0,false);
+	gfx.lineto(0,0);
+	gfx.lineto(0,0,false);
 
 	gfx.line(0,0,0,0);
 	gfx.line(0,0,0,0,false);
 
-	gfx.rect_to(0,0);
+	gfx.rectto(0,0);
 	gfx.rect(0,0,0,0);
-	gfx.set_pixel(0,0,0);
-	gfx.get_pixel(0,0,0);
-	gfx.draw_number(0,0);
-	gfx.draw_char(0);
+	gfx.setpixel(0,0,0);
+	gfx.getpixel(0,0,0);
+	gfx.drawnumber(0,0);
+	gfx.drawchar(0);
 
-	gfx.draw_string(0);
-	gfx.draw_string(0,0);
-	gfx.draw_string(0,0,0);
-	gfx.draw_string(0,0,0,0);
+	gfx.drawstr(0);
+	gfx.drawstr(0,0);
+	gfx.drawstr(0,0,0);
+	gfx.drawstr(0,0,0,0);
 
-	gfx.measure_string(0,0,0);
-	gfx.measure_char(0,0,0);
+	gfx.measurestr(0,0,0);
+	gfx.measurechar(0,0,0);
 
-	gfx.set_font(0);
-	gfx.set_font(0,0);
-	gfx.set_font(0,0,0);
-	gfx.set_font(0,0,0,0);
+	gfx.setfont(0);
+	gfx.setfont(0,0);
+	gfx.setfont(0,0,0);
+	gfx.setfont(0,0,0,0);
 
-	gfx.get_font();
-	gfx.print(0);
-	gfx.print(0,0,0,0,0,0,0,0,0,0,0,);
-	gfx.blur_to(0,0);
+	gfx.getfont();
+	gfx.printf(0);
+	gfx.printf(0,0,0,0,0,0,0,0,0,0,0,);
+	gfx.blurto(0,0);
 
 	gfx.blit(0,0,0);
 	gfx.blit(0,0,0,0);
@@ -69,39 +69,39 @@ external any AAA_test_builtin;
 	gfx.blit(0,0,0,0,0,0,0,0,0,0,0,0);
 	gfx.blit(0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-	gfx.blit_ext(0,0,0);
-	gfx.get_image_dimensions(0,0,0);
-	gfx.set_image_dimensions(0,0,0);
-	gfx.load_image(0,0);
+	gfx.blitext(0,0,0);
+	gfx.getimgdim(0,0,0);
+	gfx.setimgdim(0,0,0);
+	gfx.loadimg(0,0);
 
-	gfx.rect_gradient(0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-	gfx.rect_gradient(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.gradrect(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-	gfx.multiply_add_rect(0,0,0,0,0,0,0);
-	gfx.multiply_add_rect(0,0,0,0,0,0,0,0);
-	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0);
-	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0);
-	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0,0);
-	gfx.multiply_add_rect(0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0,0,0,0,0);
+	gfx.muladdrect(0,0,0,0,0,0,0,0,0,0,0,0);
 
-	gfx.delta_blit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-	gfx.delta_blit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,false);
+	gfx.deltablit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	gfx.deltablit(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,false);
 
-	gfx.transform_blit(0,0,0,0,0,0,0,0);
+	gfx.transformblit(0,0,0,0,0,0,0,0);
 
 	gfx.circle(0,0,0);
 	gfx.circle(0,0,0,false);
 	gfx.circle(0,0,0,false,false);
 
-	gfx.round_rect(0,0,0,0,0);
-	gfx.round_rect(0,0,0,0,0,false);
+	gfx.roundrect(0,0,0,0,0);
+	gfx.roundrect(0,0,0,0,0,false);
 
 	gfx.arc(0,0,0,0,0);
 	gfx.arc(0,0,0,0,0,false);
@@ -109,14 +109,14 @@ external any AAA_test_builtin;
 	gfx.triangle(0,0,0,0,0,0);
 	gfx.triangle(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,);
 
-	gfx.get_char();
-	gfx.get_char(0);
-	gfx.get_char(0,0);
+	gfx.getchar();
+	gfx.getchar(0);
+	gfx.getchar(0,0);
 
-	gfx.show_menu(0);
+	gfx.showmenu(0);
 
-	gfx.set_cursor(0);
-	gfx.set_cursor(0,0);
+	gfx.setcursor(0);
+	gfx.setcursor(0,0);
 
 	jsfx.spl(0);
 
@@ -160,8 +160,8 @@ external any AAA_test_builtin;
 	math.fft_ipermute(0,0);
 	math.convolve_c(0,0,0);
 
-	mem.free(0);
-	mem.copy(0,0,0);
+	mem.freembuf(0);
+	mem.cpy(0,0,0);
 	mem.set(0,0,0);
 	mem.set_values(0,0);
 	mem.set_values(0,0,0,0,0,0,0,0,0,0,0,);
@@ -173,15 +173,15 @@ external any AAA_test_builtin;
 
 	midi.send(0,0,0);
 	midi.send(0,0,0,0);
-	midi.send_buffer(0,0,0);
-	midi.send_string(0,0);
-	midi.recieve(0,0,0);
-	midi.recieve(0,0,0,0);
-	midi.recieve_buffer(0,0,0);
-	midi.recieve_string(0,0);
+	midi.send_buf(0,0,0);
+	midi.send_str(0,0);
+	midi.recv(0,0,0);
+	midi.recv(0,0,0,0);
+	midi.recv_buf(0,0,0);
+	midi.recv_str(0,0);
 
-	pin_mapper.get_host_num_channels();
-	pin_mapper.set_host_num_channels(0);
+	pin_mapper.get_host_numchan();
+	pin_mapper.set_host_numchan(0);
 	pin_mapper.get_pin_mapping(0,0,0,0);
 	pin_mapper.set_pin_mapping(0,0,0,0,0);
 	pin_mapper.get_flags();
@@ -195,56 +195,56 @@ external any AAA_test_builtin;
 	slider.show(0,0);
 
 	slider.slider(0);
-	slider.next_change(0, 0);
+	slider.next_chg(0, 0);
 
 	stack.push(0);
 	stack.pop();
 	stack.pop(0);
 	stack.peek(0);
-	stack.exchange(0);
+	stack.exch(0);
 
-	str.length(0);
+	str.len(0);
 
-	str.copy(0,0);
-	str.copy(0,0,0);
+	str.cpy(0,0);
+	str.ncpy(0,0,0);
 
-	str.concatenate(0,0);
-	str.concatenate(0,0,0);
+	str.cat(0,0);
+	str.ncat(0,0,0);
 
-	str.compare(0,0);
-	str.compare(0,0,0);
+	str.cmp(0,0);
+	str.ncmp(0,0,0);
 
-	str.compare_i(0,0);
-	str.compare_i(0,0,0);
+	str.icmp(0,0);
+	str.nicmp(0,0,0);
 
-	str.copy_from(0,0,0);
-	str.copy_substring(0,0,0,0);
-	str.copy_from_slider(0,0);
+	str.cpy_from(0,0,0);
+	str.cpy_substr(0,0,0,0);
+	str.cpy_fromslider(0,0);
 
-	str.get_char(0,0);
-	str.get_char(0,0,0);
-	str.set_char(0,0,0);
-	str.set_char(0,0,0,0);
+	str.getchar(0,0);
+	str.getchar(0,0,0);
+	str.setchar(0,0,0);
+	str.setchar(0,0,0,0);
 
-	str.print(0,0);
-	str.print(0,0,0,0,0,0,0,0,0,0,0,0,);
+	str.sprintf(0,0);
+	str.sprintf(0,0,0,0,0,0,0,0,0,0,0,0,);
 
 	str.match(0,0);
 	str.match(0,0,0,0,0,0,0,0,0,0,0,0,);
-	str.match_i(0,0);
-	str.match_i(0,0,0,0,0,0,0,0,0,0,0,0,);
+	str.matchi(0,0);
+	str.matchi(0,0,0,0,0,0,0,0,0,0,0,0,);
 
 	time.time();
 	time.time(0);
 
-	time.time_precise();
-	time.time_precise(0);
+	time.precise();
+	time.precise(0);
 
 	gfx.r;
 	gfx.g;
 	gfx.b;
 	gfx.a;
-	gfx.alpha_pixel;
+	gfx.a2;
 
 	gfx.w;
 	gfx.h;
@@ -253,53 +253,53 @@ external any AAA_test_builtin;
 
 	gfx.mode;
 	gfx.clear;
-	gfx.destination;
-	gfx.text_height;
+	gfx.dest;
+	gfx.texth;
 
 	gfx.ext_retina;
 	gfx.ext_flags;
 
 	gfx.mouse_x;
 	gfx.mouse_y;
-	gfx.mouse_wheel_vertical;
-	gfx.mouse_wheel_horizontal;
+	gfx.mouse_wheel;
+	gfx.mouse_hwheel;
 
-	gfx.input_state;
+	gfx.mouse_cap;
 
 	jsfx.trigger;
 
-	jsfx.sample_rate;
-	jsfx.num_channels;
-	jsfx.samples_block;
+	jsfx.srate;
+	jsfx.num_ch;
+	jsfx.samplesblock;
 	jsfx.tempo;
 	jsfx.play_state;
 	jsfx.play_position;
 	jsfx.beat_position;
 
-	jsfx.timesig_num;
-	jsfx.timesig_denom;
+	jsfx.ts_num;
+	jsfx.ts_denom;
 
-	jsfx.ext_no_init;
-	jsfx.ext_no_denormal;
+	jsfx.ext_noinit;
+	jsfx.ext_nodenorm;
 	jsfx.ext_tail_size;
-	jsfx.ext_gain_reduction_meter;
+	jsfx.ext_gr_meter;
 
 	jsfx.pdc_delay;
-	jsfx.pdc_from_channel;
-	jsfx.pdc_to_channel;
+	jsfx.pdc_bot_ch;
+	jsfx.pdc_top_ch;
 	jsfx.pdc_midi;
 
-	midi.ext_use_bus;
-	midi.ext_bus;
+	midi.ext_midi_bus;
+	midi.bus;
 
-	gfx.get_bg_color();
+	gfx.getsyscol();
 
-	gfx.get_drop_file(0);
-	gfx.get_drop_file(0,0);
+	gfx.getdropfile(0);
+	gfx.getdropfile(0,0);
 
 	str.insert(0,0,0);
-	str.delete_sub(0,0,0);
-	str.set_length(0,0);
+	str.delsub(0,0,0);
+	str.setlen(0,0);
 
 	slider.slider(1) = 1;
 

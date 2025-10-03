@@ -7,4 +7,4 @@ any automate(any sliderOrMask, any end_touch) as slider_automate;
 any show(any sliderOrMask, any value) as slider_show;
 
 any slider(any sliderindex) as slider;
-any next_change(any sliderindex, any nextval) as slider_next_chg;
+any next_chg(any sliderindex, any nextval) as slider_next_chg;

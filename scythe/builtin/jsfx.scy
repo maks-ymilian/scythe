@@ -169,25 +169,25 @@ any spl(any channelindex) as spl;
 
 any trigger as trigger;
 
-any sample_rate as srate;
-any num_channels as num_ch;
-any samples_block as samplesblock;
+any srate as srate;
+any num_ch as num_ch;
+any samplesblock as samplesblock;
 any tempo as tempo;
 any play_state as play_state;
 any play_position as play_position;
 any beat_position as beat_position;
 
-any timesig_num as ts_num;
-any timesig_denom as ts_denom;
+any ts_num as ts_num;
+any ts_denom as ts_denom;
 
-any ext_no_init as ext_noinit;
-any ext_no_denormal as ext_nodenorm;
+any ext_noinit as ext_noinit;
+any ext_nodenorm as ext_nodenorm;
 any ext_tail_size as ext_tail_size;
-any ext_gain_reduction_meter as ext_gr_meter;
+any ext_gr_meter as ext_gr_meter;
 
 any pdc_delay as pdc_delay;
-any pdc_from_channel as pdc_bot_ch;
-any pdc_to_channel as pdc_top_ch;
+any pdc_bot_ch as pdc_bot_ch;
+any pdc_top_ch as pdc_top_ch;
 any pdc_midi as pdc_midi;
 
 any export_buffer_to_project(any buffer, any length_samples, any nch, any srate, any track_index) as export_buffer_to_project;

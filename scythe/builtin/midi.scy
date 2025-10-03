@@ -1,12 +1,12 @@
 public external:
 any send(any offset, any msg1, any msg2) as midisend;
 any send(any offset, any msg1, any msg2, any msg3) as midisend;
-any send_buffer(any offset, any buf, any len) as midisend_buf;
-any send_string(any offset, any str) as midisend_str;
-any recieve(any offset, any msg1, any msg23) as midirecv;
-any recieve(any offset, any msg1, any msg2, any msg3) as midirecv;
-any recieve_buffer(any offset, any buf, any maxlen) as midirecv_buf;
-any recieve_string(any offset, any str) as midirecv_str;
+any send_buf(any offset, any buf, any len) as midisend_buf;
+any send_str(any offset, any str) as midisend_str;
+any recv(any offset, any msg1, any msg23) as midirecv;
+any recv(any offset, any msg1, any msg2, any msg3) as midirecv;
+any recv_buf(any offset, any buf, any maxlen) as midirecv_buf;
+any recv_str(any offset, any str) as midirecv_str;
 
-any ext_use_bus as ext_midi_bus;
-any ext_bus as midi_bus;
+any ext_midi_bus as ext_midi_bus;
+any bus as midi_bus;

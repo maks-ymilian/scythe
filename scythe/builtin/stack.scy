@@ -3,4 +3,4 @@ any push(any value) as stack_push;
 any pop() as stack_pop;
 any pop(any value) as stack_pop;
 any peek(any index) as stack_peek;
-any exchange(any value) as stack_exch;
+any exch(any value) as stack_exch;

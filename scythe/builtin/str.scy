@@ -1,32 +1,32 @@
 public external:
-any length(any str) as strlen;
+any len(any str) as strlen;
 
-any copy(any str, any srcstr) as strcpy;
-any copy(any str, any srcstr, any maxlen) as strncpy;
+any cpy(any str, any srcstr) as strcpy;
+any ncpy(any str, any srcstr, any maxlen) as strncpy;
 
-any concatenate(any str, any srcstr) as strcat;
-any concatenate(any str, any srcstr, any maxlen) as strncat;
+any cat(any str, any srcstr) as strcat;
+any ncat(any str, any srcstr, any maxlen) as strncat;
 
-any compare(any str, any str2) as strcmp;
-any compare(any str, any str2, any maxlen) as strncmp;
+any cmp(any str, any str2) as strcmp;
+any ncmp(any str, any str2, any maxlen) as strncmp;
 
-any compare_i(any str, any str2) as stricmp;
-any compare_i(any str, any str2, any maxlen) as strnicmp;
+any icmp(any str, any str2) as stricmp;
+any nicmp(any str, any str2, any maxlen) as strnicmp;
 
-any copy_from(any str, any srcstr, any offset) as strcpy_from;
-any copy_substring(any str, any srcstr, any offset, any maxlen) as strcpy_substr;
-any copy_from_slider(any str, any sliderOrIndex) as strcpy_fromslider;
+any cpy_from(any str, any srcstr, any offset) as strcpy_from;
+any cpy_substr(any str, any srcstr, any offset, any maxlen) as strcpy_substr;
+any cpy_fromslider(any str, any sliderOrIndex) as strcpy_fromslider;
 
-any get_char(any str, any offset) as str_getchar;
-any get_char(any str, any offset, any type) as str_getchar;
-any set_char(any str, any offset, any value) as str_setchar;
-any set_char(any str, any offset, any value, any type) as str_setchar;
+any getchar(any str, any offset) as str_getchar;
+any getchar(any str, any offset, any type) as str_getchar;
+any setchar(any str, any offset, any value) as str_setchar;
+any setchar(any str, any offset, any value, any type) as str_setchar;
 
-any print(any str, any format, ...) as sprintf;
+any sprintf(any str, any format, ...) as sprintf;
 
 any match(any needle, any haystack, ...) as match;
-any match_i(any needle, any haystack, ...) as matchi;
+any matchi(any needle, any haystack, ...) as matchi;
 
 any insert(any str, any srcstr, any pos) as str_insert;
-any delete_sub(any str, any pos, any len) as str_delsub;
-any set_length(any str, any len) as str_setlen;
+any delsub(any str, any pos, any len) as str_delsub;
+any setlen(any str, any len) as str_setlen;
