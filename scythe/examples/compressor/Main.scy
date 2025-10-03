@@ -1,0 +1,270 @@
+import "CircularBuffer.scy"
+
+desc [
+	description: "Multichannel Compressor",
+	options: [
+		gfx: [hz: 100],
+		no_meter: true,
+	],
+];
+
+input threshold [name: "Threshold", min: -40, max: 6, default: 0];
+input ratio [name: "Ratio", min: 1, max: 30, default: 2, shape: [type: log, midpoint: 5]];
+input attack [name: "Attack", min: 0, max: 500, default: 20, shape: [type: log, midpoint: 20]];
+input release [name: "Release", min: 0, max: 500, default: 20, shape: [type: log, midpoint: 20]];
+input makeup [name: "Makeup Gain", min: 0, max: 40, default: 0];
+input rmsSize [name: "RMS Size (ms)", min: 1, max: 1000, default: 10, shape: [type: log, midpoint: 75]];
+input sidechain [name: "Sidechain", min: 0, max: 1, inc: 1];
+
+int NUM_CHANNELS; // this is either the number of channels or half the number of channels if sidechain mode is on
+
+float attackCoeff;
+float releaseCoeff;
+
+float[] gainSmoothed;
+float[] currentRMS; // for gfx
+
+float ToDB(float x) { return 20 * math.log10(math.abs(x)); }
+float ToAmplitude(float x) { return 10 ^ (x / 20); }
+
+@slider
+{
+	// if sidechain is on, it will only process the first half of the channels, the second half is used as sidechain input
+	NUM_CHANNELS = jsfx.num_ch;
+	if (sidechain.value == 1)
+		NUM_CHANNELS /= 2;
+
+	// if ratio is max, make it a limiter
+	if (ratio.value == 30)
+		ratio.value = 9999999999999999999999999.0;
+
+	attackCoeff = math.exp(-2.2 / ((attack.value / 1000) * jsfx.srate));
+	releaseCoeff = math.exp(-2.2 / ((release.value / 1000) * jsfx.srate));
+
+	// allocate memory
+	any* stackPtr = 0;
+	stackPtr += (gainSmoothed = float[] {.ptr = stackPtr, .length = NUM_CHANNELS}).length;
+	stackPtr += (currentRMS = float[] {.ptr = stackPtr, .length = NUM_CHANNELS}).length;
+	stackPtr += CircularBuffer.Init(stackPtr, (rmsSize.value / 1000) * jsfx.srate, NUM_CHANNELS);
+	mem.freembuf(stackPtr);
+}
+
+@sample
+{
+	for (int ch = 0; ch < NUM_CHANNELS; ++ch)
+	{
+		// get input sample from current channel, if sidechaining then get from the 2nd half of input channels
+		float inp = jsfx.spl(ch);
+		if (sidechain.value == 1)
+			inp = jsfx.spl(ch + NUM_CHANNELS);
+
+		CircularBuffer.Insert(inp, ch);
+		
+		// calculate current rms from the last n samples from the circular buffer
+		float[] rmsBuffer = CircularBuffer.Get(ch); // get a window into the buffer specific to this channel
+		float sum = mem.multiply_sum(-1, rmsBuffer.ptr, rmsBuffer.length); // adds up the square of each element
+		float rms = ToDB(math.sqrt(sum / rmsBuffer.length));
+
+		currentRMS[ch] = rms; // for gfx
+
+		// compute target gain
+		float target = float {
+			if (rms > threshold.value)
+				return threshold.value + (rms - threshold.value) / ratio.value;
+			else
+				return rms;
+		};
+
+		// gainSmoothed follows the target gain, smoothed by attack and release
+		gainSmoothed[ch] = float {
+			float gain = target - rms;
+
+			float currentCoeff = releaseCoeff;
+			if (gain <= gainSmoothed[ch])
+				currentCoeff = attackCoeff;
+
+			return currentCoeff * gainSmoothed[ch] + (1 - currentCoeff) * gain;
+		};
+
+		// apply gain
+		jsfx.spl(ch) *= ToAmplitude(gainSmoothed[ch] + makeup.value);
+	}
+}
+
+struct Color
+{
+	float r;
+	float g;
+	float b;
+}
+
+Color HexToColor(int hex)
+{
+	return Color {
+		.r = ((hex >> 16) & 0xff) / 0xff,
+		.g = ((hex >> 8) & 0xff) / 0xff,
+		.b = (hex & 0xff) / 0xff,
+	};
+}
+
+void Line(int x, int y, int width, int height, Color c)
+{
+	gfx.set(c.r, c.g, c.b);
+	gfx.rect(x - math.floor(width / 2), y, width, height);
+}
+
+void Rect(int x, int y, int width, int height, Color c)
+{
+	gfx.set(c.r, c.g, c.b);
+	gfx.rect(x, y, width, height);
+}
+
+void Gradient(int x, int y, int width, int height, Color c1, Color c2)
+{
+	gfx.gradrect(x, y, width, height, c1.r, c1.g, c1.b, 1, (c2.r - c1.r) / width, (c2.g - c1.g) / width, (c2.b - c1.b) / width);
+}
+
+void DBLabel(int x, int y, int width, int height, int leftPad, float db, int decimalPlaces, int maxFontSize, bool bold, Color color)
+{
+	char flags = 0;
+	if (bold)
+		flags = 'b';
+
+	x += leftPad;
+	width -= leftPad;
+
+	string format = 0;
+	string text = 1;
+	str.sprintf(format, "%%.%dfdB", decimalPlaces);
+	str.sprintf(text, format, db);
+	gfx.set(color.r, color.g, color.b);
+
+	gfx.setfont(1, "Arial", maxFontSize, flags);
+	float sWidth; gfx.measurestr(text, sWidth, 0);
+	if (sWidth > width) // if maxFontSize doesnt fit, choose biggest size that fits
+		gfx.setfont(1, "Arial", maxFontSize * (width / sWidth) - 1, flags);
+
+	gfx.setpos(x, y);
+	gfx.drawstr(text, 4, x + width, y + height); // 4 = center vertically
+}
+
+// color palette
+Color BG_COLOR = HexToColor(0x292425);
+
+Color DB_LABEL_COLOR = HexToColor(0xBCA7AC);
+Color ZERO_DB_LABEL_COLOR = HexToColor(0xD8BEC4);
+
+Color METER_START_COLOR = HexToColor(0x993D49);
+Color METER_END_COLOR = HexToColor(0xBC4857);
+
+Color REDUCTION_METER_START_COLOR = HexToColor(0x74CC98);
+Color REDUCTION_METER_END_COLOR = HexToColor(0x70F9AC);
+
+Color THRESHOLD_LINE_COLOR = HexToColor(0xFFE0E7);
+
+@gfx [height: 150]
+{
+	Rect(0, 0, gfx.w, gfx.h, BG_COLOR);
+
+	// the whole x axis of the window will be in db since it is a meter
+	int DB_MIN = -40;
+	int DB_MAX = 6;
+	int DB_RANGE = DB_MAX - DB_MIN;
+	int DBToPixel(float db) { return gfx.w * (db - DB_MIN) / DB_RANGE; }
+	float PixelToDB(float x) { return math.lerp(DB_MIN, DB_MAX, x / gfx.w); }
+
+	// ui layout
+	int LABEL_Y = 0;
+	int LABEL_SIZE = 30;
+	int METER_Y = LABEL_Y + LABEL_SIZE;
+	int METER_SIZE = gfx.h - LABEL_SIZE;
+
+	// db meter labels
+	int DB_SPACING = 6;
+	for (int i = 0; i < DB_RANGE / DB_SPACING; ++i)
+	{
+		float db = (math.floor(DB_MIN / DB_SPACING) + i) * DB_SPACING;
+		if (db < DB_MIN)
+			continue;
+
+		int xPos = DBToPixel(db);
+
+		Color color = DB_LABEL_COLOR;
+		int lineWidth = 1;
+		if (db == 0)
+		{
+			color = ZERO_DB_LABEL_COLOR;
+			lineWidth = 3;
+		}
+
+		Line(xPos, LABEL_Y, lineWidth, LABEL_Y + LABEL_SIZE, color);
+
+		int spacing = DBToPixel(DB_SPACING) - DBToPixel(0);
+		DBLabel(xPos, 0, spacing, LABEL_SIZE, 7, db, 0, LABEL_SIZE * 0.55, db == 0, color);
+	}
+
+	// meters
+	int BAR_HEIGHT = METER_SIZE / NUM_CHANNELS;
+	for (int ch = 0; ch < NUM_CHANNELS; ++ch)
+	{
+		void DrawMeter(int yPos, float db, Color start, Color end, float fracHeight, bool flip)
+		{
+			int xEnd = DBToPixel(db);
+
+			yPos += (1 - fracHeight) * BAR_HEIGHT / 2;
+			int height = BAR_HEIGHT * fracHeight;
+
+			int gradientWidth = gfx.w * 0.2;
+			if (!flip)
+				Gradient(0, yPos, xEnd, height, start, end);
+			else
+				Gradient(xEnd, yPos, gfx.w - gfx.w - xEnd + DBToPixel(0), height, end, start);
+		}
+
+		// main meter
+		DrawMeter(
+			METER_Y + ch * BAR_HEIGHT,
+			currentRMS[ch],
+			METER_START_COLOR, METER_END_COLOR,
+			0.8,
+			false,
+		);
+
+		// gain reduction
+		float gainReduction = gainSmoothed[ch];
+		DrawMeter(
+			METER_Y + ch * BAR_HEIGHT,
+			gainReduction,
+			REDUCTION_METER_START_COLOR,
+			REDUCTION_METER_END_COLOR,
+			0.4,
+			true,
+		);
+
+		// gain reduction db text
+		if (gainReduction <= -0.1)
+			DBLabel(
+				DBToPixel(0),
+				METER_Y + ch * BAR_HEIGHT,
+				gfx.w - DBToPixel(0),
+				BAR_HEIGHT,
+				7,
+				gainReduction,
+				1,
+				BAR_HEIGHT * 0.4, 
+				false,
+				REDUCTION_METER_END_COLOR
+			);
+	}
+
+	// threshold line
+	int THRESH_LINE_WIDTH = 3;
+	Line(
+		DBToPixel(threshold.value), METER_Y,
+		THRESH_LINE_WIDTH, METER_Y + METER_SIZE,
+		THRESHOLD_LINE_COLOR,
+	);
+
+	if ((gfx.mouse_cap & 1) == 1) // if left mouse button
+		threshold.value = PixelToDB(gfx.mouse_x);
+}

@@ -1,0 +1,37 @@
+private:
+float[] buffer; // buffer that holds every channel
+int[] indexes; // keep track of its position per channel
+int channelLength; // length for a single channel
+
+public: 
+// get a window into the buffer, each channel has its own section in the buffer
+float[] Get(int channel)
+{
+	return float[] {
+		.ptr = buffer.ptr + channelLength * channel,
+		.length = channelLength,
+	};
+}
+
+// insert a value into the buffer at channel, this increments the index for that channel
+void Insert(float x, int channel)
+{
+	float[] buffer = Get(channel);
+	buffer[indexes[channel]++] = x;
+	if (indexes[channel] >= channelLength) // wrap position around
+		indexes[channel] = 0;
+}
+
+// allocate the buffer at ptr, return length allocated
+int Init(float* ptr, int size, int numChannels)
+{
+	channelLength = size;
+
+	any* stackPtr = ptr;
+	stackPtr += (buffer = float[] {.ptr = stackPtr, .length = channelLength * numChannels}).length;
+	stackPtr += (indexes = int[] {.ptr = stackPtr, .length = numChannels}).length;
+
+	int totalLength = stackPtr - ptr;
+	mem.set(ptr, 0, totalLength);
+	return totalLength;
+}
