@@ -68,9 +68,9 @@ static struct String ReadFile(FILE* file)
 	string.ptr = malloc(string.length);
 
 	errno = 0;
-	int c;
+	char c;
 	size_t i;
-	for (i = 0; (c = fgetc(file)) != EOF; ++i)
+	for (i = 0; (c = (char)fgetc(file)) != EOF; ++i)
 	{
 		if (i >= string.length)
 		{
@@ -167,10 +167,10 @@ static struct String ReadCurrentLine(FILE* file)
 
 	errno = 0;
 	struct String string = (struct String){
-		.ptr = malloc(length),
+		.ptr = malloc((size_t)length),
 		.length = (size_t)length,
 	};
-	if (fread(string.ptr, sizeof(*string.ptr), length, file) != length)
+	if (fread(string.ptr, sizeof(*string.ptr), (size_t)length, file) != (size_t)length)
 		goto error;
 
 	errno = 0;
@@ -184,9 +184,9 @@ error:
 	exit(EXIT_FAILURE);
 }
 
-static void RunTest(const char* executable, const char* fileName, struct String expectedMessage, int lineNumber)
+static void RunTest(const char* executable, const char* fileName, struct String expectedMessage, size_t lineNumber)
 {
-	struct String command = AllocFormat("./%s %s 2>&1", executable, fileName);
+	struct String command = AllocFormat("%s %s 2>&1", executable, fileName);
 	errno = 0;
 	FILE* file = popen(command.ptr, "r");
 	free(command.ptr);
@@ -212,14 +212,14 @@ static void RunTest(const char* executable, const char* fileName, struct String 
 	if (output.length - prefixLength < expectedMessage.length ||
 		memcmp(output.ptr + prefixLength, expectedMessage.ptr, expectedMessage.length) != 0)
 	{
-		fprintf(stderr, "[x] Failed test in %s:%d\n", fileName, lineNumber);
+		fprintf(stderr, "[x] Failed test in %s:%lu\n", fileName, lineNumber);
 		fprintf(stderr, "Expected: %s\n", expectedMessage.ptr);
 		fprintf(stderr, "Got: ");
 		fwrite(output.ptr, sizeof(*output.ptr), output.length, stderr);
 		exit(EXIT_FAILURE);
 	}
 
-	printf("[✓] %s (%s:%d)\n", expectedMessage.ptr, fileName, lineNumber);
+	printf("[✓] %s (%s:%lu)\n", expectedMessage.ptr, fileName, lineNumber);
 	free(output.ptr);
 	++numTestsPassed;
 	return;
@@ -257,7 +257,7 @@ error:
 	exit(EXIT_FAILURE);
 }
 
-static void RestoreOriginalFile()
+static void RestoreOriginalFile(void)
 {
 	if (!currentFile)
 	{
