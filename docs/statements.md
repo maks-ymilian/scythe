@@ -296,7 +296,7 @@ Input statements are used to define automatable sliders and they compile to [JSF
 They are composed of [a modifier list](#modifier-lists) (optional), the `input` keyword, an identifier, and a [property list](#property-lists).\
 They can have the following modifiers: [`public`, `private`](module_system.md#public-and-private), [`internal`](interfacing_with_jsfx.md)
 ```basic
-input foo [];
+input foo;
 input bar [
     name: "display name",
 	default: 1000,
@@ -305,13 +305,16 @@ input bar [
 	inc: 1,
 ];
 ```
-Inputs contain two members:
-| Name | Type |
+Each input has the following members:
+| Name | Description |
 |---|---|
-| `value` | [`float`](type_system.md/#float) |
-| `sliderNumber` | [`int`](type_system.md/#int) |
-
-The current value can be accessed or set using the `value` member e.g. `foo.value`
+| `value` | The current value can be accessed or set using this member e.g. `foo.value = 5;`<br>This can also be used in [built-in]() slider functions to reference the underlying slider |
+| `sliderNumber` | (read only) Each slider in JSFX has a `sliderX:` number. This member lets you access that number |
+| `default` | (read only) The input's `default` property |
+| `min` | (read only) The input's `min` property |
+| `max` | (read only) The input's `max` property |
+| `inc` | (read only) The input's `inc` property |
+| `name` | (read only) The input's`name` property |
 
 The input statement's property list supports the following properties:
 | Name | Type | Default Value | Description |
