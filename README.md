@@ -14,6 +14,13 @@ It adds many features to JSFX, including:
 
 Scythe provides access to all built-in JSFX functions, meaning it has full GFX support. It can also be used with libraries written in JSFX.
 
+### Limitations
+Here is a list of features that aren't supported (yet)
+- Drop down sliders
+- Named `#strings`
+- Global memory (`gmem[]`, `global.*`)
+- JSFX preprocessor
+
 # Example
 An audio buffer with adjustable play speed, written in Scythe:
 ```c
@@ -76,9 +83,11 @@ where
 
 To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list.
 
-# Documentation & Examples
+# Resources
 Documentation can be found [here](docs/README.md).\
 Examples can be found [here](scythe/examples/).
+
+For syntax highlighting in Vim or Neovim, there is a mostly-working vimscript that uses Treesitter available [here](https://github.com/maks-ymilian/nvim-config/blob/master/syntax/scythe.vim).
 
 # Build Instructions
 ## Windows
