@@ -308,7 +308,7 @@ input bar [
 Each input has the following members:
 | Name | Description |
 |---|---|
-| `value` | The current value can be accessed or set using this member e.g. `foo.value = 5;`<br>This can also be used in [built-in]() slider functions to reference the underlying slider |
+| `value` | The current value can be accessed or set using this member e.g. `foo.value = 5;`<br>This can also be used in [built-in](../scythe/builtin) slider functions to reference the underlying slider |
 | `sliderNumber` | (read only) Each slider in JSFX has a `sliderX:` number. This member lets you access that number |
 | `default` | (read only) The input's `default` property |
 | `min` | (read only) The input's `min` property |
