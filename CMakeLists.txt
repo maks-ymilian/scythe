@@ -110,9 +110,11 @@ add_dependencies(scythe bin2c)
 set_property(TARGET scythe bin2c PROPERTY C_STANDARD 17)
 set_property(TARGET scythe bin2c PROPERTY C_EXTENSIONS OFF)
 
-add_executable(errortest tests/error-tests/ErrorTest.c)
-add_custom_target(
-	run_tests
-	COMMAND "$<TARGET_FILE:errortest>" "${CMAKE_CURRENT_BINARY_DIR}/scythe" "${CMAKE_CURRENT_SOURCE_DIR}/tests/error-tests/scythe/*"
-	DEPENDS errortest scythe
-)
+if (UNIX AND NOT APPLE)
+	add_executable(errortest tests/error-tests/ErrorTest.c)
+	add_custom_target(
+		run_tests
+		COMMAND "$<TARGET_FILE:errortest>" "${CMAKE_CURRENT_BINARY_DIR}/scythe" "${CMAKE_CURRENT_SOURCE_DIR}/tests/error-tests/scythe/*"
+		DEPENDS errortest scythe
+	)
+endif()
