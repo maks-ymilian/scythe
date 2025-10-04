@@ -70,8 +70,9 @@ To compile to a JSFX plugin, open a terminal in the executable's directory and r
 ```
 scythe <source_file> [output_file]
 ```
-- `<source_file>` - Path to your main `.scy` Scythe source file
-- `[output_file]` (optional) - Path to where the generated `.jsfx` file should be saved. If omitted, it will generate the output in the current directory with a default name.
+where
+- `<source_file>` is the path to your main `.scy` Scythe source file
+- `[output_file]` (optional) is the path to where the generated `.jsfx` file should be saved. If omitted, it will generate the output in the current directory with a default name.
 
 To use a JSFX plugin in REAPER, it must be placed in the `REAPER/Effects/` directory. Once there, it will appear in the FX list.
 
