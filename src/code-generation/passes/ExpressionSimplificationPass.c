@@ -46,7 +46,7 @@ static uint64_t PowerOf10(int x)
 	}
 }
 
-static NodePtr AllocNumber(ConstantInfo info, int lineNumber)
+static NodePtr AllocNumberExpr(ConstantInfo info, int lineNumber)
 {
 	ASSERT(info.isInt);
 
@@ -57,7 +57,7 @@ static NodePtr AllocNumber(ConstantInfo info, int lineNumber)
 			&(UnaryExpr){
 				.lineNumber = lineNumber,
 				.operatorType = Unary_Minus,
-				.expression = AllocNumber(info, lineNumber),
+				.expression = AllocNumberExpr(info, lineNumber),
 			},
 			sizeof(UnaryExpr), Node_Unary);
 	}
@@ -86,10 +86,14 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 		case Literal_Number:
 		{
 			size_t length = strlen(literal->number);
+			ASSERT(length > 0);
 
 			for (size_t i = 0; i < length; ++i)
 				if (literal->number[i] == '.')
 					return false;
+
+			if (literal->number[0] == '-') // todo
+				return false;
 
 			ASSERT(length <= 20);
 
@@ -140,7 +144,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue && rightInfo.intValue};
-				*node = AllocNumber(*info, binary->lineNumber);
+				*node = AllocNumberExpr(*info, binary->lineNumber);
 				return true;
 			}
 			else if (left && !right && leftInfo.isInt && leftInfo.intValue)
@@ -165,7 +169,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue == rightInfo.intValue && leftInfo.isNegative == rightInfo.isNegative};
-				*node = AllocNumber(*info, binary->lineNumber);
+				*node = AllocNumberExpr(*info, binary->lineNumber);
 				return true;
 			}
 			else
@@ -176,7 +180,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue != rightInfo.intValue || leftInfo.isNegative != rightInfo.isNegative};
-				*node = AllocNumber(*info, binary->lineNumber);
+				*node = AllocNumberExpr(*info, binary->lineNumber);
 				return true;
 			}
 			else
@@ -208,7 +212,7 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (left && right && leftInfo.isInt && rightInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = leftInfo.intValue | rightInfo.intValue, .isNegative = leftInfo.isNegative | rightInfo.isNegative};
-				*node = AllocNumber(*info, binary->lineNumber);
+				*node = AllocNumberExpr(*info, binary->lineNumber);
 				return true;
 			}
 			else
@@ -273,12 +277,12 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (unaryInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = !unaryInfo.intValue};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			else
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = !(bool)unaryInfo.floatValue};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			return true;
 		}
@@ -287,12 +291,12 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (unaryInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = unaryInfo.intValue, .isNegative = !unaryInfo.isNegative};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			else
 			{
 				*info = (ConstantInfo){.isInt = false, .floatValue = unaryInfo.floatValue, .isNegative = !unaryInfo.isNegative};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			return true;
 		}
@@ -301,12 +305,12 @@ static bool VisitExpression(NodePtr* node, ConstantInfo* info)
 			if (unaryInfo.isInt)
 			{
 				*info = (ConstantInfo){.isInt = true, .intValue = unaryInfo.intValue, .isNegative = unaryInfo.isNegative};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			else
 			{
 				*info = (ConstantInfo){.isInt = false, .floatValue = unaryInfo.floatValue, .isNegative = unaryInfo.isNegative};
-				*node = AllocNumber(*info, unary->lineNumber);
+				*node = AllocNumberExpr(*info, unary->lineNumber);
 			}
 			return true;
 		}

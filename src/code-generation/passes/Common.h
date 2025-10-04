@@ -37,3 +37,5 @@ NodePtr AllocPrimitiveType(PrimitiveType primitiveType, int lineNumber);
 
 NodePtr AllocUInt64Integer(uint64_t value, int lineNumber);
 NodePtr AllocSizeInteger(size_t value, int lineNumber);
+NodePtr AllocNumber(char* value, int lineNumber);
+NodePtr AllocStringLiteral(char* value, int lineNumber);

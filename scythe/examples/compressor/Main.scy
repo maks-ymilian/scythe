@@ -167,8 +167,8 @@ Color THRESHOLD_LINE_COLOR = HexToColor(0xFFE0E7);
 	Rect(0, 0, gfx.w, gfx.h, BG_COLOR);
 
 	// the whole x axis of the window will be in db since it is a meter
-	int DB_MIN = -40;
-	int DB_MAX = 6;
+	int DB_MIN = threshold.min;
+	int DB_MAX = threshold.max;
 	int DB_RANGE = DB_MAX - DB_MIN;
 	int DBToPixel(float db) { return gfx.w * (db - DB_MIN) / DB_RANGE; }
 	float PixelToDB(float x) { return math.lerp(DB_MIN, DB_MAX, x / gfx.w); }

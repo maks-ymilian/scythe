@@ -2,10 +2,15 @@ input input1;
 input input2 [
 	default: 69.420,
 	max: 10,
+	inc: 0.3,
+	name: "hi123",
 ];
 input input3 [
-	default: 69.420,
-	max: 100
+	default: -48,
+	max: 100,
+	min: 69,
+	inc: 123,
+	name: "y",
 ];
 
 external any AAA_test_input;
@@ -15,8 +20,35 @@ external any AAA_test_input;
 	AAA_test_input = 
 		input1.value == 0 &&
 		input2.value == 69.420 &&
-		input3.value == 69.420 &&
+		input3.value == -48 &&
+
 		input1.sliderNumber == 1 &&
 		input2.sliderNumber == 2 &&
-		input3.sliderNumber == 3;
+		input3.sliderNumber == 3 &&
+
+		input1.max == 10 &&
+		input2.max == 10 &&
+		input3.max == 100 &&
+
+		input1.min == 0 &&
+		input2.min == 0 &&
+		input3.min == 69 &&
+
+		input1.min == 0 &&
+		input2.min == 0 &&
+		input3.min == 69 &&
+
+		input1.default == 0 &&
+		input2.default == 69.420 &&
+		input3.default == -48 &&
+
+		input1.inc == 0 &&
+		input2.inc == 0.3 &&
+		input3.inc == 123 &&
+
+		str.cmp(input1.name, "input1") == 0 &&
+		str.cmp(input2.name, "hi123") == 0 &&
+		str.cmp(input3.name, "y") == 0 &&
+
+		true;
 }

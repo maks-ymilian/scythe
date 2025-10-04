@@ -15,6 +15,23 @@ struct Scope
 	Map declarations;
 };
 
+typedef struct
+{
+	NodePtr node;
+
+	enum
+	{
+		InputMember_None,
+		InputMember_Value,
+		InputMember_SliderNumber,
+		InputMember_Default,
+		InputMember_Min,
+		InputMember_Max,
+		InputMember_Inc,
+		InputMember_Name,
+	} inputMember;
+} CurrentMember;
+
 static const char* currentFilePath;
 
 static Map modules;
@@ -428,14 +445,12 @@ static Result FindFunctionOverloadScoped(const char* name, NodePtr* out, size_t 
 		return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", name), lineNumber, currentFilePath);
 }
 
-static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallExpr* resolveFuncCall, bool isPublicAPI, int lineNumber)
+static Result ValidateMemberAccess(const char* text, CurrentMember* current, FuncCallExpr* resolveFuncCall, bool isPublicAPI, int lineNumber)
 {
-	switch (current->type)
+	switch (current->node.type)
 	{
 	case Node_StructDeclaration:
 	case Node_FunctionDeclaration:
-	case Node_Return: // part of the hack
-	case Node_LoopControl: // part of the hack
 		return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
 	case Node_Null:
 	{
@@ -449,43 +464,35 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 			{
 				// if resolving the baseExpr of a FuncCallExpr
 				if (resolveFuncCall && node->type == Node_FunctionDeclaration)
-					return FindFunctionOverloadScoped(text, current, resolveFuncCall->arguments.length, NULL, lineNumber);
+					return FindFunctionOverloadScoped(text, &current->node, resolveFuncCall->arguments.length, NULL, lineNumber);
 
-				*current = *node;
+				// if accessing input use input
+				if (node->type == Node_VariableDeclaration && ((VarDeclStmt*)node->ptr)->inputStmt)
+					current->node = (NodePtr){.ptr = ((VarDeclStmt*)node->ptr)->inputStmt, .type = Node_Input};
+				else
+					current->node = *node;
 				return SUCCESS_RESULT;
 			}
 		}
 
-		*current = NULL_NODE;
+		current->node = NULL_NODE;
 		return ERROR_RESULT(AllocateString1Str("Unknown identifier \"%s\"", text), lineNumber, currentFilePath);
 	}
 	case Node_VariableDeclaration:
 	{
-		VarDeclStmt* varDecl = current->ptr;
-
-		if (varDecl->inputStmt)
-		{
-			if (strcmp(text, "sliderNumber") == 0)
-				*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_Return}; // Node_Return here is a hack
-			else if (strcmp(text, "value") == 0)
-				*current = (NodePtr){.ptr = varDecl->inputStmt, .type = Node_LoopControl}; // also here is a hack
-			else
-				return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
-
-			return SUCCESS_RESULT;
-		}
-		else
-			return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, current, lineNumber);
+		VarDeclStmt* varDecl = current->node.ptr;
+		ASSERT(!varDecl->inputStmt);
+		return ValidateStructAccess(GetStructTypeInfoFromType(varDecl->type), text, &current->node, lineNumber);
 	}
 	case Node_FunctionCall:
 	case Node_BlockExpression:
 	case Node_Binary:
 	{
-		return ValidateStructAccess(GetStructTypeInfoFromExpr(*current), text, current, lineNumber);
+		return ValidateStructAccess(GetStructTypeInfoFromExpr(current->node), text, &current->node, lineNumber);
 	}
 	case Node_Subscript:
 	{
-		SubscriptExpr* subscript = current->ptr;
+		SubscriptExpr* subscript = current->node.ptr;
 		StructTypeInfo type = GetStructTypeInfoFromExpr(subscript->baseExpr);
 
 		// dereference
@@ -502,11 +509,11 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 			type.effectiveType = type.pointerType;
 			type.pointerType = NULL;
 		}
-		return ValidateStructAccess(type, text, current, lineNumber);
+		return ValidateStructAccess(type, text, &current->node, lineNumber);
 	}
 	case Node_Import:
 	{
-		ImportStmt* import = current->ptr;
+		ImportStmt* import = current->node.ptr;
 		Map* declarations = MapGet(&modules, import->moduleName);
 		ASSERT(declarations != NULL);
 
@@ -557,10 +564,38 @@ static Result ValidateMemberAccess(const char* text, NodePtr* current, FuncCallE
 				lineNumber,
 				currentFilePath);
 
-		*current = node;
+		// if accessing input use input
+		if (node.type == Node_VariableDeclaration && ((VarDeclStmt*)node.ptr)->inputStmt)
+			current->node = (NodePtr){.ptr = ((VarDeclStmt*)node.ptr)->inputStmt, .type = Node_Input};
+		else
+			current->node = node;
 		return SUCCESS_RESULT;
 	}
-	default: INVALID_VALUE(current->type);
+	case Node_Input:
+	{
+		if (current->inputMember != InputMember_None)
+			return ERROR_RESULT("Invalid member access", lineNumber, currentFilePath);
+
+		if (strcmp(text, "sliderNumber") == 0)
+			current->inputMember = InputMember_SliderNumber;
+		else if (strcmp(text, "value") == 0)
+			current->inputMember = InputMember_Value;
+		else if (strcmp(text, "default") == 0)
+			current->inputMember = InputMember_Default;
+		else if (strcmp(text, "min") == 0)
+			current->inputMember = InputMember_Min;
+		else if (strcmp(text, "max") == 0)
+			current->inputMember = InputMember_Max;
+		else if (strcmp(text, "inc") == 0)
+			current->inputMember = InputMember_Inc;
+		else if (strcmp(text, "name") == 0)
+			current->inputMember = InputMember_Name;
+		else
+			return ERROR_RESULT(AllocateString1Str("Unknown member in input variable \"%s\"", text), lineNumber, currentFilePath);
+
+		return SUCCESS_RESULT;
+	}
+	default: INVALID_VALUE(current->node.type);
 	}
 }
 
@@ -571,50 +606,52 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 
 	PROPAGATE_ERROR(ResolveExpression(&memberAccess->start, true, NULL));
 
-	NodePtr current = memberAccess->start;
+	CurrentMember current = (CurrentMember){
+		.node = memberAccess->start,
+		.inputMember = InputMember_None,
+	};
 	ASSERT(memberAccess->identifiers.array != NULL);
 	for (size_t i = 0; i < memberAccess->identifiers.length; ++i)
 	{
 		char* text = *(char**)memberAccess->identifiers.array[i];
 		PROPAGATE_ERROR(ValidateMemberAccess(text, &current, resolveFuncCall, isPublicAPI, memberAccess->lineNumber));
 
-		if (current.type == Node_VariableDeclaration)
+		if (current.node.type == Node_VariableDeclaration)
 		{
 			if (!memberAccess->varReference)
-				memberAccess->varReference = current.ptr;
+				memberAccess->varReference = current.node.ptr;
 			else
 			{
-				ASSERT(memberAccess->varReference != current.ptr);
+				ASSERT(memberAccess->varReference != current.node.ptr);
 				if (!memberAccess->parentRefs.array)
 					memberAccess->parentRefs = AllocateArray(sizeof(VarDeclStmt*));
-				ArrayAdd(&memberAccess->parentRefs, &current.ptr);
+				ArrayAdd(&memberAccess->parentRefs, &current.node.ptr);
 			}
 		}
 	}
 
-	switch (current.type)
+	switch (current.node.type)
 	{
 	case Node_Import:
 		return ERROR_RESULT("Cannot reference import by itself", memberAccess->lineNumber, currentFilePath);
 	case Node_FunctionDeclaration:
 	{
-		memberAccess->funcReference = current.ptr;
+		memberAccess->funcReference = current.node.ptr;
 		break;
 	}
 	case Node_StructDeclaration:
 	{
-		memberAccess->typeReference = current.ptr;
+		memberAccess->typeReference = current.node.ptr;
 		break;
 	}
 	case Node_VariableDeclaration:
 	{
-		if (((VarDeclStmt*)current.ptr)->inputStmt)
-			return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
+		ASSERT(!((VarDeclStmt*)current.node.ptr)->inputStmt);
 
 		ASSERT(memberAccess->varReference != NULL);
 		if (memberAccess->parentRefs.length > 0)
 		{
-			ASSERT(*(VarDeclStmt**)memberAccess->parentRefs.array[memberAccess->parentRefs.length - 1] == current.ptr);
+			ASSERT(*(VarDeclStmt**)memberAccess->parentRefs.array[memberAccess->parentRefs.length - 1] == current.node.ptr);
 			ArrayRemove(&memberAccess->parentRefs, memberAccess->parentRefs.length - 1);
 
 			if (memberAccess->start.ptr)
@@ -622,28 +659,57 @@ static Result ResolveMemberAccess(NodePtr* node, FuncCallExpr* resolveFuncCall, 
 			else
 				memberAccess->varParentReference = memberAccess->varReference;
 
-			memberAccess->varReference = current.ptr;
+			memberAccess->varReference = current.node.ptr;
 		}
 		break;
 	}
-
-	// stupid hack for accessing sliderNumber member in input variable
-	case Node_Return:
+	case Node_Input:
 	{
-		InputStmt* input = current.ptr;
-		int lineNumber = memberAccess->lineNumber;
-		FreeASTNode(*node);
-		*node = AllocUInt64Integer(input->sliderNumber, lineNumber);
+		InputStmt* input = current.node.ptr;
+		switch (current.inputMember)
+		{
+		case InputMember_None:
+			return ERROR_RESULT("Cannot use input variable by itself", memberAccess->lineNumber, currentFilePath);
+		case InputMember_Value:
+		{
+			memberAccess->varReference = input->varDecl.ptr;
+			break;
+		}
+		case InputMember_SliderNumber:
+		{
+			*node = AllocUInt64Integer(input->sliderNumber, memberAccess->lineNumber);
+			break;
+		}
+		case InputMember_Default:
+		{
+			*node = AllocNumber(AllocateString(input->defaultValue), memberAccess->lineNumber);
+			break;
+		}
+		case InputMember_Min:
+		{
+			*node = AllocNumber(AllocateString(input->min), memberAccess->lineNumber);
+			break;
+		}
+		case InputMember_Max:
+		{
+			*node = AllocNumber(AllocateString(input->max), memberAccess->lineNumber);
+			break;
+		}
+		case InputMember_Inc:
+		{
+			*node = AllocNumber(AllocateString(input->increment), memberAccess->lineNumber);
+			break;
+		}
+		case InputMember_Name:
+		{
+			*node = AllocStringLiteral(AllocateString(input->description), memberAccess->lineNumber);
+			break;
+		}
+		default: INVALID_VALUE(current.inputMember);
+		}
 		break;
 	}
-	// stupid hack for accessing value member in input variable
-	case Node_LoopControl:
-	{
-		InputStmt* input = current.ptr;
-		memberAccess->varReference = input->varDecl.ptr;
-		break;
-	}
-	default: INVALID_VALUE(current.type);
+	default: INVALID_VALUE(current.node.type);
 	}
 
 	return SUCCESS_RESULT;

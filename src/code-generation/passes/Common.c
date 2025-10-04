@@ -431,3 +431,25 @@ NodePtr AllocSizeInteger(size_t value, int lineNumber)
 		},
 		sizeof(LiteralExpr), Node_Literal);
 }
+
+NodePtr AllocNumber(char* value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_Number,
+			.number = value,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
+
+NodePtr AllocStringLiteral(char* value, int lineNumber)
+{
+	return AllocASTNode(
+		&(LiteralExpr){
+			.lineNumber = lineNumber,
+			.type = Literal_String,
+			.string = value,
+		},
+		sizeof(LiteralExpr), Node_Literal);
+}
