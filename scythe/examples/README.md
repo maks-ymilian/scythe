@@ -1,2 +1,4 @@
 # Example Programs
-For instructions on how to compile these example programs, see this repo's [README](../../README.md/#usage).
+Try compiling these examples.
+
+For instructions, see this repo's [README](https://github.com/maks-ymilian/scythe/blob/main/README.md#usage).
